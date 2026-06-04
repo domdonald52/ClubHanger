@@ -5,7 +5,9 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
 from datetime import datetime, timedelta, time
-from .models import Club, ClubMember, Booking, Aircraft, Role, FlightType, BlockOutType, SlotWatch
+from .models import (Club, ClubMember, Booking, Aircraft, Role, FlightType, BlockOutType,
+                     SlotWatch, InstructorGrade, AircraftSurchargeType,
+                     Aerodrome, FuelSurchargeRate)
 from .availability import find_available_slots, get_date_range
 
 
@@ -1153,6 +1155,59 @@ def club_settings(request, club_slug):
                 bt.delete()
             return redirect('core:club_settings', club_slug=club_slug)
 
+        # ── Instructor grade management ──────────────────────────────────────
+        elif action == 'add_instructor_grade':
+            ig_name = request.POST.get('ig_name', '').strip()
+            ig_rate = request.POST.get('ig_rate', '').strip()
+            ig_order = request.POST.get('ig_order', '0').strip()
+            if ig_name and ig_rate:
+                try:
+                    InstructorGrade.objects.get_or_create(
+                        club=club, name=ig_name,
+                        defaults={'hourly_rate': ig_rate,
+                                  'display_order': int(ig_order) if ig_order.isdigit() else 0}
+                    )
+                except Exception:
+                    pass
+            return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'delete_instructor_grade':
+            InstructorGrade.objects.filter(club=club, id=request.POST.get('ig_id')).delete()
+            return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'edit_instructor_grade':
+            ig = InstructorGrade.objects.filter(club=club, id=request.POST.get('ig_id')).first()
+            if ig:
+                ig.hourly_rate = request.POST.get('ig_rate', ig.hourly_rate)
+                ig.save(update_fields=['hourly_rate'])
+            return redirect('core:club_settings', club_slug=club_slug)
+
+        # ── Aircraft surcharge type management ───────────────────────────────
+        elif action == 'add_surcharge_type':
+            st_name = request.POST.get('st_name', '').strip()
+            st_amount = request.POST.get('st_amount', '').strip()
+            st_desc = request.POST.get('st_desc', '').strip()
+            if st_name and st_amount:
+                try:
+                    AircraftSurchargeType.objects.get_or_create(
+                        club=club, name=st_name,
+                        defaults={'amount': st_amount, 'description': st_desc}
+                    )
+                except Exception:
+                    pass
+            return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'delete_surcharge_type':
+            AircraftSurchargeType.objects.filter(club=club, id=request.POST.get('st_id')).delete()
+            return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'edit_surcharge_type':
+            st = AircraftSurchargeType.objects.filter(club=club, id=request.POST.get('st_id')).first()
+            if st:
+                st.amount = request.POST.get('st_amount', st.amount)
+                st.save(update_fields=['amount'])
+            return redirect('core:club_settings', club_slug=club_slug)
+
         else:
             club_name = request.POST.get('club_name', '').strip()
             if club_name:
@@ -1205,6 +1260,8 @@ def club_settings(request, club_slug):
         'instructor_blockout_types': BlockOutType.objects.filter(club=club, target='instructor'),
         'aircraft_blockout_types': BlockOutType.objects.filter(club=club, target='aircraft'),
         'flight_types': FlightType.objects.filter(club=club),
+        'instructor_grades': InstructorGrade.objects.filter(club=club),
+        'surcharge_types': AircraftSurchargeType.objects.filter(club=club),
         'saved': saved,
         'ft_error': ft_error,
     })
@@ -1860,3 +1917,101 @@ def create_blockout(request):
         bo.instructors.set(_User.objects.filter(id__in=instructor_ids))
 
     return JsonResponse({'success': True, 'id': bo.id})
+
+
+@login_required
+def manage_aerodromes(request, club_slug):
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        member = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not member.is_staff:
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    error = None
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'add_aerodrome':
+            icao = request.POST.get('icao', '').strip().upper()
+            name = request.POST.get('name', '').strip()
+            fs_fee = request.POST.get('full_stop_fee', '0').strip()
+            tg_fee = request.POST.get('touch_and_go_fee', '').strip()
+            notes = request.POST.get('notes', '').strip()
+            if icao and name:
+                Aerodrome.objects.get_or_create(
+                    club=club, icao_code=icao,
+                    defaults={
+                        'name': name,
+                        'full_stop_fee': fs_fee or 0,
+                        'touch_and_go_fee': tg_fee if tg_fee else None,
+                        'notes': notes,
+                    }
+                )
+            else:
+                error = "ICAO code and name are required."
+
+        elif action == 'edit_aerodrome':
+            ae = Aerodrome.objects.filter(club=club, id=request.POST.get('ae_id')).first()
+            if ae:
+                ae.name = request.POST.get('name', ae.name).strip()
+                ae.full_stop_fee = request.POST.get('full_stop_fee', ae.full_stop_fee)
+                tg = request.POST.get('touch_and_go_fee', '').strip()
+                ae.touch_and_go_fee = tg if tg else None
+                ae.notes = request.POST.get('notes', '').strip()
+                ae.save()
+
+        elif action == 'toggle_aerodrome':
+            ae = Aerodrome.objects.filter(club=club, id=request.POST.get('ae_id')).first()
+            if ae:
+                ae.is_active = not ae.is_active
+                ae.save(update_fields=['is_active'])
+
+        elif action == 'delete_aerodrome':
+            Aerodrome.objects.filter(club=club, id=request.POST.get('ae_id')).delete()
+
+        return redirect('core:manage_aerodromes', club_slug=club_slug)
+
+    aerodromes = Aerodrome.objects.filter(club=club).order_by('icao_code')
+    return render(request, 'core/manage_aerodromes.html', {
+        'club': club, 'club_member': member, 'aerodromes': aerodromes, 'error': error,
+    })
+
+
+@login_required
+def manage_rates(request, club_slug):
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        member = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not member.is_staff:
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    error = None
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'add_rate':
+            rate = request.POST.get('rate', '').strip()
+            effective_from = request.POST.get('effective_from', '').strip()
+            notes = request.POST.get('notes', '').strip()
+            if rate and effective_from:
+                FuelSurchargeRate.objects.get_or_create(
+                    club=club, effective_from=effective_from,
+                    defaults={'rate': rate, 'notes': notes}
+                )
+            else:
+                error = "Rate and effective date are required."
+
+        elif action == 'delete_rate':
+            FuelSurchargeRate.objects.filter(club=club, id=request.POST.get('rate_id')).delete()
+
+        return redirect('core:manage_rates', club_slug=club_slug)
+
+    rates = FuelSurchargeRate.objects.filter(club=club).order_by('-effective_from')
+    current = rates.first()
+    return render(request, 'core/manage_rates.html', {
+        'club': club, 'club_member': member, 'rates': rates, 'current_rate': current, 'error': error,
+    })

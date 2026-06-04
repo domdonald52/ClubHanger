@@ -11,6 +11,8 @@
     {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="mnav-link">Members</a>{% endif %}
     <a href="{% url 'core:manage_aircraft' club.slug %}" class="mnav-link">Aircraft</a>
     <a href="{% url 'core:manage_instructors' club.slug %}" class="mnav-link">Instructors</a>
+    <a href="{% url 'core:manage_aerodromes' club.slug %}" class="mnav-link">Aerodromes</a>
+    <a href="{% url 'core:manage_rates' club.slug %}" class="mnav-link">Fuel rates</a>
   </div>
 
   <p style="font-size:.83rem;color:#8a93a0;margin-bottom:1.2rem;">

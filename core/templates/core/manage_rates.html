@@ -1,0 +1,104 @@
+{% extends "core/base.html" %}
+{% block title %}Fuel Surcharge Rates · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:2rem;max-width:700px;">
+  <h1 style="margin-bottom:1rem;">Manage</h1>
+  <div class="mnav">
+    <a href="{% url 'core:manage_bookings' club.slug %}" class="mnav-link">Bookings</a>
+    <a href="{% url 'core:manage_blockouts' club.slug %}" class="mnav-link">Block-outs</a>
+    {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="mnav-link">Members</a>{% endif %}
+    <a href="{% url 'core:manage_aircraft' club.slug %}" class="mnav-link">Aircraft</a>
+    <a href="{% url 'core:manage_instructors' club.slug %}" class="mnav-link">Instructors</a>
+    <a href="{% url 'core:manage_aerodromes' club.slug %}" class="mnav-link">Aerodromes</a>
+    <a href="{% url 'core:manage_rates' club.slug %}" class="mnav-link active">Fuel rates</a>
+  </div>
+
+  <h2 style="font-size:1.1rem;font-weight:700;margin:1.2rem 0 .3rem;">Fuel surcharge rates</h2>
+  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.4rem;">
+    Rate charged per Hobbs/Tacho hour on top of the base hire rate. Add a new entry each time the committee changes the rate — the most recent entry takes effect.
+  </p>
+
+  {% if error %}<div class="snotice err">{{ error }}</div>{% endif %}
+
+  {% if current_rate %}
+  <div style="background:#eaf6ec;border:1px solid #b7dfc0;border-radius:8px;padding:.8rem 1.1rem;margin-bottom:1.4rem;display:flex;align-items:center;gap:1rem;">
+    <div>
+      <div style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#2a7a3b;margin-bottom:.15rem;">Current rate</div>
+      <div style="font-size:1.5rem;font-weight:700;color:#1f2933;">${{ current_rate.rate }}<span style="font-size:.85rem;font-weight:400;color:#5b6573;">/hr</span></div>
+    </div>
+    <div style="font-size:.82rem;color:#5b6573;">
+      Effective from {{ current_rate.effective_from|date:"j M Y" }}
+      {% if current_rate.notes %}<br><em>{{ current_rate.notes }}</em>{% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div style="background:#fff8e1;border:1px solid #f59e0b;border-radius:8px;padding:.7rem 1rem;margin-bottom:1.4rem;font-size:.85rem;color:#92400e;">
+    No fuel surcharge rate configured — flights will show $0 fuel surcharge until one is added.
+  </div>
+  {% endif %}
+
+  <form method="post" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:2rem;padding:1rem;background:#f8f9fb;border-radius:8px;border:1px solid #e3e6ea;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add_rate">
+    <label class="flabel">Rate ($/hr)
+      <input type="number" name="rate" placeholder="0.00" step="0.01" min="0" required class="finput" style="width:110px;">
+    </label>
+    <label class="flabel">Effective from
+      <input type="date" name="effective_from" required class="finput" style="width:160px;">
+    </label>
+    <label class="flabel" style="flex:1;min-width:200px;">Note <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+      <input type="text" name="notes" placeholder="e.g. April price rise" class="finput">
+    </label>
+    <button type="submit" class="btn" style="flex-shrink:0;">Add rate</button>
+  </form>
+
+  {% if rates %}
+  <h2 style="font-size:.95rem;font-weight:650;margin-bottom:.7rem;">Rate history</h2>
+  <table class="ft-table">
+    <thead>
+      <tr><th>Effective from</th><th>Rate ($/hr)</th><th>Note</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for r in rates %}
+      <tr {% if forloop.first %}style="background:#f0faf2;"{% endif %}>
+        <td>
+          {{ r.effective_from|date:"j M Y" }}
+          {% if forloop.first %}<span style="font-size:.72rem;background:#2a7a3b;color:#fff;border-radius:10px;padding:.1rem .45rem;margin-left:.4rem;">current</span>{% endif %}
+        </td>
+        <td><strong>${{ r.rate }}</strong></td>
+        <td style="color:#8a93a0;font-size:.82rem;">{{ r.notes|default:"—" }}</td>
+        <td style="text-align:right;">
+          {% if not forloop.first %}
+          <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rate entry?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_rate">
+            <input type="hidden" name="rate_id" value="{{ r.id }}">
+            <button type="submit" class="ft-del">Delete</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<style>
+  .snotice{padding:.6rem .9rem;border-radius:6px;margin-bottom:1rem;font-size:.88rem;}
+  .snotice.err{background:#fff0f0;color:#c0392b;}
+  .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+  .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table tr:last-child td{border-bottom:0;}
+  .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
+  .mnav{display:flex;border-bottom:2px solid #e3e6ea;margin-bottom:1.4rem;overflow-x:auto;}
+  .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;white-space:nowrap;}
+  .mnav-link:hover,.mnav-link.active{color:var(--banner);}
+  .mnav-link.active{border-bottom-color:var(--primary);font-weight:650;}
+</style>
+{% endblock %}

@@ -25,4 +25,6 @@ urlpatterns = [
     path('manage/<slug:club_slug>/instructors/', views.manage_instructors, name='manage_instructors'),
     path('profile/<slug:club_slug>/', views.my_profile, name='my_profile'),
     path('api/blockout/create/', views.create_blockout, name='create_blockout'),
+    path('manage/<slug:club_slug>/aerodromes/', views.manage_aerodromes, name='manage_aerodromes'),
+    path('manage/<slug:club_slug>/rates/', views.manage_rates, name='manage_rates'),
 ]
