@@ -123,14 +123,32 @@ class MembershipCategory(models.Model):
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='membership_categories')
     name = models.CharField(max_length=100)  # 'Private Pilot', 'Student', etc.
     is_member = models.BooleanField(default=True, help_text="True=member, False=non-member")
-    
+
     class Meta:
         unique_together = ('club', 'name')
         verbose_name_plural = "Membership categories"
-    
+
     def __str__(self):
         status = "Member" if self.is_member else "Non-Member"
         return f"{self.club.name} - {self.name} ({status})"
+
+
+class InstructorGrade(models.Model):
+    """
+    Instructor qualification grades per club (C-Cat, B-Cat, A-Cat, Examiner, etc.).
+    Determines the hourly rate charged when an instructor flies dual.
+    """
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='instructor_grades')
+    name = models.CharField(max_length=50, help_text="e.g. C-Cat, B-Cat, A-Cat, Examiner")
+    hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    display_order = models.PositiveIntegerField(default=0, help_text="Lower = shown first")
+
+    class Meta:
+        unique_together = ('club', 'name')
+        ordering = ['club', 'display_order', 'name']
+
+    def __str__(self):
+        return f"{self.club.name} — {self.name} (${self.hourly_rate}/hr)"
 
 
 class ClubMember(models.Model):
@@ -161,10 +179,18 @@ class ClubMember(models.Model):
     postcode      = models.CharField(max_length=10, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
 
+    # ── Next of kin (pre-fills departure declarations) ────────────────────────
+    next_of_kin_name  = models.CharField(max_length=200, blank=True)
+    next_of_kin_phone = models.CharField(max_length=20, blank=True)
+
     # ── Membership standing & subscription ───────────────────────────────────
     standing = models.CharField(max_length=20, choices=STANDING_CHOICES, default='active')
     membership_category = models.ForeignKey(MembershipCategory, on_delete=models.SET_NULL, null=True, blank=True)
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
+    instructor_grade = models.ForeignKey(
+        InstructorGrade, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='members', help_text="Instructor qualification grade — determines hourly rate"
+    )
 
     avatar               = models.ImageField(upload_to='avatars/', null=True, blank=True)
     join_date            = models.DateField(auto_now_add=True, help_text="Date first admitted")
@@ -304,6 +330,12 @@ class Aircraft(models.Model):
     # Fuel
     fuel_consumption_per_hour = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     
+    # Surcharges applied per flight (e.g. 4-seat surcharge)
+    surcharges = models.ManyToManyField(
+        'AircraftSurchargeType', blank=True, related_name='aircraft',
+        help_text="Surcharges automatically added to every flight on this aircraft"
+    )
+
     # Status
     status = models.CharField(max_length=20, choices=AircraftStatus.choices, default=AircraftStatus.ONLINE)
     is_available_for_hire = models.BooleanField(default=True)
@@ -386,6 +418,10 @@ class FlightType(models.Model):
     is_billable = models.BooleanField(default=True)
     is_training = models.BooleanField(default=False)
     is_solo = models.BooleanField(default=False, help_text="Solo flights — instructor is not required")
+    requires_declaration = models.BooleanField(
+        default=False,
+        help_text="Pilot must submit a pre-departure declaration before checking out (e.g. Private Hire)"
+    )
 
     class Meta:
         unique_together = ('club', 'code')
@@ -393,6 +429,24 @@ class FlightType(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.club.name})"
+
+
+class AircraftSurchargeType(models.Model):
+    """
+    Configurable surcharge types per club (e.g. '4-seat surcharge', 'IFR surcharge').
+    Assigned to specific aircraft via M2M. Applied as a fixed amount per flight.
+    """
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='surcharge_types')
+    name = models.CharField(max_length=100)
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    description = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        unique_together = ('club', 'name')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} (${self.amount})"
 
 
 class ChargeRate(models.Model):
@@ -433,12 +487,22 @@ class Account(models.Model):
     Member's financial account. Tracks balance and credit.
     credit_limit=None means exempt from warnings (typically instructors).
     """
+    PAYMENT_METHOD_CHOICES = [
+        ('credit',  'Account credit (auto-deduct)'),
+        ('eftpos',  'EFTPOS'),
+        ('invoice', 'Invoice (bank transfer)'),
+    ]
+
     club_member = models.OneToOneField(ClubMember, on_delete=models.CASCADE, related_name='account')
 
     balance      = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     credit_limit = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True,
         help_text="Max negative balance allowed. Null = exempt (e.g. instructors)."
+    )
+    preferred_payment_method = models.CharField(
+        max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True, default='',
+        help_text="Standing payment instruction. Can be overridden per flight."
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -467,6 +531,7 @@ class BookingStatus(models.TextChoices):
     """Booking lifecycle states."""
     PENDING = 'pending', 'Pending Confirmation'
     CONFIRMED = 'confirmed', 'Confirmed'
+    DEPARTED = 'departed', 'Departed'
     COMPLETED = 'completed', 'Completed'
     CANCELLED = 'cancelled', 'Cancelled'
 
@@ -522,6 +587,14 @@ class Booking(models.Model):
         help_text="Set when staff deliberately booked over a block-out."
     )
     
+    # Departure / arrival timestamps
+    departed_at = models.DateTimeField(null=True, blank=True)
+    arrived_at = models.DateTimeField(null=True, blank=True)
+
+    # Set when pilot checks out without a submitted declaration
+    departed_without_declaration = models.BooleanField(default=False)
+    departed_without_declaration_reason = models.CharField(max_length=500, blank=True)
+
     # Slot release — set when staff/member explicitly frees the slot for others
     slot_released = models.BooleanField(default=False)
     slot_released_at = models.DateTimeField(null=True, blank=True)
@@ -596,41 +669,134 @@ class BookingAuditLog(models.Model):
 class FlightCompletion(models.Model):
     """
     Logged flight data: actual hours, charges, payment.
-    Created after booking is completed.
-    Triggers billing.
+    Created when a booking is checked in (arrived). Triggers billing.
+    Charges are built as FlightChargeItem line items; total_charge is their sum.
     """
-    booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='flight_completion')
-    
-    # Actual flight time
-    hobbs_start = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    hobbs_end = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    tacho_start = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    tacho_end = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    
-    # Calculated
-    actual_flight_hours = models.DecimalField(max_digits=6, decimal_places=2)
-    
-    # Charges
-    base_charge = models.DecimalField(max_digits=8, decimal_places=2)
-    fuel_surcharge = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    landing_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    other_charges = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    total_charge = models.DecimalField(max_digits=8, decimal_places=2)
-    
-    # Payment
-    PAYMENT_METHOD_CHOICES = [
-        ('credit', 'Account Credit'),
-        ('eftpos', 'EFTPOS'),
-        ('invoice', 'Invoice (Bank Transfer)'),
+    OUTCOME_CHOICES = [
+        ('completed',         'Flight completed normally'),
+        ('aborted_ground',    'Aborted on ground (pre-takeoff)'),
+        ('early_return_tech', 'Early return — technical'),
+        ('early_return_wx',   'Early return — weather'),
+        ('diverted',          'Diverted / landed away'),
     ]
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
-    
+    PAYMENT_METHOD_CHOICES = [
+        ('credit',  'Account credit'),
+        ('eftpos',  'EFTPOS'),
+        ('invoice', 'Invoice (bank transfer)'),
+    ]
+
+    booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='flight_completion')
+
+    # Flight outcome
+    outcome = models.CharField(max_length=30, choices=OUTCOME_CHOICES, default='completed')
+    outcome_notes = models.TextField(
+        blank=True, help_text="Required when outcome is not 'completed normally'"
+    )
+    # Snapshot original flight type if changed at check-in
+    original_flight_type = models.ForeignKey(
+        FlightType, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='changed_completions',
+        help_text="Populated if flight type was changed from booking type at check-in"
+    )
+
+    # Actual flight time readings
+    hobbs_start = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    hobbs_end   = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    tacho_start = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    tacho_end   = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+
+    # Calculated hours (based on aircraft total_time_method)
+    actual_flight_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+
+    # Fuel surcharge rate snapshotted at departure time (rate per hour at that moment)
+    fuel_surcharge_rate_snapshot = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Fuel surcharge rate ($/hr) locked at time of departure"
+    )
+    # Instructor hourly rate snapshotted at check-in time
+    instructor_rate_snapshot = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Instructor hourly rate locked at time of check-in"
+    )
+
+    # Total charge (sum of FlightChargeItem rows — computed, stored for fast display)
+    total_charge = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+
+    # Payment
+    payment_method = models.CharField(
+        max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True, default=''
+    )
+    paid_at = models.DateTimeField(null=True, blank=True)
+
     # Audit
     logged_by = models.ForeignKey(User, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+    updated_at = models.DateTimeField(auto_now=True)
+
     def __str__(self):
-        return f"{self.booking} - {self.actual_flight_hours}h"
+        return f"{self.booking} — {self.actual_flight_hours}h ({self.get_outcome_display()})"
+
+    @property
+    def is_paid(self):
+        return self.paid_at is not None
+
+
+# ============================================================================
+# AERODROMES & FUEL SURCHARGE RATES
+# ============================================================================
+
+class Aerodrome(models.Model):
+    """
+    Aerodromes the club has landing fee arrangements with (e.g. NZMS, NZPP).
+    Full-stop and touch-and-go fees may differ.
+    """
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='aerodromes')
+    icao_code = models.CharField(max_length=4, help_text="4-letter ICAO code, e.g. NZMS")
+    name = models.CharField(max_length=200, help_text="e.g. Masterton")
+    full_stop_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+    touch_and_go_fee = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Leave blank if same as full-stop or not applicable"
+    )
+    is_active = models.BooleanField(default=True)
+    notes = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        unique_together = ('club', 'icao_code')
+        ordering = ['icao_code']
+
+    def __str__(self):
+        return f"{self.icao_code} — {self.name}"
+
+    def fee_for(self, landing_type):
+        """Return the applicable fee for 'full_stop' or 'touch_and_go'."""
+        if landing_type == 'touch_and_go' and self.touch_and_go_fee is not None:
+            return self.touch_and_go_fee
+        return self.full_stop_fee
+
+
+class FuelSurchargeRate(models.Model):
+    """
+    Dated fuel surcharge rate per hour (changes at committee discretion).
+    The rate effective on a given date is the most recent rate with effective_from <= that date.
+    """
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='fuel_surcharge_rates')
+    rate = models.DecimalField(max_digits=8, decimal_places=2, help_text="Per Hobbs/Tacho hour")
+    effective_from = models.DateField()
+    notes = models.CharField(max_length=255, blank=True, help_text="e.g. 'April price rise'")
+
+    class Meta:
+        unique_together = ('club', 'effective_from')
+        ordering = ['-effective_from']
+
+    def __str__(self):
+        return f"{self.club.name} fuel surcharge ${self.rate}/hr from {self.effective_from}"
+
+    @classmethod
+    def current_rate(cls, club, on_date=None):
+        """Return the FuelSurchargeRate effective on on_date (defaults to today)."""
+        d = on_date or date.today()
+        return cls.objects.filter(club=club, effective_from__lte=d).order_by('-effective_from').first()
 
 
 # ============================================================================
@@ -1118,3 +1284,246 @@ def _blockout_aircraft_changed(sender, instance, action, **kwargs):
 def _blockout_instructors_changed(sender, instance, action, **kwargs):
     if action in ('post_add', 'post_remove', 'post_clear'):
         instance.rescan_bookings()
+
+
+# ============================================================================
+# DEPARTURE DECLARATIONS
+# ============================================================================
+
+PASSENGER_CONSENT_TEXT = (
+    "By saving this person's contact details, you confirm they have given their consent "
+    "for the club to store their name, phone number, and next-of-kin details for flight "
+    "safety and search and rescue purposes. This information is held securely, used only "
+    "for these purposes, and may be disclosed to search and rescue authorities if required. "
+    "It will not be shared with any other party. They may request removal of their details "
+    "at any time by contacting the club."
+)
+
+
+class FrequentPassenger(models.Model):
+    """
+    Saved passenger details on a member's profile for re-use in departure declarations.
+    Storing requires explicit passenger consent (see PASSENGER_CONSENT_TEXT).
+    """
+    club_member = models.ForeignKey(
+        ClubMember, on_delete=models.CASCADE, related_name='frequent_passengers'
+    )
+    name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=20)
+    next_of_kin_name = models.CharField(max_length=200)
+    next_of_kin_phone = models.CharField(max_length=20)
+
+    consent_given = models.BooleanField(default=False)
+    consent_given_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} (pax for {self.club_member})"
+
+
+class DepartureDeclaration(models.Model):
+    """
+    Pre-departure self-declaration for flights requiring one (e.g. Private Hire).
+    Pilot completes this before checking out. Can be drafted any time after booking
+    is confirmed; submission locks it. Hard block on completion if missing and
+    departed_without_declaration is not acknowledged by admin.
+    """
+    booking = models.OneToOneField(
+        Booking, on_delete=models.CASCADE, related_name='declaration'
+    )
+    authorising_instructor = models.ForeignKey(
+        ClubMember, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='authorised_declarations',
+        help_text="Instructor who verbally authorised this flight. Recorded only — no active approval required."
+    )
+    submitted_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='submitted_declarations'
+    )
+
+    # Route & intentions
+    route_intentions = models.TextField(help_text="Planned route and intentions")
+    destination = models.CharField(max_length=100, blank=True, help_text="Primary destination aerodrome")
+    estimated_return = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Estimated return time — used to flag overdue aircraft"
+    )
+    is_cross_country = models.BooleanField(default=False)
+
+    # Next of kin (copied from member profile, overridable per flight)
+    next_of_kin_name = models.CharField(max_length=200)
+    next_of_kin_phone = models.CharField(max_length=20)
+    next_of_kin_from_profile = models.BooleanField(
+        default=True, help_text="Was next of kin auto-filled from member profile?"
+    )
+
+    # Pilot confirmations
+    confirm_aip = models.BooleanField(default=False, verbose_name="AIP reviewed")
+    confirm_weather = models.BooleanField(default=False, verbose_name="Weather checked")
+    confirm_fuel = models.BooleanField(default=False, verbose_name="Fuel requirements confirmed")
+    confirm_pickets = models.BooleanField(
+        default=False, verbose_name="Pickets carried",
+        help_text="Only required for cross-country flights"
+    )
+    confirm_maps = models.BooleanField(default=False, verbose_name="Maps carried")
+    confirm_fuel_card = models.BooleanField(default=False, verbose_name="Fuel card carried")
+    confirm_afm = models.BooleanField(default=False, verbose_name="AFM in aircraft")
+    confirm_flight_plan = models.BooleanField(default=False, verbose_name="Flight plan filed")
+
+    # Draft / submission state
+    is_draft = models.BooleanField(default=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    staleness_acknowledged = models.BooleanField(
+        default=False,
+        help_text="Pilot confirmed weather/NOTAMs re-checked when declaration is >6h old"
+    )
+
+    # Amendment tracking (re-open before check-out, then re-submit)
+    amended_at = models.DateTimeField(null=True, blank=True)
+    amendment_reason = models.CharField(max_length=500, blank=True)
+
+    # Audit
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Departure declaration"
+
+    def __str__(self):
+        status = "draft" if self.is_draft else "submitted"
+        return f"Declaration for {self.booking} ({status})"
+
+    @property
+    def is_stale(self):
+        """True if submitted more than 6 hours ago — weather/NOTAMs may be outdated."""
+        if not self.submitted_at:
+            return False
+        from django.utils import timezone as _tz
+        return (_tz.now() - self.submitted_at).total_seconds() > 6 * 3600
+
+    @property
+    def is_complete(self):
+        """All required confirmations ticked and not a draft."""
+        if self.is_draft:
+            return False
+        required = [
+            self.confirm_aip, self.confirm_weather, self.confirm_fuel,
+            self.confirm_maps, self.confirm_fuel_card, self.confirm_afm,
+        ]
+        if self.is_cross_country:
+            required.append(self.confirm_pickets)
+        return all(required) and bool(self.next_of_kin_name) and bool(self.next_of_kin_phone)
+
+
+class DeclarationPassenger(models.Model):
+    """
+    Passenger listed on a departure declaration.
+    Always stores a snapshot of details at declaration time — historical records
+    remain intact even if the FrequentPassenger entry is later deleted.
+    """
+    declaration = models.ForeignKey(
+        DepartureDeclaration, on_delete=models.CASCADE, related_name='passengers'
+    )
+    frequent_passenger = models.ForeignKey(
+        FrequentPassenger, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='declaration_appearances',
+        help_text="Source frequent-passenger record (for reference only — data is snapshotted)"
+    )
+
+    # Always-snapshotted fields
+    name = models.CharField(max_length=200)
+    phone = models.CharField(max_length=20)
+    next_of_kin_name = models.CharField(max_length=200)
+    next_of_kin_phone = models.CharField(max_length=20)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} on {self.declaration}"
+
+
+# ============================================================================
+# FLIGHT CHARGE ITEMS
+# ============================================================================
+
+class FlightChargeItem(models.Model):
+    """
+    Individual line item in a flight's charge breakdown.
+    The sum of all items for a FlightCompletion = FlightCompletion.total_charge.
+    One-off/sundry items require a description.
+    """
+    ITEM_TYPE_CHOICES = [
+        ('hire',           'Aircraft hire'),
+        ('fuel_surcharge', 'Fuel surcharge'),
+        ('instructor',     'Instructor fee'),
+        ('surcharge',      'Aircraft surcharge'),
+        ('landing',        'Landing fee'),
+        ('one_off',        'Sundry / one-off'),
+    ]
+
+    flight_completion = models.ForeignKey(
+        FlightCompletion, on_delete=models.CASCADE, related_name='charge_items'
+    )
+    item_type = models.CharField(max_length=20, choices=ITEM_TYPE_CHOICES)
+    description = models.CharField(
+        max_length=300,
+        help_text="Mandatory for sundry items; auto-populated for standard items"
+    )
+    amount = models.DecimalField(max_digits=8, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['item_type', 'created_at']
+
+    def __str__(self):
+        return f"{self.get_item_type_display()} — ${self.amount}"
+
+
+class FlightLandingEntry(models.Model):
+    """
+    Landing fees incurred during a flight, per aerodrome.
+    Aerodrome FK is null for unknown/custom aerodromes (entered manually by instructor).
+    The instructor is offered to save custom aerodromes to the configured list.
+    """
+    flight_completion = models.ForeignKey(
+        FlightCompletion, on_delete=models.CASCADE, related_name='landing_entries'
+    )
+    aerodrome = models.ForeignKey(
+        Aerodrome, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='landing_entries'
+    )
+
+    # Populated when aerodrome is not in the configured list
+    custom_icao = models.CharField(max_length=4, blank=True)
+    custom_name = models.CharField(max_length=200, blank=True)
+    custom_description = models.CharField(max_length=200, blank=True)
+    # Offer to save custom aerodrome for future use
+    save_as_aerodrome = models.BooleanField(default=False)
+
+    full_stops = models.PositiveIntegerField(default=0)
+    touch_and_goes = models.PositiveIntegerField(default=0)
+    total_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['aerodrome__icao_code', 'custom_icao']
+
+    def __str__(self):
+        code = self.aerodrome.icao_code if self.aerodrome else self.custom_icao
+        return f"{code} — {self.full_stops} full stop(s), {self.touch_and_goes} T&G(s) — ${self.total_fee}"
+
+    def calculate_fee(self):
+        """Compute and store total_fee from aerodrome rates and landing counts."""
+        if self.aerodrome:
+            fs_fee = self.aerodrome.full_stop_fee * self.full_stops
+            tg_rate = self.aerodrome.touch_and_go_fee if self.aerodrome.touch_and_go_fee is not None \
+                      else self.aerodrome.full_stop_fee
+            tg_fee = tg_rate * self.touch_and_goes
+            self.total_fee = fs_fee + tg_fee
+        return self.total_fee
