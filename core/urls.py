@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/booking/<int:booking_id>/reject/', views.reject_booking, name='reject_booking'),
     path('api/booking/<int:booking_id>/watch/', views.toggle_watch, name='toggle_watch'),
     path('search/<slug:club_slug>/', views.availability_search, name='availability_search'),
+    path('rates/<slug:club_slug>/', views.club_rates, name='club_rates'),
     path('settings/<slug:club_slug>/', views.club_settings, name='club_settings'),
     path('manage/<slug:club_slug>/', views.manage_bookings, name='manage_bookings'),
     path('manage/<slug:club_slug>/blockouts/', views.manage_blockouts, name='manage_blockouts'),

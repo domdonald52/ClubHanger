@@ -98,6 +98,13 @@
             {% for r in roles %}<option value="{{ r.id }}" {% if member.role_id == r.id %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
           </select>
         </label>
+        <label class="flabel" style="display:flex;flex-direction:column;gap:.4rem;">Admin access
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;margin-top:.25rem;cursor:pointer;">
+            <input type="checkbox" name="has_admin_access" {% if member.has_admin_access %}checked{% endif %}
+                   style="width:auto;">
+            Grant Settings &amp; Rates access (e.g. for CFI or club secretary)
+          </label>
+        </label>
         <label class="flabel">Subscription expires<input type="date" name="subscription_expires" value="{{ member.subscription_expires|date:'Y-m-d' }}" class="finput"></label>
         <label class="flabel">Last renewed<input type="date" value="{{ member.last_renewed|date:'Y-m-d' }}" class="finput" disabled style="opacity:.5;"></label>
         <label class="flabel">Join date<input type="text" value="{{ member.join_date }}" class="finput" disabled style="opacity:.5;"></label>

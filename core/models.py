@@ -334,6 +334,11 @@ class Aircraft(models.Model):
     
     # Fuel
     fuel_consumption_per_hour = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    hire_includes_fuel = models.BooleanField(
+        default=True,
+        help_text="Wet hire — fuel is included in the hire rate. "
+                  "Uncheck for dry hire where fuel is charged separately per hour."
+    )
     
     # Surcharges applied per flight (e.g. 4-seat surcharge)
     surcharges = models.ManyToManyField(
@@ -753,16 +758,12 @@ class FlightCompletion(models.Model):
 class Aerodrome(models.Model):
     """
     Aerodromes the club has landing fee arrangements with (e.g. NZMS, NZPP).
-    Full-stop and touch-and-go fees may differ.
+    Fee types (full stop, touch & go, night surcharge, etc.) are configured
+    per-aerodrome via AerodromeFeeType.
     """
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='aerodromes')
     icao_code = models.CharField(max_length=4, help_text="4-letter ICAO code, e.g. NZMS")
     name = models.CharField(max_length=200, help_text="e.g. Masterton")
-    full_stop_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    touch_and_go_fee = models.DecimalField(
-        max_digits=8, decimal_places=2, null=True, blank=True,
-        help_text="Leave blank if same as full-stop or not applicable"
-    )
     is_active = models.BooleanField(default=True)
     notes = models.TextField(
         blank=True,
@@ -776,35 +777,66 @@ class Aerodrome(models.Model):
     def __str__(self):
         return f"{self.icao_code} — {self.name}"
 
-    def fee_for(self, landing_type):
-        """Return the applicable fee for 'full_stop' or 'touch_and_go'."""
-        if landing_type == 'touch_and_go' and self.touch_and_go_fee is not None:
-            return self.touch_and_go_fee
-        return self.full_stop_fee
+
+class AerodromeFeeType(models.Model):
+    """
+    A named fee type at an aerodrome (e.g. Full stop, Touch & go, Night surcharge).
+    Instructors can define these freely per aerodrome. The default_amount is used
+    to pre-fill the charge at flight completion but can be overridden.
+    """
+    aerodrome = models.ForeignKey(Aerodrome, on_delete=models.CASCADE, related_name='fee_types')
+    name = models.CharField(max_length=100, help_text="e.g. Full stop, Touch & go, Night surcharge")
+    default_amount = models.DecimalField(max_digits=8, decimal_places=2, default=0)
+
+    class Meta:
+        unique_together = ('aerodrome', 'name')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.aerodrome.icao_code} — {self.name} (${self.default_amount})"
 
 
 class FuelSurchargeRate(models.Model):
     """
-    Dated fuel surcharge rate per hour (changes at committee discretion).
-    The rate effective on a given date is the most recent rate with effective_from <= that date.
+    Dated per-hour fuel rate. Used for dry-hire aircraft where fuel is charged separately,
+    or as a club-wide fuel levy on top of wet rates.
+    aircraft=None means the rate applies to all aircraft without a specific override.
     """
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='fuel_surcharge_rates')
+    aircraft = models.ForeignKey(
+        'Aircraft', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='fuel_rates',
+        help_text="Leave blank for a club-wide rate; set for a per-aircraft override."
+    )
     rate = models.DecimalField(max_digits=8, decimal_places=2, help_text="Per Hobbs/Tacho hour")
     effective_from = models.DateField()
-    notes = models.CharField(max_length=255, blank=True, help_text="e.g. 'April price rise'")
+    notes = models.CharField(max_length=255, blank=True)
 
     class Meta:
-        unique_together = ('club', 'effective_from')
         ordering = ['-effective_from']
+        verbose_name = "Fuel rate"
 
     def __str__(self):
-        return f"{self.club.name} fuel surcharge ${self.rate}/hr from {self.effective_from}"
+        target = self.aircraft.registration if self.aircraft else "all aircraft"
+        return f"{self.club.name} fuel rate ${self.rate}/hr ({target}) from {self.effective_from}"
 
     @classmethod
-    def current_rate(cls, club, on_date=None):
-        """Return the FuelSurchargeRate effective on on_date (defaults to today)."""
+    def current_rate(cls, club, aircraft, on_date=None):
+        """
+        Return the effective fuel rate for a given aircraft on a given date.
+        Aircraft-specific rate takes priority over the club-wide default.
+        Returns None if no rate is configured (wet hire with no fuel component).
+        """
         d = on_date or date.today()
-        return cls.objects.filter(club=club, effective_from__lte=d).order_by('-effective_from').first()
+        if aircraft:
+            specific = cls.objects.filter(
+                club=club, aircraft=aircraft, effective_from__lte=d
+            ).order_by('-effective_from').first()
+            if specific:
+                return specific
+        return cls.objects.filter(
+            club=club, aircraft__isnull=True, effective_from__lte=d
+        ).order_by('-effective_from').first()
 
 
 # ============================================================================
@@ -1468,12 +1500,12 @@ class FlightChargeItem(models.Model):
     One-off/sundry items require a description.
     """
     ITEM_TYPE_CHOICES = [
-        ('hire',           'Aircraft hire'),
-        ('fuel_surcharge', 'Fuel surcharge'),
-        ('instructor',     'Instructor fee'),
-        ('surcharge',      'Aircraft surcharge'),
-        ('landing',        'Landing fee'),
-        ('one_off',        'Sundry / one-off'),
+        ('hire',       'Aircraft hire'),
+        ('fuel',       'Fuel'),
+        ('instructor', 'Instructor fee'),
+        ('surcharge',  'Aircraft surcharge'),
+        ('landing',    'Landing fee'),
+        ('one_off',    'Sundry / one-off'),
     ]
 
     flight_completion = models.ForeignKey(
@@ -1496,42 +1528,49 @@ class FlightChargeItem(models.Model):
 
 class FlightLandingEntry(models.Model):
     """
-    Landing fees incurred during a flight, per aerodrome.
-    Aerodrome FK is null for unknown/custom aerodromes (entered manually by instructor).
-    The instructor is offered to save custom aerodromes to the configured list.
+    One fee line for one aerodrome on a flight. One record per fee type used
+    (e.g. separate rows for full stops and touch & goes at the same aerodrome).
+    Supports both configured aerodromes and custom/unknown ones entered on the fly.
     """
     flight_completion = models.ForeignKey(
         FlightCompletion, on_delete=models.CASCADE, related_name='landing_entries'
     )
+    # Configured aerodrome (null if custom/unknown)
     aerodrome = models.ForeignKey(
         Aerodrome, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='landing_entries'
     )
-
-    # Populated when aerodrome is not in the configured list
+    # Custom aerodrome fields (used when aerodrome is null)
     custom_icao = models.CharField(max_length=4, blank=True)
     custom_name = models.CharField(max_length=200, blank=True)
-    custom_description = models.CharField(max_length=200, blank=True)
-    # Offer to save custom aerodrome for future use
-    save_as_aerodrome = models.BooleanField(default=False)
-
-    full_stops = models.PositiveIntegerField(default=0)
-    touch_and_goes = models.PositiveIntegerField(default=0)
+    save_as_aerodrome = models.BooleanField(
+        default=False,
+        help_text="Offer to save this custom aerodrome to the configured list"
+    )
+    # Fee type (null if custom/typed by instructor)
+    fee_type = models.ForeignKey(
+        AerodromeFeeType, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='landing_entries'
+    )
+    # Snapshot / custom fee type name
+    fee_type_name = models.CharField(
+        max_length=100, default='',
+        help_text="Pre-filled from fee type; editable for custom entries"
+    )
+    quantity = models.PositiveIntegerField(default=1)
+    unit_amount = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0,
+        help_text="Rate at time of logging (snapshot of fee_type.default_amount or manually entered)"
+    )
     total_fee = models.DecimalField(max_digits=8, decimal_places=2, default=0)
 
     class Meta:
-        ordering = ['aerodrome__icao_code', 'custom_icao']
+        ordering = ['aerodrome__icao_code', 'custom_icao', 'fee_type_name']
 
     def __str__(self):
         code = self.aerodrome.icao_code if self.aerodrome else self.custom_icao
-        return f"{code} — {self.full_stops} full stop(s), {self.touch_and_goes} T&G(s) — ${self.total_fee}"
+        return f"{code} — {self.fee_type_name} × {self.quantity} = ${self.total_fee}"
 
-    def calculate_fee(self):
-        """Compute and store total_fee from aerodrome rates and landing counts."""
-        if self.aerodrome:
-            fs_fee = self.aerodrome.full_stop_fee * self.full_stops
-            tg_rate = self.aerodrome.touch_and_go_fee if self.aerodrome.touch_and_go_fee is not None \
-                      else self.aerodrome.full_stop_fee
-            tg_fee = tg_rate * self.touch_and_goes
-            self.total_fee = fs_fee + tg_fee
-        return self.total_fee
+    def save(self, *args, **kwargs):
+        self.total_fee = self.unit_amount * self.quantity
+        super().save(*args, **kwargs)

@@ -1,0 +1,196 @@
+{% extends "core/base.html" %}
+{% block title %}Rates · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:2rem;max-width:960px;">
+  <h1 style="margin-bottom:.3rem;">Rates</h1>
+  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.4rem;">
+    The club's rate card — set by the committee, reviewed periodically. For day-to-day fuel levy and aerodrome fees, see Manage.
+  </p>
+
+  {% if saved %}<div class="snotice ok">Rates saved.</div>{% endif %}
+
+  <div class="stab-bar">
+    <button class="stab-btn active" data-tab="hire">Hire rates</button>
+    <button class="stab-btn" data-tab="instructor">Instructor rates</button>
+    <button class="stab-btn" data-tab="surcharges">Surcharges</button>
+  </div>
+
+  <!-- ── HIRE RATES ── -->
+  <div id="tab-hire" class="stab-panel active">
+    <p style="font-size:.83rem;color:#8a93a0;margin:.2rem 0 1rem;">
+      Base hire rate per aircraft × flight type × time method. Wet hire aircraft show no separate fuel line. Dry hire aircraft will also have a fuel rate in Manage → Fuel levy.
+    </p>
+
+    {% if hire_rates %}
+    <table class="ft-table" style="margin-bottom:1.4rem;">
+      <thead><tr><th>Aircraft</th><th>Flight type</th><th>Method</th><th>Rate ($/hr)</th><th>Wet/Dry</th><th></th></tr></thead>
+      <tbody>
+        {% for r in hire_rates %}
+        <tr>
+          <td><strong>{{ r.aircraft.registration }}</strong></td>
+          <td>{{ r.flight_type.name }}</td>
+          <td style="font-family:monospace;font-size:.82rem;color:#8a93a0;">{{ r.time_method }}</td>
+          <td><strong>${{ r.amount }}</strong></td>
+          <td style="font-size:.82rem;color:#8a93a0;">
+            {% if r.aircraft.hire_includes_fuel %}Wet{% else %}Dry{% endif %}
+          </td>
+          <td style="text-align:right;">
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rate?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_hire_rate">
+              <input type="hidden" name="rate_id" value="{{ r.id }}">
+              <button type="submit" class="ft-del">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1rem;">No hire rates configured yet.</p>
+    {% endif %}
+
+    <h3 style="font-size:.88rem;font-weight:650;margin-bottom:.7rem;">Add hire rate</h3>
+    <form method="post" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;padding:1rem;background:#f8f9fb;border-radius:8px;border:1px solid #e3e6ea;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_hire_rate">
+      <label class="flabel">Aircraft
+        <select name="aircraft_id" required class="finput" style="width:120px;">
+          <option value="">—</option>
+          {% for ac in aircraft_list %}
+          <option value="{{ ac.id }}">{{ ac.registration }} ({% if ac.hire_includes_fuel %}wet{% else %}dry{% endif %})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flabel">Flight type
+        <select name="ft_id" required class="finput" style="width:180px;">
+          <option value="">—</option>
+          {% for ft in flight_types %}
+          <option value="{{ ft.id }}">{{ ft.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flabel">Time method
+        <select name="time_method" class="finput" style="width:130px;">
+          <option value="hobbs">Hobbs</option>
+          <option value="tacho">Tacho</option>
+        </select>
+      </label>
+      <label class="flabel">Rate ($/hr)
+        <input type="number" name="amount" step="0.01" min="0" required class="finput" style="width:110px;">
+      </label>
+      <button type="submit" class="btn" style="flex-shrink:0;">Add rate</button>
+    </form>
+  </div>
+
+  <!-- ── INSTRUCTOR RATES ── -->
+  <div id="tab-instructor" class="stab-panel">
+    {% if instructor_grades %}
+    <p style="font-size:.83rem;color:#8a93a0;margin:.2rem 0 1rem;">
+      Hourly rate charged per instructor grade. Grade types are configured in Settings → Charges.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_grade_rates">
+      <table class="ft-table" style="margin-bottom:1rem;">
+        <thead><tr><th>Grade</th><th>Rate ($/hr)</th></tr></thead>
+        <tbody>
+          {% for ig in instructor_grades %}
+          <tr>
+            <td><strong>{{ ig.name }}</strong></td>
+            <td>
+              <div style="display:inline-flex;align-items:center;gap:.3rem;">
+                $<input type="number" name="ig_rate_{{ ig.id }}" value="{{ ig.hourly_rate }}"
+                        step="0.01" min="0"
+                        style="width:100px;padding:.35rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;">
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="submit" class="btn">Save instructor rates</button>
+    </form>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;margin-top:.5rem;">
+      No instructor grades configured. Add grade types in <a href="{% url 'core:club_settings' club.slug %}">Settings → Charges</a> first.
+    </p>
+    {% endif %}
+  </div>
+
+  <!-- ── SURCHARGE AMOUNTS ── -->
+  <div id="tab-surcharges" class="stab-panel">
+    {% if surcharge_types %}
+    <p style="font-size:.83rem;color:#8a93a0;margin:.2rem 0 1rem;">
+      Fixed amounts added per flight on aircraft where this surcharge is assigned. Surcharge types are configured in Settings → Charges.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_surcharge_amounts">
+      <table class="ft-table" style="margin-bottom:1rem;">
+        <thead><tr><th>Surcharge type</th><th>Description</th><th>Amount ($)</th></tr></thead>
+        <tbody>
+          {% for st in surcharge_types %}
+          <tr>
+            <td><strong>{{ st.name }}</strong></td>
+            <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
+            <td>
+              <div style="display:inline-flex;align-items:center;gap:.3rem;">
+                $<input type="number" name="st_amount_{{ st.id }}" value="{{ st.amount }}"
+                        step="0.01" min="0"
+                        style="width:100px;padding:.35rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;">
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <button type="submit" class="btn">Save surcharge amounts</button>
+    </form>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;margin-top:.5rem;">
+      No surcharge types configured. Add them in <a href="{% url 'core:club_settings' club.slug %}">Settings → Charges</a> first.
+    </p>
+    {% endif %}
+  </div>
+
+</div>
+
+<style>
+  .snotice{padding:.6rem .9rem;border-radius:6px;margin-bottom:1rem;font-size:.88rem;}
+  .snotice.ok{background:#eaf6ec;color:#216c2a;}
+  .stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;}
+  .stab-btn{padding:.55rem 1rem;border:none;background:none;cursor:pointer;font-size:.88rem;font-weight:500;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s;}
+  .stab-btn:hover{color:var(--banner);}
+  .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+  .stab-panel{display:none;}
+  .stab-panel.active{display:block;}
+  .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+  .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table tr:last-child td{border-bottom:0;}
+  .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
+</style>
+
+<script>
+(function(){
+  const TABS = ['hire', 'instructor', 'surcharges'];
+  function activateTab(id) {
+    TABS.forEach(t => {
+      document.getElementById('tab-' + t).classList.toggle('active', t === id);
+      document.querySelector(`.stab-btn[data-tab="${t}"]`).classList.toggle('active', t === id);
+    });
+    try { localStorage.setItem('ratesTab', id); } catch(e){}
+  }
+  document.querySelectorAll('.stab-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+  });
+  const stored = (() => { try { return localStorage.getItem('ratesTab'); } catch(e){ return null; } })();
+  if (stored && TABS.includes(stored)) activateTab(stored);
+})();
+</script>
+{% endblock %}

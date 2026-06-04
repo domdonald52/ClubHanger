@@ -337,26 +337,18 @@
 
     <h2 class="sh2">Instructor grades</h2>
     <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .9rem;">
-      Defines qualification grades and their hourly charge rates. Assign a grade to an instructor on their member record.
+      Qualification grade categories (C-Cat, B-Cat, A-Cat, Examiner etc.). Assign a grade to an instructor on their member record.
+      Set the hourly rate for each grade in <a href="{% url 'core:club_rates' club.slug %}">Rates → Instructor rates</a>.
     </p>
 
     {% if instructor_grades %}
     <table class="ft-table">
-      <thead><tr><th>Grade</th><th>Rate ($/hr)</th><th>Order</th><th></th></tr></thead>
+      <thead><tr><th>Grade</th><th>Current rate</th><th>Order</th><th></th></tr></thead>
       <tbody>
         {% for ig in instructor_grades %}
         <tr>
           <td><strong>{{ ig.name }}</strong></td>
-          <td>
-            <form method="post" style="display:inline-flex;align-items:center;gap:.4rem;">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="edit_instructor_grade">
-              <input type="hidden" name="ig_id" value="{{ ig.id }}">
-              $<input type="number" name="ig_rate" value="{{ ig.hourly_rate }}" step="0.01" min="0"
-                      style="width:80px;padding:.3rem .4rem;border:1px solid #ddd;border-radius:5px;font-size:.85rem;">
-              <button type="submit" class="ft-pill ft-pill-active" style="padding:.28rem .6rem;">Save</button>
-            </form>
-          </td>
+          <td style="color:#8a93a0;font-size:.85rem;">${{ ig.hourly_rate }}/hr <span style="font-size:.75rem;">(set in Rates)</span></td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ ig.display_order }}</td>
           <td style="text-align:right;">
             <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ig.name }}?')">
@@ -380,9 +372,6 @@
       <label class="flabel" style="flex:1;min-width:150px;">Grade name
         <input type="text" name="ig_name" placeholder="e.g. C-Cat" required class="finput">
       </label>
-      <label class="flabel">Rate ($/hr)
-        <input type="number" name="ig_rate" placeholder="0.00" step="0.01" min="0" required class="finput" style="width:110px;">
-      </label>
       <label class="flabel">Display order
         <input type="number" name="ig_order" value="0" min="0" class="finput" style="width:80px;">
       </label>
@@ -393,27 +382,19 @@
 
     <h2 class="sh2">Aircraft surcharge types</h2>
     <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .9rem;">
-      Fixed-amount surcharges added per flight on configured aircraft (e.g. 4-seat surcharge). Assign to aircraft on the Aircraft management page.
+      Named surcharge categories applied per flight (e.g. 4-seat surcharge). Assign to aircraft on the Aircraft management page.
+      Set the actual amounts in <a href="{% url 'core:club_rates' club.slug %}">Rates → Surcharges</a>.
     </p>
 
     {% if surcharge_types %}
     <table class="ft-table">
-      <thead><tr><th>Name</th><th>Description</th><th>Amount</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Description</th><th>Current amount</th><th></th></tr></thead>
       <tbody>
         {% for st in surcharge_types %}
         <tr>
           <td><strong>{{ st.name }}</strong></td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
-          <td>
-            <form method="post" style="display:inline-flex;align-items:center;gap:.4rem;">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="edit_surcharge_type">
-              <input type="hidden" name="st_id" value="{{ st.id }}">
-              $<input type="number" name="st_amount" value="{{ st.amount }}" step="0.01" min="0"
-                      style="width:80px;padding:.3rem .4rem;border:1px solid #ddd;border-radius:5px;font-size:.85rem;">
-              <button type="submit" class="ft-pill ft-pill-active" style="padding:.28rem .6rem;">Save</button>
-            </form>
-          </td>
+          <td style="color:#8a93a0;font-size:.85rem;">${{ st.amount }} <span style="font-size:.75rem;">(set in Rates)</span></td>
           <td style="text-align:right;">
             <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ st.name }}?')">
               {% csrf_token %}
@@ -439,10 +420,7 @@
       <label class="flabel" style="flex:2;min-width:200px;">Description
         <input type="text" name="st_desc" placeholder="optional note" class="finput">
       </label>
-      <label class="flabel">Amount ($)
-        <input type="number" name="st_amount" placeholder="0.00" step="0.01" min="0" required class="finput" style="width:110px;">
-      </label>
-      <button type="submit" class="btn" style="flex-shrink:0;">Add surcharge</button>
+      <button type="submit" class="btn" style="flex-shrink:0;">Add surcharge type</button>
     </form>
 
   </div><!-- /tab-charges -->

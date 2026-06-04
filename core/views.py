@@ -1417,6 +1417,7 @@ def manage_member_detail(request, club_slug, member_id):
             member.subscription_expires = sub_exp or None
             role_id = request.POST.get('role_id')
             member.role = Role.objects.filter(club=club, id=role_id).first() if role_id else None
+            member.has_admin_access = request.POST.get('has_admin_access') == 'on'
             member.save()
         elif action == 'save_notes' and actor.is_admin:
             pass  # notes field not yet on model — placeholder
@@ -1921,6 +1922,7 @@ def create_blockout(request):
 
 @login_required
 def manage_aerodromes(request, club_slug):
+    from .models import AerodromeFeeType
     club = get_object_or_404(Club, slug=club_slug)
     try:
         member = ClubMember.objects.get(user=request.user, club=club)
@@ -1936,18 +1938,11 @@ def manage_aerodromes(request, club_slug):
         if action == 'add_aerodrome':
             icao = request.POST.get('icao', '').strip().upper()
             name = request.POST.get('name', '').strip()
-            fs_fee = request.POST.get('full_stop_fee', '0').strip()
-            tg_fee = request.POST.get('touch_and_go_fee', '').strip()
             notes = request.POST.get('notes', '').strip()
             if icao and name:
                 Aerodrome.objects.get_or_create(
                     club=club, icao_code=icao,
-                    defaults={
-                        'name': name,
-                        'full_stop_fee': fs_fee or 0,
-                        'touch_and_go_fee': tg_fee if tg_fee else None,
-                        'notes': notes,
-                    }
+                    defaults={'name': name, 'notes': notes}
                 )
             else:
                 error = "ICAO code and name are required."
@@ -1956,11 +1951,8 @@ def manage_aerodromes(request, club_slug):
             ae = Aerodrome.objects.filter(club=club, id=request.POST.get('ae_id')).first()
             if ae:
                 ae.name = request.POST.get('name', ae.name).strip()
-                ae.full_stop_fee = request.POST.get('full_stop_fee', ae.full_stop_fee)
-                tg = request.POST.get('touch_and_go_fee', '').strip()
-                ae.touch_and_go_fee = tg if tg else None
                 ae.notes = request.POST.get('notes', '').strip()
-                ae.save()
+                ae.save(update_fields=['name', 'notes'])
 
         elif action == 'toggle_aerodrome':
             ae = Aerodrome.objects.filter(club=club, id=request.POST.get('ae_id')).first()
@@ -1971,9 +1963,33 @@ def manage_aerodromes(request, club_slug):
         elif action == 'delete_aerodrome':
             Aerodrome.objects.filter(club=club, id=request.POST.get('ae_id')).delete()
 
+        elif action == 'add_fee_type':
+            ae = Aerodrome.objects.filter(club=club, id=request.POST.get('ae_id')).first()
+            ft_name = request.POST.get('ft_name', '').strip()
+            ft_amount = request.POST.get('ft_amount', '0').strip()
+            if ae and ft_name:
+                AerodromeFeeType.objects.get_or_create(
+                    aerodrome=ae, name=ft_name,
+                    defaults={'default_amount': ft_amount or 0}
+                )
+
+        elif action == 'edit_fee_type':
+            ft = AerodromeFeeType.objects.filter(
+                aerodrome__club=club, id=request.POST.get('ft_id')
+            ).first()
+            if ft:
+                ft.name = request.POST.get('ft_name', ft.name).strip()
+                ft.default_amount = request.POST.get('ft_amount', ft.default_amount)
+                ft.save()
+
+        elif action == 'delete_fee_type':
+            AerodromeFeeType.objects.filter(
+                aerodrome__club=club, id=request.POST.get('ft_id')
+            ).delete()
+
         return redirect('core:manage_aerodromes', club_slug=club_slug)
 
-    aerodromes = Aerodrome.objects.filter(club=club).order_by('icao_code')
+    aerodromes = Aerodrome.objects.filter(club=club).prefetch_related('fee_types').order_by('icao_code')
     return render(request, 'core/manage_aerodromes.html', {
         'club': club, 'club_member': member, 'aerodromes': aerodromes, 'error': error,
     })
@@ -2014,4 +2030,84 @@ def manage_rates(request, club_slug):
     current = rates.first()
     return render(request, 'core/manage_rates.html', {
         'club': club, 'club_member': member, 'rates': rates, 'current_rate': current, 'error': error,
+    })
+
+
+@login_required
+def club_rates(request, club_slug):
+    """Admin-only rate card: instructor grade rates, surcharge amounts, hire rates."""
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        member = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not member.is_admin:
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    from .models import ChargeRate
+    saved = False
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'save_grade_rates':
+            for ig in InstructorGrade.objects.filter(club=club):
+                val = request.POST.get(f'ig_rate_{ig.id}', '').strip()
+                if val:
+                    try:
+                        ig.hourly_rate = val
+                        ig.save(update_fields=['hourly_rate'])
+                    except Exception:
+                        pass
+            saved = True
+
+        elif action == 'save_surcharge_amounts':
+            for st in AircraftSurchargeType.objects.filter(club=club):
+                val = request.POST.get(f'st_amount_{st.id}', '').strip()
+                if val:
+                    try:
+                        st.amount = val
+                        st.save(update_fields=['amount'])
+                    except Exception:
+                        pass
+            saved = True
+
+        elif action == 'save_hire_rate':
+            aircraft_id = request.POST.get('aircraft_id')
+            ft_id = request.POST.get('ft_id')
+            time_method = request.POST.get('time_method', 'hobbs')
+            amount = request.POST.get('amount', '').strip()
+            ac = Aircraft.objects.filter(club=club, id=aircraft_id).first()
+            ft = FlightType.objects.filter(club=club, id=ft_id).first()
+            if ac and ft and amount:
+                ChargeRate.objects.update_or_create(
+                    aircraft=ac, flight_type=ft, time_method=time_method,
+                    defaults={'club': club, 'amount': amount}
+                )
+            saved = True
+
+        elif action == 'delete_hire_rate':
+            ChargeRate.objects.filter(
+                club=club, id=request.POST.get('rate_id')
+            ).delete()
+
+        return redirect('core:club_rates', club_slug=club_slug)
+
+    instructor_grades = InstructorGrade.objects.filter(club=club)
+    surcharge_types = AircraftSurchargeType.objects.filter(club=club)
+    hire_rates = (ChargeRate.objects
+                  .filter(club=club)
+                  .select_related('aircraft', 'flight_type')
+                  .order_by('aircraft__registration', 'flight_type__name'))
+    aircraft_list = Aircraft.objects.filter(club=club, status='online').order_by('registration')
+    flight_types = FlightType.objects.filter(club=club, is_billable=True)
+
+    return render(request, 'core/club_rates.html', {
+        'club': club, 'club_member': member,
+        'instructor_grades': instructor_grades,
+        'surcharge_types': surcharge_types,
+        'hire_rates': hire_rates,
+        'aircraft_list': aircraft_list,
+        'flight_types': flight_types,
+        'saved': saved,
     })
