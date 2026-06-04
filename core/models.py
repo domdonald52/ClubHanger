@@ -187,6 +187,11 @@ class ClubMember(models.Model):
     standing = models.CharField(max_length=20, choices=STANDING_CHOICES, default='active')
     membership_category = models.ForeignKey(MembershipCategory, on_delete=models.SET_NULL, null=True, blank=True)
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, blank=True)
+    has_admin_access = models.BooleanField(
+        default=False,
+        help_text="Grants access to club Settings regardless of role. "
+                  "Use for CFIs and club secretaries who manage the system."
+    )
     instructor_grade = models.ForeignKey(
         InstructorGrade, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='members', help_text="Instructor qualification grade — determines hourly rate"
@@ -224,7 +229,7 @@ class ClubMember(models.Model):
 
     @property
     def is_admin(self):
-        return self.role and self.role.name.lower() == 'admin'
+        return self.has_admin_access or (self.role and self.role.name.lower() == 'admin')
 
     @property
     def is_staff(self):
@@ -759,7 +764,10 @@ class Aerodrome(models.Model):
         help_text="Leave blank if same as full-stop or not applicable"
     )
     is_active = models.BooleanField(default=True)
-    notes = models.CharField(max_length=255, blank=True)
+    notes = models.TextField(
+        blank=True,
+        help_text="Agreement terms, billing cycle, contact info, anything instructors need to know"
+    )
 
     class Meta:
         unique_together = ('club', 'icao_code')
