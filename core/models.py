@@ -86,6 +86,16 @@ class ClubConfig(models.Model):
     typical_hours_start = models.TimeField(default='08:30')
     typical_hours_end = models.TimeField(default='17:00')
 
+    # Cancellation fees
+    cancellation_notice_hours = models.PositiveIntegerField(
+        default=24,
+        help_text="Bookings cancelled within this many hours of the start time may incur a fee"
+    )
+    cancellation_fee_amount = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0,
+        help_text="Fee charged for late cancellations. Set to 0 to disable automatic prompting."
+    )
+
     # Club branding
     logo = models.ImageField(upload_to='logos/', null=True, blank=True,
                              help_text="Club logo — ideally white on transparent PNG, shown in the banner")
@@ -531,6 +541,82 @@ class Account(models.Model):
         if self.credit_limit is None:
             return False   # exempt
         return self.balance < -self.credit_limit
+
+    def apply_transaction(self, amount, direction):
+        """Update balance in-place. Call inside an atomic block."""
+        if direction == 'credit':
+            self.balance += amount
+        else:
+            self.balance -= amount
+        self.save(update_fields=['balance', 'updated_at'])
+
+    def recompute_balance(self):
+        """Recompute balance from transaction history. Returns computed value."""
+        from django.db.models import Sum
+        credits = self.transactions.filter(direction='credit').aggregate(t=Sum('amount'))['t'] or 0
+        debits  = self.transactions.filter(direction='debit').aggregate(t=Sum('amount'))['t'] or 0
+        return credits - debits
+
+
+class AccountTransaction(models.Model):
+    """
+    Immutable ledger entry on a member's account.
+    Every balance change must be recorded here — top-ups, flight charges,
+    cancellation fees, and manual adjustments.
+    Account.balance is a cached sum; recompute_balance() verifies it.
+    """
+    TYPE_CHOICES = [
+        ('top_up',       'Account top-up'),
+        ('flight',       'Flight charge'),
+        ('cancellation', 'Cancellation fee'),
+        ('adjustment',   'Manual adjustment'),
+    ]
+    DIRECTION_CHOICES = [
+        ('credit', 'Credit'),
+        ('debit',  'Debit'),
+    ]
+    PAYMENT_METHOD_CHOICES = [
+        ('bank_transfer', 'Bank transfer'),
+        ('eftpos',        'EFTPOS'),
+        ('cash',          'Cash'),
+        ('account',       'Account credit'),
+        ('other',         'Other'),
+    ]
+
+    account          = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='transactions')
+    transaction_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    direction        = models.CharField(max_length=6, choices=DIRECTION_CHOICES)
+    amount           = models.DecimalField(max_digits=10, decimal_places=2,
+                                           help_text="Always positive; direction determines credit/debit")
+    description      = models.CharField(max_length=300,
+                                        help_text="Mandatory — shown on account statement")
+
+    # Source references (at most one will be set)
+    flight_completion = models.ForeignKey(
+        'FlightCompletion', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='account_transactions'
+    )
+    booking = models.ForeignKey(
+        'Booking', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='account_transactions',
+        help_text="Set for cancellation fee transactions"
+    )
+
+    # Payment details (relevant for top-ups)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True)
+    reference      = models.CharField(max_length=100, blank=True,
+                                      help_text="Bank reference, receipt number, cheque number etc.")
+
+    created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='account_transactions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Account transaction"
+
+    def __str__(self):
+        sign = '+' if self.direction == 'credit' else '-'
+        return f"{self.account.club_member} {sign}${self.amount} — {self.description}"
 
 
 # ============================================================================
