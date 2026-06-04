@@ -177,10 +177,52 @@
     <label>Description<input type="text" id="m-desc" placeholder="optional"></label>
     <div class="modal-actions">
       <button class="cbtn" id="m-cancel" type="button">Cancel</button>
+      <button class="cbtn" id="m-watch" type="button" hidden
+              style="margin-left:.25rem;display:inline-flex;align-items:center;gap:.35rem;">
+        <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 7.5S3.5 2 7.5 2s6.5 5.5 6.5 5.5S12.5 13 7.5 13 1 7.5 1 7.5z"/><circle cx="7.5" cy="7.5" r="2"/></svg>
+        <span id="m-watch-label">Watch slot</span>
+      </button>
       <span style="flex:1"></span>
       <button class="cbtn danger" id="m-delete" type="button" hidden>Cancel booking</button>
       <button class="cbtn" id="m-confirm" type="button" hidden style="background:#2f9e44;color:#fff;border-color:#2f9e44;">Confirm booking</button>
       <button class="cbtn primary" id="m-save" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Watch slot (shown to non-staff clicking another member's booking) -->
+<div id="watch-modal" class="modal-back" hidden>
+  <div class="modal small">
+    <h2 id="wm-title" style="margin-bottom:.35rem;">Booking</h2>
+    <p id="wm-detail" style="font-size:.83rem;color:#5b6573;margin:0 0 1.1rem;"></p>
+    <p style="font-size:.83rem;color:#5b6573;margin:0 0 1rem;">
+      Watch this slot to get an alert if it's released for others to take.
+    </p>
+    <div class="modal-actions">
+      <button class="cbtn" id="wm-close" type="button">Close</button>
+      <span style="flex:1"></span>
+      <button class="cbtn primary" id="wm-watch" type="button"
+              style="display:inline-flex;align-items:center;gap:.35rem;">
+        <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 7.5S3.5 2 7.5 2s6.5 5.5 6.5 5.5S12.5 13 7.5 13 1 7.5 1 7.5z"/><circle cx="7.5" cy="7.5" r="2"/></svg>
+        <span id="wm-watch-label">Watch slot</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel booking choice -->
+<div id="cancel-choice" class="modal-back" hidden>
+  <div class="modal small">
+    <h2>Cancel booking</h2>
+    <p style="font-size:.85rem;color:#5b6573;margin:.3rem 0 1rem;">Do you want to let other members know this slot has become available?</p>
+    <label style="display:block;font-size:.85rem;cursor:pointer;padding:.55rem .7rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:7px;margin-bottom:1.1rem;">
+      <input type="checkbox" id="cancel-release-check" style="width:auto;margin-right:.45rem;vertical-align:middle;">
+      Send a slot alert to interested members
+    </label>
+    <div class="modal-actions">
+      <button class="cbtn" id="cc-keep" type="button">Keep booking</button>
+      <span style="flex:1"></span>
+      <button class="cbtn danger" id="cc-confirm" type="button">Cancel booking</button>
     </div>
   </div>
 </div>
@@ -214,7 +256,8 @@
   "currentUserId": {{ current_user_id }},
   "typicalStart": "{{ typical_hours_start }}",
   "typicalEnd": "{{ typical_hours_end }}",
-  "selectedDate": "{{ selected_date|date:'Y-m-d' }}"
+  "selectedDate": "{{ selected_date|date:'Y-m-d' }}",
+  "watchedIds": {{ watched_ids|default:"[]" }}
 }
 </script>
 {{ members_json|json_script:"members-data" }}

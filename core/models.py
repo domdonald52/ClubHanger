@@ -86,14 +86,18 @@ class ClubConfig(models.Model):
     typical_hours_start = models.TimeField(default='08:30')
     typical_hours_end = models.TimeField(default='17:00')
 
-    # Theme colours (hex). A cohesive aviation palette by default.
-    theme_banner = models.CharField(max_length=7, default='#1d3a5f', help_text="Top banner background")
-    theme_primary = models.CharField(max_length=7, default='#2f7dd1', help_text="Buttons, links, active controls")
-    theme_accent = models.CharField(max_length=7, default='#e8943a', help_text="Accent / highlights")
-    theme_confirmed = models.CharField(max_length=7, default='#2f9e44', help_text="Confirmed booking pills")
-    theme_pending = models.CharField(max_length=7, default='#f08c00', help_text="Pending booking pills")
-    theme_weekend = models.CharField(max_length=7, default='#fbf3e6', help_text="Weekend shading in search")
-    theme_atypical = models.CharField(max_length=7, default='#eef1f4', help_text="Outside-typical-hours shading")
+    # Club branding
+    logo = models.ImageField(upload_to='logos/', null=True, blank=True,
+                             help_text="Club logo — ideally white on transparent PNG, shown in the banner")
+
+    # Theme colours (hex). Aviation palette.
+    theme_banner = models.CharField(max_length=7, default='#1b3a5c', help_text="Top banner background")
+    theme_primary = models.CharField(max_length=7, default='#3b82f6', help_text="Buttons, links, active controls")
+    theme_accent = models.CharField(max_length=7, default='#f59e0b', help_text="Accent / highlights")
+    theme_confirmed = models.CharField(max_length=7, default='#16a34a', help_text="Confirmed booking pills")
+    theme_pending = models.CharField(max_length=7, default='#f97316', help_text="Pending booking pills")
+    theme_weekend = models.CharField(max_length=7, default='#f0f9ff', help_text="Weekend shading in search")
+    theme_atypical = models.CharField(max_length=7, default='#f1f5f9', help_text="Outside-typical-hours shading")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -518,6 +522,14 @@ class Booking(models.Model):
         help_text="Set when staff deliberately booked over a block-out."
     )
     
+    # Slot release — set when staff/member explicitly frees the slot for others
+    slot_released = models.BooleanField(default=False)
+    slot_released_at = models.DateTimeField(null=True, blank=True)
+    slot_released_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='slots_released',
+    )
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
@@ -619,6 +631,152 @@ class FlightCompletion(models.Model):
     
     def __str__(self):
         return f"{self.booking} - {self.actual_flight_hours}h"
+
+
+# ============================================================================
+# SLOT-RELEASE NOTIFICATIONS
+# ============================================================================
+
+class NotificationPreference(models.Model):
+    """
+    A member's opt-in for slot-released emails.
+    Empty M2M sets mean "any" — i.e. notify for all aircraft / all instructors.
+    All filters must pass simultaneously.
+    """
+    club_member = models.OneToOneField(
+        ClubMember, on_delete=models.CASCADE, related_name='notification_prefs'
+    )
+
+    # Resource filters (empty = any)
+    aircraft = models.ManyToManyField(
+        'Aircraft', blank=True, related_name='notification_prefs',
+        help_text="Notify only when one of these aircraft is freed. Empty = any aircraft."
+    )
+    instructors = models.ManyToManyField(
+        'User', blank=True, related_name='notification_prefs',
+        help_text="Notify only when one of these instructors is freed. Empty = any instructor."
+    )
+
+    # Time-horizon filter
+    max_days_ahead = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Only notify for slots starting within this many days. Null = no limit."
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Notification preference"
+
+    def __str__(self):
+        name = self.club_member.user.get_full_name() if self.club_member.user else '—'
+        return f"{name} — slot notifications"
+
+    def matches(self, booking):
+        """True if a released booking falls within this member's preferences."""
+        if self.aircraft.exists() and not self.aircraft.filter(id=booking.aircraft_id).exists():
+            return False
+        if self.instructors.exists() and not self.instructors.filter(id=booking.instructor_id).exists():
+            return False
+        if self.max_days_ahead is not None:
+            days_away = (booking.scheduled_start.date() - date.today()).days
+            if not (0 <= days_away <= self.max_days_ahead):
+                return False
+        return True
+
+
+class SlotReleaseNotification(models.Model):
+    """
+    Log of every slot-release email dispatched.
+    unique_together prevents sending the same member duplicate emails if
+    the release action is somehow triggered twice.
+    """
+    booking = models.ForeignKey(
+        Booking, on_delete=models.CASCADE, related_name='release_notifications'
+    )
+    club_member = models.ForeignKey(
+        ClubMember, on_delete=models.CASCADE, related_name='slot_notifications_received'
+    )
+    email = models.EmailField(help_text="Snapshot of address at send time.")
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('booking', 'club_member')
+        ordering = ['-sent_at']
+
+    def __str__(self):
+        return f"Release notice → {self.club_member} for {self.booking}"
+
+
+class SlotWatch(models.Model):
+    """
+    A member explicitly watching a specific booking in case it becomes available.
+    Created via "Watch this slot" on the calendar. Notified on release ahead of
+    (or alongside) the general NotificationPreference broadcast.
+    notified_at is stamped when the release email is sent, preventing double-sends.
+    """
+    booking = models.ForeignKey(
+        Booking, on_delete=models.CASCADE, related_name='watchers'
+    )
+    club_member = models.ForeignKey(
+        ClubMember, on_delete=models.CASCADE, related_name='watched_slots'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    notified_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Stamped when the slot-release email was sent to this watcher."
+    )
+
+    class Meta:
+        unique_together = ('booking', 'club_member')
+        ordering = ['created_at']
+
+    def __str__(self):
+        name = self.club_member.user.get_full_name() if self.club_member.user else '—'
+        return f"{name} watching {self.booking}"
+
+
+def members_to_notify_for_release(booking):
+    """
+    Return ClubMembers to email when a slot is released.
+    Watchers first (preserves the spirit of expressed interest), then opted-in
+    members whose NotificationPreference matches. No duplicates, no double-sends.
+    Excludes the booking's own member and anyone already notified.
+    """
+    already_notified = set(
+        SlotReleaseNotification.objects.filter(booking=booking)
+        .values_list('club_member_id', flat=True)
+    )
+
+    # Watchers who haven't been notified yet
+    watchers = list(
+        SlotWatch.objects
+        .filter(booking=booking, notified_at__isnull=True)
+        .exclude(club_member=booking.member)
+        .exclude(club_member_id__in=already_notified)
+        .select_related('club_member__user')
+        .values_list('club_member', flat=True)
+    )
+    watcher_set = set(watchers)
+
+    # General preference matches, excluding watchers (they're already included)
+    prefs = (
+        NotificationPreference.objects
+        .filter(club_member__club=booking.club, club_member__standing='active')
+        .exclude(club_member=booking.member)
+        .exclude(club_member_id__in=already_notified)
+        .exclude(club_member_id__in=watcher_set)
+        .prefetch_related('aircraft', 'instructors', 'club_member__user')
+    )
+    pref_matches = [p.club_member for p in prefs if p.matches(booking)]
+
+    # Resolve watcher IDs back to ClubMember objects
+    watcher_members = list(
+        ClubMember.objects.filter(id__in=watchers).select_related('user')
+    )
+
+    return watcher_members + pref_matches
 
 
 class MemberCategory(models.Model):

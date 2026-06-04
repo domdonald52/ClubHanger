@@ -27,6 +27,7 @@ def theme(request):
             'pending': config.theme_pending,
             'weekend': config.theme_weekend,
             'atypical': config.theme_atypical,
+            'logo': config.logo if config.logo else None,
         }
     }
     # Make club_member available to the nav on every page

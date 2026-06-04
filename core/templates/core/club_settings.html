@@ -16,19 +16,58 @@
     <button class="stab-btn" id="tabBtn-maintenance"  data-tab="maintenance">Maintenance</button>
   </div>
 
+  <!-- ── LOGO forms (outside settings-form to avoid nested-form breakage) ── -->
+  <form method="post" enctype="multipart/form-data" id="logo-form" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="upload_logo">
+    <input type="file" name="logo" id="logo-input" accept="image/*" onchange="document.getElementById('logo-form').submit()">
+  </form>
+  <form method="post" id="remove-logo-form" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="upload_logo">
+    <input type="hidden" name="remove_logo" value="1">
+  </form>
+
   <!-- ── GENERAL + APPEARANCE share one form ── -->
   <form method="post" id="settings-form">
     {% csrf_token %}
 
     <div id="tab-general" class="stab-panel">
       <h2 class="sh2">Club identity</h2>
-      <div style="max-width:360px;">
-        <label class="flabel">Club name
-          <input type="text" name="club_name" value="{{ club.name }}" class="finput">
-        </label>
+
+      <div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:1.4rem;">
+        <!-- Logo preview + upload -->
+        <div style="flex-shrink:0;">
+          <div style="font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Club logo</div>
+          <div style="width:120px;height:60px;background:var(--banner);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:.5rem;">
+            {% if config.logo %}
+              <img src="{{ config.logo.url }}" style="max-height:52px;max-width:110px;object-fit:contain;">
+            {% else %}
+              <span style="font-size:.72rem;color:rgba(255,255,255,.4);">No logo</span>
+            {% endif %}
+          </div>
+          <div style="display:flex;gap:.4rem;">
+            <button type="button" class="btn" style="font-size:.78rem;padding:.3rem .6rem;"
+                    onclick="document.getElementById('logo-input').click()">
+              {% if config.logo %}Replace{% else %}Upload{% endif %}
+            </button>
+            {% if config.logo %}
+            <button type="button" class="btn secondary" style="font-size:.78rem;padding:.3rem .6rem;"
+                    onclick="if(confirm('Remove the club logo?')) document.getElementById('remove-logo-form').submit()">Remove</button>
+            {% endif %}
+          </div>
+          <div style="font-size:.73rem;color:#8a93a0;margin-top:.4rem;">White on transparent PNG works best</div>
+        </div>
+
+        <!-- Club name -->
+        <div style="flex:1;min-width:220px;">
+          <label class="flabel">Club name
+            <input type="text" name="club_name" value="{{ club.name }}" class="finput">
+          </label>
+        </div>
       </div>
 
-      <h2 class="sh2" style="margin-top:1.6rem;">Booking defaults</h2>
+      <h2 class="sh2">Booking defaults</h2>
       <div class="fgrid">
         <label class="flabel">Default duration (min)
           <input type="number" name="default_booking_duration" value="{{ config.default_booking_duration }}"

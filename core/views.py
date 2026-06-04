@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
 from datetime import datetime, timedelta, time
-from .models import Club, ClubMember, Booking, Aircraft, Role, FlightType, BlockOutType
+from .models import Club, ClubMember, Booking, Aircraft, Role, FlightType, BlockOutType, SlotWatch
 from .availability import find_available_slots, get_date_range
 
 
@@ -458,6 +458,10 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         'instructors_json': instructors_data,
         'flight_types_json': flight_types_data,
         'blockout_types_json': blockout_types_data,
+        'watched_ids': list(
+            SlotWatch.objects.filter(club_member=club_member)
+            .values_list('booking_id', flat=True)
+        ),
     }
 
     return render(request, 'core/gantt_day.html', context)
@@ -580,21 +584,44 @@ def confirm_booking(request, booking_id):
 
 @login_required
 @require_POST
+def toggle_watch(request, booking_id):
+    booking = get_object_or_404(Booking, id=booking_id)
+    try:
+        member = ClubMember.objects.get(user=request.user, club=booking.club)
+    except ClubMember.DoesNotExist:
+        return JsonResponse({'error': 'Not a member'}, status=403)
+    if booking.member == member:
+        return JsonResponse({'error': "Can't watch your own booking"}, status=400)
+    watch, created = SlotWatch.objects.get_or_create(booking=booking, club_member=member)
+    if not created:
+        watch.delete()
+        return JsonResponse({'watching': False})
+    return JsonResponse({'watching': True})
+
+
+@login_required
+@require_POST
 def reject_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
     club = booking.club
-    
+
     try:
         club_member = ClubMember.objects.get(user=request.user, club=club)
     except ClubMember.DoesNotExist:
         return JsonResponse({'error': 'Not authorized'}, status=403)
-    
-    if not (club_member.is_admin or club_member.is_instructor):
-        return JsonResponse({'error': 'Only instructors and admins can reject'}, status=403)
-    
+
+    is_own = booking.member == club_member
+    if not (club_member.is_admin or club_member.is_instructor or is_own):
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+
     booking.status = 'cancelled'
+
+    if request.POST.get('release') == '1':
+        booking.slot_released = True
+        booking.slot_released_at = timezone.now()
+        booking.slot_released_by = request.user
+
     booking.save()
-    
     return JsonResponse({'success': True})
 
 
@@ -1055,7 +1082,16 @@ def club_settings(request, club_slug):
     if request.method == 'POST':
         action = request.POST.get('action', '')
 
-        if action == 'add_flight_type':
+        if action == 'upload_logo':
+            if request.FILES.get('logo'):
+                config.logo = request.FILES['logo']
+                config.save(update_fields=['logo'])
+            elif request.POST.get('remove_logo'):
+                config.logo.delete(save=True)
+            from django.shortcuts import redirect as _redirect
+            return _redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'add_flight_type':
             ft_name = request.POST.get('ft_name', '').strip()
             ft_is_solo = request.POST.get('ft_is_solo') == 'on'
             ft_is_training = request.POST.get('ft_is_training') == 'on'
@@ -1373,18 +1409,32 @@ def my_profile(request, club_slug):
                 member.avatar = request.FILES['avatar']
                 member.save(update_fields=['avatar'])
             return redirect('core:my_profile', club_slug=club_slug)
-        u = request.user
-        u.first_name = request.POST.get('first_name', '').strip()
-        u.last_name = request.POST.get('last_name', '').strip()
-        u.email = request.POST.get('email', '').strip()
-        u.save(update_fields=['first_name', 'last_name', 'email'])
-        member.phone_mobile = request.POST.get('phone_mobile', '').strip()
-        member.phone_home = request.POST.get('phone_home', '').strip()
-        member.address_line1 = request.POST.get('address_line1', '').strip()
-        member.suburb = request.POST.get('suburb', '').strip()
-        member.postcode = request.POST.get('postcode', '').strip()
-        member.save()
-        return redirect('core:my_profile', club_slug=club_slug)
+        elif action == 'save_notifications':
+            from .models import NotificationPreference
+            pref, _ = NotificationPreference.objects.get_or_create(club_member=member)
+            pref.aircraft.set(request.POST.getlist('notify_aircraft'))
+            pref.instructors.set(request.POST.getlist('notify_instructors'))
+            raw_days = request.POST.get('max_days_ahead', '').strip()
+            pref.max_days_ahead = int(raw_days) if raw_days.isdigit() else None
+            pref.save()
+            return redirect('core:my_profile', club_slug=club_slug)
+        elif action == 'delete_notifications':
+            from .models import NotificationPreference
+            NotificationPreference.objects.filter(club_member=member).delete()
+            return redirect('core:my_profile', club_slug=club_slug)
+        else:
+            u = request.user
+            u.first_name = request.POST.get('first_name', '').strip()
+            u.last_name = request.POST.get('last_name', '').strip()
+            u.email = request.POST.get('email', '').strip()
+            u.save(update_fields=['first_name', 'last_name', 'email'])
+            member.phone_mobile = request.POST.get('phone_mobile', '').strip()
+            member.phone_home = request.POST.get('phone_home', '').strip()
+            member.address_line1 = request.POST.get('address_line1', '').strip()
+            member.suburb = request.POST.get('suburb', '').strip()
+            member.postcode = request.POST.get('postcode', '').strip()
+            member.save()
+            return redirect('core:my_profile', club_slug=club_slug)
 
     from datetime import datetime as _dt, time as _time, date as _date
     _today_start = timezone.make_aware(_dt.combine(_date.today(), _time.min))
@@ -1404,9 +1454,23 @@ def my_profile(request, club_slug):
     except Exception:
         account = None
 
+    from .models import NotificationPreference
+    try:
+        notification_pref = member.notification_prefs
+    except NotificationPreference.DoesNotExist:
+        notification_pref = None
+
+    club_aircraft = Aircraft.objects.filter(club=club, status='online').order_by('registration')
+    club_instructors = ClubMember.objects.filter(
+        club=club, role__name__iexact='instructor'
+    ).select_related('user').order_by('user__last_name')
+
     return render(request, 'core/my_profile.html', {
         'club': club, 'club_member': member, 'is_instructor': member.is_instructor,
         'member': member, 'upcoming': upcoming, 'past': past, 'account': account,
+        'notification_pref': notification_pref,
+        'club_aircraft': club_aircraft,
+        'club_instructors': club_instructors,
     })
 
 

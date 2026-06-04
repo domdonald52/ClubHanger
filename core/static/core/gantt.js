@@ -104,6 +104,11 @@
   const fDesc = document.getElementById("m-desc");
   const btnDelete = document.getElementById("m-delete");
   const btnConfirm = document.getElementById("m-confirm");
+  const btnWatch = document.getElementById("m-watch");
+  const btnWatchLabel = document.getElementById("m-watch-label");
+
+  // Mutable set — updated on watch toggles without page reload
+  const watchedIds = new Set((cfg.watchedIds || []).map(String));
 
   // ---- new-booking preview pill --------------------------------------
   let previewEl = null;
@@ -298,6 +303,20 @@
     fId.value = pill.dataset.id;
     btnDelete.hidden = false;
     btnConfirm.hidden = !(cfg.canManage && pill.dataset.status === "pending");
+
+    // Watch button: show for staff viewing someone else's active booking
+    const isOwn = pill.dataset.memberUserId === String(cfg.currentUserId);
+    const isActive = pill.dataset.status !== "cancelled" && pill.dataset.status !== "completed";
+    if (!isOwn && isActive) {
+      const watching = watchedIds.has(pill.dataset.id);
+      btnWatchLabel.textContent = watching ? "Watching ✓" : "Watch slot";
+      btnWatch.style.background = watching ? "var(--confirmed)" : "";
+      btnWatch.style.color = watching ? "#fff" : "";
+      btnWatch.style.borderColor = watching ? "var(--confirmed)" : "";
+      btnWatch.hidden = false;
+    } else {
+      btnWatch.hidden = true;
+    }
     fAircraft.value = pill.dataset.aircraftId || "";
     fInstructor.value = pill.dataset.instructorId || "";
     fStart.value = fmtLocalInput(new Date(pill.dataset.start));
@@ -376,11 +395,22 @@
   });
   function cfgCreateUrl() { return "/api/booking/create/"; }
 
+  const cancelChoiceModal = document.getElementById("cancel-choice");
+  const cancelReleaseCheck = document.getElementById("cancel-release-check");
+  const ccKeep = document.getElementById("cc-keep");
+  const ccConfirm = document.getElementById("cc-confirm");
+
   btnDelete.addEventListener("click", () => {
+    if (!fId.value) return;
+    cancelReleaseCheck.checked = false;
+    cancelChoiceModal.hidden = false;
+  });
+  ccKeep.addEventListener("click", () => { cancelChoiceModal.hidden = true; });
+  ccConfirm.addEventListener("click", () => {
     const id = fId.value;
-    if (!id) return;
-    if (!confirm("Cancel this booking?")) return;
-    post(`/api/booking/${id}/reject/`, {}).then((res) => {
+    const release = cancelReleaseCheck.checked ? "1" : "0";
+    cancelChoiceModal.hidden = true;
+    post(`/api/booking/${id}/reject/`, { release }).then((res) => {
       if (res.ok && res.data.success) location.reload();
       else toast(res.data.error || "Could not cancel");
     });
@@ -468,12 +498,65 @@
     }
   }
 
+  // ---- watch modal (non-staff viewing another member's booking) --------
+  const watchModal = document.getElementById("watch-modal");
+  const wmClose = document.getElementById("wm-close");
+  const wmWatch = document.getElementById("wm-watch");
+  const wmWatchLabel = document.getElementById("wm-watch-label");
+  let wmBookingId = null;
+
+  function openWatchModal(pill) {
+    wmBookingId = pill.dataset.id;
+    document.getElementById("wm-title").textContent = pill.dataset.member;
+    document.getElementById("wm-detail").textContent = pill.title.split("·").slice(1).join("·").trim();
+    const watching = watchedIds.has(wmBookingId);
+    wmWatchLabel.textContent = watching ? "Unwatch" : "Watch slot";
+    wmWatch.style.background = watching ? "#e53e3e" : "";
+    wmWatch.style.borderColor = watching ? "#e53e3e" : "";
+    watchModal.hidden = false;
+  }
+  wmClose.addEventListener("click", () => { watchModal.hidden = true; });
+  wmWatch.addEventListener("click", () => {
+    post(`/api/booking/${wmBookingId}/watch/`, {}).then((res) => {
+      if (!res.ok) { toast(res.data.error || "Could not update watch"); return; }
+      const watching = res.data.watching;
+      if (watching) watchedIds.add(wmBookingId); else watchedIds.delete(wmBookingId);
+      wmWatchLabel.textContent = watching ? "Unwatch" : "Watch slot";
+      wmWatch.style.background = watching ? "#e53e3e" : "";
+      wmWatch.style.borderColor = watching ? "#e53e3e" : "";
+      toast(watching ? "Watching this slot" : "No longer watching");
+    });
+  });
+
+  // Watch button inside the staff edit modal
+  btnWatch.addEventListener("click", () => {
+    const id = fId.value;
+    if (!id) return;
+    post(`/api/booking/${id}/watch/`, {}).then((res) => {
+      if (!res.ok) { toast(res.data.error || "Could not update watch"); return; }
+      const watching = res.data.watching;
+      if (watching) watchedIds.add(id); else watchedIds.delete(id);
+      btnWatchLabel.textContent = watching ? "Watching ✓" : "Watch slot";
+      btnWatch.style.background = watching ? "var(--confirmed)" : "";
+      btnWatch.style.color = watching ? "#fff" : "";
+      btnWatch.style.borderColor = watching ? "var(--confirmed)" : "";
+      toast(watching ? "Watching this slot" : "No longer watching");
+    });
+  });
+
   // ---- pill click to edit ---------------------------------------------
   document.querySelectorAll(".pill").forEach((pill) => {
     pill.addEventListener("click", (e) => {
       if (pill._didDrag) { pill._didDrag = false; return; }
       e.stopPropagation();
-      if (cfg.canManage) openEdit(pill);
+      if (cfg.canManage) {
+        openEdit(pill);
+      } else if (cfg.canBook) {
+        // Non-staff: open watch modal for other members' active bookings
+        const isOwn = pill.dataset.memberUserId === String(cfg.currentUserId);
+        const isActive = pill.dataset.status !== "cancelled" && pill.dataset.status !== "completed";
+        if (!isOwn && isActive) openWatchModal(pill);
+      }
     });
   });
 

@@ -37,14 +37,15 @@
     </div>
   </div>
 
-  <nav class="section-nav">
-    <a href="#contact" class="snav-link">My details</a>
-    <a href="#account" class="snav-link">Account</a>
-    <a href="#bookings" class="snav-link">Bookings</a>
-  </nav>
+  <div class="stab-bar">
+    <button class="stab-btn" data-tab="contact">My details</button>
+    <button class="stab-btn" data-tab="account">Account</button>
+    <button class="stab-btn" data-tab="bookings">Bookings</button>
+    <button class="stab-btn" data-tab="notifications">Notifications</button>
+  </div>
 
   <!-- ── CONTACT ── -->
-  <section id="contact" class="detail-section">
+  <section id="contact" class="detail-section stab-panel">
     <h2 class="section-title">My details</h2>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
@@ -63,7 +64,7 @@
   </section>
 
   <!-- ── ACCOUNT ── -->
-  <section id="account" class="detail-section">
+  <section id="account" class="detail-section stab-panel">
     <h2 class="section-title">Account</h2>
     {% if account %}
     <div class="field-grid" style="grid-template-columns:repeat(2,1fr);">
@@ -82,7 +83,7 @@
   </section>
 
   <!-- ── BOOKINGS ── -->
-  <section id="bookings" class="detail-section">
+  <section id="bookings" class="detail-section stab-panel">
     <h2 class="section-title">Upcoming bookings</h2>
     {% if upcoming %}
     <table class="bk-table" style="margin-bottom:1.5rem;">
@@ -118,6 +119,82 @@
     {% else %}<p style="color:#8a93a0;font-size:.85rem;">No past bookings recorded.</p>{% endif %}
   </section>
 
+  <!-- ── NOTIFICATIONS ── -->
+  <section id="notifications" class="detail-section stab-panel">
+    <h2 class="section-title">Slot release notifications</h2>
+    <p style="font-size:.83rem;color:#5b6573;margin-bottom:1.2rem;">
+      Get emailed when a booking is cancelled and its slot is explicitly released for others.
+      Leave aircraft or instructor filters empty to match any.
+    </p>
+
+    {% if notification_pref %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_notifications">
+
+        {% if club_aircraft %}
+        <div style="margin-bottom:1.1rem;">
+          <div class="flabel" style="margin-bottom:.5rem;">Aircraft <span style="font-weight:400;color:#8a93a0;">(empty = any)</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+            {% for ac in club_aircraft %}
+            <label style="display:flex;align-items:center;gap:.35rem;font-size:.84rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:6px;padding:.3rem .65rem;cursor:pointer;">
+              <input type="checkbox" name="notify_aircraft" value="{{ ac.id }}"
+                     {% if ac in notification_pref.aircraft.all %}checked{% endif %}>
+              {{ ac.registration }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if club_instructors %}
+        <div style="margin-bottom:1.1rem;">
+          <div class="flabel" style="margin-bottom:.5rem;">Instructor <span style="font-weight:400;color:#8a93a0;">(empty = any)</span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+            {% for instr in club_instructors %}
+            <label style="display:flex;align-items:center;gap:.35rem;font-size:.84rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:6px;padding:.3rem .65rem;cursor:pointer;">
+              <input type="checkbox" name="notify_instructors" value="{{ instr.user.id }}"
+                     {% if instr.user in notification_pref.instructors.all %}checked{% endif %}>
+              {{ instr.user.get_full_name }}
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+
+        <div style="margin-bottom:1.2rem;">
+          <label class="flabel">Only notify for slots within
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem;">
+              <input type="number" name="max_days_ahead" min="1" max="90"
+                     value="{{ notification_pref.max_days_ahead|default:'' }}"
+                     placeholder="any"
+                     style="width:80px;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;">
+              <span style="font-size:.84rem;color:#5b6573;">days ahead (leave blank for no limit)</span>
+            </div>
+          </label>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:.8rem;">
+          <button type="submit" class="btn">Save preferences</button>
+          <button type="button" class="btn" style="background:#e53e3e;"
+                  onclick="if(confirm('Turn off slot notifications?')) document.getElementById('notif-off-form').submit()">Turn off</button>
+        </div>
+      </form>
+      <form method="post" id="notif-off-form" style="display:none;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_notifications">
+      </form>
+
+    {% else %}
+      <p style="font-size:.84rem;color:#8a93a0;margin-bottom:1rem;">Slot release notifications are currently <strong>off</strong>.</p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_notifications">
+        <button type="submit" class="btn">Turn on notifications</button>
+      </form>
+    {% endif %}
+  </section>
+
 </div>
 
 <style>
@@ -132,11 +209,13 @@
   .standing-badge.standing-active{background:#e6f4ea;color:#2a7a3b;}
   .standing-badge.standing-suspended,.standing-badge.standing-lapsed{background:#fee2e2;color:#c0392b;}
   .role-chip{font-size:.75rem;background:#e8f0fb;color:#2f7dd1;padding:.2rem .5rem;border-radius:10px;font-weight:500;}
-  .section-nav{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e3e6ea;display:flex;margin-bottom:1.2rem;overflow-x:auto;}
-  .snav-link{padding:.5rem 1rem;font-size:.85rem;font-weight:500;color:#5b6573;text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent;}
-  .snav-link:hover,.snav-link.active{color:var(--banner);}
-  .snav-link.active{border-bottom-color:var(--primary);}
-  .detail-section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;scroll-margin-top:44px;}
+  .stab-bar{display:flex;gap:2px;margin-bottom:1.2rem;border-bottom:2px solid #e3e6ea;}
+  .stab-btn{padding:.55rem 1rem;border:none;background:none;cursor:pointer;font-size:.88rem;font-weight:500;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s;}
+  .stab-btn:hover{color:var(--banner);}
+  .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+  .stab-panel{display:none;}
+  .stab-panel.active{display:block;}
+  .detail-section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;}
   .section-title{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 1rem;}
   .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;}
@@ -156,16 +235,25 @@
 </style>
 <script>
 (function(){
-  const links = document.querySelectorAll('.snav-link');
-  const sections = [...links].map(l => document.querySelector(l.getAttribute('href')));
-  function update() {
-    let active = sections[0];
-    sections.forEach(s => { if (s && s.getBoundingClientRect().top <= 55) active = s; });
-    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + (active && active.id)));
+  const TABS = ['contact', 'account', 'bookings', 'notifications'];
+
+  function activateTab(id) {
+    if (!TABS.includes(id)) id = 'contact';
+    TABS.forEach(t => {
+      document.getElementById(t).classList.toggle('active', t === id);
+      document.querySelector(`.stab-btn[data-tab="${t}"]`).classList.toggle('active', t === id);
+    });
+    try { localStorage.setItem('profileTab', id); } catch(e){}
   }
-  window.addEventListener('scroll', update, {passive:true});
-  update();
-  // avatar-upload-btn uses onclick inline
+
+  document.querySelectorAll('.stab-btn').forEach(btn => {
+    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+  });
+
+  // Honour URL hash (e.g. #bookings from nav link), else restore from localStorage
+  const hash = location.hash.replace('#', '');
+  const stored = (() => { try { return localStorage.getItem('profileTab'); } catch(e){ return null; } })();
+  activateTab(TABS.includes(hash) ? hash : (stored || 'contact'));
 })();
 </script>
 {% endblock %}
