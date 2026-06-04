@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Aero Club Booking{% endblock %}</title>
+    <style>
+        :root {
+            --banner: {{ theme.banner|default:'#1d3a5f' }};
+            --primary: {{ theme.primary|default:'#2f7dd1' }};
+            --accent: {{ theme.accent|default:'#e8943a' }};
+            --confirmed: {{ theme.confirmed|default:'#2f9e44' }};
+            --pending: {{ theme.pending|default:'#f08c00' }};
+            --weekend: {{ theme.weekend|default:'#fbf3e6' }};
+            --atypical: {{ theme.atypical|default:'#eef1f4' }};
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+        header { background: var(--banner); color: white; padding: 0 2rem; box-shadow: 0 1px 0 rgba(255,255,255,.08); height: 52px; display: flex; align-items: center; }
+        .header-content { max-width: 1600px; margin: 0 auto; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 2rem; }
+        .logo { font-size: 1rem; font-weight: 650; letter-spacing: -.01em; display: flex; align-items: center; gap: .5rem; color: #fff; opacity: .95; }
+        .logo svg { opacity: .85; flex-shrink: 0; }
+        .header-nav { display: flex; gap: .25rem; align-items: center; }
+        .header-nav a {
+            color: rgba(255,255,255,.75);
+            text-decoration: none;
+            padding: .35rem .75rem;
+            border-radius: 6px;
+            font-size: .82rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: .38rem;
+            transition: background .15s, color .15s;
+            white-space: nowrap;
+        }
+        .header-nav a svg { opacity: .8; transition: opacity .15s; flex-shrink: 0; }
+        .header-nav a:hover { background: rgba(255,255,255,.1); color: #fff; }
+        .header-nav a:hover svg { opacity: 1; }
+        .header-nav a.active { background: rgba(255,255,255,.15); color: #fff; }
+        .header-nav a.active svg { opacity: 1; }
+        .user-info { font-size: .8rem; color: rgba(255,255,255,.75); display: flex; align-items: center; gap: .55rem; white-space: nowrap; }
+        .role-badge { font-size: .7rem; font-weight: 600; padding: .15rem .45rem; border-radius: 4px; background: rgba(255,255,255,.18); color: #fff; letter-spacing: .02em; }
+        .user-menu { position: relative; }
+        .user-btn { display: flex; align-items: center; gap: .4rem; background: none; border: none; color: rgba(255,255,255,.8); cursor: pointer; padding: .3rem .4rem; border-radius: 6px; font-size: .82rem; transition: background .15s; }
+        .user-btn:hover { background: rgba(255,255,255,.1); color: #fff; }
+        .user-avatar { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 1.5px solid rgba(255,255,255,.3); }
+        span.user-avatar { display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,.15); }
+        span.user-avatar svg { width: 14px; height: 14px; }
+        .user-name { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .user-dropdown { position: absolute; right: 0; top: calc(100% + 6px); background: #fff; border: 1px solid #e3e6ea; border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); min-width: 180px; z-index: 200; padding: .3rem; }
+        .dd-item { display: flex; align-items: center; gap: .5rem; padding: .5rem .65rem; border-radius: 6px; font-size: .84rem; color: #1f2933; text-decoration: none; transition: background .12s; }
+        .dd-item:hover { background: #f3f5f7; }
+        .dd-item svg { opacity: .55; flex-shrink: 0; }
+        .dd-divider { border: none; border-top: 1px solid #f0f2f4; margin: .25rem 0; }
+        .dd-signout { color: #c0392b; }
+        .dd-signout svg { opacity: .7; }
+        main { max-width: 1600px; margin: 0 auto; padding: 1rem; }
+        .container { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        h1 { color: var(--banner); font-size: 1.8rem; }
+        .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; text-decoration: none; display: inline-block; background: var(--primary); color: white; transition: filter 0.2s; }
+        .btn:hover { filter: brightness(1.08); }
+        .btn.secondary { background: #95a5a6; }
+        .btn.secondary:hover { background: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M16 9L3 3l2 5H1.5L3.5 9l-2 1H5l-2 5 13-5z" fill="currentColor" stroke="none"/>
+                </svg>
+                {{ club.name }}
+            </div>
+
+            <div class="header-nav">
+                {% if user.is_authenticated %}
+                <a href="{% url 'core:gantt_day' club.slug %}" class="{% if 'gantt' in request.resolver_match.url_name %}active{% endif %}">
+                    <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="1" y="2" width="13" height="12" rx="1.5"/>
+                        <path d="M1 6h13"/>
+                        <path d="M5 1v2.5M10 1v2.5"/>
+                    </svg>
+                    Calendar
+                </a>
+                <a href="{% url 'core:availability_search' club.slug %}" class="{% if 'search' in request.resolver_match.url_name %}active{% endif %}">
+                    <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+                        <circle cx="6.5" cy="6.5" r="4.5"/>
+                        <path d="M10 10l3.5 3.5"/>
+                    </svg>
+                    Search
+                </a>
+                {% if club_member.is_admin or club_member.is_instructor %}
+                <a href="{% url 'core:manage_bookings' club.slug %}" class="{% if 'manage' in request.resolver_match.url_name %}active{% endif %}">
+                    <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="5.5" cy="4" r="2.5"/>
+                        <path d="M1 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/>
+                        <path d="M10.5 2.5a2 2 0 0 1 0 4"/>
+                        <path d="M13.5 13.5c0-2-1.2-3.5-3-4"/>
+                    </svg>
+                    Manage
+                </a>
+                {% endif %}
+                {% if club_member.is_admin %}
+                <a href="{% url 'core:club_settings' club.slug %}" class="{% if 'settings' in request.resolver_match.url_name %}active{% endif %}">
+                    <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="7.5" cy="7.5" r="2"/>
+                        <path d="M7.5 1v1.5M7.5 12v1.5M1 7.5h1.5M12 7.5h1.5M3.2 3.2l1.1 1.1M10.7 10.7l1.1 1.1M3.2 11.8l1.1-1.1M10.7 4.3l1.1-1.1"/>
+                    </svg>
+                    Settings
+                </a>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <div class="user-info">
+                {% if user.is_authenticated %}
+                <div class="user-menu" id="user-menu">
+                    <button class="user-btn" id="user-btn" aria-haspopup="true" aria-expanded="false">
+                        {% if club_member.avatar %}
+                            <img src="{{ club_member.avatar.url }}" class="user-avatar">
+                        {% else %}
+                            <span class="user-avatar user-avatar-default">
+                                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+                            </span>
+                        {% endif %}
+                        <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
+                        {% if is_instructor %}<span class="role-badge">Instructor</span>{% endif %}
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg>
+                    </button>
+                    <div class="user-dropdown" id="user-dropdown" hidden>
+                        <a href="{% url 'core:my_profile' club.slug %}" class="dd-item">
+                            <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="5" r="3"/><path d="M1.5 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+                            My profile
+                        </a>
+                        <a href="{% url 'core:gantt_day' club.slug %}?member={{ user.id }}" class="dd-item">
+                            <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="2" width="13" height="12" rx="1.5"/><path d="M1 6h13M5 1v2.5M10 1v2.5"/></svg>
+                            My bookings
+                        </a>
+                        <div class="dd-divider"></div>
+                        <a href="/admin/logout/" class="dd-item dd-signout">
+                            <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M10 10l3-3-3-3M13 7H6"/></svg>
+                            Sign out
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+    <main>{% block content %}{% endblock %}</main>
+<script>
+(function(){
+  const btn = document.getElementById('user-btn');
+  const drop = document.getElementById('user-dropdown');
+  if (!btn || !drop) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = !drop.hidden;
+    drop.hidden = open;
+    btn.setAttribute('aria-expanded', String(!open));
+  });
+  document.addEventListener('click', () => { drop.hidden = true; btn.setAttribute('aria-expanded','false'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { drop.hidden = true; } });
+})();
+</script>
+</body>
+</html>

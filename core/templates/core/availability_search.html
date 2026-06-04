@@ -1,0 +1,202 @@
+{% extends "core/base.html" %}
+
+{% block title %}Find Available Slots - {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Find Available Slots</h1>
+    
+    <!-- Search Form -->
+    <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+
+                <div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Flight</label>
+                    <div style="display:flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;">
+                        <label style="flex:1;text-align:center;padding:.5rem;cursor:pointer;" id="lbl-dual">
+                            <input type="radio" name="booking_kind" value="dual" id="kind-dual" style="display:none;" {% if filters_applied.booking_kind != 'solo' %}checked{% endif %}>
+                            <span>Dual</span>
+                        </label>
+                        <label style="flex:1;text-align:center;padding:.5rem;cursor:pointer;border-left:1px solid #ddd;" id="lbl-solo">
+                            <input type="radio" name="booking_kind" value="solo" id="kind-solo" style="display:none;" {% if filters_applied.booking_kind == 'solo' %}checked{% endif %}>
+                            <span>Solo</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label for="range_type" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Date Range</label>
+                    <select name="range_type" id="range_type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="today" {% if filters_applied.range_type == 'today' %}selected{% endif %}>Today</option>
+                        <option value="tomorrow" {% if filters_applied.range_type == 'tomorrow' %}selected{% endif %}>Tomorrow</option>
+                        <option value="this_week" {% if filters_applied.range_type == 'this_week' %}selected{% endif %}>This Week</option>
+                        <option value="next_week" {% if filters_applied.range_type == 'next_week' %}selected{% endif %}>Next Week</option>
+                        <option value="this_month" {% if filters_applied.range_type == 'this_month' %}selected{% endif %}>This Month</option>
+                        <option value="next_3_months" {% if filters_applied.range_type == 'next_3_months' %}selected{% endif %}>Next 3 Months</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="aircraft_type" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Aircraft Type</label>
+                    <select name="aircraft_type" id="aircraft_type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Any Type</option>
+                        {% for atype in aircraft_types %}
+                            <option value="{{ atype }}" {% if filters_applied.aircraft_type == atype %}selected{% endif %}>{{ atype }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="aircraft" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Specific Aircraft</label>
+                    <select name="aircraft" id="aircraft" data-type-map="{{ aircraft_type_map }}" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Any Aircraft</option>
+                        {% for ac in aircraft_list %}
+                            <option value="{{ ac.id }}" data-type="{{ ac.aircraft_type }}" {% if filters_applied.aircraft|stringformat:"s" == ac.id|stringformat:"s" %}selected{% endif %}>{{ ac.registration }} ({{ ac.aircraft_type }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div id="instructor-field">
+                    <label for="instructor" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Instructor</label>
+                    <select name="instructor" id="instructor" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Any Instructor</option>
+                        {% for instr in instructors %}
+                            <option value="{{ instr.user.id }}" {% if filters_applied.instructor|stringformat:"s" == instr.user.id|stringformat:"s" %}selected{% endif %}>{{ instr.user.first_name }} {{ instr.user.last_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="duration" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Duration</label>
+                    <select name="duration" id="duration" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                        {% for d in duration_choices %}
+                            <option value="{{ d }}" {% if filters_applied.duration == d %}selected{% elif not filters_applied and d == default_duration %}selected{% endif %}>{{ d }} mins{% if d == default_duration %} (default){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" class="btn">🔍 Search Available Slots</button>
+                <a href="{% url 'core:availability_search' club.slug %}" class="btn secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Results -->
+    {% if search_performed %}
+        <div style="margin-bottom: 2rem;">
+            <h2>Results — {{ result_count }} free span{{ result_count|pluralize }} across {{ results|length }} day{{ results|length|pluralize }}</h2>
+
+            {% if results %}
+                <div style="display:flex;flex-direction:column;gap:.6rem;margin-top:1rem;">
+                    {% for day in results %}
+                        <div style="border:1px solid #e3e6ea;border-radius:10px;overflow:hidden;{% if day.is_weekend %}background:var(--weekend);{% else %}background:#fff;{% endif %}">
+                            <div style="padding:.6rem .9rem;font-weight:650;border-bottom:1px solid #eef1f4;{% if day.is_weekend %}color:var(--accent);{% endif %}">
+                                {{ day.date_label }}{% if day.is_weekend %} · weekend{% endif %}
+                            </div>
+                            <div style="padding:.5rem .9rem;display:flex;flex-direction:column;gap:.7rem;">
+                                {% for row in day.rows %}
+                                    <div>
+                                        <strong>{{ row.aircraft.registration }} <span style="color:#8a93a0;font-weight:400;">({{ row.aircraft.aircraft_type }})</span></strong>
+                                        <div style="margin-top:.35rem;display:flex;flex-direction:column;gap:.3rem;">
+                                            {% for ir in row.instructor_rows %}
+                                                <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding-left:.6rem;border-left:2px solid #eef1f4;">
+                                                    <span style="min-width:120px;color:#495057;font-size:.85rem;">with {{ ir.instructor_name }}</span>
+                                                    <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                                                        {% for s in ir.spans %}
+                                                            <a href="{% url 'core:gantt_day_date' club.slug day.year day.month day.day %}?book=1&amp;aircraft={{ s.aircraft_id }}&amp;instructor={{ s.instructor_id }}&amp;start={{ s.start_iso|urlencode }}&amp;span_end={{ s.end|date:'c'|urlencode }}&amp;booking_kind={{ filters_applied.booking_kind }}"
+                                                               title="{{ s.minutes }} min free with {{ ir.instructor_name }}"
+                                                               style="text-decoration:none;padding:.35rem .6rem;border-radius:6px;font-size:.82rem;border:1px solid {% if s.atypical %}var(--atypical){% else %}#bfdcc4{% endif %};{% if s.atypical %}background:var(--atypical);color:#8a93a0;{% else %}background:#eaf6ec;color:#216c2a;{% endif %}">
+                                                                {{ s.start_label }}–{{ s.end_label }} <span style="opacity:.7;">({{ s.minutes }}m)</span>
+                                                            </a>
+                                                        {% endfor %}
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <p style="margin-top:.8rem;color:#8a93a0;font-size:.8rem;">Each row shows when both the aircraft and that instructor are free. Greyed spans fall outside typical flying hours (08:30–17:00). Click a span to book it.</p>
+            {% else %}
+                <div style="background: #fff3cd; padding: 1.5rem; border-radius: 8px; margin-top: 1rem;">
+                    <p style="margin: 0; color: #856404;">No free spans found matching your criteria.</p>
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <div style="background: #e3f2fd; padding: 1.5rem; border-radius: 8px;">
+            <p style="margin: 0; color: #0d47a1;">
+                💡 Use the form above to find available slots for your preferred aircraft, instructor, and dates.
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    table tbody tr:hover { background: #f8f9fa; }
+    #lbl-dual.active, #lbl-solo.active { background:var(--primary); color:#fff; }
+    .container form select,
+    .container form input[type="text"],
+    .container form input[type="number"] { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
+    .container form label { font-size: 0.85rem; }
+    #lbl-dual, #lbl-solo { padding: .35rem; font-size: .85rem; }
+</style>
+<script>
+(function(){
+  const kindDual = document.getElementById('kind-dual');
+  const kindSolo = document.getElementById('kind-solo');
+  const lblDual = document.getElementById('lbl-dual');
+  const lblSolo = document.getElementById('lbl-solo');
+  const instrField = document.getElementById('instructor-field');
+  const typeSel = document.getElementById('aircraft_type');
+  const acSel = document.getElementById('aircraft');
+
+  function syncKind(){
+    const solo = kindSolo.checked;
+    instrField.style.display = solo ? 'none' : '';
+    lblSolo.classList.toggle('active', solo);
+    lblDual.classList.toggle('active', !solo);
+  }
+  [kindDual, kindSolo].forEach(r => r.addEventListener('change', syncKind));
+  lblDual.addEventListener('click', () => { kindDual.checked = true; syncKind(); });
+  lblSolo.addEventListener('click', () => { kindSolo.checked = true; syncKind(); });
+
+  // Filter the specific-aircraft list to the chosen type; reset if invalid.
+  function applyTypeFilter(){
+    const t = typeSel.value;
+    let resetNeeded = false;
+    Array.from(acSel.options).forEach(opt => {
+      if (!opt.value) return; // keep "Any Aircraft"
+      const match = !t || opt.dataset.type === t;
+      opt.hidden = !match;
+      opt.disabled = !match;
+      if (!match && opt.selected) resetNeeded = true;
+    });
+    if (resetNeeded) acSel.value = '';
+  }
+  // Picking a specific aircraft sets the type to match.
+  function syncTypeFromAircraft(){
+    const opt = acSel.options[acSel.selectedIndex];
+    if (opt && opt.value && opt.dataset.type) {
+      typeSel.value = opt.dataset.type;
+      applyTypeFilter();
+    }
+  }
+  typeSel.addEventListener('change', applyTypeFilter);
+  acSel.addEventListener('change', syncTypeFromAircraft);
+
+  // init
+  syncKind();
+  applyTypeFilter();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% load static %}
+<div class="pill {{ p.status }}{% if p.conflict %} conflict{% endif %}{% if p.override %} override{% endif %}"
+     data-id="{{ p.id }}"
+     data-left="{{ p.left }}"
+     data-width="{{ p.width }}"
+     data-start="{{ p.start_iso }}"
+     data-duration="{{ p.duration_min }}"
+     data-aircraft-id="{{ p.aircraft_id }}"
+     data-instructor-id="{{ p.instructor_id }}"
+     data-member="{{ p.member_name }}"
+     data-member-user-id="{{ p.member_user_id }}"
+     data-status="{{ p.status }}"
+     data-desc="{{ p.description }}"
+     data-flight-type-id="{{ p.flight_type_id }}"
+     data-conflict="{{ p.conflict|yesno:'true,false' }}"
+     data-conflict-reason="{{ p.conflict_reason }}"
+     data-issue-types="{{ p.issue_types }}"
+     data-member-not-current="{{ p.member_not_current|yesno:'true,false' }}"
+     data-member-standing="{{ p.member_standing }}"
+     title="{{ p.member_name }} · {{ p.start_label }}–{{ p.end_label }}{% if p.member_not_current %} · ⚑ Member {{ p.member_standing }}{% endif %}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.override %} · booked over block-out{% endif %}"
+     style="left:{{ p.left }}px;width:{{ p.width }}px;">
+  <div class="nm">{% if p.conflict %}⚠ {% endif %}{{ p.member_name }}</div>
+  <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
+  {% if p.member_not_current %}<span class="pill-dot" title="Member {{ p.member_standing }}"></span>{% endif %}
+  <div class="rs" data-resize></div>
+</div>

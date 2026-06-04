@@ -1,0 +1,208 @@
+{% extends "core/base.html" %}
+{% block title %}Aircraft · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:2rem;max-width:1100px;">
+  <h1 style="margin-bottom:1.2rem;">Manage</h1>
+
+  <div class="mnav">
+    <a href="{% url 'core:manage_bookings' club.slug %}" class="mnav-link">Bookings</a>
+    <a href="{% url 'core:manage_blockouts' club.slug %}" class="mnav-link">Block-outs</a>
+    {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="mnav-link">Members</a>{% endif %}
+    <a href="{% url 'core:manage_aircraft' club.slug %}" class="mnav-link active">Aircraft</a>
+    <a href="{% url 'core:manage_instructors' club.slug %}" class="mnav-link">Instructors</a>
+  </div>
+
+  <h2 class="sh2" style="margin-bottom:1rem;">Fleet <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ aircraft_list|length }})</span></h2>
+
+  {% for ac in aircraft_list %}
+  <div class="ac-card">
+    <div class="ac-head">
+      <div>
+        <strong>{{ ac.registration }}</strong>
+        <span style="color:#8a93a0;font-size:.83rem;margin-left:.5rem;">{{ ac.aircraft_type }} · {{ ac.seats }} seats</span>
+      </div>
+      {% if club_member.is_admin %}
+      <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_status">
+        <input type="hidden" name="ac_id" value="{{ ac.id }}">
+        <select name="status" class="inline-sel status-sel" onchange="this.form.submit()" data-val="{{ ac.status }}">
+          {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if ac.status == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </form>
+      {% else %}
+      <span class="status-badge status-{{ ac.status }}">{{ ac.get_status_display }}</span>
+      {% endif %}
+    </div>
+
+    <!-- Block-outs for this aircraft -->
+    <div class="ac-body">
+      <div style="display:flex;align-items:baseline;gap:.6rem;margin-bottom:.5rem;">
+        <div class="bo-section-title" style="margin-bottom:0;">Active block-outs</div>
+        {% if ac.past_bo_count %}
+        <span class="past-hint">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="5"/><path d="M6 5v3M6 3.5v.5"/></svg>
+          {{ ac.past_bo_count }} past {{ ac.past_bo_count|pluralize:"entry,entries" }} not shown
+        </span>
+        {% endif %}
+      </div>
+      {% if ac.bo_list %}
+      <table class="bo-table">
+        <thead><tr><th>Type</th><th>When</th><th>Hours</th><th>Label</th><th></th></tr></thead>
+        <tbody>
+          {% for bo in ac.bo_list %}
+          <tr>
+            <td>{% if bo.blockout_type %}<span class="bo-dot" style="background:{{ bo.blockout_type.color }};"></span>{{ bo.blockout_type.name }}{% else %}—{% endif %}</td>
+            <td>
+              {% if bo.recurrence == 'one_off' %}{{ bo.date }}
+              {% elif bo.recurrence == 'weekly' %}{{ bo.get_weekday_display }}s
+              {% else %}Daily{% endif %}
+            </td>
+            <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
+            <td style="color:#8a93a0;">{{ bo.label }}</td>
+            <td style="text-align:right;">
+              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this block-out?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_blockout">
+                <input type="hidden" name="bo_id" value="{{ bo.id }}">
+                <button type="submit" class="ft-del">Delete</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="bo-empty">No block-outs scheduled for this aircraft.</p>
+      {% endif %}
+
+      <details class="add-bo-wrap">
+        <summary class="add-bo-toggle">+ Add block-out</summary>
+        <form method="post" class="add-bo-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_aircraft_blockout">
+          <input type="hidden" name="ac_id" value="{{ ac.id }}">
+
+          <label class="flabel">Type
+            <select name="bot_id" class="finput">
+              <option value="">— none —</option>
+              {% for bt in aircraft_blockout_types %}
+              <option value="{{ bt.id }}">{{ bt.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="flabel">Label <span style="font-weight:400;">(optional)</span>
+            <input type="text" name="label" class="finput" placeholder="e.g. 100-hr check">
+          </label>
+
+          <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+            <label class="flabel">Recurrence
+              <select name="recurrence" class="finput" onchange="toggleBoRecur(this)">
+                <option value="one_off">One-off date</option>
+                <option value="weekly">Weekly (recurring)</option>
+                <option value="daily">Daily</option>
+              </select>
+            </label>
+            <label class="flabel bo-date-field">Date
+              <input type="date" name="date" class="finput">
+            </label>
+            <label class="flabel bo-weekday-field" style="display:none;">Day
+              <select name="weekday" class="finput">
+                <option value="0">Monday</option><option value="1">Tuesday</option>
+                <option value="2">Wednesday</option><option value="3">Thursday</option>
+                <option value="4">Friday</option><option value="5">Saturday</option>
+                <option value="6">Sunday</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.6rem;">
+            <input type="checkbox" name="all_day" checked onchange="toggleBoTime(this)"> All day
+          </label>
+          <div class="bo-time-fields" style="display:none;gap:.7rem;flex-wrap:wrap;">
+            <label class="flabel">Start<input type="time" name="start_time" class="finput" value="08:00"></label>
+            <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
+          </div>
+
+          <button type="submit" class="btn" style="margin-top:.4rem;">Save block-out</button>
+        </form>
+      </details>
+    </div>
+  </div>
+  {% empty %}
+  <p style="color:#8a93a0;">No aircraft yet.</p>
+  {% endfor %}
+
+  {% if club_member.is_admin %}
+  <hr style="border:none;border-top:1px solid #eef1f4;margin:2rem 0 1.4rem;">
+  <h2 class="sh2" style="margin-bottom:.8rem;">Add aircraft</h2>
+  <form method="post" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add_aircraft">
+    <label class="flabel">Registration
+      <input type="text" name="registration" placeholder="e.g. ZK-ABC" required class="finput" style="text-transform:uppercase;">
+    </label>
+    <label class="flabel" style="flex:1;min-width:180px;">Type
+      <input type="text" name="aircraft_type" placeholder="e.g. Cessna 172" required class="finput">
+    </label>
+    <button type="submit" class="btn" style="flex-shrink:0;">Add</button>
+  </form>
+  {% endif %}
+</div>
+
+<style>
+  .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;}
+  .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-block;}
+  .mnav-link:hover{color:var(--banner);}
+  .mnav-link.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+
+  .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
+
+  .ac-card{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.2rem;overflow:hidden;}
+  .ac-head{background:#fafbfc;padding:.65rem 1rem;border-bottom:1px solid #eef1f4;display:flex;align-items:center;justify-content:space-between;gap:.6rem;}
+  .ac-body{padding:.75rem 1rem;}
+
+  .status-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
+  .status-badge.status-online{background:#e6f4ea;color:#2a7a3b;}
+  .status-badge.status-retired{background:#f5f5f5;color:#8a93a0;}
+
+  .inline-sel{padding:.28rem .4rem;border:1px solid #d6dae0;border-radius:5px;font-size:.82rem;background:#fff;cursor:pointer;color:#333;}
+  .status-sel[data-val="online"]{color:#2f9e44;border-color:#b2dfb7;}
+  .status-sel[data-val="retired"]{color:#8a93a0;border-color:#d6dae0;}
+
+  .bo-section-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin-bottom:.5rem;}
+  .bo-table{width:100%;border-collapse:collapse;font-size:.83rem;margin-bottom:.6rem;}
+  .bo-table th{padding:.3rem .5rem;text-align:left;border-bottom:1px solid #eef1f4;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .bo-table td{padding:.38rem .5rem;border-bottom:1px solid #f5f6f8;vertical-align:middle;}
+  .bo-table tr:last-child td{border-bottom:0;}
+  .bo-dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem;border:1px solid rgba(0,0,0,.1);}
+  .bo-empty{font-size:.82rem;color:#8a93a0;margin:.2rem 0 .6rem;}
+
+  .add-bo-wrap{margin-top:.5rem;}
+  .add-bo-toggle{cursor:pointer;font-size:.82rem;color:var(--primary);user-select:none;list-style:none;}
+  .add-bo-toggle::-webkit-details-marker{display:none;}
+  .add-bo-form{margin-top:.8rem;max-width:640px;}
+
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
+  .ft-del:hover{text-decoration:underline;}
+  .past-hint{font-size:.73rem;color:#adb5bd;display:inline-flex;align-items:center;gap:.25rem;}
+</style>
+
+<script>
+function toggleBoRecur(sel) {
+  const form = sel.closest('form');
+  const v = sel.value;
+  form.querySelectorAll('.bo-date-field').forEach(el => el.style.display = v === 'one_off' ? '' : 'none');
+  form.querySelectorAll('.bo-weekday-field').forEach(el => el.style.display = v === 'weekly' ? '' : 'none');
+}
+function toggleBoTime(cb) {
+  const form = cb.closest('form');
+  form.querySelectorAll('.bo-time-fields').forEach(el => el.style.display = cb.checked ? 'none' : 'flex');
+}
+</script>
+{% endblock %}

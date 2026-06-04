@@ -1,0 +1,308 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}{{ selected_date|date:"D j M Y" }} · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="cal-wrap">
+  <div class="cal-head">
+    <div class="cal-date">
+      <div class="cal-nav">
+        <a class="cbtn" href="{% url 'core:gantt_day_date' club.slug prev_date.year prev_date.month prev_date.day %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}" title="Previous day">‹</a>
+        <a class="cbtn" href="{% url 'core:gantt_day' club.slug %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}">Today</a>
+        <a class="cbtn" href="{% url 'core:gantt_day_date' club.slug next_date.year next_date.month next_date.day %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}" title="Next day">›</a>
+        <input type="date" id="cal-datepick" class="cdate" value="{{ selected_date|date:'Y-m-d' }}">
+      </div>
+      <h1 id="cal-title">{{ selected_date|date:"l, j F Y" }}</h1>
+    </div>
+    {% if can_manage %}
+    <div style="display:flex;gap:.4rem;align-items:center;">
+      <button class="cbtn" id="btn-blockout" title="Add block-out for this day">+ Block-out</button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="legend">
+    <span><i class="dot confirmed"></i> Confirmed</span>
+    <span><i class="dot pending"></i> Pending</span>
+    {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
+  </div>
+
+  <div class="grid-scroll">
+    <div class="grid" style="--track-width: {{ track_width }}px;">
+      <!-- time axis -->
+      <div class="grid-row axis">
+        <div class="row-label"></div>
+        <div class="track">
+          {% for tick in ticks %}
+            <div class="tick" style="left: {{ tick.left }}px;"><span>{{ tick.label }}</span></div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if instructor_rows %}
+      <div class="section-label section-instructors">
+        <span class="section-icon">👤</span> Instructors
+      </div>
+      {% for row in instructor_rows %}
+        <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
+          <div class="row-label row-label-instructor {% if row.is_current_user %}me{% endif %}{% if row.ghost %} ghost{% endif %}">
+            <span class="row-name">{{ row.label }}</span>
+            {% if row.ghost_reason == 'inactive' %}
+              <span class="ghost-badge" title="Instructor inactive — bookings need reassignment">Inactive</span>
+            {% elif row.ghost_reason == 'role_changed' %}
+              <span class="ghost-badge" title="No longer an instructor — bookings need reassignment">Role changed</span>
+            {% elif row.ghost_reason == 'off_roster' %}
+              <span class="ghost-badge" title="Off roster today — bookings need review">Off roster</span>
+            {% else %}
+              {% if row.on_roster is True %}<span class="roster-badge on" title="On roster today">●</span>{% endif %}
+            {% endif %}
+            {% if row.has_hard_blockout %}<span class="bo-badge hard" title="Has hard block-out today">⊘</span>{% endif %}
+            {% if row.has_soft_blockout %}<span class="bo-badge soft" title="Has soft advisory today">⚡</span>{% endif %}
+          </div>
+          <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="instructor" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true" data-ghost-reason="{{ row.ghost_reason }}"{% endif %}>
+            {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
+            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
+            {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      {% endif %}
+
+      <div class="section-label section-aircraft">
+        <span class="section-icon">✈</span> Aircraft
+      </div>
+      {% for row in aircraft_rows %}
+        <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
+          <div class="row-label row-label-aircraft{% if row.ghost %} ghost{% endif %}">
+            <span class="row-name">{{ row.label }}</span>
+            {% if row.ghost_reason == 'retired' %}
+              <span class="ghost-badge" title="Aircraft retired — bookings need reassignment">Retired</span>
+            {% else %}
+              {% if row.has_blockout %}<span class="bo-badge hard" title="Has block-out today">⊘</span>{% endif %}
+            {% endif %}
+          </div>
+          <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="aircraft" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true"{% endif %}>
+            {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
+            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
+            {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Block-out creation modal -->
+<div id="bo-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(500px,94vw);">
+    <h2>Add block-out</h2>
+    <div class="two">
+      <label>Type<select id="bo-type"><option value="">— none —</option></select></label>
+      <label>Scope
+        <select id="bo-scope">
+          <option value="all">All resources</option>
+          <option value="aircraft">Specific aircraft</option>
+          <option value="instructors">Specific instructor(s)</option>
+        </select>
+      </label>
+    </div>
+    <div id="bo-aircraft-row" hidden>
+      <label>Aircraft (hold Ctrl/⌘ for multiple)
+        <select id="bo-aircraft" multiple style="width:100%;height:80px;margin-top:.25rem;border:1px solid #d6dae0;border-radius:7px;font-size:.88rem;"></select>
+      </label>
+    </div>
+    <div id="bo-instructor-row" hidden>
+      <label>Instructor(s)
+        <select id="bo-instructor" multiple style="width:100%;height:80px;margin-top:.25rem;border:1px solid #d6dae0;border-radius:7px;font-size:.88rem;"></select>
+      </label>
+    </div>
+    <div class="two">
+      <label>Recurrence
+        <select id="bo-recurrence">
+          <option value="one_off">One-off</option>
+          <option value="weekly">Weekly (recurring)</option>
+        </select>
+      </label>
+      <div id="bo-date-wrap">
+        <label>Date<input type="date" id="bo-date"></label>
+      </div>
+      <div id="bo-weekday-wrap" hidden>
+        <label>Day of week
+          <select id="bo-weekday">
+            <option value="0">Monday</option><option value="1">Tuesday</option>
+            <option value="2">Wednesday</option><option value="3">Thursday</option>
+            <option value="4">Friday</option><option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <label style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">
+      <input type="checkbox" id="bo-allday" checked> All day
+    </label>
+    <div id="bo-time-row" class="two" hidden>
+      <label>Start<input type="time" id="bo-start" value="08:00"></label>
+      <label>End<input type="time" id="bo-end" value="17:00"></label>
+    </div>
+    <label>Label (optional)<input type="text" id="bo-label" placeholder="e.g. 100-hr check ZK-TAW"></label>
+    <div class="modal-actions">
+      <button class="cbtn" id="bo-cancel" type="button">Cancel</button>
+      <span style="flex:1"></span>
+      <button class="cbtn primary" id="bo-save" type="button">Add block-out</button>
+    </div>
+  </div>
+</div>
+
+<!-- Booking / edit modal -->
+<div id="modal" class="modal-back" hidden>
+  <div class="modal">
+    <h2 id="modal-title">New booking</h2>
+    <div id="m-conflict-notice" hidden style="margin-bottom:.8rem;border-radius:7px;overflow:hidden;border:1px solid #fca5a5;background:#fff5f5;font-size:.82rem;"></div>
+    <input type="hidden" id="m-booking-id">
+    <label>Member
+      <select id="m-member"></select>
+    </label>
+    <div id="m-member-notice" style="display:none;font-size:.78rem;background:#fff8e1;border-left:3px solid #f59e0b;padding:.4rem .6rem;border-radius:4px;margin:-.3rem 0 .4rem;color:#92400e;"></div>
+    <label>Flight type
+      <select id="m-flight-type"></select>
+    </label>
+    <div class="two">
+      <label>Aircraft<select id="m-aircraft"></select></label>
+      <label id="m-instructor-label">Instructor<select id="m-instructor"><option value="">— none —</option></select></label>
+    </div>
+    <div class="two">
+      <label>Start<input type="datetime-local" id="m-start"></label>
+      <label>Duration (min)<input type="number" id="m-duration" step="{{ slot_minutes }}" min="{{ slot_minutes }}"></label>
+    </div>
+    <label>Description<input type="text" id="m-desc" placeholder="optional"></label>
+    <div class="modal-actions">
+      <button class="cbtn" id="m-cancel" type="button">Cancel</button>
+      <span style="flex:1"></span>
+      <button class="cbtn danger" id="m-delete" type="button" hidden>Cancel booking</button>
+      <button class="cbtn" id="m-confirm" type="button" hidden style="background:#2f9e44;color:#fff;border-color:#2f9e44;">Confirm booking</button>
+      <button class="cbtn primary" id="m-save" type="button">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Resource-change confirm -->
+<div id="confirm" class="modal-back" hidden>
+  <div class="modal small">
+    <h2>Confirm change</h2>
+    <p id="confirm-msg"></p>
+    <div class="modal-actions">
+      <button class="cbtn" id="c-cancel" type="button">Keep as is</button>
+      <span style="flex:1"></span>
+      <button class="cbtn primary" id="c-ok" type="button">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script id="cal-data" type="application/json">
+{
+  "csrf": "{{ csrf_token }}",
+  "clubSlug": "{{ club.slug }}",
+  "dayStart": "{{ day_start_iso }}",
+  "pxPerMin": {{ px_per_min }},
+  "totalMins": {{ total_minutes }},
+  "slotMin": {{ slot_minutes }},
+  "defaultDuration": {{ default_duration }},
+  "canBook": {{ can_book|yesno:"true,false" }},
+  "canManage": {{ can_manage|yesno:"true,false" }},
+  "currentUserId": {{ current_user_id }},
+  "typicalStart": "{{ typical_hours_start }}",
+  "typicalEnd": "{{ typical_hours_end }}",
+  "selectedDate": "{{ selected_date|date:'Y-m-d' }}"
+}
+</script>
+{{ members_json|json_script:"members-data" }}
+{{ aircraft_json|json_script:"aircraft-data" }}
+{{ instructors_json|json_script:"instructors-data" }}
+{{ flight_types_json|json_script:"flight-types-data" }}
+{{ blockout_types_json|json_script:"blockout-types-data" }}
+<style>
+  .cal-wrap{font-feature-settings:"tnum";max-width:none;color:#1f2933}
+  .cal-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.5rem;flex-wrap:wrap;background:transparent}
+  .cal-date{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+  .cal-date h1{margin:0;font-size:1.35rem;font-weight:650;letter-spacing:-.01em;color:var(--banner);min-width:11ch}
+  .cal-nav{display:flex;gap:.4rem;align-items:center}
+  .cbtn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 .6rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#1f2933;font-size:.82rem;cursor:pointer;text-decoration:none;line-height:1}
+  .cbtn:hover{background:#f3f5f7}
+  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .cbtn.primary:hover{filter:brightness(1.05)}
+  .cbtn.danger{background:#d64545;color:#fff;border-color:#d64545}
+  .cbtn.danger:hover{filter:brightness(1.05)}
+  .cdate{height:38px;padding:0 .6rem;border:1px solid #d6dae0;border-radius:8px;font-size:.9rem;color:#1f2933;background:#fff;cursor:pointer}
+  .legend{display:flex;gap:1.2rem;align-items:center;font-size:.8rem;color:#5b6573;margin:.25rem 0 .75rem}
+  .legend .hint{margin-left:auto;color:#8a93a0}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem}
+  .dot.confirmed{background:var(--confirmed)}.dot.pending{background:var(--pending)}
+  .grid-scroll{overflow-x:auto;border:1px solid #e3e6ea;border-radius:10px;background:#fff}
+  .grid{min-width:max-content}
+  .grid-row{display:flex;align-items:stretch;border-bottom:1px solid #eef1f4}
+  .grid-row:last-child{border-bottom:0}
+  .row-label{flex:0 0 130px;width:130px;padding:.35rem .55rem;font-size:.76rem;font-weight:550;color:#2b333d;background:#fafbfc;border-right:1px solid #e3e6ea;position:sticky;left:0;z-index:3;display:flex;align-items:center;gap:.2rem;flex-wrap:nowrap;overflow:hidden;}
+  .row-label.me{color:var(--primary)}
+  .row-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
+  /* Instructor rows: subtle left accent */
+  .row-label-instructor{border-left:3px solid color-mix(in srgb, var(--primary) 35%, transparent)}
+  /* Aircraft rows: neutral left accent */
+  .row-label-aircraft{border-left:3px solid #d6dae0}
+  /* Ghost rows — inactive or off-roster with residual bookings */
+  .row-label.ghost{background:#f7f7f7;color:#adb5bd;font-style:italic}
+  .row-label.ghost .row-name{text-decoration:line-through;text-decoration-color:#ccc}
+  .ghost-badge{font-size:.6rem;font-weight:600;background:#fee2e2;color:#c0392b;border-radius:4px;padding:.05rem .3rem;white-space:nowrap;flex-shrink:0;}
+  .track-ghost{opacity:.75}
+  /* Section labels — prominent dividers */
+  .section-label{display:flex;align-items:center;gap:.4rem;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:.4rem .65rem;border-top:2px solid #e3e6ea;border-bottom:1px solid #eef1f4;background:#f8f9fa;position:sticky;left:0;z-index:3;width:100%;box-sizing:border-box;}
+  .section-icon{font-size:.75rem;opacity:.7;}
+  .section-instructors{color:var(--primary);border-top-color:color-mix(in srgb, var(--primary) 40%, #e3e6ea)}
+  .section-aircraft{color:#5b6573;border-top-color:#d6dae0;margin-top:2px}
+  .track{position:relative;height:44px;width:max(var(--track-width),100%);flex:1;min-width:var(--track-width);background:linear-gradient(to right,var(--atypical) 0,var(--atypical) {{ typical_start_px }}px,transparent {{ typical_start_px }}px,transparent {{ typical_end_px }}px,var(--atypical) {{ typical_end_px }}px,var(--atypical) 100%)}
+  .axis .track{height:26px}
+  .axis .row-label{background:#fff}
+  .tick{position:absolute;top:0;height:26px;border-left:1px solid #eef1f4}
+  .tick span{position:absolute;top:6px;left:4px;font-size:.63rem;color:#8a93a0;white-space:nowrap}
+  .gridline{position:absolute;top:0;bottom:0;border-left:1px solid #f1f3f5;pointer-events:none}
+  .band{position:absolute;top:0;bottom:0;opacity:.28;z-index:1;pointer-events:none;border-left:1px solid rgba(0,0,0,.15);border-right:1px solid rgba(0,0,0,.15)}
+  .band-soft{opacity:.14;border-left:2px dashed rgba(0,0,0,.2);border-right:2px dashed rgba(0,0,0,.2)}
+  .roster-badge{font-size:.65rem;flex-shrink:0}
+  .roster-badge.on{color:#2f9e44}
+  .roster-badge.off{color:#adb5bd}
+  .bo-badge{font-size:.68rem;flex-shrink:0}
+  .bo-badge.hard{color:#c0392b}
+  .bo-badge.soft{color:#e67e22}
+  .band span{position:absolute;top:2px;left:4px;font-size:.6rem;font-weight:600;color:#1f2933;opacity:.9;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+  .track.bookable{cursor:copy}
+  .pill{position:absolute;top:4px;height:36px;border-radius:5px;padding:.2rem .4rem;overflow:hidden;cursor:grab;color:#fff;box-shadow:0 1px 2px rgba(16,24,40,.18);user-select:none;box-sizing:border-box;z-index:5}
+  .pill:active{cursor:grabbing}
+  .pill.confirmed{background:var(--confirmed)}
+  .pill.pending{background:var(--pending)}
+  .pill .nm{font-size:.72rem;font-weight:650;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pill .sub{font-size:.62rem;opacity:.9;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize}
+  .pill.drag{opacity:.85;box-shadow:0 6px 16px rgba(16,24,40,.28);z-index:20}
+  .pill.invalid{outline:2px solid #ffd43b;outline-offset:-2px}
+  .pill.conflict::before{content:'';position:absolute;top:0;left:0;bottom:0;width:4px;background:#e03131;border-radius:5px 0 0 5px;z-index:1;}
+  .pill.override{box-shadow:0 0 0 2px #fff,0 0 0 4px #845ef7}
+  .pill-dot{position:absolute;top:4px;right:10px;width:7px;height:7px;border-radius:50%;background:#e03131;border:1.5px solid rgba(255,255,255,.75);pointer-events:none;}
+  .preview{position:absolute;top:4px;height:36px;border-radius:5px;border:2px dashed var(--primary);background:color-mix(in srgb, var(--primary) 15%, transparent);z-index:6;pointer-events:none}
+  .preview span{position:absolute;top:11px;left:8px;font-size:.72rem;color:var(--primary);font-weight:600}
+  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:100}
+  [hidden]{display:none!important}
+  .modal-back[hidden]{display:none}
+  .toast[hidden]{display:none}
+  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;width:min(440px,92vw);box-shadow:0 12px 40px rgba(16,24,40,.25)}
+  .modal.small{width:min(360px,90vw)}
+  .modal h2{margin:0 0 .9rem;font-size:1.05rem}
+  .modal label{display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem}
+  .modal input,.modal select{width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box}
+  .modal .two{display:flex;gap:.7rem}.modal .two label{flex:1}
+  .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:.4rem}
+  .toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+</style>
+
+<script src="{% static 'core/gantt.js' %}"></script>
+{% endblock %}

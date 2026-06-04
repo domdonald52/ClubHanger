@@ -1,0 +1,125 @@
+{% extends "core/base.html" %}
+{% block title %}Members · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:2rem;max-width:1100px;">
+  <h1 style="margin-bottom:1.2rem;">Manage</h1>
+
+  <div class="mnav">
+    <a href="{% url 'core:manage_bookings' club.slug %}" class="mnav-link">Bookings</a>
+    <a href="{% url 'core:manage_blockouts' club.slug %}" class="mnav-link">Block-outs</a>
+    <a href="{% url 'core:manage_members' club.slug %}" class="mnav-link active">Members</a>
+    <a href="{% url 'core:manage_aircraft' club.slug %}" class="mnav-link">Aircraft</a>
+    <a href="{% url 'core:manage_instructors' club.slug %}" class="mnav-link">Instructors</a>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+    <h2 class="sh2" style="margin:0;">Members <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ members|length }})</span></h2>
+    <form method="get" style="flex:1;min-width:200px;max-width:340px;">
+      <div style="position:relative;">
+        <input type="search" name="q" value="{{ q }}" placeholder="Search name or email…"
+               class="finput" style="padding-left:2rem;">
+        <svg style="position:absolute;left:.5rem;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none;" width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
+      </div>
+    </form>
+  </div>
+
+  <table class="mg-table">
+    <thead>
+      <tr>
+        <th style="width:36px;"></th>
+        <th>Name</th>
+        <th>Standing</th>
+        <th>Role</th>
+        <th>Subscription expires</th>
+        <th>Joined</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for m in members %}
+      <tr class="{% if not m.is_current %}row-dim{% endif %}">
+        <td>
+          {% if m.avatar %}
+            <img src="{{ m.avatar.url }}" class="avatar-sm">
+          {% else %}
+            <span class="avatar-sm avatar-default">
+              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+            </span>
+          {% endif %}
+        </td>
+        <td>
+          <strong>{{ m.user.get_full_name }}</strong>
+          {% if m == club_member %}<span class="badge badge-you">you</span>{% endif %}
+          <div style="font-size:.75rem;color:#8a93a0;">{{ m.user.email }}</div>
+        </td>
+        <td>
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_standing">
+            <input type="hidden" name="cm_id" value="{{ m.id }}">
+            <select name="standing" class="inline-sel" onchange="this.form.submit()">
+              {% for val, label in standing_choices %}
+              <option value="{{ val }}" {% if m.standing == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
+        <td>
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_role">
+            <input type="hidden" name="cm_id" value="{{ m.id }}">
+            <select name="role_id" class="inline-sel" onchange="this.form.submit()">
+              <option value="">— no role —</option>
+              {% for r in roles %}
+              <option value="{{ r.id }}" {% if m.role_id == r.id %}selected{% endif %}>{{ r.name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </td>
+        <td style="font-size:.83rem;" class="{% if not m.is_current and m.subscription_expires %}expired{% endif %}">
+          {% if m.subscription_expires %}{{ m.subscription_expires }}{% else %}—{% endif %}
+        </td>
+        <td style="font-size:.83rem;color:#8a93a0;">{{ m.join_date }}</td>
+        <td>
+          <a href="{% url 'core:manage_member_detail' club.slug m.id %}" class="detail-btn">View</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" style="text-align:center;color:#8a93a0;padding:2rem;">No members found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;}
+  .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-block;}
+  .mnav-link:hover{color:var(--banner);}
+  .mnav-link.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+  .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
+
+  .avatar-sm{width:32px;height:32px;border-radius:50%;object-fit:cover;display:block;}
+  span.avatar-sm{display:flex;align-items:center;justify-content:center;background:#e8f0fb;color:var(--primary);}
+  span.avatar-sm svg{width:18px;height:18px;}
+  .avatar-default{}
+
+  .mg-table{width:100%;border-collapse:collapse;font-size:.86rem;}
+  .mg-table th{padding:.4rem .7rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .mg-table td{padding:.5rem .7rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .mg-table tr:last-child td{border-bottom:0;}
+  .row-dim td{color:#adb5bd;}
+  .row-dim td strong{color:#adb5bd;}
+  .expired{color:#c0392b !important;}
+
+  .inline-sel{padding:.28rem .4rem;border:1px solid #d6dae0;border-radius:5px;font-size:.82rem;background:#fff;cursor:pointer;color:#333;}
+  .badge{display:inline-block;padding:.1rem .4rem;border-radius:8px;font-size:.7rem;font-weight:600;margin-left:.3rem;vertical-align:middle;}
+  .badge-you{background:#e8f0fb;color:#2f7dd1;}
+
+  .detail-btn{font-size:.8rem;color:var(--primary);text-decoration:none;padding:.2rem .5rem;border:1px solid color-mix(in srgb, var(--primary) 30%, transparent);border-radius:5px;}
+  .detail-btn:hover{background:#e8f0fb;}
+
+  .finput{display:block;width:100%;padding:.4rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+</style>
+{% endblock %}

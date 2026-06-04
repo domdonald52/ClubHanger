@@ -1,0 +1,270 @@
+{% extends "core/base.html" %}
+{% block title %}{{ member.user.get_full_name }} · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width:900px;margin:0 auto;padding:1rem;">
+
+  <!-- Back link -->
+  <a href="{% url 'core:manage_members' club.slug %}" style="font-size:.82rem;color:#8a93a0;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;margin-bottom:1rem;">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg>
+    Members
+  </a>
+
+  <!-- Standalone avatar upload form -->
+  <form method="post" enctype="multipart/form-data" id="avatar-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="avatar_upload">
+    <input type="file" name="avatar" accept="image/*" id="avatar-input" style="display:none;"
+           onchange="this.form.submit()">
+  </form>
+
+  <!-- Profile header -->
+  <div class="profile-header">
+    <div class="avatar-wrap">
+      {% if member.avatar %}
+        <img src="{{ member.avatar.url }}" class="avatar-lg">
+      {% else %}
+        <span class="avatar-lg avatar-default">
+          <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11" r="6"/><path d="M4 28c0-6.6 5.4-12 12-12s12 5.4 12 12"/></svg>
+        </span>
+      {% endif %}
+      <button type="button" class="avatar-upload-btn" title="Upload photo"
+              onclick="document.getElementById('avatar-input').click()">
+        <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 10V3M4 6l3.5-3.5L11 6"/><path d="M2 12h11"/></svg>
+      </button>
+    </div>
+    <div class="profile-meta">
+      <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 .2rem;">{{ member.user.get_full_name }}</h1>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+        <span class="standing-badge standing-{{ member.standing }}">{{ member.get_standing_display }}</span>
+        {% if member.role %}<span class="role-chip">{{ member.role.name }}</span>{% endif %}
+        <span style="font-size:.82rem;color:#8a93a0;">Member since {{ member.join_date|date:"M Y" }}</span>
+      </div>
+      <div style="font-size:.83rem;color:#8a93a0;margin-top:.3rem;">{{ member.user.email }}</div>
+    </div>
+  </div>
+
+  <!-- Sticky section nav -->
+  <nav class="section-nav" id="section-nav">
+    <a href="#contact" class="snav-link">Contact</a>
+    <a href="#membership" class="snav-link">Membership</a>
+    <a href="#credentials" class="snav-link">Credentials</a>
+    <a href="#account" class="snav-link">Account</a>
+    <a href="#bookings" class="snav-link">Bookings</a>
+  </nav>
+
+  <!-- ── CONTACT ── -->
+  <section id="contact" class="detail-section">
+    <h2 class="section-title">Contact details</h2>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_contact">
+      <div class="field-grid">
+        <label class="flabel">First name<input type="text" name="first_name" value="{{ member.user.first_name }}" class="finput"></label>
+        <label class="flabel">Last name<input type="text" name="last_name" value="{{ member.user.last_name }}" class="finput"></label>
+        <label class="flabel">Email<input type="email" name="email" value="{{ member.user.email }}" class="finput"></label>
+        <label class="flabel">Mobile<input type="text" name="phone_mobile" value="{{ member.phone_mobile }}" class="finput"></label>
+        <label class="flabel">Home phone<input type="text" name="phone_home" value="{{ member.phone_home }}" class="finput"></label>
+        <label class="flabel">Work phone<input type="text" name="phone_work" value="{{ member.phone_work }}" class="finput"></label>
+      </div>
+      <div class="field-grid" style="grid-template-columns:1fr 1fr 1fr;">
+        <label class="flabel" style="grid-column:1/-1;">Address<input type="text" name="address_line1" value="{{ member.address_line1 }}" class="finput" placeholder="Street address"></label>
+        <label class="flabel"><input type="text" name="address_line2" value="{{ member.address_line2 }}" class="finput" placeholder="Line 2"></label>
+        <label class="flabel">Suburb<input type="text" name="suburb" value="{{ member.suburb }}" class="finput"></label>
+        <label class="flabel">Postcode<input type="text" name="postcode" value="{{ member.postcode }}" class="finput"></label>
+      </div>
+      <button type="submit" class="btn" style="margin-top:.5rem;">Save contact details</button>
+    </form>
+  </section>
+
+  <!-- ── MEMBERSHIP ── -->
+  <section id="membership" class="detail-section">
+    <h2 class="section-title">Membership</h2>
+    {% if club_member.is_admin %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_membership">
+      <div class="field-grid">
+        <label class="flabel">Standing
+          <select name="standing" class="finput">
+            {% for val, label in standing_choices %}
+            <option value="{{ val }}" {% if member.standing == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel">Role
+          <select name="role_id" class="finput">
+            <option value="">— no role —</option>
+            {% for r in roles %}<option value="{{ r.id }}" {% if member.role_id == r.id %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="flabel">Subscription expires<input type="date" name="subscription_expires" value="{{ member.subscription_expires|date:'Y-m-d' }}" class="finput"></label>
+        <label class="flabel">Last renewed<input type="date" value="{{ member.last_renewed|date:'Y-m-d' }}" class="finput" disabled style="opacity:.5;"></label>
+        <label class="flabel">Join date<input type="text" value="{{ member.join_date }}" class="finput" disabled style="opacity:.5;"></label>
+      </div>
+      <button type="submit" class="btn" style="margin-top:.5rem;">Save membership</button>
+    </form>
+    {% else %}
+    <div class="field-grid">
+      <div class="ro-field"><span class="ro-label">Standing</span>{{ member.get_standing_display }}</div>
+      <div class="ro-field"><span class="ro-label">Role</span>{{ member.role.name|default:"—" }}</div>
+      <div class="ro-field"><span class="ro-label">Subscription expires</span>{{ member.subscription_expires|default:"—" }}</div>
+      <div class="ro-field"><span class="ro-label">Join date</span>{{ member.join_date }}</div>
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- ── CREDENTIALS ── -->
+  <section id="credentials" class="detail-section">
+    <h2 class="section-title">Credentials</h2>
+    {% if credentials %}
+    <table class="cred-table">
+      <thead><tr><th>Type</th><th>Certificate #</th><th>Issued</th><th>Expires</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for c in credentials %}
+        <tr>
+          <td>{{ c.get_credential_type_display }}</td>
+          <td style="color:#8a93a0;font-size:.82rem;">{{ c.certificate_number|default:"—" }}</td>
+          <td style="font-size:.83rem;">{{ c.issue_date }}</td>
+          <td style="font-size:.83rem;">{{ c.expiry_date }}</td>
+          <td>
+            {% if c.is_expired %}<span class="cred-chip expired">Expired</span>
+            {% elif c.is_expiring_soon %}<span class="cred-chip soon">Due soon</span>
+            {% else %}<span class="cred-chip ok">Current</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;">No credentials recorded.</p>
+    {% endif %}
+  </section>
+
+  <!-- ── ACCOUNT ── -->
+  <section id="account" class="detail-section">
+    <h2 class="section-title">Account</h2>
+    {% if account %}
+    <div class="field-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="ro-field">
+        <span class="ro-label">Balance</span>
+        <span style="font-size:1.2rem;font-weight:700;color:{% if account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">
+          ${{ account.balance }}
+        </span>
+      </div>
+      <div class="ro-field"><span class="ro-label">Credit limit</span>{% if account.credit_limit is not None %}${{ account.credit_limit }}{% else %}Exempt{% endif %}</div>
+      <div class="ro-field"><span class="ro-label">Warning</span>{% if account.has_warning %}⚠ Over limit{% else %}—{% endif %}</div>
+    </div>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;">No account record.</p>
+    {% endif %}
+  </section>
+
+  <!-- ── BOOKINGS ── -->
+  <section id="bookings" class="detail-section">
+    <h2 class="section-title">Upcoming bookings</h2>
+    {% if upcoming_bookings %}
+    <table class="cred-table" style="margin-bottom:1.5rem;">
+      <thead><tr><th>Date</th><th>Aircraft</th><th>Instructor</th><th>Type</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for b in upcoming_bookings %}
+        <tr>
+          <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}</td>
+          <td>{{ b.aircraft.registration|default:"—" }}</td>
+          <td>{{ b.instructor.get_full_name|default:"Solo" }}</td>
+          <td style="font-size:.82rem;color:#8a93a0;">{{ b.flight_type.name|default:"—" }}</td>
+          <td><span class="status-chip {{ b.status }}">{{ b.get_status_display }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.2rem;">No upcoming bookings.</p>{% endif %}
+
+    <h2 class="section-title">Past bookings <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 20)</span></h2>
+    {% if past_bookings %}
+    <table class="cred-table">
+      <thead><tr><th>Date</th><th>Aircraft</th><th>Instructor</th><th>Type</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for b in past_bookings %}
+        <tr>
+          <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M Y" }} {{ b.scheduled_start|time:"H:i" }}</td>
+          <td>{{ b.aircraft.registration|default:"—" }}</td>
+          <td>{{ b.instructor.get_full_name|default:"Solo" }}</td>
+          <td style="font-size:.82rem;color:#8a93a0;">{{ b.flight_type.name|default:"—" }}</td>
+          <td><span class="status-chip {{ b.status }}">{{ b.get_status_display }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}<p style="color:#8a93a0;font-size:.85rem;">No past bookings.</p>{% endif %}
+  </section>
+
+</div>
+
+<style>
+  .profile-header{display:flex;gap:1.2rem;align-items:flex-start;background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:1.25rem 1.4rem;margin-bottom:1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .avatar-wrap{position:relative;flex-shrink:0;}
+  .avatar-lg{width:72px;height:72px;border-radius:50%;object-fit:cover;display:block;border:2px solid #e3e6ea;}
+  span.avatar-lg{display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;background:#e8f0fb;color:var(--primary);border:2px solid #e3e6ea;}
+  span.avatar-lg svg{width:40px;height:40px;}
+  .avatar-upload-btn{position:absolute;bottom:0;right:0;width:22px;height:22px;background:#fff;border:1px solid #d6dae0;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+  .avatar-upload-btn:hover{background:#f3f5f7;}
+  .profile-meta{flex:1;}
+
+  .standing-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;}
+  .standing-badge.standing-active{background:#e6f4ea;color:#2a7a3b;}
+  .standing-badge.standing-suspended,.standing-badge.standing-lapsed,.standing-badge.standing-resigned{background:#fee2e2;color:#c0392b;}
+  .standing-badge.standing-pending{background:#fff3e0;color:#e65100;}
+  .standing-badge.standing-non_member{background:#f3f5f7;color:#8a93a0;}
+  .role-chip{font-size:.75rem;background:#e8f0fb;color:#2f7dd1;padding:.2rem .5rem;border-radius:10px;font-weight:500;}
+
+  .section-nav{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e3e6ea;display:flex;gap:0;margin-bottom:1.4rem;overflow-x:auto;}
+  .snav-link{padding:.55rem 1rem;font-size:.85rem;font-weight:500;color:#5b6573;text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent;transition:color .15s;}
+  .snav-link:hover,.snav-link.active{color:var(--banner);}
+  .snav-link.active{border-bottom-color:var(--primary);}
+
+  .detail-section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;scroll-margin-top:48px;}
+  .section-title{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 1rem;}
+
+  .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .ro-field{font-size:.88rem;color:#1f2933;padding:.5rem 0;}
+  .ro-label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.2rem;}
+
+  .cred-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+  .cred-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .cred-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .cred-table tr:last-child td{border-bottom:0;}
+
+  .cred-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
+  .cred-chip.ok{background:#e6f4ea;color:#2a7a3b;}
+  .cred-chip.soon{background:#fff3e0;color:#e65100;}
+  .cred-chip.expired{background:#fee2e2;color:#c0392b;}
+
+  .status-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
+  .status-chip.confirmed{background:#e6f4ea;color:#2a7a3b;}
+  .status-chip.pending{background:#fff3e0;color:#e65100;}
+  .status-chip.cancelled{background:#f3f5f7;color:#8a93a0;}
+
+  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
+  .btn:hover{filter:brightness(1.07);}
+</style>
+
+<script>
+// Highlight active section in sticky nav
+(function(){
+  const links = document.querySelectorAll('.snav-link');
+  const sections = [...links].map(l => document.querySelector(l.getAttribute('href')));
+  function update() {
+    let active = sections[0];
+    sections.forEach(s => { if (s && s.getBoundingClientRect().top <= 60) active = s; });
+    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + (active && active.id)));
+  }
+  window.addEventListener('scroll', update, {passive:true});
+  update();
+
+  // avatar-upload-btn uses onclick inline — nothing else needed here
+})();
+</script>
+{% endblock %}
