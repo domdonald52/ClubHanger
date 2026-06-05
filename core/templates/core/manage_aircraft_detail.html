@@ -310,7 +310,7 @@
 
     {% if maintenance_items %}
     <table class="ft-table">
-      <thead><tr><th>Item</th><th>Due date</th><th>Due hours</th><th>Last done</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Item</th><th>Due date</th><th>Due hours</th><th>Last done</th><th style="min-width:140px;">Progress</th><th></th></tr></thead>
       <tbody>
         {% for m in maintenance_items %}
         <tr>
@@ -318,7 +318,16 @@
           <td style="font-size:.85rem;">{{ m.due_date|default:"—" }}</td>
           <td style="font-size:.85rem;">{{ m.due_hours|default:"—" }}</td>
           <td style="font-size:.82rem;color:#8a93a0;">{{ m.last_completed_date|default:"—" }}</td>
-          <td><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
+          <td>
+            {% if m.progress_pct is not None %}
+            <div class="maint-bar-wrap" title="{{ m.progress_pct }}% complete">
+              <div class="maint-bar maint-bar-{{ m.urgency }}" style="width:{{ m.progress_pct }}%;"></div>
+            </div>
+            <span class="urg-badge urg-{{ m.urgency }}" style="margin-top:.25rem;display:inline-block;">{{ m.get_urgency_display }} · {{ m.progress_pct }}%</span>
+            {% else %}
+            <span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span>
+            {% endif %}
+          </td>
           <td style="text-align:right;">
             {% if club_member.is_admin %}
             <div style="display:inline-flex;gap:.3rem;">
@@ -678,6 +687,11 @@
   .urg-badge.urg-green{background:#e6f4ea;color:#2a7a3b;}
   .urg-badge.urg-amber{background:#fff3e0;color:#c76c00;}
   .urg-badge.urg-red{background:#fee2e2;color:#c0392b;}
+  .maint-bar-wrap{height:8px;background:#eef1f4;border-radius:4px;overflow:hidden;margin-bottom:.15rem;}
+  .maint-bar{height:100%;border-radius:4px;transition:width .3s;}
+  .maint-bar-green{background:#4caf50;}
+  .maint-bar-amber{background:#ff9800;}
+  .maint-bar-red{background:#e03131;}
 
   .bo-dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem;border:1px solid rgba(0,0,0,.1);}
 

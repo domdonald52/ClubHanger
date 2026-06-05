@@ -4,13 +4,15 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, date
 from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem)
 from .availability import find_available_slots, get_date_range
 from .services import booking_service
 from .services import availability_service
+from .services import charging_service
+from .services import qualification_service
 
 
 def _aware(dt):
@@ -385,6 +387,13 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         for bt in BlockOutType.objects.filter(club=club)
     ]
 
+    # Now-line: pixel offset of current time (only for today, only if within operating window)
+    now_px = None
+    if selected_date == today:
+        now_dt = timezone.now()
+        if day_start <= now_dt <= day_end:
+            now_px = int((now_dt - day_start).total_seconds() / 60 * px_per_min)
+
     zoom_param = request.GET.get('zoom', '')
     can_manage = club_member.is_instructor or club_member.is_admin
     context = {
@@ -423,6 +432,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             SlotWatch.objects.filter(club_member=club_member)
             .values_list('booking_id', flat=True)
         ),
+        'now_px': now_px,
     }
 
     return render(request, 'core/gantt_day.html', context)
@@ -1763,97 +1773,43 @@ def booking_detail(request, club_slug, booking_id):
                 item_type = request.POST.get('item_type', 'one_off')
                 description = request.POST.get('description', '').strip()
                 amount = request.POST.get('amount', '').strip()
-                if description and amount:
-                    FlightChargeItem.objects.create(
-                        flight_completion=fc, item_type=item_type,
-                        description=description, amount=amount
-                    )
-                    # Add landing entry if applicable
-                    if item_type == 'landing':
-                        ae_id = request.POST.get('aerodrome_id', '')
-                        ft_id = request.POST.get('fee_type_id', '')
-                        qty = int(request.POST.get('quantity', 1))
-                        unit = request.POST.get('unit_amount', amount)
-                        ae = Aerodrome.objects.filter(club=club, id=ae_id).first() if ae_id else None
-                        from .models import AerodromeFeeType
-                        ft = AerodromeFeeType.objects.filter(id=ft_id).first() if ft_id else None
-                        FlightLandingEntry.objects.create(
-                            flight_completion=fc,
-                            aerodrome=ae,
-                            custom_icao=request.POST.get('custom_icao', '').strip(),
-                            custom_name=request.POST.get('custom_name', '').strip(),
-                            fee_type=ft,
-                            fee_type_name=description,
-                            quantity=qty,
-                            unit_amount=unit,
-                            total_fee=amount,
-                        )
-                    _update_total(fc)
-                success = 'Charge added.'
+                ae_id  = request.POST.get('aerodrome_id', '')
+                ft_id  = request.POST.get('fee_type_id', '')
+                from .models import AerodromeFeeType
+                ae = Aerodrome.objects.filter(club=club, id=ae_id).first() if ae_id else None
+                fee_type = AerodromeFeeType.objects.filter(id=ft_id).first() if ft_id else None
+                result = charging_service.add_charge(
+                    fc, item_type, description, amount,
+                    aerodrome=ae, fee_type=fee_type,
+                    custom_icao=request.POST.get('custom_icao', '').strip(),
+                    custom_name=request.POST.get('custom_name', '').strip(),
+                    quantity=int(request.POST.get('quantity', 1) or 1),
+                    unit_amount=request.POST.get('unit_amount', amount) or amount,
+                )
+                if result.ok:
+                    success = 'Charge added.'
+                else:
+                    error = result.error
 
         elif action == 'delete_charge' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                FlightChargeItem.objects.filter(flight_completion=fc, id=request.POST.get('item_id')).delete()
-                _update_total(fc)
-            success = 'Charge removed.'
+                result = charging_service.delete_charge(fc, request.POST.get('item_id'))
+                success = 'Charge removed.' if result.ok else ''
 
         elif action == 'confirm_payment' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc and not fc.is_paid:
-                method = request.POST.get('payment_method', 'eftpos')
-                # Accept a specific amount (partial payment supported)
                 amount_str = request.POST.get('payment_amount', '').strip()
-                try:
-                    pay_amount = round(float(amount_str), 2) if amount_str else float(fc.balance_owing)
-                    if pay_amount <= 0:
-                        error = 'Payment amount must be greater than zero.'
-                    elif pay_amount > float(fc.balance_owing):
-                        error = f'Payment amount ${pay_amount:.2f} exceeds the balance owing (${fc.balance_owing}).'
-                except (ValueError, TypeError):
-                    error = 'Invalid payment amount.'
-                    pay_amount = 0
-
-                from .models import Account as _Account
-                acct, _ = _Account.objects.get_or_create(
-                    club_member=booking.member,
-                    defaults={'balance': 0}
+                pay_amount = amount_str if amount_str else str(fc.balance_owing)
+                result = charging_service.record_payment(
+                    fc, booking, request.user, pay_amount,
+                    method=request.POST.get('payment_method', 'eftpos'),
                 )
-                # Guard: block account-credit payment when balance is insufficient
-                if not error and method == 'credit':
-                    projected = acct.balance - pay_amount
-                    if acct.credit_limit is not None and projected < -acct.credit_limit:
-                        shortfall = abs(projected) - acct.credit_limit
-                        error = (
-                            f'Insufficient account balance. '
-                            f'Current balance: ${acct.balance}, payment: ${pay_amount:.2f}, '
-                            f'credit limit: ${acct.credit_limit}. '
-                            f'Account would be ${shortfall:.2f} short.'
-                        )
-                if not error:
-                    fc.amount_paid = (fc.amount_paid or 0) + pay_amount
-                    fc.payment_method = method
-                    if fc.paid_at is None:
-                        fc.paid_at = timezone.now()  # record first payment timestamp
-                    fc.save(update_fields=['payment_method', 'paid_at', 'total_charge', 'amount_paid'])
-                    if pay_amount:
-                        AccountTransaction.objects.create(
-                            account=acct,
-                            transaction_type='flight',
-                            direction='debit',
-                            amount=pay_amount,
-                            description=f'Flight {booking.aircraft.registration} {booking.scheduled_start.date()}'
-                                        + (f' (partial — ${fc.balance_owing:.2f} remaining)' if fc.is_partially_paid else ''),
-                            flight_completion=fc,
-                            payment_method=method,
-                            created_by=request.user,
-                        )
-                        if method == 'credit':
-                            acct.apply_transaction(pay_amount, 'debit')
-                    if fc.is_paid:
-                        success = 'Payment recorded — fully settled.'
-                    else:
-                        success = f'Partial payment of ${pay_amount:.2f} recorded. Balance owing: ${fc.balance_owing:.2f}.'
+                if result.ok:
+                    success = result.data['message']
+                else:
+                    error = result.error
 
         is_inline = request.POST.get('inline') == '1' or request.GET.get('inline') == '1'
         if error:
@@ -1899,6 +1855,11 @@ def booking_detail(request, club_slug, booking_id):
                           not booking.declaration.is_draft
                           if requires_decl else False)
 
+    # Eligibility check — shown in the depart section so staff can see issues before letting a member fly
+    eligibility = None
+    if booking.status in ('confirmed', 'pending') and booking.member:
+        eligibility = qualification_service.check_eligibility(booking)
+
     # Previous meter readings for this aircraft — used by the gap-detection JS in the check-in form
     from django.db.models import Q as _Q
     _prev_fc = (FlightCompletion.objects
@@ -1928,6 +1889,7 @@ def booking_detail(request, club_slug, booking_id):
         'flight_types': flight_types,
         'requires_decl': requires_decl,
         'has_submitted_decl': has_submitted_decl,
+        'eligibility': eligibility,
         'error': error,
         'success': success,
         'prev_hobbs_end': prev_hobbs_end,
@@ -2675,7 +2637,28 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
     fuel_rates = FuelSurchargeRate.objects.filter(aircraft=ac).order_by('-effective_from')
     all_surcharge_types = AircraftSurchargeType.objects.filter(club=club)
     assigned_surcharge_ids = set(ac.surcharges.values_list('id', flat=True))
-    maintenance_items = AircraftMaintenanceItem.objects.filter(aircraft=ac).order_by('urgency', 'due_date')
+    maintenance_items = list(AircraftMaintenanceItem.objects.filter(aircraft=ac).order_by('urgency', 'due_date'))
+
+    # Compute progress percentage for each maintenance item and attach as a dynamic attribute.
+    # Priority: date-based interval if both last_completed_date and due_date are set; else hours-based.
+    _latest_meters = (FlightCompletion.objects
+                      .filter(booking__aircraft=ac, booking__club=club)
+                      .exclude(hobbs_end__isnull=True)
+                      .order_by('-booking__arrived_at', '-created_at')
+                      .values('hobbs_end').first())
+    _current_hobbs = float(_latest_meters['hobbs_end']) if _latest_meters else None
+    _today = date.today()
+    for _m in maintenance_items:
+        _m.progress_pct = None
+        if _m.last_completed_date and _m.due_date:
+            _total = max(1, (_m.due_date - _m.last_completed_date).days)
+            _elapsed = (_today - _m.last_completed_date).days
+            _m.progress_pct = min(100, max(0, round(_elapsed / _total * 100)))
+        elif _m.last_completed_hours is not None and _m.due_hours is not None and _current_hobbs is not None:
+            _total_h = float(_m.due_hours - _m.last_completed_hours)
+            if _total_h > 0:
+                _elapsed_h = _current_hobbs - float(_m.last_completed_hours)
+                _m.progress_pct = min(100, max(0, round(_elapsed_h / _total_h * 100)))
     flight_types = FlightType.objects.filter(club=club, is_billable=True)
     aircraft_blockout_types = BlockOutType.objects.filter(club=club, target='aircraft')
 

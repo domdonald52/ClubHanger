@@ -112,6 +112,21 @@ class ClubConfig(models.Model):
     theme_weekend = models.CharField(max_length=7, default='#f0f9ff', help_text="Weekend shading in search")
     theme_atypical = models.CharField(max_length=7, default='#f1f5f9', help_text="Outside-typical-hours shading")
 
+    # ── Compliance / eligibility ─────────────────────────────────────────────
+    bfr_interval_months   = models.PositiveIntegerField(default=24,
+                                                         help_text="Flight Review required every N months (club policy)")
+    medical_warning_days  = models.PositiveIntegerField(default=30,
+                                                         help_text="Warn when a medical expires within this many days")
+    recency_warning_days  = models.PositiveIntegerField(default=90,
+                                                         help_text="Warn when a member hasn't flown an aircraft type in this many days (solo/private flights)")
+    # Medical validity periods (months) — editable so regulatory changes don't require a code deploy
+    medical_class1_under40 = models.PositiveIntegerField(default=12)
+    medical_class1_over40  = models.PositiveIntegerField(default=6)
+    medical_class2_under40 = models.PositiveIntegerField(default=24)
+    medical_class2_over40  = models.PositiveIntegerField(default=12)
+    medical_class3_under40 = models.PositiveIntegerField(default=60)
+    medical_class3_over40  = models.PositiveIntegerField(default=24)
+
     # ── Billing ──────────────────────────────────────────────────────────────
     billing_name    = models.CharField(max_length=200, blank=True,
                                        help_text="Legal name on invoices, e.g. 'Wellington Aero Club Inc.'")

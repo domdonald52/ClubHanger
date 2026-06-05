@@ -66,6 +66,7 @@
             {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
             {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
             {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
+            {% if now_px %}<div class="now-line" style="left:{{ now_px }}px;"></div>{% endif %}
           </div>
         </div>
       {% endfor %}
@@ -88,6 +89,7 @@
             {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
             {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
             {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
+            {% if now_px %}<div class="now-line" style="left:{{ now_px }}px;"></div>{% endif %}
           </div>
         </div>
       {% endfor %}
@@ -363,6 +365,8 @@
   .tick{position:absolute;top:0;height:26px;border-left:1px solid #eef1f4}
   .tick span{position:absolute;top:6px;left:4px;font-size:.63rem;color:#8a93a0;white-space:nowrap}
   .gridline{position:absolute;top:0;bottom:0;border-left:1px solid #f1f3f5;pointer-events:none}
+  .now-line{position:absolute;top:0;bottom:0;width:2px;background:#e03131;z-index:9;pointer-events:none;opacity:.85;}
+  .now-line::before{content:'';position:absolute;top:-3px;left:-4px;width:10px;height:10px;border-radius:50%;background:#e03131;}
   .band{position:absolute;top:0;bottom:0;opacity:.28;z-index:1;pointer-events:none;border-left:1px solid rgba(0,0,0,.15);border-right:1px solid rgba(0,0,0,.15)}
   .band-soft{opacity:.14;border-left:2px dashed rgba(0,0,0,.2);border-right:2px dashed rgba(0,0,0,.2)}
   .roster-badge{font-size:.65rem;flex-shrink:0}
