@@ -241,6 +241,7 @@
     updateMemberNotice();
     conflictNotice.hidden = true;
     conflictNotice.innerHTML = "";
+    if (instrConflictNotice) instrConflictNotice.hidden = true;
     modal.hidden = false;
     removePreview();
     previewEl = document.createElement("div");
@@ -539,6 +540,28 @@
   fStart.addEventListener("input", updatePreview);
   fDuration.addEventListener("input", updatePreview);
   fAircraft.addEventListener("change", updatePreview);
+
+  // Instructor availability — warn if the selected instructor already has a booking at this time
+  const instrConflictNotice = document.getElementById("m-instructor-conflict");
+  function checkInstructorConflict() {
+    if (!instrConflictNotice) return;
+    const instrId = fInstructor.value;
+    if (!instrId || !fStart.value || !fDuration.value) { instrConflictNotice.hidden = true; return; }
+    const instrTrack = document.querySelector(`.track[data-row-type="instructor"][data-resource-id="${instrId}"]`);
+    if (!instrTrack) { instrConflictNotice.hidden = true; return; }
+    const startDate = new Date(fStart.value);
+    const leftPx = (startDate.getTime() - dayStart.getTime()) / 60000 * PX;
+    const widthPx = (parseInt(fDuration.value) || 0) * PX;
+    const editId = fId.value || null;
+    if (overlapsInTrack(instrTrack, leftPx, widthPx, editId)) {
+      instrConflictNotice.hidden = false;
+    } else {
+      instrConflictNotice.hidden = true;
+    }
+  }
+  fInstructor.addEventListener("change", checkInstructorConflict);
+  fStart.addEventListener("input", checkInstructorConflict);
+  fDuration.addEventListener("input", checkInstructorConflict);
 
   function isOutsideTypical(startDate, durationMin) {
     const typStart = cfg.typicalStart.split(":").map(Number);

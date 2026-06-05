@@ -28,7 +28,7 @@
         <span style="color:#8a93a0;font-size:.82rem;">({{ booking.scheduled_start|timesince:booking.scheduled_end }} scheduled)</span>
       </div>
       {% if booking.departed_at %}
-      <div class="bcard-row"><span class="bl">Departed</span>{{ booking.departed_at|date:"H:i" }}
+      <div class="bcard-row"><span class="bl">Checked out</span>{{ booking.departed_at|date:"H:i" }}
         {% if booking.departed_without_declaration %}<span class="warn-chip">No declaration — {{ booking.departed_without_declaration_reason }}</span>{% endif %}
       </div>
       {% endif %}
@@ -99,20 +99,23 @@
   </div>
   {% endif %}
 
-  <!-- ── CONFIRMED: Depart ── -->
+  <!-- ── CONFIRMED: Check out ── -->
   {% if booking.status == 'confirmed' %}
   <div class="section">
-    <h2 class="sh2">Depart</h2>
+    <h2 class="sh2">Check out</h2>
 
     {% if eligibility %}
-    <div class="eligibility-panel">
-      {% for item in eligibility.items %}
-      <div class="elig-row elig-{{ item.severity }}">
-        <span class="elig-icon">{% if item.severity == 'ok' %}✓{% elif item.severity == 'warn' %}⚠{% elif item.severity == 'block' %}✗{% else %}i{% endif %}</span>
-        <span class="elig-label">{{ item.label }}</span>
-        <span class="elig-msg">{{ item.message }}</span>
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8a93a0;margin-bottom:.35rem;">Compliance checks</div>
+      <div class="eligibility-panel">
+        {% for item in eligibility.items %}
+        <div class="elig-row elig-{{ item.severity }}">
+          <span class="elig-icon">{% if item.severity == 'ok' %}✓{% elif item.severity == 'warn' %}⚠{% elif item.severity == 'block' %}✗{% else %}i{% endif %}</span>
+          <span class="elig-label">{{ item.label }}</span>
+          <span class="elig-msg">{{ item.message }}</span>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
     </div>
     {% endif %}
 
@@ -130,15 +133,24 @@
                placeholder="e.g. Short local circuit, pilot briefed verbally">
       </label>
       {% endif %}
-      <button type="submit" class="btn">Mark as Departed</button>
+      {% if eligibility and eligibility.has_blocks %}
+      <div class="notice warn" style="margin-bottom:.8rem;">
+        One or more compliance checks failed. Provide an override reason to proceed.
+      </div>
+      <label class="flabel" style="max-width:480px;">Override reason <span class="req">*</span>
+        <input type="text" name="eligibility_override_reason" class="finput" required
+               placeholder="e.g. Flying with instructor, emergency crew duty…">
+      </label>
+      {% endif %}
+      <button type="submit" class="btn">Check out</button>
     </form>
   </div>
   {% endif %}
 
-  <!-- ── DEPARTED: Record Return ── -->
+  <!-- ── CHECKED OUT: Check in ── -->
   {% if booking.status == 'departed' %}
   <div class="section">
-    <h2 class="sh2">Record return</h2>
+    <h2 class="sh2">Check in</h2>
     <form method="post" id="checkin-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="checkin">
@@ -226,7 +238,7 @@
         </label>
       </details>
 
-      <button type="submit" class="btn" style="margin-top:.8rem;">Record return</button>
+      <button type="submit" class="btn" style="margin-top:.8rem;">Check in</button>
     </form>
   </div>
   {% endif %}

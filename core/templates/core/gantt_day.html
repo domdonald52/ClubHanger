@@ -24,8 +24,8 @@
   <div class="legend">
     <span><i class="dot confirmed"></i> Confirmed</span>
     <span><i class="dot pending"></i> Pending</span>
-    <span><i class="dot departed"></i> Departed</span>
-    <span><i class="dot returned"></i> Returned</span>
+    <span><i class="dot departed"></i> Checked out</span>
+    <span><i class="dot returned"></i> Checked in</span>
     <span><i class="dot completed-paid"></i> Completed</span>
     {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
   </div>
@@ -39,7 +39,6 @@
           {% for tick in ticks %}
             <div class="tick" style="left: {{ tick.left }}px;"><span>{{ tick.label }}</span></div>
           {% endfor %}
-          {% if now_px %}<div class="now-line" style="left:{{ now_px }}px;"></div>{% endif %}
         </div>
       </div>
 
@@ -61,14 +60,11 @@
             {% else %}
               {% if row.on_roster is True %}<span class="roster-badge on" title="On roster today">●</span>{% endif %}
             {% endif %}
-            {% if row.has_hard_blockout %}<span class="bo-badge hard" title="Has hard block-out today">⊘</span>{% endif %}
-            {% if row.has_soft_blockout %}<span class="bo-badge soft" title="Has soft advisory today">⚡</span>{% endif %}
           </div>
           <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="instructor" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true" data-ghost-reason="{{ row.ghost_reason }}"{% endif %}>
             {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
             {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
             {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
-            {% if now_px %}<div class="now-line" style="left:{{ now_px }}px;"></div>{% endif %}
           </div>
         </div>
       {% endfor %}
@@ -84,18 +80,16 @@
             <span class="row-name">{{ row.label }}</span>
             {% if row.ghost_reason == 'retired' %}
               <span class="ghost-badge" title="Aircraft retired — bookings need reassignment">Retired</span>
-            {% else %}
-              {% if row.has_blockout %}<span class="bo-badge hard" title="Has block-out today">⊘</span>{% endif %}
             {% endif %}
           </div>
           <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="aircraft" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true"{% endif %}>
             {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
             {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
             {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
-            {% if now_px %}<div class="now-line" style="left:{{ now_px }}px;"></div>{% endif %}
           </div>
         </div>
       {% endfor %}
+      {% if now_px %}<div id="now-overlay" style="left:calc(130px + {{ now_px }}px)"></div>{% endif %}
     </div>
   </div>
 </div>
@@ -183,6 +177,9 @@
         <label>Aircraft<select id="m-aircraft"></select></label>
         <label id="m-instructor-label">Instructor<select id="m-instructor"><option value="">— none —</option></select></label>
       </div>
+      <div id="m-instructor-conflict" hidden style="background:#fff8e6;border:1px solid #fcd34d;border-radius:6px;padding:.4rem .65rem;font-size:.8rem;color:#92400e;margin-top:-.3rem;">
+        ⚠ This instructor already has a booking at this time
+      </div>
       <div class="two">
         <label>Start<input type="datetime-local" id="m-start"></label>
         <label>Duration (min)<input type="number" id="m-duration" step="{{ slot_minutes }}" min="{{ slot_minutes }}"></label>
@@ -239,7 +236,7 @@
       <span style="flex:1"></span>
       <button class="cbtn danger" id="m-delete" type="button" hidden>Cancel booking</button>
       <button class="cbtn" id="m-confirm" type="button" hidden style="background:var(--confirmed);color:#fff;border-color:var(--confirmed);">Confirm booking</button>
-      <button class="cbtn" id="m-depart" type="button" hidden style="background:var(--departed);color:#fff;border-color:var(--departed);">Mark Departed</button>
+      <button class="cbtn" id="m-depart" type="button" hidden style="background:var(--departed);color:#fff;border-color:var(--departed);">Check out</button>
       <button class="cbtn" id="m-checkin-btn" type="button" hidden style="background:var(--primary);color:#fff;border-color:var(--primary);">Record return</button>
       <a class="cbtn" id="m-charges-link" href="#" hidden style="background:#6b7280;color:#fff;border-color:#6b7280;text-decoration:none;">Charges →</a>
       <button class="cbtn primary" id="m-save" type="button">Save</button>
@@ -342,7 +339,7 @@
   .dot.departed{background:var(--departed)}.dot.returned{background:var(--returned)}.dot.completed-paid{background:var(--completed-paid)}
   .dot.confirmed{background:var(--confirmed)}.dot.pending{background:var(--pending)}
   .grid-scroll{overflow-x:auto;border:1px solid #e3e6ea;border-radius:10px;background:#fff}
-  .grid{min-width:max-content}
+  .grid{min-width:max-content;position:relative;}
   .grid-row{display:flex;align-items:stretch;border-bottom:1px solid #eef1f4}
   .grid-row:last-child{border-bottom:0}
   .row-label{flex:0 0 130px;width:130px;padding:.35rem .55rem;font-size:.76rem;font-weight:550;color:#2b333d;background:#fafbfc;border-right:1px solid #e3e6ea;position:sticky;left:0;z-index:3;display:flex;align-items:center;gap:.2rem;flex-wrap:nowrap;overflow:hidden;}
@@ -373,8 +370,8 @@
   .tick{position:absolute;top:0;height:26px;border-left:1px solid #eef1f4}
   .tick span{position:absolute;top:6px;left:4px;font-size:.63rem;color:#8a93a0;white-space:nowrap}
   .gridline{position:absolute;top:0;bottom:0;border-left:1px solid #f1f3f5;pointer-events:none}
-  .now-line{position:absolute;top:0;bottom:0;width:2px;background:#e03131;z-index:9;pointer-events:none;}
-  .axis .now-line::after{content:'';position:absolute;bottom:-7px;left:-5px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #e03131;}
+  #now-overlay{position:absolute;top:0;bottom:0;width:1px;background:#e03131;z-index:2;pointer-events:none;}
+  #now-overlay::before{content:'';position:absolute;top:17px;left:-5px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #e03131;}
   .band{position:absolute;top:0;bottom:0;opacity:.28;z-index:1;pointer-events:none;border-left:1px solid rgba(0,0,0,.15);border-right:1px solid rgba(0,0,0,.15)}
   .band-soft{opacity:.14;border-left:2px dashed rgba(0,0,0,.2);border-right:2px dashed rgba(0,0,0,.2)}
   .roster-badge{font-size:.65rem;flex-shrink:0}
@@ -441,4 +438,23 @@
 </div>
 
 <script src="{% static 'core/gantt.js' %}"></script>
+{% if now_px %}
+<script>
+(function() {
+  const overlay = document.getElementById('now-overlay');
+  if (!overlay) return;
+  const dayStart = new Date("{{ day_start_iso }}");
+  const pxPerMin = {{ px_per_min }};
+  const totalMins = {{ total_minutes }};
+  function update() {
+    const diffMin = (new Date() - dayStart) / 60000;
+    if (diffMin < 0 || diffMin > totalMins) { overlay.style.visibility = 'hidden'; return; }
+    overlay.style.visibility = '';
+    overlay.style.left = (130 + Math.round(diffMin * pxPerMin)) + 'px';
+  }
+  update();
+  setInterval(update, 30000);
+})();
+</script>
+{% endif %}
 {% endblock %}

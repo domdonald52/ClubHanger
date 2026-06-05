@@ -1592,10 +1592,16 @@ def booking_detail(request, club_slug, booking_id):
 
         elif action == 'depart' and booking.status == 'confirmed':
             no_decl_reason = request.POST.get('no_declaration_reason', '').strip()
+            elig_override_reason = request.POST.get('eligibility_override_reason', '').strip()
             requires_decl = booking.flight_type.requires_declaration
             has_decl = hasattr(booking, 'declaration') and not booking.declaration.is_draft
+            # Run eligibility to check for blocks (POST-side validation mirrors the GET-side display)
+            _elig = qualification_service.check_eligibility(booking) if booking.member else None
+            has_elig_blocks = _elig.has_blocks if _elig else False
             if requires_decl and not has_decl and not no_decl_reason:
                 error = 'This flight type requires a departure declaration. Provide a reason to override.'
+            elif has_elig_blocks and not elig_override_reason:
+                error = 'One or more compliance checks failed. Provide an override reason to proceed.'
             else:
                 booking.status = 'departed'
                 booking.departed_at = timezone.now()
@@ -1613,8 +1619,9 @@ def booking_detail(request, club_slug, booking_id):
                         'fuel_surcharge_rate_snapshot': fuel_rate.rate if fuel_rate else None,
                     }
                 )
-                _audit(booking, request.user, 'departed')
-                success = 'Booking marked as departed.'
+                audit_notes = f'Compliance override: {elig_override_reason}' if elig_override_reason else None
+                _audit(booking, request.user, 'departed', notes=audit_notes)
+                success = 'Checked out.'
 
         elif action == 'checkin' and booking.status == 'departed':
             outcome = request.POST.get('outcome', 'completed')
