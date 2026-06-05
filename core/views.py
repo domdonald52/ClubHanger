@@ -126,7 +126,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         club=club,
         scheduled_start__gte=day_start,
         scheduled_start__lt=day_end + timedelta(days=1)
-    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type')
+    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'flight_completion')
     
     # Pixel geometry for absolute-positioned pills
     px_per_min = float(request.GET.get('zoom') or 2)
@@ -212,6 +212,10 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'flight_type_name': b.flight_type.name if b.flight_type else '',
             'member_not_current': b.member is not None and not b.member.is_current,
             'member_standing': b.member.standing if b.member else '',
+            'records_hobbs':      b.aircraft.records_hobbs      if b.aircraft else False,
+            'records_tacho':      b.aircraft.records_tacho      if b.aircraft else False,
+            'records_airswitch':  b.aircraft.records_airswitch  if b.aircraft else False,
+            'paid': (getattr(getattr(b, 'flight_completion', None), 'paid_at', None) is not None),
         }
 
     # Apply filters — suppress when arriving via booking deep-link (?book=1) because
@@ -562,6 +566,137 @@ def reschedule_booking(request, booking_id):
         return JsonResponse({'error': str(e)}, status=400)
 
 
+def _credential_checks(booking):
+    """
+    Return a list of {label, status ('ok'|'warn'|'info'), detail} for the
+    booking's member + flight type. Used at confirmation time.
+    """
+    from datetime import date as _d
+    from django.db.models import Q as _Q
+
+    member = booking.member
+    ft = booking.flight_type
+    today = _d.today()
+    creds = member.credentials.all()
+
+    LICENCE_TYPES = ('ppl', 'cpl', 'atpl', 'instr_c', 'instr_b', 'instr_a', 'examiner')
+    MEDICAL_TYPES  = ('medical_c1', 'medical_c2', 'medical_c3', 'dlr9')
+    SOLO_MEDICAL   = ('medical_c1', 'medical_c2', 'dlr9')  # Class 2+ for solo/private
+
+    def latest_valid(*types):
+        return (creds
+                .filter(credential_type__in=types)
+                .filter(_Q(expiry_date__isnull=True) | _Q(expiry_date__gte=today))
+                .order_by('-expiry_date')
+                .first())
+
+    checks = []
+
+    # ── Medical ──────────────────────────────────────────────────────────────
+    med = latest_valid(*MEDICAL_TYPES)
+    if not med:
+        checks.append({'label': 'Medical certificate',
+                       'status': 'warn',
+                       'detail': 'No current medical certificate on record'})
+    elif ft.is_solo and med.credential_type == 'medical_c3':
+        checks.append({'label': 'Medical certificate',
+                       'status': 'warn',
+                       'detail': f'Class 3 medical only — Class 2 or better is required for private solo flying'})
+    else:
+        exp = f', valid to {med.expiry_date}' if med.expiry_date else ''
+        checks.append({'label': 'Medical certificate', 'status': 'ok',
+                       'detail': f'{med.display_name}{exp}'})
+
+    if ft.is_solo:
+        # ── Pilot licence ─────────────────────────────────────────────────────
+        licence = latest_valid(*LICENCE_TYPES)
+        if not licence:
+            checks.append({'label': 'Pilot licence',
+                           'status': 'warn',
+                           'detail': 'No PPL or higher licence on record'})
+        else:
+            checks.append({'label': 'Pilot licence', 'status': 'ok',
+                           'detail': licence.display_name})
+
+        # ── Flight Review (BFR) — every 24 months ────────────────────────────
+        fr = latest_valid('fr')
+        if not fr:
+            checks.append({'label': 'Flight Review (BFR)',
+                           'status': 'warn',
+                           'detail': 'No current Flight Review on record — required every 24 months for PPL/CPL/ATPL'})
+        else:
+            exp = f', valid to {fr.expiry_date}' if fr.expiry_date else ''
+            checks.append({'label': 'Flight Review (BFR)', 'status': 'ok',
+                           'detail': f'Current{exp}'})
+
+    # ── Age ───────────────────────────────────────────────────────────────────
+    if ft.is_solo:
+        if member.date_of_birth:
+            age = (today - member.date_of_birth).days // 365
+            # NZ CAA: solo minimum 16, PPL minimum 17
+            min_age = 16 if ft.is_training else 17
+            if age < min_age:
+                checks.append({'label': 'Minimum age',
+                               'status': 'warn',
+                               'detail': f'Member is {age} years old — minimum is {min_age} for this flight type'})
+            else:
+                checks.append({'label': 'Minimum age', 'status': 'ok',
+                               'detail': f'Age {age} — meets minimum of {min_age}'})
+        else:
+            checks.append({'label': 'Minimum age', 'status': 'info',
+                           'detail': 'Date of birth not recorded — cannot verify minimum age requirement'})
+
+    return checks
+
+
+@login_required
+def prev_readings_api(request, booking_id):
+    """Return the last recorded meter end readings for the aircraft on this booking."""
+    booking = get_object_or_404(Booking, id=booking_id)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=booking.club)
+    except ClubMember.DoesNotExist:
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+    if not (actor.is_admin or actor.is_instructor):
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+
+    from django.db.models import Q as _Q
+    prev = (FlightCompletion.objects
+            .filter(booking__aircraft=booking.aircraft, booking__club=booking.club)
+            .exclude(booking=booking)
+            .filter(_Q(hobbs_end__isnull=False) | _Q(tacho_end__isnull=False) | _Q(airswitch_end__isnull=False))
+            .order_by('-booking__arrived_at', '-created_at')
+            .first())
+    if not prev:
+        return JsonResponse({})
+    return JsonResponse({
+        'hobbs_end':     float(prev.hobbs_end)     if prev.hobbs_end     is not None else None,
+        'tacho_end':     float(prev.tacho_end)     if prev.tacho_end     is not None else None,
+        'airswitch_end': float(prev.airswitch_end) if prev.airswitch_end is not None else None,
+    })
+
+
+@login_required
+def credential_check_api(request, booking_id):
+    """Pre-confirmation credential check for staff."""
+    booking = get_object_or_404(Booking, id=booking_id)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=booking.club)
+    except ClubMember.DoesNotExist:
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+    if not (actor.is_admin or actor.is_instructor):
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+
+    checks = _credential_checks(booking)
+    return JsonResponse({
+        'member': booking.member.user.get_full_name(),
+        'flight_type': booking.flight_type.name,
+        'is_solo': booking.flight_type.is_solo,
+        'checks': checks,
+        'has_warnings': any(c['status'] == 'warn' for c in checks),
+    })
+
+
 @login_required
 @require_POST
 def confirm_booking(request, booking_id):
@@ -582,6 +717,156 @@ def confirm_booking(request, booking_id):
     booking.save()
     
     return JsonResponse({'success': True})
+
+
+@login_required
+@require_POST
+def depart_booking(request, booking_id):
+    from .models import FlightCompletion, FuelSurchargeRate
+    booking = get_object_or_404(Booking, id=booking_id)
+    club = booking.club
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+    is_own = (booking.member.user == request.user)
+    if not (actor.is_admin or actor.is_instructor or is_own):
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+    if booking.status != 'confirmed':
+        return JsonResponse({'error': 'Booking is not confirmed'}, status=400)
+
+    no_decl_reason = request.POST.get('no_declaration_reason', '').strip()
+    requires_decl = booking.flight_type.requires_declaration
+    has_decl = hasattr(booking, 'declaration') and not booking.declaration.is_draft
+    if requires_decl and not has_decl and not no_decl_reason:
+        return JsonResponse({'error': 'Declaration required', 'needs_reason': True}, status=400)
+
+    booking.status = 'departed'
+    booking.departed_at = timezone.now()
+    if requires_decl and not has_decl:
+        booking.departed_without_declaration = True
+        booking.departed_without_declaration_reason = no_decl_reason
+    booking.save()
+
+    fuel_rate = FuelSurchargeRate.current_rate(club, booking.aircraft)
+    FlightCompletion.objects.get_or_create(
+        booking=booking,
+        defaults={
+            'logged_by': request.user,
+            'fuel_surcharge_rate_snapshot': fuel_rate.rate if fuel_rate else None,
+        }
+    )
+    _audit(booking, request.user, 'departed')
+    return JsonResponse({'success': True, 'status': 'departed'})
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def checkin_booking(request, booking_id):
+    from .models import FlightCompletion, FlightChargeItem, ChargeRate
+    booking = get_object_or_404(Booking, id=booking_id)
+    club = booking.club
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+    if not (actor.is_admin or actor.is_instructor):
+        return JsonResponse({'error': 'Instructors only'}, status=403)
+    if booking.status != 'departed':
+        return JsonResponse({'error': 'Booking has not departed'}, status=400)
+
+    outcome = request.POST.get('outcome', 'completed')
+    outcome_notes = request.POST.get('outcome_notes', '').strip()
+    hobbs_start      = request.POST.get('hobbs_start', '').strip() or None
+    hobbs_end        = request.POST.get('hobbs_end', '').strip() or None
+    tacho_start      = request.POST.get('tacho_start', '').strip() or None
+    tacho_end        = request.POST.get('tacho_end', '').strip() or None
+    airswitch_start  = request.POST.get('airswitch_start', '').strip() or None
+    airswitch_end    = request.POST.get('airswitch_end', '').strip() or None
+
+    ac = booking.aircraft
+    if ac.records_hobbs and (not hobbs_start or not hobbs_end):
+        return JsonResponse({'error': 'Hobbs start and end are required for this aircraft'}, status=400)
+    if ac.records_tacho and (not tacho_start or not tacho_end):
+        return JsonResponse({'error': 'Tacho start and end are required for this aircraft'}, status=400)
+    if ac.records_airswitch and (not airswitch_start or not airswitch_end):
+        return JsonResponse({'error': 'Air switch start and end are required for this aircraft'}, status=400)
+    try:
+        if hobbs_start and hobbs_end and float(hobbs_end) <= float(hobbs_start):
+            return JsonResponse({'error': 'Hobbs end must be greater than start'}, status=400)
+        if tacho_start and tacho_end and float(tacho_end) <= float(tacho_start):
+            return JsonResponse({'error': 'Tacho end must be greater than start'}, status=400)
+        if airswitch_start and airswitch_end and float(airswitch_end) <= float(airswitch_start):
+            return JsonResponse({'error': 'Air switch end must be greater than start'}, status=400)
+    except ValueError:
+        return JsonResponse({'error': 'Invalid meter reading values'}, status=400)
+
+    fc, _ = FlightCompletion.objects.get_or_create(booking=booking, defaults={'logged_by': request.user})
+    fc.outcome          = outcome
+    fc.outcome_notes    = outcome_notes
+    fc.hobbs_start      = hobbs_start
+    fc.hobbs_end        = hobbs_end
+    fc.tacho_start      = tacho_start
+    fc.tacho_end        = tacho_end
+    fc.airswitch_start  = airswitch_start
+    fc.airswitch_end    = airswitch_end
+    fc.logged_by = request.user
+
+    method = booking.aircraft.total_time_method
+    try:
+        if method == 'hobbs' and hobbs_start and hobbs_end:
+            fc.actual_flight_hours = round(float(hobbs_end) - float(hobbs_start), 2)
+        elif method in ('tacho', 'tacho_less_5') and tacho_start and tacho_end:
+            h = float(tacho_end) - float(tacho_start)
+            fc.actual_flight_hours = round(h * 0.95, 2) if method == 'tacho_less_5' else round(h, 2)
+        elif method == 'airswitch' and airswitch_start and airswitch_end:
+            fc.actual_flight_hours = round(float(airswitch_end) - float(airswitch_start), 2)
+    except (ValueError, TypeError):
+        pass
+
+    if booking.instructor:
+        instr_member = ClubMember.objects.filter(user=booking.instructor, club=club).first()
+        if instr_member and instr_member.instructor_grade:
+            fc.instructor_rate_snapshot = instr_member.instructor_grade.hourly_rate
+
+    fc.save()
+    booking.status = 'completed'
+    booking.arrived_at = timezone.now()
+    booking.save(update_fields=['status', 'arrived_at'])
+
+    hours = fc.actual_flight_hours
+    hire_rate = ChargeRate.objects.filter(
+        aircraft=booking.aircraft, flight_type=booking.flight_type,
+        time_method=booking.aircraft.total_time_method
+    ).first()
+    if hire_rate and hours:
+        FlightChargeItem.objects.get_or_create(
+            flight_completion=fc, item_type='hire',
+            defaults={'description': f'Aircraft hire — {booking.aircraft.registration}',
+                      'amount': round(float(hire_rate.amount) * float(hours), 2)}
+        )
+    if fc.fuel_surcharge_rate_snapshot and hours:
+        FlightChargeItem.objects.get_or_create(
+            flight_completion=fc, item_type='fuel',
+            defaults={'description': 'Fuel levy',
+                      'amount': round(float(fc.fuel_surcharge_rate_snapshot) * float(hours), 2)}
+        )
+    if fc.instructor_rate_snapshot and hours and booking.instructor:
+        FlightChargeItem.objects.get_or_create(
+            flight_completion=fc, item_type='instructor',
+            defaults={'description': f'Instructor fee — {booking.instructor.get_full_name()}',
+                      'amount': round(float(fc.instructor_rate_snapshot) * float(hours), 2)}
+        )
+    for sc in booking.aircraft.surcharges.all():
+        FlightChargeItem.objects.get_or_create(
+            flight_completion=fc, item_type='surcharge',
+            defaults={'description': sc.name, 'amount': sc.amount}
+        )
+    _update_total(fc)
+    _audit(booking, request.user, 'completed')
+    return JsonResponse({'success': True, 'status': 'completed',
+                         'charges_url': f'/manage/{club.slug}/bookings/{booking.id}/'})
 
 
 @login_required
@@ -660,6 +945,10 @@ def create_booking(request):
 
         start_dt = _aware(datetime.fromisoformat(start_time))
         end_dt = start_dt + timedelta(minutes=duration)
+
+        # Block bookings in the past — admins may override for manual backdating
+        if start_dt < timezone.now() and not (actor.is_admin or actor.is_instructor):
+            return JsonResponse({'error': 'Bookings cannot be made in the past'}, status=400)
 
         # Aircraft conflict
         if Booking.objects.filter(
@@ -893,6 +1182,7 @@ def availability_search(request, club_slug):
             s['start_iso'] = s['start'].isoformat()
 
         by_day = {}
+        _now = timezone.now()
 
         if is_solo:
             # Aircraft-only spans; no instructor.
@@ -904,15 +1194,20 @@ def availability_search(request, club_slug):
             )
             for entry in raw:
                 d = entry['date']; ac = entry['aircraft']
+                future_spans = []
                 for s in entry['spans']:
+                    if s['start'] <= _now:
+                        continue  # skip slots already started or in the past
                     st = timezone.localtime(s['start']); en = timezone.localtime(s['end'])
                     mark_span(s, st, en)
                     s['aircraft_id'] = ac.id
                     s['instructor_id'] = ''  # solo
-                by_day.setdefault(d, []).append({
-                    'aircraft': ac,
-                    'instructor_rows': [{'instructor': None, 'instructor_name': 'Solo (no instructor)', 'spans': entry['spans']}],
-                })
+                    future_spans.append(s)
+                if future_spans:
+                    by_day.setdefault(d, []).append({
+                        'aircraft': ac,
+                        'instructor_rows': [{'instructor': None, 'instructor_name': 'Solo (no instructor)', 'spans': future_spans}],
+                    })
         else:
             # Dual: aircraft AND instructor both free.
             from .availability import find_free_spans_with_instructors
@@ -926,17 +1221,23 @@ def availability_search(request, club_slug):
                 instr_rows = []
                 for ir in entry['instructor_rows']:
                     instr = ir['instructor']
+                    future_spans = []
                     for s in ir['spans']:
+                        if s['start'] <= _now:
+                            continue
                         st = timezone.localtime(s['start']); en = timezone.localtime(s['end'])
                         mark_span(s, st, en)
                         s['aircraft_id'] = ac.id
                         s['instructor_id'] = instr.id
-                    instr_rows.append({
-                        'instructor': instr,
-                        'instructor_name': f"{instr.first_name} {instr.last_name}".strip() or instr.username,
-                        'spans': ir['spans'],
-                    })
-                by_day.setdefault(d, []).append({'aircraft': ac, 'instructor_rows': instr_rows})
+                        future_spans.append(s)
+                    if future_spans:
+                        instr_rows.append({
+                            'instructor': instr,
+                            'instructor_name': f"{instr.first_name} {instr.last_name}".strip() or instr.username,
+                            'spans': future_spans,
+                        })
+                if instr_rows:
+                    by_day.setdefault(d, []).append({'aircraft': ac, 'instructor_rows': instr_rows})
 
         results = []
         for d in sorted(by_day.keys()):
@@ -1119,6 +1420,26 @@ def club_settings(request, club_slug):
             from django.shortcuts import redirect as _redirect
             return _redirect('core:club_settings', club_slug=club_slug)
 
+        elif action == 'set_flight_type_flag':
+            ft_id = request.POST.get('ft_id')
+            flag = request.POST.get('ft_flag')
+            value = request.POST.get('ft_value') == '1'
+            allowed = {'is_training', 'is_billable', 'requires_declaration', 'is_solo'}
+            ft = FlightType.objects.filter(club=club, id=ft_id).first()
+            if ft and flag in allowed:
+                setattr(ft, flag, value)
+                ft.save(update_fields=[flag])
+            return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'edit_flight_type':
+            ft_id = request.POST.get('ft_id')
+            ft = FlightType.objects.filter(club=club, id=ft_id).first()
+            if ft:
+                name = request.POST.get('ft_name', '').strip()
+                if name:
+                    ft.name = name
+                    ft.save(update_fields=['name'])
+
         elif action == 'delete_flight_type':
             ft_id = request.POST.get('ft_id')
             ft = FlightType.objects.filter(club=club, id=ft_id).first()
@@ -1147,6 +1468,18 @@ def club_settings(request, club_slug):
                 bt.is_hard = is_hard
                 bt.save(update_fields=['is_hard'])
             return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'edit_blockout_type':
+            bot_id = request.POST.get('bot_id')
+            bt = BlockOutType.objects.filter(club=club, id=bot_id).first()
+            if bt:
+                name = request.POST.get('bot_name', '').strip()
+                color = request.POST.get('bot_color', '').strip()
+                if name:
+                    bt.name = name
+                if color:
+                    bt.color = color
+                bt.save(update_fields=['name', 'color'])
 
         elif action == 'delete_blockout_type':
             bot_id = request.POST.get('bot_id')
@@ -1178,8 +1511,14 @@ def club_settings(request, club_slug):
         elif action == 'edit_instructor_grade':
             ig = InstructorGrade.objects.filter(club=club, id=request.POST.get('ig_id')).first()
             if ig:
+                name = request.POST.get('ig_name', '').strip()
+                if name:
+                    ig.name = name
                 ig.hourly_rate = request.POST.get('ig_rate', ig.hourly_rate)
-                ig.save(update_fields=['hourly_rate'])
+                order = request.POST.get('ig_order', '').strip()
+                if order.isdigit():
+                    ig.display_order = int(order)
+                ig.save(update_fields=['name', 'hourly_rate', 'display_order'])
             return redirect('core:club_settings', club_slug=club_slug)
 
         # ── Aircraft surcharge type management ───────────────────────────────
@@ -1204,8 +1543,12 @@ def club_settings(request, club_slug):
         elif action == 'edit_surcharge_type':
             st = AircraftSurchargeType.objects.filter(club=club, id=request.POST.get('st_id')).first()
             if st:
+                name = request.POST.get('st_name', '').strip()
+                if name:
+                    st.name = name
+                st.description = request.POST.get('st_desc', '').strip()
                 st.amount = request.POST.get('st_amount', st.amount)
-                st.save(update_fields=['amount'])
+                st.save(update_fields=['name', 'description', 'amount'])
             return redirect('core:club_settings', club_slug=club_slug)
 
         else:
@@ -1214,7 +1557,9 @@ def club_settings(request, club_slug):
                 club.name = club_name
                 club.save(update_fields=['name'])
             for field in ['theme_banner', 'theme_primary', 'theme_accent',
-                          'theme_confirmed', 'theme_pending', 'theme_weekend', 'theme_atypical']:
+                          'theme_confirmed', 'theme_pending',
+                          'theme_departed', 'theme_returned', 'theme_completed_paid',
+                          'theme_weekend', 'theme_atypical']:
                 val = request.POST.get(field, '').strip()
                 if val:
                     setattr(config, field, val)
@@ -1248,14 +1593,26 @@ def club_settings(request, club_slug):
         ('theme_accent', 'Accent', config.theme_accent),
         ('theme_confirmed', 'Confirmed booking', config.theme_confirmed),
         ('theme_pending', 'Pending booking', config.theme_pending),
+        ('theme_departed', 'Departed', config.theme_departed),
+        ('theme_returned', 'Returned (awaiting payment)', config.theme_returned),
+        ('theme_completed_paid', 'Completed & paid', config.theme_completed_paid),
         ('theme_weekend', 'Weekend shade', config.theme_weekend),
         ('theme_atypical', 'Outside typical hours', config.theme_atypical),
+    ]
+
+    status_color_fields = [
+        ('theme_confirmed',     'Confirmed',            config.theme_confirmed),
+        ('theme_pending',       'Pending',              config.theme_pending),
+        ('theme_departed',      'Departed',             config.theme_departed),
+        ('theme_returned',      'Returned',             config.theme_returned),
+        ('theme_completed_paid','Completed & paid',     config.theme_completed_paid),
     ]
 
     return render(request, 'core/club_settings.html', {
         'club': club,
         'config': config,
         'color_fields': color_fields,
+        'status_color_fields': status_color_fields,
         'all_blockout_types': BlockOutType.objects.filter(club=club, target='all'),
         'instructor_blockout_types': BlockOutType.objects.filter(club=club, target='instructor'),
         'aircraft_blockout_types': BlockOutType.objects.filter(club=club, target='aircraft'),
@@ -1320,7 +1677,7 @@ def manage_bookings(request, club_slug):
     qs = (Booking.objects
           .filter(club=club)
           .exclude(status='cancelled')
-          .select_related('member__user', 'aircraft', 'instructor', 'flight_type')
+          .select_related('member__user', 'aircraft', 'instructor', 'flight_type', 'flight_completion')
           .order_by('scheduled_start'))
 
     if view == 'conflicts':
@@ -1377,6 +1734,414 @@ def manage_bookings(request, club_slug):
 
 
 @login_required
+@transaction.atomic
+def booking_detail(request, club_slug, booking_id):
+    from .models import (FlightCompletion, FlightChargeItem, FlightLandingEntry,
+                         AccountTransaction, FuelSurchargeRate, ChargeRate, Aerodrome)
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not (actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    booking = get_object_or_404(Booking, club=club, id=booking_id)
+    is_own_booking = (booking.member.user == request.user)
+    # Members can view and depart their own bookings; all other actions require staff
+    if not (actor.is_admin or actor.is_instructor or is_own_booking):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'confirm' and booking.status == 'pending':
+            booking.status = 'confirmed'
+            booking.confirmed_by = request.user
+            booking.confirmed_at = timezone.now()
+            booking.save()
+            _audit(booking, request.user, 'confirmed')
+            success = 'Booking confirmed.'
+
+        elif action == 'depart' and booking.status == 'confirmed':
+            no_decl_reason = request.POST.get('no_declaration_reason', '').strip()
+            requires_decl = booking.flight_type.requires_declaration
+            has_decl = hasattr(booking, 'declaration') and not booking.declaration.is_draft
+            if requires_decl and not has_decl and not no_decl_reason:
+                error = 'This flight type requires a departure declaration. Provide a reason to override.'
+            else:
+                booking.status = 'departed'
+                booking.departed_at = timezone.now()
+                if requires_decl and not has_decl:
+                    booking.departed_without_declaration = True
+                    booking.departed_without_declaration_reason = no_decl_reason
+                # Snapshot fuel rate at departure
+                fuel_rate = FuelSurchargeRate.current_rate(club, booking.aircraft)
+                booking.save()
+                # Store snapshot on a pending FlightCompletion stub
+                FlightCompletion.objects.get_or_create(
+                    booking=booking,
+                    defaults={
+                        'logged_by': request.user,
+                        'fuel_surcharge_rate_snapshot': fuel_rate.rate if fuel_rate else None,
+                    }
+                )
+                _audit(booking, request.user, 'departed')
+                success = 'Booking marked as departed.'
+
+        elif action == 'checkin' and booking.status == 'departed':
+            outcome = request.POST.get('outcome', 'completed')
+            outcome_notes = request.POST.get('outcome_notes', '').strip()
+            hobbs_start      = request.POST.get('hobbs_start', '').strip() or None
+            hobbs_end        = request.POST.get('hobbs_end', '').strip() or None
+            tacho_start      = request.POST.get('tacho_start', '').strip() or None
+            tacho_end        = request.POST.get('tacho_end', '').strip() or None
+            airswitch_start  = request.POST.get('airswitch_start', '').strip() or None
+            airswitch_end    = request.POST.get('airswitch_end', '').strip() or None
+            new_ft_id = request.POST.get('flight_type_id', '').strip()
+            gap_explanation = request.POST.get('gap_explanation', '').strip()
+
+            ac = booking.aircraft
+            if ac.records_hobbs and (not hobbs_start or not hobbs_end):
+                error = 'Hobbs start and end are required for this aircraft.'
+            elif ac.records_tacho and (not tacho_start or not tacho_end):
+                error = 'Tacho start and end are required for this aircraft.'
+            elif ac.records_airswitch and (not airswitch_start or not airswitch_end):
+                error = 'Air switch start and end are required for this aircraft.'
+            elif hobbs_start and hobbs_end:
+                try:
+                    if float(hobbs_end) <= float(hobbs_start):
+                        error = 'Hobbs end must be greater than start.'
+                except ValueError:
+                    error = 'Invalid Hobbs reading.'
+            elif tacho_start and tacho_end:
+                try:
+                    if float(tacho_end) <= float(tacho_start):
+                        error = 'Tacho end must be greater than start.'
+                except ValueError:
+                    error = 'Invalid Tacho reading.'
+            elif airswitch_start and airswitch_end:
+                try:
+                    if float(airswitch_end) <= float(airswitch_start):
+                        error = 'Air switch end must be greater than start.'
+                except ValueError:
+                    error = 'Invalid air switch reading.'
+
+            # Gap detection: compare submitted start against the last recorded end for this aircraft
+            if not error:
+                from django.db.models import Q as _Q
+                prev_fc = (FlightCompletion.objects
+                           .filter(booking__aircraft=ac, booking__club=club)
+                           .exclude(booking=booking)
+                           .filter(_Q(hobbs_end__isnull=False) | _Q(tacho_end__isnull=False) | _Q(airswitch_end__isnull=False))
+                           .order_by('-booking__arrived_at', '-created_at')
+                           .first())
+                _gap_detected = False
+                _gap_label = ''
+                if prev_fc:
+                    try:
+                        if hobbs_start and prev_fc.hobbs_end is not None:
+                            gap_h = float(hobbs_start) - float(prev_fc.hobbs_end)
+                            if gap_h > 0.05:
+                                _gap_detected = True
+                                _gap_label = (f'Hobbs start {hobbs_start} is {gap_h:.1f}h ahead of '
+                                              f'last recorded end ({prev_fc.hobbs_end})')
+                        if not _gap_detected and tacho_start and prev_fc.tacho_end is not None:
+                            gap_t = float(tacho_start) - float(prev_fc.tacho_end)
+                            if gap_t > 0.005:
+                                _gap_detected = True
+                                _gap_label = (f'Tacho start {tacho_start} is {gap_t:.2f} ahead of '
+                                              f'last recorded end ({prev_fc.tacho_end})')
+                        if not _gap_detected and airswitch_start and prev_fc.airswitch_end is not None:
+                            gap_a = float(airswitch_start) - float(prev_fc.airswitch_end)
+                            if gap_a > 0.05:
+                                _gap_detected = True
+                                _gap_label = (f'Air switch start {airswitch_start} is {gap_a:.1f}h ahead of '
+                                              f'last recorded end ({prev_fc.airswitch_end})')
+                    except (TypeError, ValueError):
+                        pass
+                if _gap_detected and not gap_explanation:
+                    error = f'Meter gap detected — {_gap_label}. An explanation is required (see warning below).'
+
+            if not error:
+                fc, _ = FlightCompletion.objects.get_or_create(
+                    booking=booking, defaults={'logged_by': request.user}
+                )
+                fc.outcome = outcome
+                fc.outcome_notes = outcome_notes
+                fc.hobbs_start     = hobbs_start
+                fc.hobbs_end       = hobbs_end
+                fc.tacho_start     = tacho_start
+                fc.tacho_end       = tacho_end
+                fc.airswitch_start = airswitch_start
+                fc.airswitch_end   = airswitch_end
+                fc.logged_by = request.user
+
+                method = booking.aircraft.total_time_method
+                try:
+                    if method == 'hobbs' and hobbs_start and hobbs_end:
+                        fc.actual_flight_hours = float(hobbs_end) - float(hobbs_start)
+                    elif method in ('tacho', 'tacho_less_5') and tacho_start and tacho_end:
+                        hours = float(tacho_end) - float(tacho_start)
+                        fc.actual_flight_hours = round(hours * 0.95, 2) if method == 'tacho_less_5' else hours
+                    elif method == 'airswitch' and airswitch_start and airswitch_end:
+                        fc.actual_flight_hours = float(airswitch_end) - float(airswitch_start)
+                except (ValueError, TypeError):
+                    pass
+
+                if booking.instructor:
+                    instr_member = ClubMember.objects.filter(user=booking.instructor, club=club).first()
+                    if instr_member and instr_member.instructor_grade:
+                        fc.instructor_rate_snapshot = instr_member.instructor_grade.hourly_rate
+
+                if new_ft_id:
+                    new_ft = FlightType.objects.filter(club=club, id=new_ft_id).first()
+                    if new_ft and new_ft != booking.flight_type:
+                        fc.original_flight_type = booking.flight_type
+                        booking.flight_type = new_ft
+                        booking.save(update_fields=['flight_type'])
+
+                if gap_explanation:
+                    fc.meter_gap_note = gap_explanation
+                fc.save()
+                booking.status = 'completed'
+                booking.arrived_at = timezone.now()
+                booking.save(update_fields=['status', 'arrived_at'])
+
+                hours = fc.actual_flight_hours
+                hire_rate = ChargeRate.objects.filter(
+                    aircraft=booking.aircraft, flight_type=booking.flight_type,
+                    time_method=booking.aircraft.total_time_method
+                ).first()
+                if hire_rate and hours:
+                    FlightChargeItem.objects.get_or_create(
+                        flight_completion=fc, item_type='hire',
+                        defaults={'description': f'Aircraft hire — {booking.aircraft.registration}',
+                                  'amount': round(float(hire_rate.amount) * float(hours), 2)}
+                    )
+                if fc.fuel_surcharge_rate_snapshot and hours and not (hire_rate and hire_rate.includes_fuel) and fc.fuel_surcharge_rate_snapshot > 0:
+                    FlightChargeItem.objects.get_or_create(
+                        flight_completion=fc, item_type='fuel',
+                        defaults={'description': 'Fuel charge',
+                                  'amount': round(float(fc.fuel_surcharge_rate_snapshot) * float(hours), 2)}
+                    )
+                if fc.instructor_rate_snapshot and hours and booking.instructor:
+                    FlightChargeItem.objects.get_or_create(
+                        flight_completion=fc, item_type='instructor',
+                        defaults={'description': f'Instructor fee — {booking.instructor.get_full_name()}',
+                                  'amount': round(float(fc.instructor_rate_snapshot) * float(hours), 2)}
+                    )
+                for sc in booking.aircraft.surcharges.all():
+                    FlightChargeItem.objects.get_or_create(
+                        flight_completion=fc, item_type='surcharge',
+                        defaults={'description': sc.name, 'amount': sc.amount}
+                    )
+
+                _audit(booking, request.user, 'completed')
+                success = 'Flight checked in. Review charges below.'
+
+        elif action == 'add_charge' and booking.status == 'completed':
+            fc = getattr(booking, 'flight_completion', None)
+            if fc:
+                item_type = request.POST.get('item_type', 'one_off')
+                description = request.POST.get('description', '').strip()
+                amount = request.POST.get('amount', '').strip()
+                if description and amount:
+                    FlightChargeItem.objects.create(
+                        flight_completion=fc, item_type=item_type,
+                        description=description, amount=amount
+                    )
+                    # Add landing entry if applicable
+                    if item_type == 'landing':
+                        ae_id = request.POST.get('aerodrome_id', '')
+                        ft_id = request.POST.get('fee_type_id', '')
+                        qty = int(request.POST.get('quantity', 1))
+                        unit = request.POST.get('unit_amount', amount)
+                        ae = Aerodrome.objects.filter(club=club, id=ae_id).first() if ae_id else None
+                        from .models import AerodromeFeeType
+                        ft = AerodromeFeeType.objects.filter(id=ft_id).first() if ft_id else None
+                        FlightLandingEntry.objects.create(
+                            flight_completion=fc,
+                            aerodrome=ae,
+                            custom_icao=request.POST.get('custom_icao', '').strip(),
+                            custom_name=request.POST.get('custom_name', '').strip(),
+                            fee_type=ft,
+                            fee_type_name=description,
+                            quantity=qty,
+                            unit_amount=unit,
+                            total_fee=amount,
+                        )
+                    _update_total(fc)
+                success = 'Charge added.'
+
+        elif action == 'delete_charge' and booking.status == 'completed':
+            fc = getattr(booking, 'flight_completion', None)
+            if fc:
+                FlightChargeItem.objects.filter(flight_completion=fc, id=request.POST.get('item_id')).delete()
+                _update_total(fc)
+            success = 'Charge removed.'
+
+        elif action == 'confirm_payment' and booking.status == 'completed':
+            fc = getattr(booking, 'flight_completion', None)
+            if fc and not fc.is_paid:
+                method = request.POST.get('payment_method', 'eftpos')
+                # Accept a specific amount (partial payment supported)
+                amount_str = request.POST.get('payment_amount', '').strip()
+                try:
+                    pay_amount = round(float(amount_str), 2) if amount_str else float(fc.balance_owing)
+                    if pay_amount <= 0:
+                        error = 'Payment amount must be greater than zero.'
+                    elif pay_amount > float(fc.balance_owing):
+                        error = f'Payment amount ${pay_amount:.2f} exceeds the balance owing (${fc.balance_owing}).'
+                except (ValueError, TypeError):
+                    error = 'Invalid payment amount.'
+                    pay_amount = 0
+
+                from .models import Account as _Account
+                acct, _ = _Account.objects.get_or_create(
+                    club_member=booking.member,
+                    defaults={'balance': 0}
+                )
+                # Guard: block account-credit payment when balance is insufficient
+                if not error and method == 'credit':
+                    projected = acct.balance - pay_amount
+                    if acct.credit_limit is not None and projected < -acct.credit_limit:
+                        shortfall = abs(projected) - acct.credit_limit
+                        error = (
+                            f'Insufficient account balance. '
+                            f'Current balance: ${acct.balance}, payment: ${pay_amount:.2f}, '
+                            f'credit limit: ${acct.credit_limit}. '
+                            f'Account would be ${shortfall:.2f} short.'
+                        )
+                if not error:
+                    fc.amount_paid = (fc.amount_paid or 0) + pay_amount
+                    fc.payment_method = method
+                    if fc.paid_at is None:
+                        fc.paid_at = timezone.now()  # record first payment timestamp
+                    fc.save(update_fields=['payment_method', 'paid_at', 'total_charge', 'amount_paid'])
+                    if pay_amount:
+                        AccountTransaction.objects.create(
+                            account=acct,
+                            transaction_type='flight',
+                            direction='debit',
+                            amount=pay_amount,
+                            description=f'Flight {booking.aircraft.registration} {booking.scheduled_start.date()}'
+                                        + (f' (partial — ${fc.balance_owing:.2f} remaining)' if fc.is_partially_paid else ''),
+                            flight_completion=fc,
+                            payment_method=method,
+                            created_by=request.user,
+                        )
+                        if method == 'credit':
+                            acct.apply_transaction(pay_amount, 'debit')
+                    if fc.is_paid:
+                        success = 'Payment recorded — fully settled.'
+                    else:
+                        success = f'Partial payment of ${pay_amount:.2f} recorded. Balance owing: ${fc.balance_owing:.2f}.'
+
+        is_inline = request.POST.get('inline') == '1' or request.GET.get('inline') == '1'
+        if error:
+            pass  # fall through to re-render with error
+        elif success and not error:
+            if is_inline:
+                return redirect(f'{request.path}?inline=1')
+            return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
+
+    is_inline = request.GET.get('inline') == '1'
+
+    # GET — build context
+    fc = getattr(booking, 'flight_completion', None)
+    charge_items = fc.charge_items.all() if fc else []
+    total = fc.total_charge if fc else 0
+    balance_owing = fc.balance_owing if fc else 0
+
+    # Other unpaid/partially-paid flights for this member (for payment warning)
+    if fc:
+        _base = (FlightCompletion.objects
+                 .filter(booking__member=booking.member, booking__club=club)
+                 .exclude(booking=booking)
+                 .select_related('booking__aircraft', 'booking'))
+        other_unpaid_list = list(
+            _base.filter(paid_at__isnull=True, total_charge__gt=0)
+        )
+        other_outstanding_list = list(
+            _base.filter(paid_at__isnull=False).extra(where=['amount_paid < total_charge'])
+        )
+    else:
+        other_unpaid_list = []
+        other_outstanding_list = []
+
+    from decimal import Decimal as _D
+    other_unpaid_total = sum((_D(str(x.total_charge)) for x in other_unpaid_list), _D('0'))
+    other_outstanding_total = sum((_D(str(x.balance_owing)) for x in other_outstanding_list), _D('0'))
+    other_total = other_unpaid_total + other_outstanding_total
+    other_total_count = len(other_unpaid_list) + len(other_outstanding_list)
+    aerodromes = Aerodrome.objects.filter(club=club, is_active=True).prefetch_related('fee_types')
+    flight_types = FlightType.objects.filter(club=club)
+    requires_decl = booking.flight_type.requires_declaration
+    has_submitted_decl = (hasattr(booking, 'declaration') and
+                          not booking.declaration.is_draft
+                          if requires_decl else False)
+
+    # Previous meter readings for this aircraft — used by the gap-detection JS in the check-in form
+    from django.db.models import Q as _Q
+    _prev_fc = (FlightCompletion.objects
+                .filter(booking__aircraft=booking.aircraft, booking__club=club)
+                .exclude(booking=booking)
+                .filter(_Q(hobbs_end__isnull=False) | _Q(tacho_end__isnull=False) | _Q(airswitch_end__isnull=False))
+                .order_by('-booking__arrived_at', '-created_at')
+                .first()) if booking.status == 'departed' else None
+    prev_hobbs_end     = float(_prev_fc.hobbs_end)     if _prev_fc and _prev_fc.hobbs_end     is not None else None
+    prev_tacho_end     = float(_prev_fc.tacho_end)     if _prev_fc and _prev_fc.tacho_end     is not None else None
+    prev_airswitch_end = float(_prev_fc.airswitch_end) if _prev_fc and _prev_fc.airswitch_end is not None else None
+
+    ctx = {
+        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'booking': booking,
+        'fc': fc,
+        'charge_items': charge_items,
+        'total': total,
+        'balance_owing': balance_owing,
+        'other_unpaid_list': other_unpaid_list,
+        'other_outstanding_list': other_outstanding_list,
+        'other_unpaid_total': other_unpaid_total,
+        'other_outstanding_total': other_outstanding_total,
+        'other_total': other_total,
+        'other_total_count': other_total_count,
+        'aerodromes': aerodromes,
+        'flight_types': flight_types,
+        'requires_decl': requires_decl,
+        'has_submitted_decl': has_submitted_decl,
+        'error': error,
+        'success': success,
+        'prev_hobbs_end': prev_hobbs_end,
+        'prev_tacho_end': prev_tacho_end,
+        'prev_airswitch_end': prev_airswitch_end,
+        'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
+        'inline_title': f"Booking — {booking.member.user.get_full_name()} · {booking.aircraft.registration}",
+    }
+    return render(request, 'core/booking_detail.html', ctx)
+
+
+def _inline_redirect(request, view_name, **kwargs):
+    """Redirect back to the same page, preserving ?inline=1 if the request was inline."""
+    from django.urls import reverse
+    url = reverse(view_name, kwargs=kwargs)
+    if request.GET.get('inline') == '1':
+        url += '?inline=1'
+    return redirect(url)
+
+
+def _update_total(fc):
+    from django.db.models import Sum
+    total = fc.charge_items.aggregate(t=Sum('amount'))['t'] or 0
+    fc.total_charge = total
+    fc.save(update_fields=['total_charge'])
+
+
+@login_required
 def manage_member_detail(request, club_slug, member_id):
     club = get_object_or_404(Club, slug=club_slug)
     try:
@@ -1394,7 +2159,7 @@ def manage_member_detail(request, club_slug, member_id):
             if request.FILES.get('avatar'):
                 member.avatar = request.FILES['avatar']
                 member.save(update_fields=['avatar'])
-            return redirect('core:manage_member_detail', club_slug=club_slug, member_id=member_id)
+            return _inline_redirect(request, 'core:manage_member_detail', club_slug=club_slug, member_id=member_id)
         elif action == 'save_contact':
             u = member.user
             u.first_name = request.POST.get('first_name', '').strip()
@@ -1421,34 +2186,159 @@ def manage_member_detail(request, club_slug, member_id):
             member.save()
         elif action == 'save_notes' and actor.is_admin:
             pass  # notes field not yet on model — placeholder
-        return redirect('core:manage_member_detail', club_slug=club_slug, member_id=member_id)
 
-    from .models import MemberCredential
-    from datetime import datetime as _dt, time as _time, date as _date
-    _today_start = timezone.make_aware(_dt.combine(_date.today(), _time.min))
+        elif action in ('add_credential', 'edit_credential') and (actor.is_admin or actor.is_instructor):
+            from .models import MemberCredential
+            cred_type = request.POST.get('credential_type', '').strip()
+            name = request.POST.get('cred_name', '').strip()
+            cert_num = request.POST.get('certificate_number', '').strip()
+            issue_str = request.POST.get('issue_date', '').strip() or None
+            expiry_str = request.POST.get('expiry_date', '').strip() or None
+            notes = request.POST.get('notes', '').strip()
+            if action == 'add_credential' and cred_type:
+                cred = MemberCredential(
+                    club_member=member, credential_type=cred_type, name=name,
+                    certificate_number=cert_num, issue_date=issue_str,
+                    expiry_date=expiry_str, notes=notes, created_by=request.user,
+                )
+                if request.FILES.get('evidence'):
+                    cred.evidence = request.FILES['evidence']
+                cred.save()
+            elif action == 'edit_credential':
+                cred_id = request.POST.get('cred_id')
+                cred = MemberCredential.objects.filter(club_member=member, id=cred_id).first()
+                if cred:
+                    if cred_type:
+                        cred.credential_type = cred_type
+                    cred.name = name
+                    cred.certificate_number = cert_num
+                    cred.issue_date = issue_str
+                    cred.expiry_date = expiry_str
+                    cred.notes = notes
+                    if request.FILES.get('evidence'):
+                        cred.evidence = request.FILES['evidence']
+                    cred.save()
+
+        elif action == 'delete_credential' and (actor.is_admin or actor.is_instructor):
+            from .models import MemberCredential
+            MemberCredential.objects.filter(club_member=member, id=request.POST.get('cred_id')).delete()
+
+        elif action == 'set_credit_limit' and actor.is_admin:
+            from .models import Account as _Account
+            acct, _ = _Account.objects.get_or_create(club_member=member, defaults={'balance': 0})
+            raw = request.POST.get('credit_limit', '').strip()
+            if raw == '' or raw.lower() == 'exempt':
+                acct.credit_limit = None
+            else:
+                try:
+                    acct.credit_limit = float(raw)
+                except ValueError:
+                    pass
+            acct.save(update_fields=['credit_limit'])
+
+        elif action == 'account_topup' and actor.is_admin:
+            from .models import AccountTransaction
+            amount = request.POST.get('amount', '').strip()
+            pay_method = request.POST.get('payment_method', 'bank_transfer')
+            ref = request.POST.get('reference', '').strip()
+            desc = request.POST.get('description', '').strip() or 'Account top-up'
+            if amount:
+                try:
+                    acct, _ = member.account.__class__.objects.get_or_create(club_member=member, defaults={'balance': 0})
+                    AccountTransaction.objects.create(
+                        account=acct, transaction_type='top_up', direction='credit',
+                        amount=amount, description=desc,
+                        payment_method=pay_method, reference=ref, created_by=request.user,
+                    )
+                    acct.apply_transaction(amount, 'credit')
+                except Exception:
+                    pass
+
+        elif action == 'account_adjustment' and actor.is_admin:
+            from .models import AccountTransaction
+            amount = request.POST.get('amount', '').strip()
+            direction = request.POST.get('direction', 'credit')
+            desc = request.POST.get('description', '').strip()
+            if amount and desc:
+                try:
+                    acct = member.account
+                    AccountTransaction.objects.create(
+                        account=acct, transaction_type='adjustment', direction=direction,
+                        amount=amount, description=desc, created_by=request.user,
+                    )
+                    acct.apply_transaction(amount, direction)
+                except Exception:
+                    pass
+
+        elif action == 'account_transfer' and actor.is_admin:
+            from .models import AccountTransaction
+            amount = request.POST.get('amount', '').strip()
+            dest_id = request.POST.get('dest_member_id', '').strip()
+            desc = request.POST.get('description', '').strip() or 'Member-to-member transfer'
+            dest = ClubMember.objects.filter(club=club, id=dest_id).first() if dest_id else None
+            if amount and dest and dest != member:
+                try:
+                    src_acct = member.account
+                    dst_acct = dest.account
+                    AccountTransaction.objects.create(
+                        account=src_acct, transaction_type='adjustment', direction='debit',
+                        amount=amount, description=f'Transfer to {dest.user.get_full_name()} — {desc}',
+                        created_by=request.user,
+                    )
+                    src_acct.apply_transaction(amount, 'debit')
+                    AccountTransaction.objects.create(
+                        account=dst_acct, transaction_type='adjustment', direction='credit',
+                        amount=amount, description=f'Transfer from {member.user.get_full_name()} — {desc}',
+                        created_by=request.user,
+                    )
+                    dst_acct.apply_transaction(amount, 'credit')
+                except Exception:
+                    pass
+
+        return _inline_redirect(request, 'core:manage_member_detail', club_slug=club_slug, member_id=member_id)
+
+    from .models import MemberCredential, AccountTransaction
+    from django.db.models import Q as _Q
+    _now = timezone.now()
+    _PAST_STATUSES = ('completed', 'transferred')
+    _ACTIVE_STATUSES = ('pending', 'confirmed', 'departed')
     upcoming_bookings = (Booking.objects
-                         .filter(club=club, member=member, scheduled_start__gte=_today_start)
-                         .exclude(status='cancelled')
-                         .select_related('aircraft', 'instructor', 'flight_type')
+                         .filter(club=club, member=member, status__in=_ACTIVE_STATUSES,
+                                 scheduled_start__gte=_now)
+                         .select_related('aircraft', 'instructor', 'flight_type', 'flight_completion')
                          .order_by('scheduled_start')[:10])
     past_bookings = (Booking.objects
-                     .filter(club=club, member=member, scheduled_start__lt=_today_start)
+                     .filter(club=club, member=member)
+                     .filter(_Q(status__in=_PAST_STATUSES) | _Q(scheduled_start__lt=_now))
                      .exclude(status='cancelled')
-                     .select_related('aircraft', 'instructor', 'flight_type')
+                     .select_related('aircraft', 'instructor', 'flight_type', 'flight_completion')
                      .order_by('-scheduled_start')[:20])
     credentials = MemberCredential.objects.filter(club_member=member).order_by('expiry_date')
     roles = Role.objects.filter(club=club)
 
     try:
         account = member.account
+        transactions = account.transactions.select_related('flight_completion__booking__aircraft').order_by('-created_at')[:30]
     except Exception:
         account = None
+        transactions = []
 
+    all_members = (ClubMember.objects.filter(club=club)
+                   .exclude(id=member.id)
+                   .select_related('user')
+                   .order_by('user__last_name'))
+
+    from .models import CredentialType
+    _is_inline = request.GET.get('inline') == '1'
     return render(request, 'core/manage_member_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'member': member, 'upcoming_bookings': upcoming_bookings, 'past_bookings': past_bookings,
-        'credentials': credentials, 'account': account, 'roles': roles,
+        'credentials': credentials, 'account': account, 'transactions': transactions,
+        'all_members': all_members, 'roles': roles,
         'standing_choices': ClubMember.STANDING_CHOICES,
+        'credential_types': CredentialType.choices,
+        'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
+        'inline_title': f"Member — {member.user.get_full_name()}",
     })
 
 
@@ -1494,15 +2384,18 @@ def my_profile(request, club_slug):
             member.save()
             return redirect('core:my_profile', club_slug=club_slug)
 
-    from datetime import datetime as _dt, time as _time, date as _date
-    _today_start = timezone.make_aware(_dt.combine(_date.today(), _time.min))
+    from django.db.models import Q as _Q
+    _now = timezone.now()
+    _PAST_STATUSES = ('completed', 'transferred')
+    _ACTIVE_STATUSES = ('pending', 'confirmed', 'departed')
     upcoming = (Booking.objects
-                .filter(club=club, member=member, scheduled_start__gte=_today_start)
-                .exclude(status='cancelled')
-                .select_related('aircraft', 'instructor', 'flight_type')
+                .filter(club=club, member=member, status__in=_ACTIVE_STATUSES,
+                        scheduled_start__gte=_now)
+                .select_related('aircraft', 'instructor', 'flight_type', 'flight_completion')
                 .order_by('scheduled_start')[:10])
     past = (Booking.objects
-            .filter(club=club, member=member, scheduled_start__lt=_today_start)
+            .filter(club=club, member=member)
+            .filter(_Q(status__in=_PAST_STATUSES) | _Q(scheduled_start__lt=_now))
             .exclude(status='cancelled')
             .select_related('aircraft', 'instructor', 'flight_type')
             .order_by('-scheduled_start')[:20])
@@ -1586,6 +2479,37 @@ def manage_blockouts(request, club_slug):
         elif action == 'delete_blockout':
             bo_id = request.POST.get('bo_id')
             BlockOut.objects.filter(club=club, id=bo_id).delete()
+        elif action == 'edit_blockout':
+            bo_id = request.POST.get('bo_id')
+            bo = BlockOut.objects.filter(club=club, id=bo_id, scope='all').first()
+            if bo:
+                bot_id = request.POST.get('bot_id')
+                bo.blockout_type = BlockOutType.objects.filter(club=club, id=bot_id).first() if bot_id else None
+                bo.label = request.POST.get('label', '').strip()
+                bo.recurrence = request.POST.get('recurrence', 'one_off')
+                bo.all_day = request.POST.get('all_day') in ('on', '1', 'true')
+                from datetime import date as _date
+                if bo.recurrence == 'one_off':
+                    date_str = request.POST.get('date', '')
+                    try:
+                        bo.date = _date.fromisoformat(date_str) if date_str else None
+                    except ValueError:
+                        bo.date = None
+                    bo.weekday = None
+                elif bo.recurrence == 'weekly':
+                    weekday_str = request.POST.get('weekday', '0')
+                    bo.weekday = int(weekday_str) if weekday_str.isdigit() else 0
+                    bo.date = None
+                else:
+                    bo.date = None
+                    bo.weekday = None
+                if not bo.all_day:
+                    bo.start_time = request.POST.get('start_time') or None
+                    bo.end_time = request.POST.get('end_time') or None
+                else:
+                    bo.start_time = None
+                    bo.end_time = None
+                bo.save()
         return redirect('core:manage_blockouts', club_slug=club_slug)
 
     from django.db.models import Q
@@ -1625,19 +2549,36 @@ def manage_members(request, club_slug):
 
     if request.method == 'POST':
         action = request.POST.get('action', '')
-        cm_id = request.POST.get('cm_id')
-        cm = ClubMember.objects.filter(club=club, id=cm_id).first() if cm_id else None
-        if cm:
-            if action == 'set_standing':
-                standing = request.POST.get('standing')
-                if standing in dict(ClubMember.STANDING_CHOICES):
-                    cm.standing = standing
-                    cm.save(update_fields=['standing'])
-            elif action == 'set_role':
-                role_id = request.POST.get('role_id')
-                role = Role.objects.filter(club=club, id=role_id).first() if role_id else None
-                cm.role = role
-                cm.save(update_fields=['role'])
+        if action == 'add_member' and actor.is_admin:
+            from django.contrib.auth import get_user_model as _get_user
+            _User = _get_user()
+            first = request.POST.get('first_name', '').strip()
+            last = request.POST.get('last_name', '').strip()
+            email = request.POST.get('email', '').strip().lower()
+            password = request.POST.get('password', '').strip()
+            if first and last and email:
+                if not _User.objects.filter(email=email).exists():
+                    import secrets as _secrets
+                    pw = password or _secrets.token_urlsafe(12)
+                    user = _User.objects.create_user(
+                        username=email, email=email,
+                        first_name=first, last_name=last, password=pw
+                    )
+                    ClubMember.objects.create(club=club, user=user)
+        else:
+            cm_id = request.POST.get('cm_id')
+            cm = ClubMember.objects.filter(club=club, id=cm_id).first() if cm_id else None
+            if cm:
+                if action == 'set_standing':
+                    standing = request.POST.get('standing')
+                    if standing in dict(ClubMember.STANDING_CHOICES):
+                        cm.standing = standing
+                        cm.save(update_fields=['standing'])
+                elif action == 'set_role':
+                    role_id = request.POST.get('role_id')
+                    role = Role.objects.filter(club=club, id=role_id).first() if role_id else None
+                    cm.role = role
+                    cm.save(update_fields=['role'])
         return redirect('core:manage_members', club_slug=club_slug)
 
     q = request.GET.get('q', '').strip()
@@ -1748,6 +2689,196 @@ def manage_aircraft(request, club_slug):
 
 
 @login_required
+def manage_aircraft_detail(request, club_slug, aircraft_id):
+    from .models import ChargeRate, FuelSurchargeRate, AircraftSurchargeType, AircraftMaintenanceItem, BlockOutType
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not (actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    ac = get_object_or_404(Aircraft, club=club, id=aircraft_id)
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'save_details' and actor.is_admin:
+            ac.aircraft_type = request.POST.get('aircraft_type', ac.aircraft_type).strip() or ac.aircraft_type
+            ac.serial_number = request.POST.get('serial_number', '').strip()
+            seats = request.POST.get('seats', '')
+            if seats.isdigit():
+                ac.seats = int(seats)
+            engines = request.POST.get('engine_count', '')
+            if engines.isdigit():
+                ac.engine_count = int(engines)
+            ac.records_hobbs = request.POST.get('records_hobbs') == 'on'
+            ac.records_tacho = request.POST.get('records_tacho') == 'on'
+            ac.records_airswitch = request.POST.get('records_airswitch') == 'on'
+            ttm = request.POST.get('total_time_method', '')
+            if ttm in dict(Aircraft.TOTAL_TIME_METHOD_CHOICES):
+                ac.total_time_method = ttm
+            fuel_cph = request.POST.get('fuel_consumption_per_hour', '').strip()
+            try:
+                ac.fuel_consumption_per_hour = fuel_cph
+            except Exception:
+                pass
+            hobbs_init      = request.POST.get('hobbs_initial', '').strip()
+            tacho_init      = request.POST.get('tacho_initial', '').strip()
+            airswitch_init  = request.POST.get('airswitch_initial', '').strip()
+            ac.hobbs_initial      = hobbs_init or None
+            ac.tacho_initial      = tacho_init or None
+            ac.airswitch_initial  = airswitch_init or None
+            ac.save()
+
+        elif action == 'save_hire_rate' and actor.is_admin:
+            ft_id = request.POST.get('ft_id')
+            time_method = request.POST.get('time_method', 'hobbs')
+            amount = request.POST.get('amount', '').strip()
+            includes_fuel = request.POST.get('includes_fuel') == 'on'
+            ft = FlightType.objects.filter(club=club, id=ft_id).first()
+            if ft and amount:
+                ChargeRate.objects.update_or_create(
+                    aircraft=ac, flight_type=ft, time_method=time_method,
+                    defaults={'club': club, 'amount': amount, 'includes_fuel': includes_fuel}
+                )
+
+        elif action == 'edit_hire_rate' and actor.is_admin:
+            rate_id = request.POST.get('rate_id')
+            rate = ChargeRate.objects.filter(club=club, aircraft=ac, id=rate_id).first()
+            if rate:
+                amount = request.POST.get('amount', '').strip()
+                if amount:
+                    rate.amount = amount
+                rate.includes_fuel = request.POST.get('includes_fuel') == 'on'
+                rate.save(update_fields=['amount', 'includes_fuel'])
+
+        elif action == 'delete_hire_rate' and actor.is_admin:
+            ChargeRate.objects.filter(club=club, aircraft=ac, id=request.POST.get('rate_id')).delete()
+
+        elif action == 'add_fuel_rate' and actor.is_admin:
+            rate = request.POST.get('fuel_rate', '').strip()
+            effective_from = request.POST.get('effective_from', '').strip()
+            notes = request.POST.get('notes', '').strip()
+            if rate and effective_from:
+                FuelSurchargeRate.objects.create(
+                    club=club, aircraft=ac, rate=rate,
+                    effective_from=effective_from, notes=notes
+                )
+
+        elif action == 'toggle_fuel_rate' and actor.is_admin:
+            r = FuelSurchargeRate.objects.filter(club=club, aircraft=ac, id=request.POST.get('rate_id')).first()
+            if r:
+                r.is_active = not r.is_active
+                r.save(update_fields=['is_active'])
+
+        elif action == 'delete_fuel_rate' and actor.is_admin:
+            FuelSurchargeRate.objects.filter(club=club, aircraft=ac, id=request.POST.get('rate_id')).delete()
+
+        elif action == 'toggle_surcharge' and actor.is_admin:
+            sc_id = request.POST.get('sc_id')
+            sc = AircraftSurchargeType.objects.filter(club=club, id=sc_id).first()
+            if sc:
+                if ac.surcharges.filter(id=sc.id).exists():
+                    ac.surcharges.remove(sc)
+                else:
+                    ac.surcharges.add(sc)
+
+        elif action == 'save_surcharges' and actor.is_admin:
+            selected_ids = [int(i) for i in request.POST.getlist('surcharge_ids') if i.isdigit()]
+            ac.surcharges.set(AircraftSurchargeType.objects.filter(club=club, id__in=selected_ids))
+
+        elif action == 'add_maintenance' and actor.is_admin:
+            name = request.POST.get('maint_name', '').strip()
+            if name:
+                AircraftMaintenanceItem.objects.create(
+                    aircraft=ac, name=name,
+                    description=request.POST.get('maint_desc', '').strip(),
+                    due_date=request.POST.get('due_date') or None,
+                    due_hours=request.POST.get('due_hours') or None,
+                    last_completed_date=request.POST.get('last_completed_date') or None,
+                    last_completed_hours=request.POST.get('last_completed_hours') or None,
+                )
+
+        elif action == 'edit_maintenance' and actor.is_admin:
+            maint_id = request.POST.get('maint_id')
+            m = AircraftMaintenanceItem.objects.filter(aircraft=ac, id=maint_id).first()
+            if m:
+                name = request.POST.get('maint_name', '').strip()
+                if name:
+                    m.name = name
+                m.description = request.POST.get('maint_desc', '').strip()
+                m.due_date = request.POST.get('due_date') or None
+                m.due_hours = request.POST.get('due_hours') or None
+                m.last_completed_date = request.POST.get('last_completed_date') or None
+                m.last_completed_hours = request.POST.get('last_completed_hours') or None
+                m.save()
+
+        elif action == 'delete_maintenance' and actor.is_admin:
+            AircraftMaintenanceItem.objects.filter(aircraft=ac, id=request.POST.get('maint_id')).delete()
+
+        elif action == 'add_aircraft_blockout':
+            _create_blockout_from_post(request, club, scope='aircraft', aircraft=ac)
+
+        elif action == 'delete_blockout':
+            from .models import BlockOut
+            BlockOut.objects.filter(club=club, id=request.POST.get('bo_id')).delete()
+
+        return _inline_redirect(request, 'core:manage_aircraft_detail', club_slug=club_slug, aircraft_id=aircraft_id)
+
+    from .models import BlockOut
+    from django.db.models import Q
+    from datetime import date as _date
+    _today = _date.today()
+    _active_q = (
+        Q(recurrence='one_off', date__gte=_today) |
+        Q(recurrence__in=['weekly', 'daily'], active_until__isnull=True) |
+        Q(recurrence__in=['weekly', 'daily'], active_until__gte=_today)
+    )
+    blockouts = (BlockOut.objects
+                 .filter(club=club, scope='aircraft')
+                 .filter(_active_q)
+                 .prefetch_related('aircraft', 'blockout_type')
+                 .order_by('recurrence', 'date', 'weekday', 'start_time'))
+    ac_blockouts = [bo for bo in blockouts if ac in bo.aircraft.all()]
+
+    hire_rates = (ChargeRate.objects
+                  .filter(aircraft=ac)
+                  .select_related('flight_type')
+                  .order_by('flight_type__name', 'time_method'))
+    fuel_rates = FuelSurchargeRate.objects.filter(aircraft=ac).order_by('-effective_from')
+    all_surcharge_types = AircraftSurchargeType.objects.filter(club=club)
+    assigned_surcharge_ids = set(ac.surcharges.values_list('id', flat=True))
+    maintenance_items = AircraftMaintenanceItem.objects.filter(aircraft=ac).order_by('urgency', 'due_date')
+    flight_types = FlightType.objects.filter(club=club, is_billable=True)
+    aircraft_blockout_types = BlockOutType.objects.filter(club=club, target='aircraft')
+
+    flight_history = (Booking.objects
+                      .filter(club=club, aircraft=ac)
+                      .exclude(status='cancelled')
+                      .select_related('member__user', 'instructor', 'flight_type', 'flight_completion')
+                      .order_by('-scheduled_start')[:100])
+
+    _is_inline = request.GET.get('inline') == '1'
+    return render(request, 'core/manage_aircraft_detail.html', {
+        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'ac': ac,
+        'hire_rates': hire_rates,
+        'fuel_rates': fuel_rates,
+        'all_surcharge_types': all_surcharge_types,
+        'assigned_surcharge_ids': assigned_surcharge_ids,
+        'maintenance_items': maintenance_items,
+        'flight_types': flight_types,
+        'aircraft_blockout_types': aircraft_blockout_types,
+        'ac_blockouts': ac_blockouts,
+        'flight_history': flight_history,
+        'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
+        'inline_title': f"Aircraft — {ac.registration}",
+    })
+
+
+@login_required
 def manage_instructors(request, club_slug):
     club = get_object_or_404(Club, slug=club_slug)
     try:
@@ -1757,46 +2888,27 @@ def manage_instructors(request, club_slug):
     if not (actor.is_admin or actor.is_instructor):
         return render(request, 'core/no_access.html', {'club': club}, status=403)
 
-    from .models import InstructorAvailability, BlockOut, BlockOutType
-    if request.method == 'POST':
+    if request.method == 'POST' and actor.is_admin:
         action = request.POST.get('action', '')
-        if action == 'add_instructor_availability':
-            cm_id = request.POST.get('av_member_id')
-            cm = ClubMember.objects.filter(club=club, id=cm_id).first()
-            if cm:
-                recurrence = request.POST.get('av_recurrence', 'weekly')
-                all_day = request.POST.get('av_all_day') == 'on'
-                av = InstructorAvailability(club_member=cm, recurrence=recurrence, all_day=all_day)
-                if recurrence == 'weekly':
-                    wd = request.POST.get('av_weekday', '0')
-                    av.weekday = int(wd) if wd.isdigit() else 0
-                else:
-                    av.date = request.POST.get('av_date') or None
-                if not all_day:
-                    av.start_time = request.POST.get('av_start_time') or None
-                    av.end_time = request.POST.get('av_end_time') or None
-                av.active_from = request.POST.get('av_active_from') or None
-                av.active_until = request.POST.get('av_active_until') or None
-                av.notes = request.POST.get('av_notes', '').strip()
-                av.save()
-        elif action == 'delete_instructor_availability':
-            av_id = request.POST.get('av_id')
-            InstructorAvailability.objects.filter(club_member__club=club, id=av_id).delete()
-        elif action == 'add_instructor_blockout':
-            from .models import User as _User
-            instr_user_id = request.POST.get('instr_user_id')
-            instr_user = _User.objects.filter(id=instr_user_id).first()
-            if instr_user:
-                _create_blockout_from_post(request, club, scope='instructors', instructor_user=instr_user)
-        elif action == 'delete_blockout':
-            bo_id = request.POST.get('bo_id')
-            BlockOut.objects.filter(club=club, id=bo_id).delete()
+        if action == 'add_instructor':
+            from django.contrib.auth import get_user_model as _get_user
+            _User = _get_user()
+            first = request.POST.get('first_name', '').strip()
+            last = request.POST.get('last_name', '').strip()
+            email = request.POST.get('email', '').strip().lower()
+            password = request.POST.get('password', '').strip()
+            if first and last and email and not _User.objects.filter(email=email).exists():
+                import secrets as _secrets
+                pw = password or _secrets.token_urlsafe(12)
+                user = _User.objects.create_user(
+                    username=email, email=email,
+                    first_name=first, last_name=last, password=pw
+                )
+                instr_role, _ = Role.objects.get_or_create(club=club, name='Instructor')
+                ClubMember.objects.create(club=club, user=user, role=instr_role)
         return redirect('core:manage_instructors', club_slug=club_slug)
 
-    instructors = (ClubMember.objects
-                   .filter(club=club, role__name__iexact='instructor')
-                   .select_related('user')
-                   .order_by('user__last_name'))
+    from .models import InstructorAvailability
     from django.db.models import Q
     from datetime import date as _date
     _today = _date.today()
@@ -1805,62 +2917,130 @@ def manage_instructors(request, club_slug):
         Q(recurrence='weekly', active_until__isnull=True) |
         Q(recurrence='weekly', active_until__gte=_today)
     )
-    av_by_member = {}
-    for av in (InstructorAvailability.objects
-               .filter(club_member__club=club)
-               .filter(_active_q)
-               .select_related('club_member')):
-        av_by_member.setdefault(av.club_member_id, []).append(av)
+    av_counts = {}
+    for av in InstructorAvailability.objects.filter(club_member__club=club).filter(_active_q):
+        av_counts[av.club_member_id] = av_counts.get(av.club_member_id, 0) + 1
 
-    # Attach instructor-scoped block-outs to each instructor (active/upcoming only)
+    instructors = (ClubMember.objects
+                   .filter(club=club, role__name__iexact='instructor')
+                   .select_related('user', 'instructor_grade')
+                   .order_by('user__last_name'))
+    for instr in instructors:
+        instr.av_count = av_counts.get(instr.id, 0)
+
+    return render(request, 'core/manage_instructors.html', {
+        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'instructors': instructors,
+    })
+
+
+@login_required
+def manage_instructor_detail(request, club_slug, member_id):
+    from .models import InstructorAvailability, BlockOut, BlockOutType, MemberCredential
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not (actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    instr = get_object_or_404(ClubMember, club=club, id=member_id)
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'save_contact':
+            u = instr.user
+            u.first_name = request.POST.get('first_name', '').strip()
+            u.last_name = request.POST.get('last_name', '').strip()
+            u.email = request.POST.get('email', '').strip()
+            u.save(update_fields=['first_name', 'last_name', 'email'])
+            instr.phone_mobile = request.POST.get('phone_mobile', '').strip()
+            instr.phone_home = request.POST.get('phone_home', '').strip()
+            instr.phone_work = request.POST.get('phone_work', '').strip()
+            instr.caa_number = request.POST.get('caa_number', '').strip()
+            instr.save()
+
+        elif action == 'save_grade' and actor.is_admin:
+            grade_id = request.POST.get('grade_id')
+            instr.instructor_grade = InstructorGrade.objects.filter(club=club, id=grade_id).first() if grade_id else None
+            instr.save(update_fields=['instructor_grade'])
+
+        elif action == 'add_instructor_availability':
+            recurrence = request.POST.get('av_recurrence', 'weekly')
+            all_day = request.POST.get('av_all_day') == 'on'
+            av = InstructorAvailability(club_member=instr, recurrence=recurrence, all_day=all_day)
+            if recurrence == 'weekly':
+                wd = request.POST.get('av_weekday', '0')
+                av.weekday = int(wd) if wd.isdigit() else 0
+            else:
+                av.date = request.POST.get('av_date') or None
+            if not all_day:
+                av.start_time = request.POST.get('av_start_time') or None
+                av.end_time = request.POST.get('av_end_time') or None
+            av.active_from = request.POST.get('av_active_from') or None
+            av.active_until = request.POST.get('av_active_until') or None
+            av.notes = request.POST.get('av_notes', '').strip()
+            av.save()
+
+        elif action == 'delete_instructor_availability':
+            InstructorAvailability.objects.filter(club_member=instr, id=request.POST.get('av_id')).delete()
+
+        elif action == 'add_instructor_blockout':
+            _create_blockout_from_post(request, club, scope='instructors', instructor_user=instr.user)
+
+        elif action == 'delete_blockout':
+            BlockOut.objects.filter(club=club, id=request.POST.get('bo_id')).delete()
+
+        return _inline_redirect(request, 'core:manage_instructor_detail', club_slug=club_slug, member_id=member_id)
+
+    from django.db.models import Q
+    from datetime import date as _date
+    _today = _date.today()
     _active_q = (
-        Q(recurrence='one_off', date__gte=_today) |
-        Q(recurrence__in=['weekly', 'daily'], active_until__isnull=True) |
-        Q(recurrence__in=['weekly', 'daily'], active_until__gte=_today)
-    )
-    instr_blockouts_qs = (BlockOut.objects
-                          .filter(club=club, scope='instructors')
-                          .filter(_active_q)
-                          .prefetch_related('instructors', 'blockout_type')
-                          .order_by('recurrence', 'date', 'weekday', 'start_time'))
-    bo_by_user = {}
-    for bo in instr_blockouts_qs:
-        for u in bo.instructors.all():
-            bo_by_user.setdefault(u.id, []).append(bo)
-
-    # Past counts — availability windows
-    _av_active_q = (
         Q(recurrence='one_off', date__gte=_today) |
         Q(recurrence='weekly', active_until__isnull=True) |
         Q(recurrence='weekly', active_until__gte=_today)
     )
-    past_av_count_by_member = {}
-    for av in InstructorAvailability.objects.filter(club_member__club=club).exclude(_av_active_q):
-        past_av_count_by_member[av.club_member_id] = past_av_count_by_member.get(av.club_member_id, 0) + 1
+    av_windows = InstructorAvailability.objects.filter(club_member=instr).filter(_active_q).order_by('weekday', 'date')
+    past_av_count = InstructorAvailability.objects.filter(club_member=instr).exclude(_active_q).count()
 
-    # Past counts — block-outs
-    past_instr_bos = (BlockOut.objects
-                      .filter(club=club, scope='instructors')
-                      .exclude(_active_q)
-                      .prefetch_related('instructors'))
-    past_bo_count_by_user = {}
-    for bo in past_instr_bos:
-        for u in bo.instructors.all():
-            past_bo_count_by_user[u.id] = past_bo_count_by_user.get(u.id, 0) + 1
+    _bo_active_q = (
+        Q(recurrence='one_off', date__gte=_today) |
+        Q(recurrence__in=['weekly', 'daily'], active_until__isnull=True) |
+        Q(recurrence__in=['weekly', 'daily'], active_until__gte=_today)
+    )
+    all_instr_bos = (BlockOut.objects
+                     .filter(club=club, scope='instructors')
+                     .filter(_bo_active_q)
+                     .prefetch_related('instructors', 'blockout_type'))
+    instr_blockouts = [bo for bo in all_instr_bos if instr.user in bo.instructors.all()]
 
-    for instr in instructors:
-        instr.av_windows = av_by_member.get(instr.id, [])
-        instr.blockouts = bo_by_user.get(instr.user.id, [])
-        instr.past_av_count = past_av_count_by_member.get(instr.id, 0)
-        instr.past_bo_count = past_bo_count_by_user.get(instr.user.id, 0)
-
+    credentials = MemberCredential.objects.filter(club_member=instr).order_by('credential_type', 'expiry_date')
+    instructor_grades = InstructorGrade.objects.filter(club=club).order_by('display_order')
     instructor_blockout_types = BlockOutType.objects.filter(club=club).exclude(target='aircraft')
-    return render(request, 'core/manage_instructors.html', {
-        'club': club,
-        'club_member': actor,
-        'is_instructor': actor.is_instructor,
-        'instructors': instructors,
+
+    upcoming_bookings = (Booking.objects
+                         .filter(club=club, instructor=instr.user)
+                         .exclude(status='cancelled')
+                         .filter(scheduled_start__gte=timezone.now())
+                         .select_related('member__user', 'aircraft', 'flight_type')
+                         .order_by('scheduled_start')[:10])
+
+    _is_inline = request.GET.get('inline') == '1'
+    return render(request, 'core/manage_instructor_detail.html', {
+        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'instr': instr,
+        'av_windows': av_windows,
+        'past_av_count': past_av_count,
+        'instr_blockouts': instr_blockouts,
+        'credentials': credentials,
+        'instructor_grades': instructor_grades,
         'instructor_blockout_types': instructor_blockout_types,
+        'upcoming_bookings': upcoming_bookings,
+        'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
+        'inline_title': f"Instructor — {instr.user.get_full_name()}",
     })
 
 
@@ -1918,6 +3098,141 @@ def create_blockout(request):
         bo.instructors.set(_User.objects.filter(id__in=instructor_ids))
 
     return JsonResponse({'success': True, 'id': bo.id})
+
+
+@login_required
+def manage_charges(request, club_slug):
+    from .models import FlightCompletion, AccountTransaction
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not actor.is_admin:
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    unpaid = (FlightCompletion.objects
+              .filter(booking__club=club, paid_at__isnull=True)
+              .select_related('booking__member__user', 'booking__aircraft', 'booking__flight_type',
+                              'booking__instructor')
+              .order_by('-booking__scheduled_start'))
+
+    recent_tx = (AccountTransaction.objects
+                 .filter(account__club_member__club=club)
+                 .select_related('account__club_member__user', 'flight_completion__booking__aircraft')
+                 .order_by('-created_at')[:50])
+
+    return render(request, 'core/manage_charges.html', {
+        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'unpaid': unpaid,
+        'recent_tx': recent_tx,
+    })
+
+
+@login_required
+@transaction.atomic
+def booking_declaration(request, club_slug, booking_id):
+    from .models import DepartureDeclaration, DeclarationPassenger, FrequentPassenger
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+
+    booking = get_object_or_404(Booking, club=club, id=booking_id)
+    # Allow the member themselves or staff
+    is_own = (booking.member.user == request.user)
+    if not (is_own or actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    # Completed flights: declaration is always read-only for everyone
+    # Departed flights: read-only for non-staff
+    readonly = (booking.status == 'completed') or \
+               (not is_own and not actor.is_admin and not actor.is_instructor) or \
+               (booking.status == 'departed' and not actor.is_admin and not actor.is_instructor)
+
+    decl, _ = DepartureDeclaration.objects.get_or_create(
+        booking=booking,
+        defaults={'submitted_by': request.user, 'is_draft': True}
+    )
+    error = None
+
+    _decl_url = f'{request.path}{"?inline=1" if request.GET.get("inline") == "1" else ""}'
+
+    if request.method == 'POST' and not readonly:
+        action = request.POST.get('action', 'save_draft')
+
+        # Passenger operations — handled independently, don't touch declaration fields
+        if action == 'add_passenger':
+            pax_name = request.POST.get('pax_name', '').strip()
+            pax_phone = request.POST.get('pax_phone', '').strip()
+            pax_nok_name = request.POST.get('pax_nok_name', '').strip()
+            pax_nok_phone = request.POST.get('pax_nok_phone', '').strip()
+            if pax_name:
+                decl.save()
+                DeclarationPassenger.objects.create(
+                    declaration=decl, name=pax_name, phone=pax_phone,
+                    next_of_kin_name=pax_nok_name, next_of_kin_phone=pax_nok_phone,
+                )
+            return redirect(_decl_url)
+
+        elif action == 'remove_passenger':
+            DeclarationPassenger.objects.filter(
+                declaration=decl, id=request.POST.get('pax_id')
+            ).delete()
+            return redirect(_decl_url)
+
+        # Declaration content fields
+        decl.authorising_instructor_id = request.POST.get('authorising_instructor_id') or None
+        decl.route_intentions = request.POST.get('route_intentions', '').strip()
+        decl.destination = request.POST.get('destination', '').strip()
+        decl.is_cross_country = request.POST.get('is_cross_country') == 'on'
+        decl.next_of_kin_name = request.POST.get('next_of_kin_name', '').strip()
+        decl.next_of_kin_phone = request.POST.get('next_of_kin_phone', '').strip()
+        for field in ['confirm_aip', 'confirm_weather', 'confirm_fuel', 'confirm_pickets',
+                      'confirm_maps', 'confirm_fuel_card', 'confirm_afm', 'confirm_flight_plan']:
+            setattr(decl, field, request.POST.get(field) == 'on')
+
+        if action == 'submit':
+            missing = []
+            if not decl.route_intentions:
+                missing.append('route intentions')
+            if not decl.destination:
+                missing.append('destination')
+            if missing:
+                error = 'Please complete: ' + ', '.join(missing)
+            else:
+                from django.utils import timezone as tz
+                decl.is_draft = False
+                decl.submitted_at = tz.now()
+                decl.save()
+                return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
+        else:
+            decl.save()
+
+        if not error:
+            return redirect(_decl_url)
+
+    instructors = ClubMember.objects.filter(club=club, role__name__iexact='instructor').select_related('user')
+    passengers = decl.passengers.all()
+    frequent_passengers = FrequentPassenger.objects.filter(club_member=booking.member)
+    member_nok_name = booking.member.next_of_kin_name
+    member_nok_phone = booking.member.next_of_kin_phone
+
+    _is_inline = request.GET.get('inline') == '1'
+    return render(request, 'core/booking_declaration.html', {
+        'club': club, 'club_member': actor,
+        'booking': booking, 'decl': decl, 'error': error,
+        'instructors': instructors,
+        'passengers': passengers,
+        'frequent_passengers': frequent_passengers,
+        'member_nok_name': member_nok_name,
+        'member_nok_phone': member_nok_phone,
+        'readonly': readonly,
+        'is_inline': _is_inline,
+        'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
+        'inline_title': f"Declaration — {booking.aircraft.registration} {booking.scheduled_start.strftime('%j %b')}",
+    })
 
 
 @login_required
@@ -1997,117 +3312,11 @@ def manage_aerodromes(request, club_slug):
 
 @login_required
 def manage_rates(request, club_slug):
-    club = get_object_or_404(Club, slug=club_slug)
-    try:
-        member = ClubMember.objects.get(user=request.user, club=club)
-    except ClubMember.DoesNotExist:
-        return redirect('login')
-    if not member.is_staff:
-        return render(request, 'core/no_access.html', {'club': club}, status=403)
-
-    error = None
-    if request.method == 'POST':
-        action = request.POST.get('action', '')
-
-        if action == 'add_rate':
-            rate = request.POST.get('rate', '').strip()
-            effective_from = request.POST.get('effective_from', '').strip()
-            notes = request.POST.get('notes', '').strip()
-            if rate and effective_from:
-                FuelSurchargeRate.objects.get_or_create(
-                    club=club, effective_from=effective_from,
-                    defaults={'rate': rate, 'notes': notes}
-                )
-            else:
-                error = "Rate and effective date are required."
-
-        elif action == 'delete_rate':
-            FuelSurchargeRate.objects.filter(club=club, id=request.POST.get('rate_id')).delete()
-
-        return redirect('core:manage_rates', club_slug=club_slug)
-
-    rates = FuelSurchargeRate.objects.filter(club=club).order_by('-effective_from')
-    current = rates.first()
-    return render(request, 'core/manage_rates.html', {
-        'club': club, 'club_member': member, 'rates': rates, 'current_rate': current, 'error': error,
-    })
+    """Fuel levy rates moved to individual aircraft detail pages."""
+    return redirect('core:manage_aircraft', club_slug=club_slug)
 
 
 @login_required
 def club_rates(request, club_slug):
-    """Admin-only rate card: instructor grade rates, surcharge amounts, hire rates."""
-    club = get_object_or_404(Club, slug=club_slug)
-    try:
-        member = ClubMember.objects.get(user=request.user, club=club)
-    except ClubMember.DoesNotExist:
-        return redirect('login')
-    if not member.is_admin:
-        return render(request, 'core/no_access.html', {'club': club}, status=403)
-
-    from .models import ChargeRate
-    saved = False
-
-    if request.method == 'POST':
-        action = request.POST.get('action', '')
-
-        if action == 'save_grade_rates':
-            for ig in InstructorGrade.objects.filter(club=club):
-                val = request.POST.get(f'ig_rate_{ig.id}', '').strip()
-                if val:
-                    try:
-                        ig.hourly_rate = val
-                        ig.save(update_fields=['hourly_rate'])
-                    except Exception:
-                        pass
-            saved = True
-
-        elif action == 'save_surcharge_amounts':
-            for st in AircraftSurchargeType.objects.filter(club=club):
-                val = request.POST.get(f'st_amount_{st.id}', '').strip()
-                if val:
-                    try:
-                        st.amount = val
-                        st.save(update_fields=['amount'])
-                    except Exception:
-                        pass
-            saved = True
-
-        elif action == 'save_hire_rate':
-            aircraft_id = request.POST.get('aircraft_id')
-            ft_id = request.POST.get('ft_id')
-            time_method = request.POST.get('time_method', 'hobbs')
-            amount = request.POST.get('amount', '').strip()
-            ac = Aircraft.objects.filter(club=club, id=aircraft_id).first()
-            ft = FlightType.objects.filter(club=club, id=ft_id).first()
-            if ac and ft and amount:
-                ChargeRate.objects.update_or_create(
-                    aircraft=ac, flight_type=ft, time_method=time_method,
-                    defaults={'club': club, 'amount': amount}
-                )
-            saved = True
-
-        elif action == 'delete_hire_rate':
-            ChargeRate.objects.filter(
-                club=club, id=request.POST.get('rate_id')
-            ).delete()
-
-        return redirect('core:club_rates', club_slug=club_slug)
-
-    instructor_grades = InstructorGrade.objects.filter(club=club)
-    surcharge_types = AircraftSurchargeType.objects.filter(club=club)
-    hire_rates = (ChargeRate.objects
-                  .filter(club=club)
-                  .select_related('aircraft', 'flight_type')
-                  .order_by('aircraft__registration', 'flight_type__name'))
-    aircraft_list = Aircraft.objects.filter(club=club, status='online').order_by('registration')
-    flight_types = FlightType.objects.filter(club=club, is_billable=True)
-
-    return render(request, 'core/club_rates.html', {
-        'club': club, 'club_member': member,
-        'instructor_grades': instructor_grades,
-        'surcharge_types': surcharge_types,
-        'hire_rates': hire_rates,
-        'aircraft_list': aircraft_list,
-        'flight_types': flight_types,
-        'saved': saved,
-    })
+    """Rates page dissolved — hire rates on aircraft pages, grade/surcharge in Settings."""
+    return redirect('core:club_settings', club_slug=club_slug)

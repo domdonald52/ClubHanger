@@ -106,6 +106,9 @@ class ClubConfig(models.Model):
     theme_accent = models.CharField(max_length=7, default='#f59e0b', help_text="Accent / highlights")
     theme_confirmed = models.CharField(max_length=7, default='#16a34a', help_text="Confirmed booking pills")
     theme_pending = models.CharField(max_length=7, default='#f97316', help_text="Pending booking pills")
+    theme_departed = models.CharField(max_length=7, default='#d97706', help_text="Departed booking pills")
+    theme_returned = models.CharField(max_length=7, default='#2563eb', help_text="Returned (awaiting payment) booking pills")
+    theme_completed_paid = models.CharField(max_length=7, default='#7c3aed', help_text="Completed & paid booking pills")
     theme_weekend = models.CharField(max_length=7, default='#f0f9ff', help_text="Weekend shading in search")
     theme_atypical = models.CharField(max_length=7, default='#f1f5f9', help_text="Outside-typical-hours shading")
     
@@ -167,12 +170,13 @@ class ClubMember(models.Model):
     A User can have memberships at multiple clubs (one ClubMember per club).
     """
     STANDING_CHOICES = [
-        ('pending',    'Pending Approval'),
-        ('active',     'Active'),
-        ('suspended',  'Suspended'),
-        ('lapsed',     'Lapsed'),
-        ('resigned',   'Resigned'),
-        ('non_member', 'Non-member'),   # Young Eagles, trial flights, etc.
+        ('pending',     'Pending Approval'),
+        ('active',      'Active'),
+        ('suspended',   'Suspended'),
+        ('lapsed',      'Lapsed'),
+        ('resigned',    'Resigned'),
+        ('transferred', 'Transferred'),
+        ('non_member',  'Non-member'),   # Young Eagles, trial flights, etc.
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='club_memberships', null=True, blank=True)
@@ -251,56 +255,95 @@ class ClubMember(models.Model):
 # ============================================================================
 
 class CredentialType(models.TextChoices):
-    """License/certificate types."""
-    PPL = 'ppl', 'Private Pilot Licence'
-    COMMERCIAL = 'commercial', 'Commercial Licence'
-    ATPL = 'atpl', 'Airline Transport Pilot'
-    INSTRUCTOR = 'instructor', 'Instructor Rating'
-    BFR = 'bfr', 'Biennial Flight Review'
-    MEDICAL_CLASS1 = 'medical_c1', 'Class 1 Medical'
-    MEDICAL_CLASS2 = 'medical_c2', 'Class 2 Medical'
+    """NZ CAA pilot credential categories."""
+    # Licences
+    PPL         = 'ppl',         'Private Pilot Licence (PPL)'
+    CPL         = 'cpl',         'Commercial Pilot Licence (CPL)'
+    ATPL        = 'atpl',        'Air Transport Pilot Licence (ATPL)'
+    # Ratings & endorsements within a licence
+    CROSS_COUNTRY = 'xc',        'Cross Country Endorsement'
+    NIGHT_VFR   = 'night_vfr',   'Night VFR Endorsement'
+    INSTRUMENT  = 'ir',          'Instrument Rating (IR)'
+    MULTI_ENGINE = 'me',         'Multi-Engine Rating'
+    TYPE_RATING = 'type',        'Type Rating'
+    TAILWHEEL   = 'tailwheel',   'Tailwheel Endorsement'
+    AEROBATIC   = 'aerobatic',   'Aerobatic Endorsement'
+    SEAPLANE    = 'seaplane',    'Seaplane Rating'
+    # Instructor certificates (NZ: C-Cat, B-Cat, A-Cat, Examiner)
+    INSTRUCTOR_C = 'instr_c',    'Instructor Certificate — C-Cat'
+    INSTRUCTOR_B = 'instr_b',    'Instructor Certificate — B-Cat'
+    INSTRUCTOR_A = 'instr_a',    'Instructor Certificate — A-Cat'
+    EXAMINER    = 'examiner',    'Flight Examiner'
+    # Medical certificates
+    MEDICAL_C1  = 'medical_c1',  'Medical Certificate — Class 1'
+    MEDICAL_C2  = 'medical_c2',  'Medical Certificate — Class 2'
+    MEDICAL_C3  = 'medical_c3',  'Medical Certificate — Class 3'
+    MEDICAL_DLR9 = 'dlr9',       'DLR9 Medical'
+    # Reviews (every 24 months for PPL/CPL/ATPL holders — formerly BFR)
+    FLIGHT_REVIEW = 'fr',        'Flight Review (BFR)'
+    OTHER       = 'other',       'Other'
 
 
 class MemberCredential(models.Model):
     """
-    Tracks pilot licenses, medical certificates, BFR, etc.
-    One record per credential per member.
+    Tracks pilot licences, ratings, endorsements, medicals, and flight reviews.
+    Multiple records of the same type are allowed (e.g. two type ratings).
     """
     club_member = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='credentials')
     credential_type = models.CharField(max_length=20, choices=CredentialType.choices)
-    
+
+    # Sub-type name — required for TYPE_RATING and OTHER, optional elsewhere
+    # e.g. "ZK-ABC Cessna 172", "Cross Country to NZWB"
+    name = models.CharField(max_length=100, blank=True,
+                            help_text="Specific name — required for Type Rating and Other")
+
     # Validity
-    issue_date = models.DateField()
-    expiry_date = models.DateField()
-    
+    issue_date = models.DateField(null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+
     # Document tracking
     certificate_number = models.CharField(max_length=50, blank=True)
     notes = models.TextField(blank=True)
-    
+
+    # Photo evidence (scanned licence, medical cert, etc.)
+    evidence = models.ImageField(upload_to='credentials/', null=True, blank=True)
+
+    # Who recorded it
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='credentials_added')
+
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        unique_together = ('club_member', 'credential_type')
-        ordering = ['-expiry_date']
-    
+        ordering = ['credential_type', '-expiry_date']
+
     def __str__(self):
-        return f"{self.club_member.user.last_name} - {self.get_credential_type_display()}"
-    
+        label = self.get_credential_type_display()
+        if self.name:
+            label += f' — {self.name}'
+        return f"{self.club_member.user.last_name}: {label}"
+
+    @property
+    def display_name(self):
+        label = self.get_credential_type_display()
+        return f"{label} — {self.name}" if self.name else label
+
     @property
     def days_until_expiry(self):
-        delta = self.expiry_date - date.today()
-        return delta.days
-    
+        if not self.expiry_date:
+            return None
+        return (self.expiry_date - date.today()).days
+
     @property
     def is_expired(self):
-        return self.expiry_date < date.today()
-    
+        return bool(self.expiry_date and self.expiry_date < date.today())
+
     @property
     def is_expiring_soon(self):
-        """Warning threshold: 30 days."""
-        return 0 <= self.days_until_expiry <= 30
+        d = self.days_until_expiry
+        return d is not None and 0 <= d <= 60
 
 
 # ============================================================================
@@ -336,20 +379,30 @@ class Aircraft(models.Model):
     
     # Time calculation
     TOTAL_TIME_METHOD_CHOICES = [
-        ('hobbs', 'Hobbs Meter'),
-        ('tacho', 'Tachometer'),
+        ('hobbs',      'Hobbs Meter'),
+        ('tacho',      'Tachometer'),
         ('tacho_less_5', 'Tacho - 5%'),
+        ('airswitch',  'Air Switch'),
     ]
     total_time_method = models.CharField(max_length=20, choices=TOTAL_TIME_METHOD_CHOICES, default='hobbs')
     
     # Fuel
     fuel_consumption_per_hour = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    hire_includes_fuel = models.BooleanField(
-        default=True,
-        help_text="Wet hire — fuel is included in the hire rate. "
-                  "Uncheck for dry hire where fuel is charged separately per hour."
+
+    # Starting meter readings when the aircraft was entered into the system
+    hobbs_initial = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Hobbs reading when aircraft was entered into the system"
     )
-    
+    tacho_initial = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Tacho reading when aircraft was entered into the system"
+    )
+    airswitch_initial = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Air switch reading when aircraft was entered into the system"
+    )
+
     # Surcharges applied per flight (e.g. 4-seat surcharge)
     surcharges = models.ManyToManyField(
         'AircraftSurchargeType', blank=True, related_name='aircraft',
@@ -479,8 +532,9 @@ class ChargeRate(models.Model):
     
     # Time recording basis
     TIME_METHOD_CHOICES = [
-        ('hobbs', 'Hobbs Hour'),
-        ('tacho', 'Tachometer Hour'),
+        ('hobbs',      'Hobbs Hour'),
+        ('tacho',      'Tachometer Hour'),
+        ('airswitch',  'Air Switch Hour'),
     ]
     time_method = models.CharField(max_length=20, choices=TIME_METHOD_CHOICES)
     
@@ -628,7 +682,7 @@ class BookingStatus(models.TextChoices):
     PENDING = 'pending', 'Pending Confirmation'
     CONFIRMED = 'confirmed', 'Confirmed'
     DEPARTED = 'departed', 'Departed'
-    COMPLETED = 'completed', 'Completed'
+    COMPLETED = 'completed', 'Returned'
     CANCELLED = 'cancelled', 'Cancelled'
 
 
@@ -713,7 +767,31 @@ class Booking(models.Model):
     
     def __str__(self):
         return f"{self.member.user.last_name} - {self.aircraft.registration} ({self.scheduled_start.date()})"
-    
+
+    @property
+    def display_status(self):
+        """Human label that distinguishes returned-unpaid from completed-paid."""
+        if self.status == 'completed':
+            try:
+                if self.flight_completion.paid_at:
+                    return 'Completed'
+            except Exception:
+                pass
+            return 'Returned'
+        return self.get_status_display()
+
+    @property
+    def display_status_key(self):
+        """CSS class key for display_status."""
+        if self.status == 'completed':
+            try:
+                if self.flight_completion.paid_at:
+                    return 'completed'
+            except Exception:
+                pass
+            return 'returned'
+        return self.status
+
     def save(self, *args, **kwargs):
         if self.confirmed_by:
             confirmer = ClubMember.objects.filter(user=self.confirmed_by, club=self.club).first()
@@ -796,10 +874,12 @@ class FlightCompletion(models.Model):
     )
 
     # Actual flight time readings
-    hobbs_start = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    hobbs_end   = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    tacho_start = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    tacho_end   = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    hobbs_start      = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    hobbs_end        = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    tacho_start      = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    tacho_end        = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    airswitch_start  = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    airswitch_end    = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
 
     # Calculated hours (based on aircraft total_time_method)
     actual_flight_hours = models.DecimalField(max_digits=6, decimal_places=2, default=0)
@@ -818,11 +898,18 @@ class FlightCompletion(models.Model):
     # Total charge (sum of FlightChargeItem rows — computed, stored for fast display)
     total_charge = models.DecimalField(max_digits=8, decimal_places=2, default=0)
 
-    # Payment
+    # Payment — amount_paid accumulates across partial payments
     payment_method = models.CharField(
         max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True, default=''
     )
+    amount_paid = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     paid_at = models.DateTimeField(null=True, blank=True)
+
+    # Meter gap — recorded when the start reading doesn't follow on from the previous end
+    meter_gap_note = models.TextField(
+        blank=True, default='',
+        help_text="Explanation required when start reading doesn't match the previous flight's end reading"
+    )
 
     # Audit
     logged_by = models.ForeignKey(User, on_delete=models.PROTECT)
@@ -834,7 +921,16 @@ class FlightCompletion(models.Model):
 
     @property
     def is_paid(self):
-        return self.paid_at is not None
+        """Fully settled."""
+        return self.paid_at is not None and self.amount_paid >= self.total_charge
+
+    @property
+    def is_partially_paid(self):
+        return self.amount_paid > 0 and self.amount_paid < self.total_charge
+
+    @property
+    def balance_owing(self):
+        return max(0, self.total_charge - self.amount_paid)
 
 
 # ============================================================================
@@ -897,6 +993,7 @@ class FuelSurchargeRate(models.Model):
     rate = models.DecimalField(max_digits=8, decimal_places=2, help_text="Per Hobbs/Tacho hour")
     effective_from = models.DateField()
     notes = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True, help_text="Uncheck to pause fuel charging without deleting the rate")
 
     class Meta:
         ordering = ['-effective_from']
@@ -916,12 +1013,12 @@ class FuelSurchargeRate(models.Model):
         d = on_date or date.today()
         if aircraft:
             specific = cls.objects.filter(
-                club=club, aircraft=aircraft, effective_from__lte=d
+                club=club, aircraft=aircraft, effective_from__lte=d, is_active=True
             ).order_by('-effective_from').first()
             if specific:
                 return specific
         return cls.objects.filter(
-            club=club, aircraft__isnull=True, effective_from__lte=d
+            club=club, aircraft__isnull=True, effective_from__lte=d, is_active=True
         ).order_by('-effective_from').first()
 
 
@@ -1069,22 +1166,6 @@ def members_to_notify_for_release(booking):
     )
 
     return watcher_members + pref_matches
-
-
-class MemberCategory(models.Model):
-    """Extensible member categories per club."""
-    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='member_categories')
-    name = models.CharField(max_length=100)  # 'Private Pilot', 'Student', 'Life Member (Flying)', etc.
-    slug = models.SlugField()
-    status = models.CharField(max_length=20, choices=[('member', 'Member'), ('non_member', 'Non-Member')])
-    description = models.TextField(blank=True)
-    
-    class Meta:
-        unique_together = ('club', 'slug')
-        ordering = ['status', 'name']
-    
-    def __str__(self):
-        return self.name
 
 
 class BlockOutType(models.Model):

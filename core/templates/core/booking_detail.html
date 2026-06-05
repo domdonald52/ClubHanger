@@ -1,0 +1,722 @@
+{% extends base_template|default:"core/base.html" %}
+{% block title %}Booking · {{ booking.member.user.get_full_name }} · {{ club.name }}{% endblock %}
+{% block inline_title %}{{ inline_title }}{% endblock %}
+
+{% block content %}
+<div style="max-width:860px;margin:0 auto;padding:2rem;">
+
+  <a href="{% url 'core:manage_bookings' club.slug %}" class="back-link">← Bookings</a>
+
+  {% if error %}<div class="notice err">{{ error }}</div>{% endif %}
+  {% if success %}<div class="notice ok">{{ success }}</div>{% endif %}
+
+  <!-- Booking summary card -->
+  <div class="bcard">
+    <div class="bcard-head">
+      <div>
+        <strong>{{ booking.member.user.get_full_name }}</strong>
+        <span class="sep">·</span>{{ booking.aircraft.registration }}
+        <span class="sep">·</span>{{ booking.flight_type.name }}
+        {% if booking.instructor %}<span class="sep">·</span>{{ booking.instructor.get_full_name }}{% endif %}
+      </div>
+      <span class="status-chip status-{{ booking.display_status_key }}">{{ booking.display_status }}</span>
+    </div>
+    <div class="bcard-body">
+      <div class="bcard-row">
+        <span class="bl">Scheduled</span>
+        {{ booking.scheduled_start|date:"D j M Y, H:i" }} – {{ booking.scheduled_end|time:"H:i" }}
+        <span style="color:#8a93a0;font-size:.82rem;">({{ booking.scheduled_start|timesince:booking.scheduled_end }} scheduled)</span>
+      </div>
+      {% if booking.departed_at %}
+      <div class="bcard-row"><span class="bl">Departed</span>{{ booking.departed_at|date:"H:i" }}
+        {% if booking.departed_without_declaration %}<span class="warn-chip">No declaration — {{ booking.departed_without_declaration_reason }}</span>{% endif %}
+      </div>
+      {% endif %}
+      {% if booking.arrived_at %}<div class="bcard-row"><span class="bl">Arrived</span>{{ booking.arrived_at|date:"H:i" }}</div>{% endif %}
+      {% if booking.description %}<div class="bcard-row"><span class="bl">Notes</span>{{ booking.description }}</div>{% endif %}
+    </div>
+  </div>
+
+  <!-- ── PENDING: Confirm ── -->
+  {% if booking.status == 'pending' %}
+  <div class="section">
+    <h2 class="sh2">Action required</h2>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+      <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="confirm">
+        <button type="submit" class="btn">Confirm booking</button>
+      </form>
+      <form method="post" style="display:inline;" onsubmit="return confirm('Cancel this booking?')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cancel_booking">
+        <button type="submit" class="btn secondary">Cancel booking</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Declaration (shown whenever one exists or is required) ── -->
+  {% if requires_decl or has_submitted_decl %}
+  <div class="section" style="padding:.9rem 1.2rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+      <div style="font-size:.88rem;">
+        <strong>Departure declaration</strong>
+        {% if has_submitted_decl %}
+          <span style="color:#2a7a3b;margin-left:.5rem;">✓ Submitted {{ booking.declaration.submitted_at|date:"j M H:i" }}</span>
+          {% if booking.status != 'completed' and booking.declaration.is_stale %}<span style="color:#c76c00;font-size:.8rem;margin-left:.4rem;">⚠ &gt;6h ago — re-check weather before departing</span>{% endif %}
+        {% elif booking.status == 'confirmed' %}
+          <span style="color:#c76c00;margin-left:.5rem;">Not yet submitted</span>
+        {% elif booking.departed_without_declaration %}
+          <span style="color:#c0392b;margin-left:.5rem;">Departed without declaration — {{ booking.departed_without_declaration_reason }}</span>
+        {% endif %}
+      </div>
+      {% if booking.status == 'confirmed' %}
+      <button type="button" class="btn secondary" style="font-size:.82rem;"
+              onclick="openDeclOverlay('{% url 'core:booking_declaration' club.slug booking.id %}')">
+        {% if has_submitted_decl %}View / amend{% else %}Complete declaration{% endif %}
+      </button>
+      {% elif has_submitted_decl %}
+      <button type="button" class="btn secondary" style="font-size:.82rem;"
+              onclick="openDeclOverlay('{% url 'core:booking_declaration' club.slug booking.id %}')">View declaration</button>
+      {% endif %}
+    </div>
+
+    {% if has_submitted_decl %}
+    <div style="margin-top:.7rem;font-size:.85rem;display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;">
+      <div><span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Route</span><br>{{ booking.declaration.route_intentions|default:"—" }}</div>
+      <div><span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Destination</span><br>{{ booking.declaration.destination|default:"—" }}</div>
+      {% if booking.declaration.next_of_kin_name %}
+      <div><span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Next of kin</span><br>{{ booking.declaration.next_of_kin_name }} · {{ booking.declaration.next_of_kin_phone }}</div>
+      {% endif %}
+      {% with pax=booking.declaration.passengers.all %}
+      {% if pax %}
+      <div><span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Passengers</span><br>{% for p in pax %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+      {% endif %}
+      {% endwith %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ── CONFIRMED: Depart ── -->
+  {% if booking.status == 'confirmed' %}
+  <div class="section">
+    <h2 class="sh2">Depart</h2>
+    {% if requires_decl and not has_submitted_decl %}
+    <div class="notice warn" style="margin-bottom:.8rem;">
+      This flight type requires a pre-departure declaration which has not been submitted.
+    </div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="depart">
+      {% if requires_decl and not has_submitted_decl %}
+      <label class="flabel" style="max-width:480px;">Override reason (required without declaration)
+        <input type="text" name="no_declaration_reason" class="finput" required
+               placeholder="e.g. Short local circuit, pilot briefed verbally">
+      </label>
+      {% endif %}
+      <button type="submit" class="btn">Mark as Departed</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- ── DEPARTED: Record Return ── -->
+  {% if booking.status == 'departed' %}
+  <div class="section">
+    <h2 class="sh2">Record return</h2>
+    <form method="post" id="checkin-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="checkin">
+
+      <label class="flabel" style="max-width:300px;">Outcome
+        <select name="outcome" class="finput" onchange="toggleOutcomeNotes(this)">
+          <option value="completed">Completed normally</option>
+          <option value="aborted_ground">Aborted on ground</option>
+          <option value="early_return_tech">Early return — technical</option>
+          <option value="early_return_wx">Early return — weather</option>
+          <option value="diverted">Diverted / landed away</option>
+        </select>
+      </label>
+      <div id="outcome-notes-wrap" style="display:none;max-width:480px;">
+        <label class="flabel">Outcome notes (required)
+          <textarea name="outcome_notes" class="finput" rows="2" placeholder="Describe what happened"></textarea>
+        </label>
+      </div>
+
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.8rem;">
+        {% if booking.aircraft.records_hobbs %}
+        <label class="flabel">Hobbs start <span class="req">*</span>
+          <input type="number" name="hobbs_start" id="ci-hobbs-start" step="0.1" required class="finput" style="width:110px;"
+                 data-prev-end="{{ prev_hobbs_end|default:'' }}" data-meter="hobbs"
+                 value="{% if fc and fc.hobbs_start %}{{ fc.hobbs_start }}{% elif prev_hobbs_end %}{{ prev_hobbs_end }}{% endif %}"
+                 oninput="checkMeterGap(this)">
+        </label>
+        <label class="flabel">Hobbs end <span class="req">*</span>
+          <input type="number" name="hobbs_end" step="0.1" required class="finput" style="width:110px;">
+        </label>
+        {% endif %}
+        {% if booking.aircraft.records_tacho %}
+        <label class="flabel">Tacho start <span class="req">*</span>
+          <input type="number" name="tacho_start" id="ci-tacho-start" step="0.01" required class="finput" style="width:110px;"
+                 data-prev-end="{{ prev_tacho_end|default:'' }}" data-meter="tacho"
+                 value="{% if fc and fc.tacho_start %}{{ fc.tacho_start }}{% elif prev_tacho_end %}{{ prev_tacho_end }}{% endif %}"
+                 oninput="checkMeterGap(this)">
+        </label>
+        <label class="flabel">Tacho end <span class="req">*</span>
+          <input type="number" name="tacho_end" step="0.01" required class="finput" style="width:110px;">
+        </label>
+        {% endif %}
+        {% if booking.aircraft.records_airswitch %}
+        <label class="flabel">Air switch start <span class="req">*</span>
+          <input type="number" name="airswitch_start" id="ci-airswitch-start" step="0.1" required class="finput" style="width:110px;"
+                 data-prev-end="{{ prev_airswitch_end|default:'' }}" data-meter="airswitch"
+                 value="{% if fc and fc.airswitch_start %}{{ fc.airswitch_start }}{% elif prev_airswitch_end %}{{ prev_airswitch_end }}{% endif %}"
+                 oninput="checkMeterGap(this)">
+        </label>
+        <label class="flabel">Air switch end <span class="req">*</span>
+          <input type="number" name="airswitch_end" step="0.1" required class="finput" style="width:110px;">
+        </label>
+        {% endif %}
+        {% if not booking.aircraft.records_hobbs and not booking.aircraft.records_tacho and not booking.aircraft.records_airswitch %}
+        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0;">No meter readings configured for this aircraft.</p>
+        {% endif %}
+      </div>
+
+      <!-- Meter gap warning + explanation — shown by JS when a gap is detected, or by server on re-render -->
+      <div id="meter-gap-wrap" style="display:none;margin-top:.8rem;">
+        <div class="notice warn" id="meter-gap-msg" style="margin-bottom:.5rem;"></div>
+        <label class="flabel" style="max-width:520px;">
+          Explanation for meter gap <span class="req">*</span>
+          <textarea name="gap_explanation" id="gap-explanation" class="finput" rows="2"
+                    placeholder="e.g. Ground run by engineer, meter replaced, tow flight not booked in system…"></textarea>
+        </label>
+      </div>
+      {% if error and 'gap' in error|lower %}
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          var w = document.getElementById('meter-gap-wrap');
+          var m = document.getElementById('meter-gap-msg');
+          if (w && m) { w.style.display = 'block'; m.textContent = '{{ error|escapejs }}'; }
+        });
+      </script>
+      {% endif %}
+
+      <details style="margin-top:.8rem;">
+        <summary style="font-size:.82rem;color:var(--primary);cursor:pointer;list-style:none;">Change flight type</summary>
+        <label class="flabel" style="max-width:280px;margin-top:.5rem;">Flight type
+          <select name="flight_type_id" class="finput">
+            <option value="">— keep {{ booking.flight_type.name }} —</option>
+            {% for ft in flight_types %}{% if ft != booking.flight_type %}<option value="{{ ft.id }}">{{ ft.name }}</option>{% endif %}{% endfor %}
+          </select>
+        </label>
+      </details>
+
+      <button type="submit" class="btn" style="margin-top:.8rem;">Record return</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- ── COMPLETED: Charges ── -->
+  {% if booking.status == 'completed' and fc %}
+  <div class="section">
+    <h2 class="sh2">
+      Charges
+      {% if fc.is_paid %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>{% endif %}
+    </h2>
+
+    {% if fc.outcome != 'completed' %}
+    <div class="notice warn" style="margin-bottom:.8rem;">
+      Outcome: <strong>{{ fc.get_outcome_display }}</strong>{% if fc.outcome_notes %} — {{ fc.outcome_notes }}{% endif %}
+    </div>
+    {% endif %}
+
+    {% if fc.actual_flight_hours %}
+    <div style="font-size:.85rem;color:#5b6573;margin-bottom:.8rem;">
+      Actual hours: <strong>{{ fc.actual_flight_hours }}h</strong>
+      ({{ booking.aircraft.get_total_time_method_display }})
+    </div>
+    {% endif %}
+
+    <table class="ch-table">
+      <thead><tr><th>Type</th><th>Description</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
+      <tbody>
+        {% for item in charge_items %}
+        <tr>
+          <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
+          <td>{{ item.description }}</td>
+          <td style="text-align:right;font-weight:600;">${{ item.amount }}</td>
+          <td style="width:32px;">
+            {% if not fc.is_paid %}
+            <form method="post" style="display:inline;" onsubmit="return confirm('Remove this charge?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_charge">
+              <input type="hidden" name="item_id" value="{{ item.id }}">
+              <button type="submit" class="del-btn">×</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="color:#8a93a0;font-size:.85rem;padding:.6rem;">No charges added yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if not fc.is_paid %}
+    <!-- Add charges — appear BEFORE the total -->
+    <details class="add-wrap" style="margin-bottom:.5rem;">
+      <summary class="add-toggle">+ Add landing fee</summary>
+      <form method="post" class="lf-form" style="padding:.2rem .7rem .8rem;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_charge">
+        <input type="hidden" name="item_type" value="landing">
+        <input type="hidden" name="quantity" value="1">
+        <input type="hidden" name="unit_amount" id="lf-unit">
+        <input type="hidden" name="description" id="lf-desc" value="Landing fee">
+        {% if aerodromes %}
+        <div class="lf-row">
+          <label class="flabel" style="flex:2;min-width:170px;">Aerodrome
+            <select name="aerodrome_id" class="finput" id="lf-aerodrome"
+                    onchange="lfAerodromeChange(this)">
+              <option value="">— select aerodrome —</option>
+              {% for ae in aerodromes %}
+              <option value="{{ ae.id }}"
+                data-fees='[{% for f in ae.fee_types.all %}{"id":{{ f.id }},"name":"{{ f.name }}","amount":"{{ f.default_amount }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                {{ ae.icao_code }} — {{ ae.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="flabel" id="lf-feetype-wrap" style="flex:2;min-width:150px;">Fee type
+            <select name="fee_type_id" id="lf-fee-type" class="finput"
+                    onchange="lfFeeTypeChange(this)">
+              <option value="">— select aerodrome first —</option>
+            </select>
+          </label>
+          <label class="flabel lf-amount-wrap" style="width:110px;">Amount
+            <div class="money-wrap">
+              <span class="money-sym">$</span>
+              <input type="number" name="amount" id="lf-amount" step="0.01" min="0"
+                     class="finput money-input" placeholder="0.00" required
+                     onblur="fmtMoney(this)">
+            </div>
+          </label>
+          <button type="submit" class="btn lf-add-btn">Add</button>
+        </div>
+        <div id="lf-nofees-msg" class="lf-hint" hidden>No fee types configured for this aerodrome — enter amount manually.</div>
+        <div id="lf-custom" class="lf-row" style="display:none;margin-top:.4rem;">
+          <label class="flabel" style="width:70px;">ICAO
+            <input type="text" name="custom_icao" maxlength="4" class="finput"
+                   style="text-transform:uppercase;" placeholder="NZMS">
+          </label>
+          <label class="flabel" style="flex:1;min-width:140px;">Aerodrome name
+            <input type="text" name="custom_name" class="finput" placeholder="e.g. Masterton">
+          </label>
+          <label class="flabel" style="flex:2;min-width:170px;">Fee description
+            <input type="text" id="lf-custom-desc" name="description" class="finput"
+                   placeholder="e.g. Full stop landing" required>
+          </label>
+        </div>
+        {% else %}
+        <p style="font-size:.85rem;color:#8a93a0;padding:.4rem 0 .2rem;">No aerodromes configured yet.
+          <a href="{% url 'core:manage_aerodromes' club.slug %}" data-overlay>Configure →</a></p>
+        {% endif %}
+      </form>
+    </details>
+
+    <details class="add-wrap" style="margin-bottom:.5rem;">
+      <summary class="add-toggle">+ Add sundry / one-off charge</summary>
+      <form method="post" style="padding:.2rem .7rem .8rem;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_charge">
+        <input type="hidden" name="item_type" value="one_off">
+        <div class="lf-row">
+          <label class="flabel" style="flex:3;min-width:220px;">Description
+            <input type="text" name="description" class="finput" required placeholder="e.g. WAC chart, headset hire">
+          </label>
+          <label class="flabel" style="width:110px;">Amount
+            <div class="money-wrap"><span class="money-sym">$</span>
+              <input type="number" name="amount" step="0.01" min="0" class="finput money-input"
+                     placeholder="0.00" required onblur="fmtMoney(this)">
+            </div>
+          </label>
+          <button type="submit" class="btn lf-add-btn">Add</button>
+        </div>
+      </form>
+    </details>
+
+    <details class="add-wrap" style="margin-bottom:1rem;">
+      <summary class="add-toggle" style="color:#8a93a0;font-size:.8rem;">± Adjust auto-calculated charge</summary>
+      <form method="post" style="margin-top:.6rem;padding:0 .7rem .7rem;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_charge">
+        <p style="font-size:.8rem;color:#8a93a0;margin:0 0 .6rem;">Correct a hire, fuel, instructor or surcharge item.</p>
+        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
+          <label class="flabel">Type
+            <select name="item_type" class="finput">
+              <option value="hire">Hire adjustment</option>
+              <option value="fuel">Fuel adjustment</option>
+              <option value="instructor">Instructor adjustment</option>
+              <option value="surcharge">Surcharge adjustment</option>
+            </select>
+          </label>
+          <label class="flabel" style="flex:2;min-width:200px;">Description
+            <input type="text" name="description" class="finput" required placeholder="Describe the correction">
+          </label>
+          <label class="flabel" style="width:120px;">Amount
+            <div class="money-wrap"><span class="money-sym">$</span>
+              <input type="number" name="amount" step="0.01" class="finput money-input"
+                     required placeholder="−5.00 for credit" onblur="fmtMoney(this)">
+            </div>
+          </label>
+          <button type="submit" class="btn secondary lf-add-btn">Add</button>
+        </div>
+      </form>
+    </details>
+    {% endif %}
+
+    <!-- Total — always visible, below the add-charge accordions -->
+    <div class="ch-total-row">
+      <span class="ch-total-label">Total</span>
+      <span class="ch-total-amount">${{ total }}</span>
+    </div>
+
+    {% if not fc.is_paid %}
+    <!-- Payment -->
+    <div class="ch-payment-wrap">
+      {% if fc.is_partially_paid %}
+      <div class="notice warn" style="margin-bottom:.7rem;">
+        Partial payment recorded. Amount paid so far: <strong>${{ fc.amount_paid }}</strong> — balance owing: <strong>${{ fc.balance_owing }}</strong>
+      </div>
+      {% endif %}
+
+      {% if other_unpaid_list or other_outstanding_list %}
+      <div class="notice warn" style="margin-bottom:.7rem;font-size:.82rem;">
+        <strong>&#9888; Other amounts outstanding for this member:</strong>
+        <ul style="margin:.35rem 0 0 1rem;padding:0;">
+          {% for item in other_unpaid_list %}
+          <li>{{ item.booking.scheduled_start|date:"j M Y" }} · {{ item.booking.aircraft.registration }} — <strong>${{ item.total_charge }}</strong> unpaid</li>
+          {% endfor %}
+          {% for item in other_outstanding_list %}
+          <li>{{ item.booking.scheduled_start|date:"j M Y" }} · {{ item.booking.aircraft.registration }} — <strong>${{ item.balance_owing }}</strong> remaining (partial)</li>
+          {% endfor %}
+        </ul>
+        {% if other_total_count > 1 %}
+        <div style="margin-top:.3rem;">Total outstanding across other flights: <strong>${{ other_total }}</strong></div>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      {% with acct=booking.member.account %}
+      {% if acct and acct.balance < 0 %}
+        {% if acct.is_over_limit %}
+        <div class="notice err" style="margin-bottom:.7rem;font-size:.82rem;">
+          <strong>&#9888; Account over credit limit</strong> — balance ${{ acct.balance }}, limit ${{ acct.credit_limit }}. Account credit payment will be blocked.
+        </div>
+        {% else %}
+        <div class="notice warn" style="margin-bottom:.7rem;font-size:.82rem;">
+          Account in debit: <strong>${{ acct.balance }}</strong>
+          {% if acct.credit_limit is not None %} (limit ${{ acct.credit_limit }}){% else %} — no credit limit set{% endif %}
+        </div>
+        {% endif %}
+      {% endif %}
+      {% endwith %}
+
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="confirm_payment">
+        <div style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
+          <label class="flabel" style="margin:0;">Payment method
+            <select name="payment_method" class="finput" style="width:auto;margin-top:.25rem;">
+              <option value="eftpos">EFTPOS</option>
+              <option value="credit">Account credit</option>
+              <option value="invoice">Invoice / bank transfer</option>
+            </select>
+          </label>
+          <label class="flabel" style="margin:0;">Amount received
+            <div class="money-wrap" style="margin-top:.25rem;">
+              <span class="money-sym">$</span>
+              <input type="number" name="payment_amount" step="0.01" min="0.01"
+                     max="{{ balance_owing }}" value="{{ balance_owing }}"
+                     class="finput money-input" style="width:90px;" required>
+            </div>
+          </label>
+          <div style="font-size:.78rem;color:#8a93a0;padding-bottom:.5rem;">of ${{ balance_owing }} owing</div>
+          <button type="submit" class="btn" style="margin-bottom:.1rem;"
+                  onclick="return confirm('Record this payment — this cannot be undone.')">
+            Record payment
+          </button>
+        </div>
+        {% with acct=booking.member.account %}
+        {% if acct %}
+        <div style="font-size:.8rem;color:#8a93a0;margin-top:.5rem;display:flex;gap:1.2rem;flex-wrap:wrap;align-items:center;">
+          <span>Account balance:
+            <strong style="color:{% if acct.is_over_limit %}#c0392b{% elif acct.balance < 0 %}#b06800{% else %}#2a7a3b{% endif %};">
+              ${{ acct.balance }}
+            </strong>
+          </span>
+          {% if acct.credit_limit is not None %}
+          <span style="color:{% if acct.is_over_limit %}#c0392b{% else %}#8a93a0{% endif %};">
+            Credit limit: <strong>${{ acct.credit_limit }}</strong>
+            {% if acct.is_over_limit %} &#9888; EXCEEDED{% endif %}
+          </span>
+          {% else %}
+          <span style="color:#2a7a3b;font-style:italic;">No credit limit</span>
+          {% endif %}
+        </div>
+        {% endif %}
+        {% endwith %}
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+</div>
+
+<style>
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link:hover{color:var(--banner);}
+
+  .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;}
+  .notice.ok{background:#eaf6ec;color:#216c2a;}
+  .notice.err{background:#fff0f0;color:#c0392b;}
+  .notice.warn{background:#fff8e6;color:#7a5800;}
+
+  .bcard{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.4rem;}
+  .bcard-head{background:#fafbfc;padding:.65rem 1rem;border-bottom:1px solid #eef1f4;display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.92rem;flex-wrap:wrap;}
+  .bcard-body{padding:.75rem 1rem;font-size:.88rem;}
+  .bcard-row{display:flex;gap:.5rem;align-items:baseline;margin-bottom:.35rem;}
+  .bl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;min-width:75px;flex-shrink:0;}
+  .sep{color:#d0d5dd;margin:0 .2rem;}
+
+  /* status-chip colours defined in base.html */
+  .warn-chip{font-size:.72rem;background:#fee2e2;color:#c0392b;padding:.1rem .4rem;border-radius:4px;margin-left:.3rem;}
+
+  .section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;}
+  .sh2{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 .9rem;}
+
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+  .req{color:#c0392b;font-size:.8rem;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+
+  .ch-table{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1rem;}
+  .ch-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .ch-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ch-table tfoot td{border-top:2px solid #e3e6ea;border-bottom:none;}
+  .del-btn{background:none;border:none;color:#c0392b;cursor:pointer;font-size:1rem;line-height:1;padding:0 .3rem;}
+
+  .paid-badge{font-size:.75rem;font-weight:500;color:#2a7a3b;background:#e6f4ea;padding:.2rem .6rem;border-radius:10px;margin-left:.6rem;}
+
+  .add-wrap{border:1px solid #e3e6ea;border-radius:7px;margin-bottom:.4rem;}
+  .add-wrap[open]{background:#fafbfc;}
+  .add-toggle{cursor:pointer;font-size:.82rem;color:var(--primary);font-weight:600;list-style:none;padding:.4rem .7rem;}
+  .add-toggle::-webkit-details-marker{display:none;}
+  .add-wrap[open] .add-toggle{border-bottom:1px solid #e3e6ea;margin-bottom:.2rem;}
+  .lf-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;}
+  .lf-add-btn{flex-shrink:0;padding:.42rem .75rem;margin-bottom:0;}
+  .money-wrap{display:flex;align-items:center;gap:0;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff;}
+  .money-sym{padding:0 .4rem;font-size:.88rem;color:#8a93a0;background:#f8f9fb;border-right:1px solid #ddd;line-height:2.2;}
+  .money-input{border:none!important;border-radius:0!important;flex:1;min-width:0;margin-top:0!important;text-align:right;}
+  .money-input:focus{outline:2px solid var(--primary);outline-offset:-1px;border-radius:0 5px 5px 0!important;}
+  .lf-hint{font-size:.8rem;color:#8a93a0;margin:.3rem .7rem .1rem;font-style:italic;}
+
+  .ch-total-row{display:flex;align-items:center;justify-content:space-between;padding:.7rem .5rem;border-top:2px solid #e3e6ea;margin-top:.6rem;}
+  .ch-total-label{font-size:.88rem;font-weight:600;color:#5b6573;}
+  .ch-total-amount{font-size:1.15rem;font-weight:700;color:#1f2933;}
+  .ch-payment-wrap{margin-top:.9rem;padding:.9rem 1rem;background:#f8f9fb;border-radius:8px;border:1px solid #e3e6ea;}
+
+  .btn{padding:.42rem .85rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;font-weight:500;}
+  .btn:hover{filter:brightness(1.07);}
+  .btn.secondary{background:#f3f5f7;color:#1f2933;border:1px solid #d6dae0;}
+  .btn.secondary:hover{background:#e8eaed;}
+  .decl-overlay{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:150;}
+  .decl-overlay[hidden]{display:none;}
+  .decl-modal{background:#fff;border-radius:12px;width:min(740px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(16,24,40,.25);}
+</style>
+
+<!-- Declaration overlay -->
+<div id="decl-overlay" class="decl-overlay" hidden>
+  <div class="decl-modal" id="decl-modal-body">
+    <p style="color:#8a93a0;padding:2rem;text-align:center;">Loading…</p>
+  </div>
+</div>
+
+<script>
+function toggleOutcomeNotes(sel) {
+  const wrap = document.getElementById('outcome-notes-wrap');
+  if (wrap) wrap.style.display = sel.value === 'completed' ? 'none' : 'block';
+}
+
+function checkMeterGap(inp) {
+  var prevEnd = parseFloat(inp.dataset.prevEnd);
+  if (isNaN(prevEnd)) return;
+  var val = parseFloat(inp.value);
+  if (isNaN(val)) return;
+  var meter = inp.dataset.meter;
+  var labels = { hobbs: 'Hobbs', tacho: 'Tacho', airswitch: 'Air switch' };
+  var meterLabel = labels[meter] || meter;
+  var tolerance = meter === 'tacho' ? 0.005 : 0.05;
+  var decimals  = meter === 'tacho' ? 2 : 1;
+  var gap = val - prevEnd;
+  var wrap = document.getElementById('meter-gap-wrap');
+  var msg  = document.getElementById('meter-gap-msg');
+  var expl = document.getElementById('gap-explanation');
+  if (gap > tolerance) {
+    msg.textContent = meterLabel + ' gap detected: start ' + val + ' is ' + gap.toFixed(decimals) +
+      'h ahead of last recorded end (' + prevEnd + '). An explanation is required before you can save.';
+    wrap.style.display = 'block';
+    expl.required = true;
+  } else {
+    wrap.style.display = 'none';
+    expl.required = false;
+  }
+}
+
+// Landing fee form helpers
+function lfAerodromeChange(sel) {
+  const feeTypeSel = document.getElementById('lf-fee-type');
+  const customDiv  = document.getElementById('lf-custom');
+  const noFeesMsg  = document.getElementById('lf-nofees-msg');
+  const amountInp  = document.getElementById('lf-amount');
+  const descInp    = document.getElementById('lf-desc');
+  const custDescInp = document.getElementById('lf-custom-desc');
+
+  feeTypeSel.innerHTML = '<option value="">— select fee type —</option>';
+  if (!sel.value) {
+    // Custom / unknown aerodrome — show manual fields
+    if (customDiv) customDiv.style.display = 'flex';
+    if (noFeesMsg) noFeesMsg.hidden = true;
+    if (descInp) { descInp.name = ''; descInp.value = ''; }
+    if (custDescInp) { custDescInp.name = 'description'; custDescInp.required = true; }
+    return;
+  }
+  if (customDiv) customDiv.style.display = 'none';
+  // Remove custom-desc from submission so it doesn't overwrite the hidden lf-desc value
+  if (custDescInp) { custDescInp.name = ''; custDescInp.required = false; }
+  if (descInp) descInp.name = 'description';
+
+  try {
+    const fees = JSON.parse(sel.options[sel.selectedIndex].dataset.fees || '[]');
+    fees.forEach(f => {
+      const o = document.createElement('option');
+      o.value = f.id; o.textContent = f.name; o.dataset.amount = f.amount;
+      feeTypeSel.appendChild(o);
+    });
+    if (fees.length === 0) {
+      if (noFeesMsg) noFeesMsg.hidden = false;
+    } else {
+      if (noFeesMsg) noFeesMsg.hidden = true;
+      if (fees.length === 1) {
+        feeTypeSel.value = fees[0].id;
+        lfFeeTypeChange(feeTypeSel);
+      }
+    }
+  } catch(e) {}
+}
+
+function lfFeeTypeChange(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  const amountInp = document.getElementById('lf-amount');
+  const unitInp   = document.getElementById('lf-unit');
+  const descInp   = document.getElementById('lf-desc');
+  if (opt && opt.dataset.amount) {
+    if (amountInp) { amountInp.value = parseFloat(opt.dataset.amount).toFixed(2); }
+    if (unitInp)   { unitInp.value   = opt.dataset.amount; }
+    if (descInp && opt.value)   { descInp.value   = opt.textContent.trim(); }
+  } else {
+    if (amountInp) amountInp.value = '';
+    if (unitInp)   unitInp.value   = '';
+  }
+}
+
+// On load, prevent the empty custom-desc from shadowing lf-desc
+(function() {
+  const custDesc = document.getElementById('lf-custom-desc');
+  if (custDesc) custDesc.name = '';
+})();
+
+// Keep unit_amount in sync with amount
+(function() {
+  const amtEl = document.getElementById('lf-amount');
+  const unitEl = document.getElementById('lf-unit');
+  if (amtEl && unitEl) {
+    amtEl.addEventListener('input', () => { unitEl.value = amtEl.value; });
+  }
+})();
+
+// Format money inputs to 2dp on blur — applied globally to any .money-input
+function fmtMoney(el) {
+  const v = parseFloat(el.value);
+  if (!isNaN(v)) el.value = v.toFixed(2);
+}
+document.querySelectorAll('.money-input').forEach(el => {
+  el.addEventListener('blur', () => fmtMoney(el));
+});
+
+// Declaration overlay
+(function() {
+  const overlay = document.getElementById('decl-overlay');
+  const body    = document.getElementById('decl-modal-body');
+  if (!overlay) return;
+
+  window.openDeclOverlay = function(url) {
+    overlay.hidden = false;
+    body.innerHTML = '<p style="color:#8a93a0;padding:2rem;text-align:center;">Loading…</p>';
+    loadDecl(url);
+  };
+
+  async function loadDecl(url) {
+    const inlineUrl = url + (url.includes('?') ? '&' : '?') + 'inline=1';
+    try {
+      const resp = await fetch(inlineUrl, { credentials: 'same-origin' });
+      const html = await resp.text();
+      body.innerHTML = html;
+      body.querySelectorAll('script').forEach(orig => {
+        const s = document.createElement('script'); s.textContent = orig.textContent; orig.replaceWith(s);
+      });
+      attachDeclForms(url);
+    } catch(e) {
+      body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load declaration.</p>';
+    }
+  }
+
+  function attachDeclForms(baseUrl) {
+    body.querySelectorAll('[data-close-overlay]').forEach(btn => btn.addEventListener('click', closeDeclOverlay));
+    body.querySelectorAll('form').forEach(f => {
+      f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const action = f.getAttribute('action');
+        const resolved = action ? new URL(action, baseUrl).href : baseUrl;
+        const target = resolved + (resolved.includes('?') ? '&' : '?') + 'inline=1';
+        try {
+          const resp = await fetch(target, { method: 'POST', body: new FormData(f), credentials: 'same-origin' });
+          const html = await resp.text();
+          // If response is a redirect to booking_detail, close overlay and reload
+          if (resp.url && !resp.url.includes('declaration')) {
+            closeDeclOverlay();
+            location.reload();
+            return;
+          }
+          body.innerHTML = html;
+          body.querySelectorAll('script').forEach(orig => {
+            const s = document.createElement('script'); s.textContent = orig.textContent; orig.replaceWith(s);
+          });
+          attachDeclForms(baseUrl);
+        } catch(e) {}
+      });
+    });
+  }
+
+  function closeDeclOverlay() {
+    overlay.hidden = true;
+    location.reload();  // refresh in case declaration was submitted
+  }
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeDeclOverlay(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) closeDeclOverlay(); });
+})();
+</script>
+{% endblock %}

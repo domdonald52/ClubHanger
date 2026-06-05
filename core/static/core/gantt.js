@@ -66,6 +66,9 @@
     clearTimeout(t._timer);
     t._timer = setTimeout(() => (t.hidden = true), 3500);
   }
+  // showToast is an alias used in various handlers
+  const showToast = toast;
+
   function post(url, data) {
     const body = new URLSearchParams(data);
     return fetch(url, {
@@ -104,7 +107,13 @@
   const fDesc = document.getElementById("m-desc");
   const btnDelete = document.getElementById("m-delete");
   const btnConfirm = document.getElementById("m-confirm");
+  const btnDepart = document.getElementById("m-depart");
+  const btnCheckin = document.getElementById("m-checkin-btn");
+  const btnCharges = document.getElementById("m-charges-link");
   const btnWatch = document.getElementById("m-watch");
+  const editFields = document.getElementById("m-edit-fields");
+  const checkinFields = document.getElementById("m-checkin-fields");
+  const declWarn = document.getElementById("m-decl-warn");
   const btnWatchLabel = document.getElementById("m-watch-label");
 
   // Mutable set — updated on watch toggles without page reload
@@ -206,6 +215,11 @@
   }
 
   function openCreate(aircraftId, start, instructorId, bookingKind) {
+    // Non-staff cannot book in the past
+    if (!cfg.canManage && start < new Date()) {
+      toast("Bookings cannot be made in the past");
+      return;
+    }
     document.getElementById("modal-title").textContent = "New booking";
     fId.value = "";
     btnDelete.hidden = true;
@@ -302,7 +316,84 @@
     document.getElementById("modal-title").textContent = "Edit booking";
     fId.value = pill.dataset.id;
     btnDelete.hidden = false;
-    btnConfirm.hidden = !(cfg.canManage && pill.dataset.status === "pending");
+    const st = pill.dataset.status;
+    const statusNotice = document.getElementById("m-status-notice");
+    const statusText = document.getElementById("m-status-text");
+    btnConfirm.hidden = !(cfg.canManage && st === "pending");
+    btnDepart.hidden = !(cfg.canManage && st === "confirmed");
+    // departed: hide edit fields, show check-in panel
+    const isDeparted = (st === "departed");
+    const isCompleted = (st === "completed");
+    editFields.style.display = (isDeparted || isCompleted) ? "none" : "";
+    checkinFields.hidden = !isDeparted;
+    btnCheckin.hidden = !isDeparted;
+    btnSave.hidden = isDeparted || isCompleted;
+    btnDelete.hidden = isDeparted || isCompleted;
+    // completed: show status notice + view details link
+    statusNotice.hidden = !isCompleted;
+    if (isCompleted) {
+      const isPaid = pill.dataset.paid === "true";
+      statusText.textContent = isPaid
+        ? "This flight is completed and paid."
+        : "Aircraft returned — charges and payment pending.";
+    }
+    btnCharges.hidden = !isCompleted;
+    if (isCompleted) {
+      btnCharges.href = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
+      btnCharges.textContent = "View details →";
+      const paid = pill.dataset.paid === "true";
+      btnCharges.style.background = paid ? "var(--completed-paid,#7c3aed)" : "var(--returned,#2563eb)";
+      btnCharges.style.borderColor = btnCharges.style.background;
+    }
+    // declaration warning for confirmed flights
+    declWarn.hidden = !(st === "confirmed" && pill.dataset.requiresDeclaration === "true" && pill.dataset.hasDeclaration !== "true");
+    // reset check-in fields and mark required based on aircraft config
+    if (isDeparted) {
+      document.getElementById("m-outcome").value = "completed";
+      document.getElementById("m-outcome-notes-wrap").hidden = true;
+      ["m-hobbs-start","m-hobbs-end","m-tacho-start","m-tacho-end","m-airswitch-start","m-airswitch-end"].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = "";
+      });
+      const needHobbs     = pill.dataset.recordsHobbs     === "true";
+      const needTacho     = pill.dataset.recordsTacho     === "true";
+      const needAirswitch = pill.dataset.recordsAirswitch === "true";
+      [["m-hobbs-start","Hobbs start"],["m-hobbs-end","Hobbs end"]].forEach(([id, lbl]) => {
+        const el = document.getElementById(id); if (!el) return;
+        el.required = needHobbs;
+        el.style.borderColor = "";
+        el.closest("label").style.opacity = needHobbs ? "1" : ".45";
+        el.closest("label").firstChild.textContent = needHobbs ? lbl + " *" : lbl;
+      });
+      [["m-tacho-start","Tacho start"],["m-tacho-end","Tacho end"]].forEach(([id, lbl]) => {
+        const el = document.getElementById(id); if (!el) return;
+        el.required = needTacho;
+        el.style.borderColor = "";
+        el.closest("label").style.opacity = needTacho ? "1" : ".45";
+        el.closest("label").firstChild.textContent = needTacho ? lbl + " *" : lbl;
+      });
+      [["m-airswitch-start","Air switch start"],["m-airswitch-end","Air switch end"]].forEach(([id, lbl]) => {
+        const el = document.getElementById(id); if (!el) return;
+        el.required = needAirswitch;
+        el.style.borderColor = "";
+        el.closest("label").style.opacity = needAirswitch ? "1" : ".45";
+        el.closest("label").firstChild.textContent = needAirswitch ? lbl + " *" : lbl;
+      });
+      // Store for validation
+      btnCheckin.dataset.needsHobbs     = needHobbs;
+      btnCheckin.dataset.needsTacho     = needTacho;
+      btnCheckin.dataset.needsAirswitch = needAirswitch;
+
+      // Pre-fill start values from last recorded end for this aircraft
+      fetch(`/api/booking/${pill.dataset.id}/prev-readings/`, { credentials: "same-origin" })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          if (data.hobbs_end     && document.getElementById("m-hobbs-start"))     document.getElementById("m-hobbs-start").value     = data.hobbs_end;
+          if (data.tacho_end     && document.getElementById("m-tacho-start"))     document.getElementById("m-tacho-start").value     = data.tacho_end;
+          if (data.airswitch_end && document.getElementById("m-airswitch-start")) document.getElementById("m-airswitch-start").value = data.airswitch_end;
+        })
+        .catch(() => {});
+    }
 
     // Watch button: show for staff viewing someone else's active booking
     const isOwn = pill.dataset.memberUserId === String(cfg.currentUserId);
@@ -339,9 +430,112 @@
 
     modal.hidden = false;
   }
-  function closeModal() { modal.hidden = true; removePreview(); btnConfirm.hidden = true; }
+  const btnSave = document.getElementById("m-save");
+
+  function closeModal() {
+    modal.hidden = true;
+    removePreview();
+    btnConfirm.hidden = true;
+    btnDepart.hidden = true;
+    btnCheckin.hidden = true;
+    btnCharges.hidden = true;
+    declWarn.hidden = true;
+    document.getElementById("m-status-notice").hidden = true;
+    editFields.style.display = "";
+    checkinFields.hidden = true;
+    btnSave.hidden = false;
+    btnDelete.hidden = false;
+  }
   document.getElementById("m-cancel").addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+  // Depart button — AJAX
+  btnDepart.addEventListener("click", function() {
+    const id = document.getElementById("m-booking-id").value;
+    if (!id) return;
+    const reason = (document.getElementById("m-decl-reason") || {}).value || "";
+    const body = {};
+    if (reason.trim()) body.no_declaration_reason = reason.trim();
+    post(`/api/booking/${id}/depart/`, body).then(res => {
+      if (!res.ok) {
+        if (res.data && res.data.needs_reason) {
+          declWarn.hidden = false;
+        } else {
+          showToast(res.data && res.data.error ? res.data.error : "Could not depart");
+        }
+        return;
+      }
+      // Update ALL pills for this booking (aircraft row + instructor row)
+      document.querySelectorAll(`.pill[data-id="${id}"]`).forEach(pill => {
+        pill.classList.remove("confirmed","pending");
+        pill.classList.add("departed");
+        pill.dataset.status = "departed";
+        const nm = pill.querySelector(".nm");
+        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱] /, "") ;
+        if (nm && !nm.textContent.startsWith("✈")) nm.textContent = "✈ " + nm.textContent;
+        const sub = pill.querySelector(".sub");
+        if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · checked out"; }
+      });
+      closeModal();
+      showToast("Booking marked as departed");
+    });
+  });
+
+  // Check-in button — AJAX
+  btnCheckin.addEventListener("click", function() {
+    const id = document.getElementById("m-booking-id").value;
+    if (!id) return;
+    // Validate required meter readings
+    const needsHobbs     = this.dataset.needsHobbs     === "true";
+    const needsTacho     = this.dataset.needsTacho     === "true";
+    const needsAirswitch = this.dataset.needsAirswitch === "true";
+    const hs = document.getElementById("m-hobbs-start").value.trim();
+    const he = document.getElementById("m-hobbs-end").value.trim();
+    const ts = document.getElementById("m-tacho-start").value.trim();
+    const te = document.getElementById("m-tacho-end").value.trim();
+    const as_ = (document.getElementById("m-airswitch-start") || {}).value?.trim() || "";
+    const ae  = (document.getElementById("m-airswitch-end")   || {}).value?.trim() || "";
+    if (needsHobbs     && (!hs || !he))  { toast("Hobbs start and end are required"); return; }
+    if (needsTacho     && (!ts || !te))  { toast("Tacho start and end are required"); return; }
+    if (needsAirswitch && (!as_|| !ae))  { toast("Air switch start and end are required"); return; }
+    if (needsHobbs && he && hs && parseFloat(he) <= parseFloat(hs)) { toast("Hobbs end must be greater than start"); return; }
+    if (needsTacho && te && ts && parseFloat(te) <= parseFloat(ts)) { toast("Tacho end must be greater than start"); return; }
+    if (needsAirswitch && ae && as_ && parseFloat(ae) <= parseFloat(as_)) { toast("Air switch end must be greater than start"); return; }
+    const body = {
+      outcome:          document.getElementById("m-outcome").value,
+      outcome_notes:    document.getElementById("m-outcome-notes").value,
+      hobbs_start:      hs,
+      hobbs_end:        he,
+      tacho_start:      ts,
+      tacho_end:        te,
+      airswitch_start:  as_,
+      airswitch_end:    ae,
+    };
+    post(`/api/booking/${id}/checkin/`, body).then(res => {
+      if (!res.ok) { showToast(res.data && res.data.error ? res.data.error : "Could not check in"); return; }
+      document.querySelectorAll(`.pill[data-id="${id}"]`).forEach(pill => {
+        pill.classList.remove("departed","confirmed","pending","paid");
+        pill.classList.add("completed");
+        pill.dataset.status = "completed";
+        pill.dataset.paid = "false";
+        const nm = pill.querySelector(".nm");
+        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱] /, "⏱ ");
+        const sub = pill.querySelector(".sub");
+        if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · returned"; }
+      });
+      closeModal();
+      showToast("Flight returned — charges ready");
+      // Offer to open charges overlay
+      if (res.data && res.data.charges_url) {
+        setTimeout(() => openDetailOverlay(res.data.charges_url), 400);
+      }
+    });
+  });
+
+  function toggleOutcomeNotes() {
+    const v = document.getElementById("m-outcome").value;
+    document.getElementById("m-outcome-notes-wrap").hidden = (v === "completed");
+  }
   fStart.addEventListener("input", updatePreview);
   fDuration.addEventListener("input", updatePreview);
   fAircraft.addEventListener("change", updatePreview);
@@ -416,14 +610,62 @@
     });
   });
 
-  btnConfirm.addEventListener("click", () => {
-    const id = fId.value;
-    if (!id) return;
+  // Pre-confirmation credential check
+  const credCheckModal = document.getElementById("cred-check-modal");
+  const credCheckBody  = document.getElementById("cred-check-body");
+  const credCheckTitle = document.getElementById("cred-check-title");
+  const credCheckConfirm = document.getElementById("cred-check-confirm");
+  const credCheckCancel  = document.getElementById("cred-check-cancel");
+  let _pendingConfirmId = null;
+
+  function doConfirm(id) {
     post(`/api/booking/${id}/confirm/`, {}).then((res) => {
+      if (credCheckModal) credCheckModal.hidden = true;
       if (res.ok && res.data.success) location.reload();
       else toast(res.data.error || "Could not confirm booking");
     });
+  }
+
+  btnConfirm.addEventListener("click", () => {
+    const id = fId.value;
+    if (!id) return;
+    _pendingConfirmId = id;
+
+    if (!credCheckModal) { doConfirm(id); return; }
+
+    // Fetch credential check before showing confirm
+    fetch(`/api/booking/${id}/credential-check/`, { credentials: "same-origin" })
+      .then(r => r.json())
+      .then(data => {
+        const STATUS_ICON = { ok: "✓", warn: "⚠", info: "ℹ" };
+        const STATUS_COLOR = { ok: "#2a7a3b", warn: "#c76c00", info: "#2563eb" };
+
+        credCheckTitle.textContent = `Confirm booking — ${data.member}`;
+        const rows = data.checks.map(c =>
+          `<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.3rem 0;border-bottom:1px solid #f0f2f4;">
+             <span style="font-size:.95rem;color:${STATUS_COLOR[c.status] || '#5b6573'};flex-shrink:0;width:18px;">${STATUS_ICON[c.status] || '?'}</span>
+             <div>
+               <div style="font-size:.84rem;font-weight:600;color:#1f2933;">${c.label}</div>
+               <div style="font-size:.8rem;color:#5b6573;">${c.detail}</div>
+             </div>
+           </div>`
+        ).join('');
+
+        credCheckBody.innerHTML = rows ||
+          '<p style="color:#8a93a0;font-size:.85rem;">No credential checks configured for this flight type.</p>';
+
+        credCheckConfirm.textContent = data.has_warnings ? "Confirm anyway (staff override)" : "Confirm booking";
+        credCheckConfirm.style.background = data.has_warnings ? "#c76c00" : "";
+        credCheckConfirm.style.borderColor = data.has_warnings ? "#c76c00" : "";
+
+        credCheckModal.hidden = false;
+      })
+      .catch(() => { doConfirm(id); });  // fallback if check fails
   });
+
+  if (credCheckConfirm) credCheckConfirm.addEventListener("click", () => { if (_pendingConfirmId) doConfirm(_pendingConfirmId); });
+  if (credCheckCancel)  credCheckCancel.addEventListener("click",  () => { if (credCheckModal) credCheckModal.hidden = true; });
+  if (credCheckModal) credCheckModal.addEventListener("click", e => { if (e.target === credCheckModal) credCheckModal.hidden = true; });
 
   // ---- resource-change confirm ----------------------------------------
   const confirmBox = document.getElementById("confirm");
@@ -550,7 +792,12 @@
       if (pill._didDrag) { pill._didDrag = false; return; }
       e.stopPropagation();
       if (cfg.canManage) {
-        openEdit(pill);
+        // Completed bookings go straight to the detail overlay — the editor has nothing useful to show
+        if (pill.dataset.status === "completed") {
+          openDetailOverlay(pill.dataset.id);
+        } else {
+          openEdit(pill);
+        }
       } else if (cfg.canBook) {
         // Non-staff: open watch modal for other members' active bookings
         const isOwn = pill.dataset.memberUserId === String(cfg.currentUserId);
@@ -797,4 +1044,89 @@
       });
     });
   }
+
+  // ---- Detail overlay (booking detail without leaving calendar) ----------
+  const detailOverlay = document.getElementById("detail-overlay");
+  const detailBody = document.getElementById("detail-overlay-body");
+  let overlayDidChange = false;
+
+  function openDetailOverlay(url) {
+    // Accept either a full URL or a booking ID
+    let detailUrl = url;
+    if (/^\d+$/.test(String(url))) {
+      detailUrl = cfg.bookingDetailBase.replace("/0/", "/" + url + "/");
+    }
+    overlayDidChange = false;
+    detailOverlay.hidden = false;
+    detailBody.innerHTML = '<p style="color:#8a93a0;padding:2.5rem;text-align:center;">Loading…</p>';
+    loadDetailOverlay(detailUrl);
+  }
+
+  async function loadDetailOverlay(url) {
+    const inlineUrl = url + (url.includes("?") ? "&" : "?") + "inline=1";
+    try {
+      const resp = await fetch(inlineUrl, { credentials: "same-origin" });
+      const html = await resp.text();
+      detailBody.innerHTML = html;
+      // innerHTML doesn't execute <script> tags — re-run them so inline JS (e.g. fee dropdowns) works
+      detailBody.querySelectorAll("script").forEach(orig => {
+        const s = document.createElement("script");
+        s.textContent = orig.textContent;
+        orig.replaceWith(s);
+      });
+      attachOverlayForms(url);
+    } catch(e) {
+      detailBody.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load booking details.</p>';
+    }
+  }
+
+  function attachOverlayForms(baseUrl) {
+    detailBody.querySelectorAll("[data-close-overlay]").forEach(btn => {
+      btn.addEventListener("click", closeDetailOverlay);
+    });
+    detailBody.querySelectorAll("form").forEach(f => {
+      f.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        overlayDidChange = true;
+        const explicitAction = f.getAttribute("action");
+        const resolved = explicitAction ? new URL(explicitAction, baseUrl).href : baseUrl;
+        const inlineAction = resolved + (resolved.includes("?") ? "&" : "?") + "inline=1";
+        try {
+          const resp = await fetch(inlineAction, {
+            method: "POST",
+            body: new FormData(f),
+            credentials: "same-origin",
+          });
+          const html = await resp.text();
+          detailBody.innerHTML = html;
+          detailBody.querySelectorAll("script").forEach(orig => {
+            const s = document.createElement("script");
+            s.textContent = orig.textContent;
+            orig.replaceWith(s);
+          });
+          attachOverlayForms(baseUrl);
+        } catch(e) {
+          toast("Error submitting — please try again");
+        }
+      });
+    });
+  }
+
+  function closeDetailOverlay() {
+    detailOverlay.hidden = true;
+    if (overlayDidChange) location.reload();
+  }
+
+  detailOverlay.addEventListener("click", e => {
+    if (e.target === detailOverlay) closeDetailOverlay();
+  });
+
+  // Intercept "View details →" link on completed bookings
+  btnCharges.addEventListener("click", e => {
+    if (!btnCharges.hidden) {
+      e.preventDefault();
+      const bookingId = fId.value;
+      if (bookingId) openDetailOverlay(bookingId);
+    }
+  });
 })();

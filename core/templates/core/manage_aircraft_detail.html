@@ -1,0 +1,768 @@
+{% extends base_template|default:"core/base.html" %}
+{% block title %}{{ ac.registration }} · {{ club.name }}{% endblock %}
+{% block inline_title %}{{ inline_title }}{% endblock %}
+
+{% block content %}
+<div style="max-width:1140px;margin:0 auto;padding:2rem;">
+
+  <a href="{% url 'core:manage_aircraft' club.slug %}" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg>
+    Aircraft
+  </a>
+
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;">
+    <div>
+      <h1 style="margin:0;font-size:1.5rem;">{{ ac.registration }}</h1>
+      <div style="color:#8a93a0;font-size:.88rem;margin-top:.2rem;">{{ ac.aircraft_type }}{% if ac.serial_number %} · {{ ac.serial_number }}{% endif %}</div>
+    </div>
+    <span class="status-badge status-{{ ac.status }}">{{ ac.get_status_display }}</span>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="stab-bar">
+    <button class="stab-btn" id="tabBtn-details"     data-tab="details">Details</button>
+    <button class="stab-btn" id="tabBtn-rates"       data-tab="rates">Rates</button>
+    <button class="stab-btn" id="tabBtn-surcharges"  data-tab="surcharges">Surcharges</button>
+    <button class="stab-btn" id="tabBtn-maintenance" data-tab="maintenance">Maintenance</button>
+    <button class="stab-btn" id="tabBtn-history"     data-tab="history">Flight history</button>
+  </div>
+
+  <!-- ── DETAILS tab ── -->
+  <div id="tab-details" class="stab-panel">
+    {% if club_member.is_admin %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_details">
+      <div class="fgrid">
+        <label class="flabel">Type
+          <input type="text" name="aircraft_type" value="{{ ac.aircraft_type }}" class="finput" required>
+        </label>
+        <label class="flabel">Serial number
+          <input type="text" name="serial_number" value="{{ ac.serial_number }}" class="finput">
+        </label>
+        <label class="flabel">Seats
+          <input type="number" name="seats" value="{{ ac.seats }}" min="1" max="20" class="finput" style="width:100px;">
+        </label>
+        <label class="flabel">Engines
+          <input type="number" name="engine_count" value="{{ ac.engine_count }}" min="1" max="4" class="finput" style="width:100px;">
+        </label>
+      </div>
+
+      <h2 class="sh2" style="margin-top:1.4rem;">Recording instruments</h2>
+      <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
+          <input type="checkbox" name="records_hobbs" {% if ac.records_hobbs %}checked{% endif %}> Hobbs meter
+        </label>
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
+          <input type="checkbox" name="records_tacho" {% if ac.records_tacho %}checked{% endif %}> Tachometer
+        </label>
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
+          <input type="checkbox" name="records_airswitch" {% if ac.records_airswitch %}checked{% endif %}> Air switch
+        </label>
+      </div>
+      <label class="flabel" style="max-width:260px;">Time calculation method
+        <select name="total_time_method" class="finput">
+          {% for val, label in ac.TOTAL_TIME_METHOD_CHOICES %}
+          <option value="{{ val }}" {% if ac.total_time_method == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <h2 class="sh2" style="margin-top:1.4rem;">Fuel</h2>
+      <label class="flabel" style="max-width:200px;">Consumption (litres/hr)
+        <input type="number" name="fuel_consumption_per_hour" value="{{ ac.fuel_consumption_per_hour }}"
+               min="0" step="0.1" class="finput">
+      </label>
+
+      <h2 class="sh2" style="margin-top:1.4rem;">Starting meter readings</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .5rem;">The readings when this aircraft was entered into the system — used to compute cumulative totals.</p>
+      {% if ac.hobbs_initial or ac.tacho_initial or ac.airswitch_initial %}
+      <div class="notice warn" style="margin-bottom:.7rem;font-size:.82rem;">
+        <strong>Warning:</strong> These values are already set. Changing them will affect all cumulative hour calculations and maintenance scheduling. Only correct a data entry error — not a routine update.
+      </div>
+      {% endif %}
+      <div class="fgrid" style="max-width:420px;">
+        <label class="flabel">Hobbs initial
+          <input type="number" name="hobbs_initial" value="{{ ac.hobbs_initial|default:'' }}"
+                 min="0" step="0.1" class="finput" placeholder="e.g. 2340.5">
+        </label>
+        <label class="flabel">Tacho initial
+          <input type="number" name="tacho_initial" value="{{ ac.tacho_initial|default:'' }}"
+                 min="0" step="0.01" class="finput" placeholder="e.g. 1987.2">
+        </label>
+        <label class="flabel">Air switch initial
+          <input type="number" name="airswitch_initial" value="{{ ac.airswitch_initial|default:'' }}"
+                 min="0" step="0.1" class="finput" placeholder="e.g. 1543.0">
+        </label>
+      </div>
+
+      <div style="margin-top:1.4rem;">
+        <button type="submit" class="btn">Save details</button>
+      </div>
+    </form>
+    {% else %}
+    <table class="info-table">
+      <tr><th>Type</th><td>{{ ac.aircraft_type }}</td></tr>
+      <tr><th>Serial</th><td>{{ ac.serial_number|default:"—" }}</td></tr>
+      <tr><th>Seats</th><td>{{ ac.seats }}</td></tr>
+      <tr><th>Engines</th><td>{{ ac.engine_count }}</td></tr>
+      <tr><th>Time method</th><td>{{ ac.get_total_time_method_display }}</td></tr>
+      <tr><th>Hobbs initial</th><td>{{ ac.hobbs_initial|default:"—" }}</td></tr>
+      <tr><th>Tacho initial</th><td>{{ ac.tacho_initial|default:"—" }}</td></tr>
+      <tr><th>Air switch initial</th><td>{{ ac.airswitch_initial|default:"—" }}</td></tr>
+    </table>
+    {% endif %}
+  </div><!-- /tab-details -->
+
+  <!-- ── RATES tab ── -->
+  <div id="tab-rates" class="stab-panel">
+
+    <div class="tab-section-header">
+      <div>
+        <h2 class="sh2" style="margin:0 0 .2rem;">Hire rates</h2>
+        <p class="tab-desc">One rate per flight type / time method. Wet hire = fuel included in rate; dry hire = fuel charged separately.</p>
+      </div>
+      {% if club_member.is_admin %}
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-rate-modal').hidden=false">+ Add rate</button>
+      {% endif %}
+    </div>
+
+    {% if hire_rates %}
+    <table class="ft-table">
+      <thead><tr><th>Flight type</th><th>Method</th><th>Rate/hr</th><th>Hire type</th><th></th></tr></thead>
+      <tbody>
+        {% for r in hire_rates %}
+        <tr>
+          <td>{{ r.flight_type.name }}</td>
+          <td style="color:#8a93a0;font-size:.82rem;">{{ r.get_time_method_display }}</td>
+          <td>${{ r.amount }}</td>
+          <td>
+            <span class="hire-badge {% if r.includes_fuel %}wet{% else %}dry{% endif %}">
+              {% if r.includes_fuel %}Wet (fuel incl.){% else %}Dry{% endif %}
+            </span>
+          </td>
+          <td style="text-align:right;">
+            {% if club_member.is_admin %}
+            <div style="display:inline-flex;gap:.3rem;">
+              <button type="button" class="cbtn-sm"
+                      onclick="openEditRate({{ r.id }},'{{ r.amount }}',{{ r.includes_fuel|yesno:'true,false' }})">Edit</button>
+              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rate?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_hire_rate">
+                <input type="hidden" name="rate_id" value="{{ r.id }}">
+                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="tab-empty">
+      <p>No hire rates set for this aircraft.</p>
+    </div>
+    {% endif %}
+
+    <hr class="tab-hr">
+
+    <div class="tab-section-header">
+      <div>
+        <h2 class="sh2" style="margin:0 0 .2rem;">Fuel charge rates</h2>
+        <p class="tab-desc">Automatically added to <strong>dry hire</strong> flights at check-in. Add a new entry whenever the rate changes — the most recent effective date applies.</p>
+      </div>
+      {% if club_member.is_admin %}
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-fuel-modal').hidden=false">+ Add fuel charge rate</button>
+      {% endif %}
+    </div>
+
+    {% if fuel_rates %}
+    {% with current=fuel_rates.0 %}
+    <div class="current-rate-card">
+      <span class="current-rate-label">Current rate</span>
+      <span class="current-rate-amount" style="{% if not current.is_active %}text-decoration:line-through;color:#adb5bd;{% endif %}">${{ current.rate }}/hr</span>
+      <span class="current-rate-since">from {{ current.effective_from }}</span>
+      {% if current.notes %}<span class="current-rate-notes">{{ current.notes }}</span>{% endif %}
+      {% if not current.is_active %}<span class="hire-badge dry" style="background:#fff0f0;color:#c0392b;">Paused</span>{% endif %}
+      {% if club_member.is_admin %}
+      <form method="post" style="display:inline;margin-left:auto;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="toggle_fuel_rate">
+        <input type="hidden" name="rate_id" value="{{ current.id }}">
+        <button type="submit" class="sc-toggle {% if current.is_active %}sc-on{% else %}sc-off{% endif %}" title="Toggle fuel charging on/off">
+          {% if current.is_active %}Active{% else %}Paused{% endif %}
+        </button>
+      </form>
+      {% endif %}
+    </div>
+    {% endwith %}
+    {% if fuel_rates|length > 1 %}
+    <details style="margin-top:.5rem;">
+      <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;list-style:none;user-select:none;">
+        Rate history ({{ fuel_rates|length|add:"-1" }} previous)
+      </summary>
+      <table class="ft-table" style="margin-top:.5rem;">
+        <thead><tr><th>Effective from</th><th>Rate/hr</th><th>Notes</th><th></th></tr></thead>
+        <tbody>
+          {% for r in fuel_rates %}{% if not forloop.first %}
+          <tr>
+            <td style="font-size:.85rem;">{{ r.effective_from }}</td>
+            <td>${{ r.rate }}</td>
+            <td style="color:#8a93a0;font-size:.82rem;">{{ r.notes|default:"—" }}</td>
+            <td style="text-align:right;">
+              {% if club_member.is_admin %}
+              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rate?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_fuel_rate">
+                <input type="hidden" name="rate_id" value="{{ r.id }}">
+                <button type="submit" class="ft-del">Delete</button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endif %}{% endfor %}
+        </tbody>
+      </table>
+    </details>
+    {% endif %}
+    {% if club_member.is_admin %}
+    <form method="post" style="display:inline;margin-top:.4rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete_fuel_rate">
+      <input type="hidden" name="rate_id" value="{{ fuel_rates.0.id }}">
+      <button type="submit" class="ft-del" style="font-size:.78rem;" onsubmit="return confirm('Delete current rate?')">Delete current rate</button>
+    </form>
+    {% endif %}
+    {% else %}
+    <div class="tab-empty">
+      <p>No fuel charge rates set. Fuel will not be charged on dry hire flights until a rate is added.</p>
+    </div>
+    {% endif %}
+
+  </div><!-- /tab-rates -->
+
+  <!-- ── SURCHARGES tab ── -->
+  <div id="tab-surcharges" class="stab-panel">
+    <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">
+      Active surcharges are automatically added to every flight on this aircraft.
+      Surcharge types and amounts are configured in <a href="{% url 'core:club_settings' club.slug %}">Settings → Charge types</a>.
+    </p>
+
+    {% if all_surcharge_types %}
+    <table class="ft-table">
+      <thead><tr><th>Surcharge</th><th>Amount</th><th>Description</th><th>Applied</th>{% if club_member.is_admin %}<th></th>{% endif %}</tr></thead>
+      <tbody>
+        {% for st in all_surcharge_types %}
+        <tr>
+          <td><strong>{{ st.name }}</strong></td>
+          <td>${{ st.amount }}/flight</td>
+          <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
+          <td>
+            {% if club_member.is_admin %}
+            <form method="post" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="toggle_surcharge">
+              <input type="hidden" name="sc_id" value="{{ st.id }}">
+              <button type="submit" class="sc-toggle {% if st.id in assigned_surcharge_ids %}sc-on{% else %}sc-off{% endif %}">
+                {% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}
+              </button>
+            </form>
+            {% else %}
+            <span class="sc-toggle {% if st.id in assigned_surcharge_ids %}sc-on{% else %}sc-off{% endif %}" style="cursor:default;">
+              {% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}
+            </span>
+            {% endif %}
+          </td>
+          {% if club_member.is_admin %}<td></td>{% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;">No surcharge types configured yet.</p>
+    {% endif %}
+  </div><!-- /tab-surcharges -->
+
+  <!-- ── MAINTENANCE tab ── -->
+  <div id="tab-maintenance" class="stab-panel">
+
+    <div class="tab-section-header">
+      <h2 class="sh2" style="margin:0;">Maintenance items</h2>
+      {% if club_member.is_admin %}
+      <button type="button" class="cbtn-add" onclick="openAddMaint()">+ Add item</button>
+      {% endif %}
+    </div>
+
+    {% if maintenance_items %}
+    <table class="ft-table">
+      <thead><tr><th>Item</th><th>Due date</th><th>Due hours</th><th>Last done</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for m in maintenance_items %}
+        <tr>
+          <td><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:#8a93a0;font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
+          <td style="font-size:.85rem;">{{ m.due_date|default:"—" }}</td>
+          <td style="font-size:.85rem;">{{ m.due_hours|default:"—" }}</td>
+          <td style="font-size:.82rem;color:#8a93a0;">{{ m.last_completed_date|default:"—" }}</td>
+          <td><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
+          <td style="text-align:right;">
+            {% if club_member.is_admin %}
+            <div style="display:inline-flex;gap:.3rem;">
+              <button type="button" class="cbtn-sm"
+                      onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|default:'' }}','{{ m.last_completed_hours|default:'' }}')">Edit</button>
+              <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ m.name|escapejs }}?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_maintenance">
+                <input type="hidden" name="maint_id" value="{{ m.id }}">
+                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+              </form>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="tab-empty">
+      <p>No maintenance items.</p>
+    </div>
+    {% endif %}
+
+    <hr style="border:none;border-top:1px solid #eef1f4;margin:2rem 0 1.4rem;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <h2 class="sh2" style="margin:0;">Block-outs</h2>
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-ac-bo-modal').hidden=false">+ Add block-out</button>
+    </div>
+    {% if ac_blockouts %}
+    <table class="ft-table">
+      <thead><tr><th>Type</th><th>When</th><th>Hours</th><th>Label</th><th></th></tr></thead>
+      <tbody>
+        {% for bo in ac_blockouts %}
+        <tr>
+          <td>{% if bo.blockout_type %}<span class="bo-dot" style="background:{{ bo.blockout_type.color }};"></span>{{ bo.blockout_type.name }}{% else %}—{% endif %}</td>
+          <td>
+            {% if bo.recurrence == 'one_off' %}{{ bo.date }}
+            {% elif bo.recurrence == 'weekly' %}{{ bo.get_weekday_display }}s
+            {% else %}Daily{% endif %}
+          </td>
+          <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
+          <td style="color:#8a93a0;">{{ bo.label }}</td>
+          <td style="text-align:right;">
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this block-out?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_blockout">
+              <input type="hidden" name="bo_id" value="{{ bo.id }}">
+              <button type="submit" class="ft-del">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 .8rem;">No block-outs scheduled for this aircraft.</p>
+    {% endif %}
+  </div><!-- /tab-maintenance -->
+
+  <!-- Add hire rate modal -->
+  <div id="add-rate-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(480px,95vw);">
+      <h2>Add hire rate</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_hire_rate">
+        <label class="flabel">Flight type
+          <select name="ft_id" class="finput">
+            {% for ft in flight_types %}
+            <option value="{{ ft.id }}">{{ ft.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
+          <label class="flabel" style="flex:1;min-width:140px;">Time method
+            <select name="time_method" class="finput">
+              {% for val, label in ac.TOTAL_TIME_METHOD_CHOICES %}
+              <option value="{{ val }}" {% if ac.total_time_method == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="flabel" style="width:110px;">Rate/hr
+            <input type="number" name="amount" min="0" step="0.01" placeholder="0.00" class="finput" required>
+          </label>
+        </div>
+        <label class="flabel" style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem;">
+          <input type="checkbox" name="includes_fuel"> Wet hire (fuel included in rate — no separate fuel charge)
+        </label>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('add-rate-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Add rate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit hire rate modal -->
+  <div id="edit-rate-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(380px,95vw);">
+      <h2>Edit hire rate</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_hire_rate">
+        <input type="hidden" name="rate_id" id="erm-id">
+        <label class="flabel">Rate/hr
+          <input type="number" name="amount" id="erm-amount" min="0" step="0.01" class="finput" required>
+        </label>
+        <label class="flabel" style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem;">
+          <input type="checkbox" name="includes_fuel" id="erm-wet"> Wet hire (fuel included)
+        </label>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('edit-rate-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add fuel charge rate modal -->
+  <div id="add-fuel-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(460px,95vw);">
+      <h2>Add fuel charge rate</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_fuel_rate">
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+          <label class="flabel">Effective from
+            <input type="date" name="effective_from" class="finput" required>
+          </label>
+          <label class="flabel" style="width:110px;">Rate/hr
+            <input type="number" name="fuel_rate" min="0" step="0.01" placeholder="0.00" class="finput" required>
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.1rem;">Notes <span style="font-weight:400;">(optional)</span>
+          <input type="text" name="notes" class="finput" placeholder="e.g. Committee approved 2026-06-01">
+        </label>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('add-fuel-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Add rate</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add maintenance item modal -->
+  <div id="add-maint-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(540px,95vw);">
+      <h2>Add maintenance item</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_maintenance">
+        <label class="flabel">Item name
+          <input type="text" name="maint_name" required class="finput" placeholder="e.g. 100-hr check">
+        </label>
+        <label class="flabel" style="margin-top:.1rem;">Description <span style="font-weight:400;">(optional)</span>
+          <input type="text" name="maint_desc" class="finput" placeholder="Details or CAA reference">
+        </label>
+        <div class="fgrid" style="margin-top:.1rem;">
+          <label class="flabel">Due date
+            <input type="date" name="due_date" class="finput">
+          </label>
+          <label class="flabel">Due hours
+            <input type="number" name="due_hours" min="0" step="0.1" class="finput">
+          </label>
+          <label class="flabel">Last completed date
+            <input type="date" name="last_completed_date" class="finput">
+          </label>
+          <label class="flabel">Last completed hours
+            <input type="number" name="last_completed_hours" min="0" step="0.1" class="finput">
+          </label>
+        </div>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('add-maint-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Add item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit maintenance item modal -->
+  <div id="edit-maint-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(540px,95vw);">
+      <h2>Edit maintenance item</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_maintenance">
+        <input type="hidden" name="maint_id" id="emm-id">
+        <label class="flabel">Item name
+          <input type="text" name="maint_name" id="emm-name" required class="finput">
+        </label>
+        <label class="flabel" style="margin-top:.1rem;">Description
+          <input type="text" name="maint_desc" id="emm-desc" class="finput">
+        </label>
+        <div class="fgrid" style="margin-top:.1rem;">
+          <label class="flabel">Due date
+            <input type="date" name="due_date" id="emm-due-date" class="finput">
+          </label>
+          <label class="flabel">Due hours
+            <input type="number" name="due_hours" id="emm-due-hours" min="0" step="0.1" class="finput">
+          </label>
+          <label class="flabel">Last completed date
+            <input type="date" name="last_completed_date" id="emm-last-date" class="finput">
+          </label>
+          <label class="flabel">Last completed hours
+            <input type="number" name="last_completed_hours" id="emm-last-hours" min="0" step="0.1" class="finput">
+          </label>
+        </div>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('edit-maint-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add block-out modal (aircraft) -->
+  <div id="add-ac-bo-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(480px,94vw);">
+      <h2>Add block-out — {{ ac.registration }}</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_aircraft_blockout">
+        <input type="hidden" name="ac_id" value="{{ ac.id }}">
+        <label class="flabel">Type
+          <select name="bot_id" class="finput">
+            <option value="">— none —</option>
+            {% for bt in aircraft_blockout_types %}
+            <option value="{{ bt.id }}">{{ bt.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel" style="margin-top:.5rem;">Label <span style="font-weight:400;">(optional)</span>
+          <input type="text" name="label" class="finput" placeholder="e.g. 100-hr check">
+        </label>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.5rem;">
+          <label class="flabel">Recurrence
+            <select name="recurrence" class="finput" onchange="toggleBoRecur(this)">
+              <option value="one_off">One-off date</option>
+              <option value="weekly">Weekly (recurring)</option>
+              <option value="daily">Daily</option>
+            </select>
+          </label>
+          <label class="flabel bo-date-field">Date
+            <input type="date" name="date" class="finput">
+          </label>
+          <label class="flabel bo-weekday-field" style="display:none;">Day
+            <select name="weekday" class="finput">
+              <option value="0">Monday</option><option value="1">Tuesday</option>
+              <option value="2">Wednesday</option><option value="3">Thursday</option>
+              <option value="4">Friday</option><option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+          </label>
+        </div>
+        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin:.5rem 0;">
+          <input type="checkbox" name="all_day" checked onchange="toggleBoTime(this)"> All day
+        </label>
+        <div class="bo-time-fields" style="display:none;gap:.7rem;flex-wrap:wrap;">
+          <label class="flabel">Start<input type="time" name="start_time" class="finput" value="08:00"></label>
+          <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
+        </div>
+        <div class="modal-actions" style="margin-top:.8rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('add-ac-bo-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Save block-out</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── HISTORY tab ── -->
+  <div id="tab-history" class="stab-panel">
+    <h2 class="sh2">Flight history <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100)</span></h2>
+    {% if flight_history %}
+    <table class="ft-table">
+      <thead><tr>
+        <th>Date</th><th>Member</th><th>Instructor</th><th>Flight type</th>
+        <th>Status</th><th>Hours</th><th>Charge</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for b in flight_history %}
+        <tr>
+          <td style="white-space:nowrap;font-size:.85rem;">{{ b.scheduled_start|date:"j M Y" }}</td>
+          <td>{{ b.member.user.get_full_name }}</td>
+          <td style="color:#8a93a0;font-size:.85rem;">{{ b.instructor.get_full_name|default:"—" }}</td>
+          <td style="color:#8a93a0;font-size:.82rem;">{{ b.flight_type.name }}</td>
+          <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
+          <td style="font-size:.85rem;">
+            {% if b.flight_completion %}{{ b.flight_completion.actual_flight_hours|default:"—" }}h{% else %}—{% endif %}
+          </td>
+          <td style="font-size:.85rem;">
+            {% if b.flight_completion and b.flight_completion.total_charge %}${{ b.flight_completion.total_charge }}{% else %}—{% endif %}
+          </td>
+          <td style="text-align:right;">
+            <a href="{% url 'core:booking_detail' club.slug b.id %}" class="row-action-link" data-overlay>View →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;">No flight history yet.</p>
+    {% endif %}
+  </div><!-- /tab-history -->
+
+</div>
+
+<style>
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link:hover{color:var(--banner);}
+
+  .status-badge{font-size:.75rem;font-weight:600;padding:.25rem .65rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
+  .status-badge.status-online{background:#e6f4ea;color:#2a7a3b;}
+  .status-badge.status-retired{background:#f5f5f5;color:#8a93a0;}
+
+  .cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:600;cursor:pointer;}
+  .cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);}
+  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back[hidden]{display:none!important;}
+  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
+  .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
+  .modal-actions{display:flex;align-items:center;gap:.5rem;}
+  .cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;}
+  .cbtn:hover{background:#f3f5f7;}
+  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;}
+  .stab-btn{padding:.55rem 1rem;border:none;background:none;cursor:pointer;font-size:.88rem;font-weight:500;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;}
+  .stab-btn:hover{color:var(--banner);}
+  .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+  .stab-panel{display:none;}
+  .stab-panel.active{display:block;}
+
+  .sh2{font-size:1rem;font-weight:650;color:#1f2933;margin:.4rem 0 .6rem;}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+
+  .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem;}
+  .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table tr:last-child td{border-bottom:0;}
+  .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
+  .ft-del:hover{text-decoration:underline;}
+
+  .info-table{font-size:.88rem;border-collapse:collapse;width:100%;}
+  .info-table th{text-align:left;padding:.45rem .7rem;font-weight:600;color:#5b6573;font-size:.82rem;width:180px;border-bottom:1px solid #f0f2f4;}
+  .info-table td{padding:.45rem .7rem;border-bottom:1px solid #f0f2f4;}
+
+  .urg-badge{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:8px;}
+  .urg-badge.urg-green{background:#e6f4ea;color:#2a7a3b;}
+  .urg-badge.urg-amber{background:#fff3e0;color:#c76c00;}
+  .urg-badge.urg-red{background:#fee2e2;color:#c0392b;}
+
+  .bo-dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem;border:1px solid rgba(0,0,0,.1);}
+
+  .add-wrap{margin-top:.5rem;}
+  .add-toggle{cursor:pointer;font-size:.82rem;color:var(--primary);user-select:none;list-style:none;}
+  .add-toggle::-webkit-details-marker{display:none;}
+  .row-action-link{font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;}
+  .row-action-link:hover{background:#f3f5f7;color:#1f2933;}
+
+  .tab-section-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin:.4rem 0 .8rem;flex-wrap:wrap;}
+  .tab-desc{font-size:.82rem;color:#8a93a0;margin:0;}
+  .tab-hr{border:none;border-top:1px solid #eef1f4;margin:1.5rem 0;}
+  .tab-empty{text-align:center;padding:2rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;margin-bottom:.5rem;}
+  .tab-empty p{margin:0 0 .7rem;font-size:.88rem;}
+
+  .hire-badge{font-size:.72rem;font-weight:600;padding:.18rem .5rem;border-radius:8px;}
+  .hire-badge.wet{background:#e6f4ea;color:#2a7a3b;}
+  .hire-badge.dry{background:#fff3e0;color:#c76c00;}
+
+  .current-rate-card{background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:.7rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.3rem;}
+  .current-rate-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;}
+  .current-rate-amount{font-size:1.1rem;font-weight:700;color:#1f2933;}
+  .current-rate-since{font-size:.82rem;color:#5b6573;}
+  .current-rate-notes{font-size:.8rem;color:#8a93a0;font-style:italic;}
+
+  .sc-toggle{font-size:.75rem;font-weight:600;padding:.22rem .55rem;border-radius:10px;border:none;cursor:pointer;line-height:1.4;}
+  .sc-toggle.sc-on{background:#e6f4ea;color:#2a7a3b;}
+  .sc-toggle.sc-on:hover{background:#d1f0da;}
+  .sc-toggle.sc-off{background:#f3f5f7;color:#8a93a0;}
+  .sc-toggle.sc-off:hover{background:#eef1f4;}
+
+  .cbtn-sm{padding:.28rem .6rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;cursor:pointer;}
+  .cbtn-sm:hover{background:#f3f5f7;}
+  .cbtn-sm.cbtn-danger{color:#c0392b;border-color:#f5c6cb;}
+  .cbtn-sm.cbtn-danger:hover{background:#fff0f0;}
+
+  .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:.6rem;}
+  .notice.warn{background:#fff8e6;color:#7a5800;border-left:3px solid #f59e0b;}
+</style>
+
+<script>
+(function(){
+  const TABS = ['details','rates','surcharges','maintenance','history'];
+  function activate(id) {
+    TABS.forEach(t => {
+      document.getElementById('tab-'+t).classList.toggle('active', t===id);
+      document.getElementById('tabBtn-'+t).classList.toggle('active', t===id);
+    });
+    try { localStorage.setItem('acDetailTab', id); } catch(e){}
+  }
+  TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
+  let init = 'details';
+  try { init = localStorage.getItem('acDetailTab') || 'details'; } catch(e){}
+  activate(init);
+})();
+
+// Close all modals on backdrop click or Escape
+['add-rate-modal','edit-rate-modal','add-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal'].forEach(id => {
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.addEventListener('click', e => { if (e.target === m) m.hidden = true; });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['add-rate-modal','edit-rate-modal','add-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal'].forEach(id => {
+      const m = document.getElementById(id);
+      if (m) m.hidden = true;
+    });
+  }
+});
+
+function openEditRate(id, amount, wet) {
+  document.getElementById('erm-id').value = id;
+  document.getElementById('erm-amount').value = amount;
+  document.getElementById('erm-wet').checked = wet;
+  document.getElementById('edit-rate-modal').hidden = false;
+}
+
+function openAddMaint() { document.getElementById('add-maint-modal').hidden = false; }
+
+function openEditMaint(id, name, desc, dueDate, dueHours, lastDate, lastHours) {
+  document.getElementById('emm-id').value = id;
+  document.getElementById('emm-name').value = name;
+  document.getElementById('emm-desc').value = desc;
+  document.getElementById('emm-due-date').value = dueDate;
+  document.getElementById('emm-due-hours').value = dueHours;
+  document.getElementById('emm-last-date').value = lastDate;
+  document.getElementById('emm-last-hours').value = lastHours;
+  document.getElementById('edit-maint-modal').hidden = false;
+}
+function toggleBoRecur(sel) {
+  const form = sel.closest('form');
+  const v = sel.value;
+  form.querySelectorAll('.bo-date-field').forEach(el => el.style.display = v==='one_off' ? '' : 'none');
+  form.querySelectorAll('.bo-weekday-field').forEach(el => el.style.display = v==='weekly' ? '' : 'none');
+}
+function toggleBoTime(cb) {
+  const form = cb.closest('form');
+  form.querySelectorAll('.bo-time-fields').forEach(el => el.style.display = cb.checked ? 'none' : 'flex');
+}
+</script>
+{% endblock %}

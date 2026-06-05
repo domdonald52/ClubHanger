@@ -4,181 +4,246 @@
 {% block content %}
 <div class="container" style="padding:2rem;max-width:960px;">
   <h1 style="margin-bottom:1rem;">Manage</h1>
-  <div class="mnav">
-    <a href="{% url 'core:manage_bookings' club.slug %}" class="mnav-link">Bookings</a>
-    <a href="{% url 'core:manage_blockouts' club.slug %}" class="mnav-link">Block-outs</a>
-    {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="mnav-link">Members</a>{% endif %}
-    <a href="{% url 'core:manage_aircraft' club.slug %}" class="mnav-link">Aircraft</a>
-    <a href="{% url 'core:manage_instructors' club.slug %}" class="mnav-link">Instructors</a>
-    <a href="{% url 'core:manage_aerodromes' club.slug %}" class="mnav-link active">Aerodromes</a>
-    <a href="{% url 'core:manage_rates' club.slug %}" class="mnav-link">Fuel levy</a>
-  </div>
+  {% include "core/_manage_nav.html" with active_section="aerodromes" %}
 
-  <h2 style="font-size:1.1rem;font-weight:700;margin:1.2rem 0 .25rem;">Aerodromes</h2>
-  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.4rem;">
-    Landing fee arrangements. Add fee types per aerodrome — instructors select from these when completing a flight.
-  </p>
+  <div class="ae-page-header">
+    <div>
+      <h2 class="ae-page-title">Aerodromes &amp; Landing Fees</h2>
+      <p class="ae-page-desc">Aerodromes you fly to and their landing fee rates. Used when completing a flight charge.</p>
+    </div>
+    <button type="button" class="btn" id="add-ae-btn">+ Add aerodrome</button>
+  </div>
 
   {% if error %}<div class="snotice err">{{ error }}</div>{% endif %}
 
   {% for ae in aerodromes %}
-  <div class="ae-card {% if not ae.is_active %}ae-inactive{% endif %}">
+  <div class="ae-card{% if not ae.is_active %} ae-card-inactive{% endif %}">
     <div class="ae-header">
-      <div style="display:flex;align-items:center;gap:.8rem;flex:1;min-width:0;">
-        <strong style="font-family:monospace;font-size:1rem;">{{ ae.icao_code }}</strong>
-        <span style="color:#5b6573;">{{ ae.name }}</span>
-        {% if not ae.is_active %}<span style="font-size:.72rem;background:#f3f5f7;color:#8a93a0;border-radius:10px;padding:.1rem .45rem;">Inactive</span>{% endif %}
-        {% if ae.notes %}<span class="ae-notes-badge" title="{{ ae.notes }}">📋</span>{% endif %}
+      <div style="display:flex;align-items:center;gap:.75rem;flex:1;min-width:0;">
+        <strong style="font-family:monospace;font-size:.95rem;letter-spacing:.02em;">{{ ae.icao_code }}</strong>
+        <span class="ae-name">{{ ae.name }}</span>
+        {% if ae.notes %}
+        <span class="ae-notes-badge" title="{{ ae.notes }}">
+          <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7.5 1h6.5v13H1V5.5L7.5 1z"/><path d="M7.5 1v4.5H1"/><path d="M4 8h7M4 10.5h5"/></svg>
+        </span>
+        {% endif %}
       </div>
-      <div style="display:flex;gap:.4rem;flex-shrink:0;">
-        <button type="button" class="ft-pill" onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name|escapejs }}', '{{ ae.notes|escapejs }}')">Edit</button>
+      <div class="ae-actions">
         <form method="post" style="display:inline;">
           {% csrf_token %}
           <input type="hidden" name="action" value="toggle_aerodrome">
           <input type="hidden" name="ae_id" value="{{ ae.id }}">
-          <button type="submit" class="ft-pill {% if ae.is_active %}ft-pill-active{% endif %}"
-                  style="{% if ae.is_active %}background:var(--confirmed);border-color:var(--confirmed);color:#fff;{% endif %}">
+          <button type="submit" class="ae-status-btn {% if ae.is_active %}ae-active{% else %}ae-inactive{% endif %}"
+                  title="Click to toggle active/inactive">
             {% if ae.is_active %}Active{% else %}Inactive{% endif %}
           </button>
         </form>
-        <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ae.icao_code }}?')">
+        <button type="button" class="cbtn-sm"
+                onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name|escapejs }}', '{{ ae.notes|escapejs }}')">Edit</button>
+        <form method="post" style="display:inline;"
+              onsubmit="return confirm('Delete {{ ae.icao_code }} — {{ ae.name|escapejs }}?')">
           {% csrf_token %}
           <input type="hidden" name="action" value="delete_aerodrome">
           <input type="hidden" name="ae_id" value="{{ ae.id }}">
-          <button type="submit" class="ft-del">Delete</button>
+          <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
         </form>
       </div>
     </div>
 
-    <!-- Fee types -->
     <div class="ae-fees">
+      <div class="ae-fees-title">Landing fee rates</div>
       {% for ft in ae.fee_types.all %}
       <div class="fee-row">
         <span class="fee-name">{{ ft.name }}</span>
-        <form method="post" style="display:inline-flex;align-items:center;gap:.3rem;">
+        <form method="post" class="fee-amount-form">
           {% csrf_token %}
           <input type="hidden" name="action" value="edit_fee_type">
           <input type="hidden" name="ft_id" value="{{ ft.id }}">
           <input type="hidden" name="ft_name" value="{{ ft.name }}">
-          $<input type="number" name="ft_amount" value="{{ ft.default_amount }}" step="0.01" min="0"
-                  style="width:80px;padding:.25rem .4rem;border:1px solid #ddd;border-radius:5px;font-size:.84rem;"
-                  onchange="this.form.submit()">
+          <span class="fee-dollar">$</span>
+          <input type="number" name="ft_amount" value="{{ ft.default_amount }}" step="0.01" min="0"
+                 class="fee-input" onchange="this.form.submit()">
         </form>
-        <form method="post" style="display:inline;" onsubmit="return confirm('Delete fee type {{ ft.name }}?')">
+        <form method="post" style="display:inline;"
+              onsubmit="return confirm('Remove {{ ft.name }} fee type?')">
           {% csrf_token %}
           <input type="hidden" name="action" value="delete_fee_type">
           <input type="hidden" name="ft_id" value="{{ ft.id }}">
-          <button type="submit" class="ft-del" style="font-size:.75rem;">✕</button>
+          <button type="submit" class="fee-del">✕</button>
         </form>
       </div>
       {% empty %}
-      <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .6rem;font-style:italic;">No fee types — add one below.</p>
+      <p class="fee-empty">No fee rates yet — add one below.</p>
       {% endfor %}
 
-      <!-- Add fee type inline -->
-      <form method="post" style="display:flex;gap:.5rem;align-items:flex-end;margin-top:.5rem;flex-wrap:wrap;">
+      <form method="post" class="add-fee-form">
         {% csrf_token %}
         <input type="hidden" name="action" value="add_fee_type">
         <input type="hidden" name="ae_id" value="{{ ae.id }}">
-        <input type="text" name="ft_name" placeholder="Fee type name (e.g. Full stop)" required
-               style="flex:1;min-width:150px;padding:.3rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.84rem;">
-        <span style="display:inline-flex;align-items:center;gap:.2rem;">
-          $<input type="number" name="ft_amount" placeholder="0.00" step="0.01" min="0"
-                  style="width:90px;padding:.3rem .4rem;border:1px solid #ddd;border-radius:6px;font-size:.84rem;">
-        </span>
-        <button type="submit" class="btn" style="padding:.3rem .7rem;font-size:.82rem;">Add fee type</button>
+        <input type="text" name="ft_name" placeholder="Fee name (e.g. Full stop)" required
+               class="fee-name-input">
+        <span class="fee-dollar">$</span>
+        <input type="number" name="ft_amount" placeholder="0.00" step="0.01" min="0"
+               class="fee-input fee-input-new" required>
+        <button type="submit" class="cbtn-sm">Add</button>
       </form>
     </div>
   </div>
   {% empty %}
-  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.4rem;">No aerodromes configured yet.</p>
+  <div class="ae-empty">
+    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" stroke="#d6dae0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="17"/>
+      <path d="M20 13v7M20 27h.01"/>
+    </svg>
+    <p>No aerodromes configured yet.</p>
+    <button type="button" class="btn" id="add-ae-empty-btn">+ Add first aerodrome</button>
+  </div>
   {% endfor %}
+</div>
 
-  <h2 style="font-size:.95rem;font-weight:650;margin:1.6rem 0 .7rem;">Add aerodrome</h2>
-  <form method="post" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;padding:1rem;background:#f8f9fb;border-radius:8px;border:1px solid #e3e6ea;">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="add_aerodrome">
-    <label class="flabel" style="width:90px;">ICAO code
-      <input type="text" name="icao" maxlength="4" placeholder="NZMS" required class="finput"
-             style="text-transform:uppercase;">
-    </label>
-    <label class="flabel" style="flex:1;min-width:160px;">Name
-      <input type="text" name="name" placeholder="Masterton" required class="finput">
-    </label>
-    <label class="flabel" style="flex:2;min-width:220px;">Notes
-      <input type="text" name="notes" placeholder="Agreement terms, billing cycle, contacts…" class="finput">
-    </label>
-    <button type="submit" class="btn" style="flex-shrink:0;">Add aerodrome</button>
-  </form>
+<!-- Add aerodrome modal -->
+<div id="add-ae-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(500px,94vw);">
+    <h2>Add aerodrome</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_aerodrome">
+      <div style="display:flex;gap:.7rem;margin-bottom:.7rem;">
+        <label class="flabel" style="width:90px;">ICAO code
+          <input type="text" name="icao" maxlength="4" placeholder="NZMS" required
+                 class="finput" style="text-transform:uppercase;" autocomplete="off">
+        </label>
+        <label class="flabel" style="flex:1;">Name
+          <input type="text" name="name" placeholder="e.g. Masterton" required class="finput">
+        </label>
+      </div>
+      <label class="flabel">Notes
+        <textarea name="notes" rows="2" class="finput"
+                  placeholder="Agreement terms, billing cycle, contacts…" style="resize:vertical;"></textarea>
+      </label>
+      <div class="modal-actions" style="margin-top:.9rem;">
+        <button type="button" class="cbtn" id="add-ae-cancel">Cancel</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn primary">Add aerodrome</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Edit aerodrome modal -->
 <div id="edit-ae-modal" class="modal-back" hidden>
-  <div class="modal" style="width:min(480px,94vw);">
+  <div class="modal" style="width:min(500px,94vw);">
     <h2 id="eam-title">Edit aerodrome</h2>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="edit_aerodrome">
       <input type="hidden" name="ae_id" id="eam-id">
-      <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Name
-        <input type="text" name="name" id="eam-name" required
-               style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+      <label class="flabel">Name
+        <input type="text" name="name" id="eam-name" required class="finput">
       </label>
-      <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:1rem;">Notes
-        <textarea name="notes" id="eam-notes" rows="3"
-                  style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;resize:vertical;"
-                  placeholder="Agreement terms, billing cycle, contacts…"></textarea>
+      <label class="flabel" style="margin-top:.6rem;">Notes
+        <textarea name="notes" id="eam-notes" rows="3" class="finput"
+                  placeholder="Agreement terms, billing cycle, contacts…" style="resize:vertical;"></textarea>
       </label>
-      <div class="modal-actions">
-        <button type="button" class="cbtn" onclick="document.getElementById('edit-ae-modal').hidden=true">Cancel</button>
+      <div class="modal-actions" style="margin-top:.9rem;">
+        <button type="button" class="cbtn" id="eam-cancel">Cancel</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Save</button>
+        <button type="submit" class="cbtn primary">Save changes</button>
       </div>
     </form>
   </div>
 </div>
 
 <style>
+  .ae-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin:1.2rem 0 1rem;flex-wrap:wrap;}
+  .ae-page-title{font-size:1.05rem;font-weight:700;margin:0 0 .2rem;}
+  .ae-page-desc{color:#8a93a0;font-size:.82rem;margin:0;}
+
+  .ae-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;margin-bottom:.9rem;overflow:hidden;transition:opacity .15s;}
+  .ae-card-inactive{opacity:.55;}
+  .ae-header{display:flex;align-items:center;gap:.7rem;padding:.75rem 1rem;border-bottom:1px solid #f0f2f4;background:#fafbfc;}
+  .ae-name{color:#5b6573;font-size:.88rem;}
+  .ae-notes-badge{color:#8a93a0;cursor:help;display:inline-flex;align-items:center;}
+  .ae-actions{display:flex;gap:.4rem;align-items:center;flex-shrink:0;}
+
+  /* Active/inactive status — consistent with member/aircraft badge */
+  .ae-status-btn{font-size:.75rem;font-weight:600;padding:.22rem .55rem;border-radius:10px;border:none;cursor:pointer;line-height:1.4;}
+  .ae-status-btn.ae-active{background:#e6f4ea;color:#2a7a3b;}
+  .ae-status-btn.ae-active:hover{background:#d1f0da;}
+  .ae-status-btn.ae-inactive{background:#f3f5f7;color:#8a93a0;}
+  .ae-status-btn.ae-inactive:hover{background:#eef1f4;}
+
+  .cbtn-sm{padding:.28rem .6rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;cursor:pointer;}
+  .cbtn-sm:hover{background:#f3f5f7;}
+  .cbtn-sm.cbtn-danger{color:#c0392b;border-color:#f5c6cb;}
+  .cbtn-sm.cbtn-danger:hover{background:#fff0f0;}
+
+  .ae-fees{padding:.7rem 1rem;}
+  .ae-fees-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin-bottom:.5rem;}
+  .fee-row{display:flex;align-items:center;gap:.5rem;padding:.22rem 0;border-bottom:1px solid #f5f6f8;}
+  .fee-row:last-of-type{border-bottom:none;}
+  .fee-name{flex:1;font-size:.85rem;color:#1f2933;}
+  .fee-dollar{font-size:.85rem;color:#8a93a0;}
+  .fee-input{width:80px;padding:.25rem .4rem;border:1px solid #ddd;border-radius:5px;font-size:.84rem;text-align:right;}
+  .fee-input-new{width:80px;}
+  .fee-amount-form{display:inline-flex;align-items:center;gap:.2rem;}
+  .fee-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.85rem;padding:.1rem .3rem;opacity:.6;}
+  .fee-del:hover{opacity:1;}
+  .fee-empty{font-size:.82rem;color:#8a93a0;font-style:italic;margin:.1rem 0 .5rem;}
+  .add-fee-form{display:flex;align-items:center;gap:.4rem;margin-top:.5rem;flex-wrap:wrap;}
+  .fee-name-input{flex:1;min-width:140px;padding:.28rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.84rem;}
+
+  .ae-empty{text-align:center;padding:3rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;}
+  .ae-empty p{margin:.75rem 0 1rem;font-size:.9rem;}
+
+  /* shared manage page classes */
   .snotice{padding:.6rem .9rem;border-radius:6px;margin-bottom:1rem;font-size:.88rem;}
   .snotice.err{background:#fff0f0;color:#c0392b;}
   .mnav{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;overflow-x:auto;}
   .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;white-space:nowrap;}
   .mnav-link:hover,.mnav-link.active{color:var(--banner);}
   .mnav-link.active{border-bottom-color:var(--primary);font-weight:650;}
-
-  .ae-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;overflow:hidden;}
-  .ae-inactive{opacity:.6;}
-  .ae-header{display:flex;align-items:center;gap:.7rem;padding:.8rem 1rem;border-bottom:1px solid #f0f2f4;background:#fafbfc;}
-  .ae-fees{padding:.8rem 1rem;}
-  .ae-notes-badge{font-size:.85rem;cursor:help;opacity:.6;}
-  .fee-row{display:flex;align-items:center;gap:.6rem;padding:.25rem 0;border-bottom:1px solid #f5f6f8;}
-  .fee-row:last-of-type{border-bottom:none;}
-  .fee-name{flex:1;font-size:.85rem;color:#1f2933;}
-
-  .ft-pill{padding:.28rem .65rem;border-radius:20px;border:1px solid #d6dae0;background:#f5f6f8;color:#5b6573;font-size:.78rem;cursor:pointer;font-weight:500;}
-  .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
   .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
-  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
+  textarea.finput{resize:vertical;}
+  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;font-weight:600;}
+  .btn:hover{filter:brightness(1.07);}
   .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
   .modal-back[hidden]{display:none;}
   .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
-  .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:.4rem;}
+  .modal-actions{display:flex;align-items:center;gap:.5rem;}
   .cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;}
+  .cbtn:hover{background:#f3f5f7;}
   .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
 </style>
 
 <script>
-function openEditAe(id, icao, name, notes) {
-  document.getElementById('eam-id').value = id;
-  document.getElementById('eam-title').textContent = 'Edit ' + icao;
-  document.getElementById('eam-name').value = name;
-  document.getElementById('eam-notes').value = notes;
-  document.getElementById('edit-ae-modal').hidden = false;
-}
-document.getElementById('edit-ae-modal').addEventListener('click', function(e) {
-  if (e.target === this) this.hidden = true;
-});
+(function(){
+  const addModal  = document.getElementById('add-ae-modal');
+  const editModal = document.getElementById('edit-ae-modal');
+
+  function openAdd() { addModal.hidden = false; }
+  document.getElementById('add-ae-btn').addEventListener('click', openAdd);
+  const emptyBtn = document.getElementById('add-ae-empty-btn');
+  if (emptyBtn) emptyBtn.addEventListener('click', openAdd);
+  document.getElementById('add-ae-cancel').addEventListener('click', () => { addModal.hidden = true; });
+  addModal.addEventListener('click', e => { if (e.target === addModal) addModal.hidden = true; });
+
+  document.getElementById('eam-cancel').addEventListener('click', () => { editModal.hidden = true; });
+  editModal.addEventListener('click', e => { if (e.target === editModal) editModal.hidden = true; });
+
+  window.openEditAe = function(id, icao, name, notes) {
+    document.getElementById('eam-id').value = id;
+    document.getElementById('eam-title').textContent = 'Edit ' + icao;
+    document.getElementById('eam-name').value = name;
+    document.getElementById('eam-notes').value = notes;
+    editModal.hidden = false;
+  };
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { addModal.hidden = true; editModal.hidden = true; }
+  });
+})();
 </script>
 {% endblock %}

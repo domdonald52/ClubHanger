@@ -5,25 +5,20 @@
 <div class="container" style="padding:2rem;max-width:1100px;">
   <h1 style="margin-bottom:1.2rem;">Manage</h1>
 
-  <div class="mnav">
-    <a href="{% url 'core:manage_bookings' club.slug %}" class="mnav-link">Bookings</a>
-    <a href="{% url 'core:manage_blockouts' club.slug %}" class="mnav-link">Block-outs</a>
-    <a href="{% url 'core:manage_members' club.slug %}" class="mnav-link active">Members</a>
-    <a href="{% url 'core:manage_aircraft' club.slug %}" class="mnav-link">Aircraft</a>
-    <a href="{% url 'core:manage_instructors' club.slug %}" class="mnav-link">Instructors</a>
-    <a href="{% url 'core:manage_aerodromes' club.slug %}" class="mnav-link">Aerodromes</a>
-    <a href="{% url 'core:manage_rates' club.slug %}" class="mnav-link">Fuel levy</a>
-  </div>
+  {% include "core/_manage_nav.html" with active_section="members" %}
 
   <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
     <h2 class="sh2" style="margin:0;">Members <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ members|length }})</span></h2>
-    <form method="get" style="flex:1;min-width:200px;max-width:340px;">
+    <form method="get" style="flex:1;min-width:200px;max-width:340px;margin:0;">
       <div style="position:relative;">
         <input type="search" name="q" value="{{ q }}" placeholder="Search name or email…"
                class="finput" style="padding-left:2rem;">
         <svg style="position:absolute;left:.5rem;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none;" width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
       </div>
     </form>
+    {% if club_member.is_admin %}
+    <button type="button" class="btn" style="flex-shrink:0;" onclick="document.getElementById('add-member-modal').hidden=false">+ Add member</button>
+    {% endif %}
   </div>
 
   <table class="mg-table">
@@ -85,7 +80,7 @@
         </td>
         <td style="font-size:.83rem;color:#8a93a0;">{{ m.join_date }}</td>
         <td>
-          <a href="{% url 'core:manage_member_detail' club.slug m.id %}" class="detail-btn">View</a>
+          <a href="{% url 'core:manage_member_detail' club.slug m.id %}" class="row-action-btn" data-overlay>View →</a>
         </td>
       </tr>
       {% empty %}
@@ -119,9 +114,52 @@
   .badge{display:inline-block;padding:.1rem .4rem;border-radius:8px;font-size:.7rem;font-weight:600;margin-left:.3rem;vertical-align:middle;}
   .badge-you{background:#e8f0fb;color:#2f7dd1;}
 
-  .detail-btn{font-size:.8rem;color:var(--primary);text-decoration:none;padding:.2rem .5rem;border:1px solid color-mix(in srgb, var(--primary) 30%, transparent);border-radius:5px;}
-  .detail-btn:hover{background:#e8f0fb;}
+  .row-action-btn{font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;}
+  .row-action-btn:hover{background:#f3f5f7;color:#1f2933;}
 
   .finput{display:block;width:100%;padding:.4rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back[hidden]{display:none!important;}
+  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(460px,95vw);}
+  .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
+  .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:1rem;}
+  .cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;}
+  .cbtn:hover{background:#f3f5f7;}
+  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
 </style>
+
+<!-- Add member modal -->
+<div id="add-member-modal" class="modal-back" hidden>
+  <div class="modal">
+    <h2>Add member</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_member">
+      <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+        <label class="flabel" style="flex:1;min-width:160px;">First name
+          <input type="text" name="first_name" required class="finput" autocomplete="off">
+        </label>
+        <label class="flabel" style="flex:1;min-width:160px;">Last name
+          <input type="text" name="last_name" required class="finput" autocomplete="off">
+        </label>
+      </div>
+      <label class="flabel" style="margin-top:.1rem;">Email address
+        <input type="email" name="email" required class="finput" autocomplete="off">
+      </label>
+      <label class="flabel" style="margin-top:.1rem;">Initial password <span style="font-weight:400;color:#9aa3af;">(leave blank to auto-generate)</span>
+        <input type="password" name="password" class="finput" autocomplete="new-password">
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="cbtn" onclick="document.getElementById('add-member-modal').hidden=true">Cancel</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn primary">Create member</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+document.getElementById('add-member-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('add-member-modal').hidden=true; });
+</script>
 {% endblock %}

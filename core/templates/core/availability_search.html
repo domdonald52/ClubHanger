@@ -166,9 +166,13 @@
     lblSolo.classList.toggle('active', solo);
     lblDual.classList.toggle('active', !solo);
   }
-  [kindDual, kindSolo].forEach(r => r.addEventListener('change', syncKind));
-  lblDual.addEventListener('click', () => { kindDual.checked = true; syncKind(); });
-  lblSolo.addEventListener('click', () => { kindSolo.checked = true; syncKind(); });
+  const searchForm = document.querySelector('form[method="post"]') || document.querySelector('form');
+  const _didSearch = {{ search_performed|yesno:'true,false' }};
+  function resubmit() { if (searchForm && _didSearch) searchForm.submit(); }
+
+  [kindDual, kindSolo].forEach(r => r.addEventListener('change', () => { syncKind(); resubmit(); }));
+  lblDual.addEventListener('click', () => { kindDual.checked = true; syncKind(); resubmit(); });
+  lblSolo.addEventListener('click', () => { kindSolo.checked = true; syncKind(); resubmit(); });
 
   // Filter the specific-aircraft list to the chosen type; reset if invalid.
   function applyTypeFilter(){

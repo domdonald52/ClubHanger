@@ -1,0 +1,17 @@
+<span hidden aria-hidden="true">{% block title %}{% endblock %}</span>
+<div class="pi-wrap">
+  <div class="pi-header">
+    <h2 class="pi-title">{% block inline_title %}{% endblock %}</h2>
+    <button class="pi-close" data-close-overlay>✕ Close</button>
+  </div>
+  <div class="pi-body">{% block content %}{% endblock %}</div>
+</div>
+<style>
+  .pi-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2933;}
+  .pi-header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.85rem 1.2rem;border-bottom:1px solid #eef1f4;background:#fafbfc;position:sticky;top:0;z-index:10;border-radius:10px 10px 0 0;}
+  .pi-title{font-size:.9rem;font-weight:650;margin:0;color:#5b6573;}
+  .pi-close{background:none;border:1px solid #d6dae0;border-radius:6px;padding:.28rem .6rem;cursor:pointer;font-size:.8rem;color:#5b6573;display:flex;align-items:center;gap:.3rem;flex-shrink:0;}
+  .pi-close:hover{background:#f3f5f7;}
+  .pi-body{padding:1rem 1.2rem 1.6rem;}
+  .pi-body .back-link{display:none!important;}
+</style>

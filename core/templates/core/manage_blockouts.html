@@ -5,33 +5,28 @@
 <div class="container" style="padding:2rem;max-width:1100px;">
   <h1 style="margin-bottom:1.2rem;">Manage</h1>
 
-  <div class="mnav">
-    <a href="{% url 'core:manage_bookings' club.slug %}" class="mnav-link">Bookings</a>
-    <a href="{% url 'core:manage_blockouts' club.slug %}" class="mnav-link active">Block-outs</a>
-    {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="mnav-link">Members</a>{% endif %}
-    <a href="{% url 'core:manage_aircraft' club.slug %}" class="mnav-link">Aircraft</a>
-    <a href="{% url 'core:manage_instructors' club.slug %}" class="mnav-link">Instructors</a>
-    <a href="{% url 'core:manage_aerodromes' club.slug %}" class="mnav-link">Aerodromes</a>
-    <a href="{% url 'core:manage_rates' club.slug %}" class="mnav-link">Fuel levy</a>
-  </div>
+  {% include "core/_manage_nav.html" with active_section="blockouts" %}
 
-  <p style="font-size:.83rem;color:#8a93a0;margin-bottom:1.2rem;">
-    All-resource block-outs apply to every aircraft and instructor — use them for public holidays, airfield closures, or club events.
-    Aircraft and instructor-specific block-outs are managed on their respective pages.
-  </p>
-
-  <div style="display:flex;align-items:baseline;gap:.75rem;margin-bottom:.8rem;">
-    <h2 class="sh2">Active block-outs</h2>
-    {% if past_count %}
-    <span class="past-hint">
-      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="5"/><path d="M6 5v3M6 3.5v.5"/></svg>
-      {{ past_count }} past {{ past_count|pluralize:"entry,entries" }} not shown
-    </span>
+  <div class="bo-page-header">
+    <div>
+      <h2 class="bo-page-title">All-resource Block-outs</h2>
+      <p class="bo-page-desc">Applies to every aircraft and instructor — use for public holidays, airfield closures, or club events.
+        Aircraft and instructor-specific block-outs are managed on their respective pages.</p>
+    </div>
+    {% if blockout_types %}
+    <button type="button" class="btn" id="add-bo-btn">+ Add block-out</button>
     {% endif %}
   </div>
 
+  {% if not blockout_types %}
+  <div class="snotice warn">
+    No all-resource block-out types defined yet.
+    <a href="{% url 'core:club_settings' club.slug %}">Go to Settings → Scheduling</a> to add some (e.g. "Public Holiday", "Airfield Closed").
+  </div>
+  {% endif %}
+
   {% if blockouts %}
-  <table class="bo-table" style="margin-bottom:1.5rem;">
+  <table class="bo-table">
     <thead>
       <tr><th>Type</th><th>When</th><th>Hours</th><th>Label</th><th></th></tr>
     </thead>
@@ -55,109 +50,263 @@
         </td>
         <td style="color:#8a93a0;">{{ bo.label }}</td>
         <td style="text-align:right;">
-          <form method="post" style="display:inline;" onsubmit="return confirm('Delete this block-out?')">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="delete_blockout">
-            <input type="hidden" name="bo_id" value="{{ bo.id }}">
-            <button type="submit" class="ft-del">Delete</button>
-          </form>
+          <div style="display:inline-flex;gap:.35rem;align-items:center;">
+            <button type="button" class="cbtn-sm"
+                    onclick="openEditBo(
+                      {{ bo.id }},
+                      '{{ bo.blockout_type.id|default:'' }}',
+                      '{{ bo.label|escapejs }}',
+                      '{{ bo.recurrence }}',
+                      '{{ bo.date|default:'' }}',
+                      '{{ bo.weekday|default:'' }}',
+                      {{ bo.all_day|yesno:'true,false' }},
+                      '{{ bo.start_time|time:'H:i'|default:'' }}',
+                      '{{ bo.end_time|time:'H:i'|default:'' }}'
+                    )">Edit</button>
+            <form method="post" style="display:inline;"
+                  onsubmit="return confirm('Delete this block-out?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_blockout">
+              <input type="hidden" name="bo_id" value="{{ bo.id }}">
+              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+            </form>
+          </div>
         </td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-  {% else %}
-  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.5rem;">No all-resource block-outs scheduled.</p>
-  {% endif %}
-
-  <h2 class="sh2" style="margin-bottom:.8rem;">Add all-resource block-out</h2>
-
-  {% if not blockout_types %}
-  <p style="font-size:.83rem;background:#fff8e1;border-left:3px solid #f59e0b;padding:.5rem .75rem;border-radius:4px;color:#92400e;margin-bottom:1rem;">
-    No all-resource block-out types defined yet.
-    <a href="{% url 'core:club_settings' club.slug %}">Go to Settings → Scheduling</a> to add some (e.g. "Public Holiday", "Airfield Closed").
+  {% if past_count %}
+  <p class="past-hint" style="margin-top:.4rem;">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="5"/><path d="M6 5v3M6 3.5v.5"/></svg>
+    {{ past_count }} past {{ past_count|pluralize:"entry,entries" }} not shown
   </p>
   {% endif %}
+  {% else %}
+  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1rem;">No all-resource block-outs scheduled.</p>
+  {% endif %}
+</div>
 
-  <form method="post" style="max-width:640px;">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="add_blockout">
+<!-- Add block-out modal -->
+<div id="add-bo-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(540px,96vw);">
+    <h2>Add all-resource block-out</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_blockout">
 
-    <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-      <label class="flabel" style="flex:1;min-width:180px;">Type
-        <select name="bot_id" class="finput">
-          <option value="">— none —</option>
-          {% for bt in blockout_types %}
-          <option value="{{ bt.id }}">{{ bt.name }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <label class="flabel" style="flex:2;min-width:220px;">Label <span style="font-weight:400;">(optional)</span>
-        <input type="text" name="label" class="finput" placeholder="e.g. Waitangi Day — airfield closed">
-      </label>
-    </div>
+      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.1rem;">
+        <label class="flabel" style="flex:1;min-width:180px;">Type
+          <select name="bot_id" class="finput">
+            <option value="">— none —</option>
+            {% for bt in blockout_types %}
+            <option value="{{ bt.id }}">{{ bt.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel" style="flex:2;min-width:220px;">Label <span style="font-weight:400;color:#9aa3af;">(optional)</span>
+          <input type="text" name="label" class="finput" placeholder="e.g. Waitangi Day — airfield closed">
+        </label>
+      </div>
 
-    <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-      <label class="flabel">Recurrence
-        <select name="recurrence" class="finput" id="bo-recur" onchange="toggleBoRecur(this)">
-          <option value="one_off">One-off date</option>
-          <option value="weekly">Weekly (recurring)</option>
-          <option value="daily">Daily</option>
-        </select>
-      </label>
-      <label class="flabel" id="bo-date-field">Date
-        <input type="date" name="date" class="finput">
-      </label>
-      <label class="flabel" id="bo-weekday-field" style="display:none;">Day
-        <select name="weekday" class="finput">
-          <option value="0">Monday</option><option value="1">Tuesday</option>
-          <option value="2">Wednesday</option><option value="3">Thursday</option>
-          <option value="4">Friday</option><option value="5">Saturday</option>
-          <option value="6">Sunday</option>
-        </select>
-      </label>
-    </div>
+      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.1rem;">
+        <label class="flabel">Recurrence
+          <select name="recurrence" class="finput" id="add-bo-recur" onchange="toggleBoRecur(this,'add-bo-date','add-bo-weekday')">
+            <option value="one_off">One-off date</option>
+            <option value="weekly">Weekly (recurring)</option>
+            <option value="daily">Daily</option>
+          </select>
+        </label>
+        <label class="flabel" id="add-bo-date">Date
+          <input type="date" name="date" class="finput">
+        </label>
+        <label class="flabel" id="add-bo-weekday" style="display:none;">Day
+          <select name="weekday" class="finput">
+            <option value="0">Monday</option><option value="1">Tuesday</option>
+            <option value="2">Wednesday</option><option value="3">Thursday</option>
+            <option value="4">Friday</option><option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+        </label>
+      </div>
 
-    <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.6rem;">
-      <input type="checkbox" name="all_day" id="bo-allday" checked onchange="toggleBoTime(this)"> All day
-    </label>
-    <div id="bo-time-fields" style="display:none;gap:.7rem;flex-wrap:wrap;">
-      <label class="flabel">Start<input type="time" name="start_time" class="finput" value="08:00"></label>
-      <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
-    </div>
+      <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;">
+        <input type="checkbox" name="all_day" id="add-bo-allday" checked onchange="toggleBoTime(this,'add-bo-times')"> All day
+      </label>
+      <div id="add-bo-times" style="display:none;gap:.7rem;flex-wrap:wrap;margin-bottom:.5rem;">
+        <label class="flabel">Start<input type="time" name="start_time" class="finput" value="08:00"></label>
+        <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
+      </div>
 
-    <button type="submit" class="btn" style="margin-top:.4rem;">Add block-out</button>
-  </form>
+      <div class="modal-actions" style="margin-top:.9rem;">
+        <button type="button" class="cbtn" id="add-bo-cancel">Cancel</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn primary">Add block-out</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit block-out modal -->
+<div id="edit-bo-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(540px,96vw);">
+    <h2>Edit block-out</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="edit_blockout">
+      <input type="hidden" name="bo_id" id="ebm-id">
+
+      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.1rem;">
+        <label class="flabel" style="flex:1;min-width:180px;">Type
+          <select name="bot_id" id="ebm-type" class="finput">
+            <option value="">— none —</option>
+            {% for bt in blockout_types %}
+            <option value="{{ bt.id }}">{{ bt.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel" style="flex:2;min-width:220px;">Label <span style="font-weight:400;color:#9aa3af;">(optional)</span>
+          <input type="text" name="label" id="ebm-label" class="finput">
+        </label>
+      </div>
+
+      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.1rem;">
+        <label class="flabel">Recurrence
+          <select name="recurrence" id="ebm-recur" class="finput" onchange="toggleBoRecur(this,'ebm-date','ebm-weekday')">
+            <option value="one_off">One-off date</option>
+            <option value="weekly">Weekly (recurring)</option>
+            <option value="daily">Daily</option>
+          </select>
+        </label>
+        <label class="flabel" id="ebm-date">Date
+          <input type="date" name="date" id="ebm-date-val" class="finput">
+        </label>
+        <label class="flabel" id="ebm-weekday" style="display:none;">Day
+          <select name="weekday" id="ebm-weekday-val" class="finput">
+            <option value="0">Monday</option><option value="1">Tuesday</option>
+            <option value="2">Wednesday</option><option value="3">Thursday</option>
+            <option value="4">Friday</option><option value="5">Saturday</option>
+            <option value="6">Sunday</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;">
+        <input type="checkbox" name="all_day" id="ebm-allday" onchange="toggleBoTime(this,'ebm-times')"> All day
+      </label>
+      <div id="ebm-times" style="display:none;gap:.7rem;flex-wrap:wrap;margin-bottom:.5rem;">
+        <label class="flabel">Start<input type="time" name="start_time" id="ebm-start" class="finput"></label>
+        <label class="flabel">End<input type="time" name="end_time" id="ebm-end" class="finput"></label>
+      </div>
+
+      <div class="modal-actions" style="margin-top:.9rem;">
+        <button type="button" class="cbtn" id="edit-bo-cancel">Cancel</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn primary">Save changes</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <style>
-  .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;}
-  .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-block;}
+  .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;overflow-x:auto;}
+  .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-block;white-space:nowrap;}
   .mnav-link:hover{color:var(--banner);}
   .mnav-link.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
 
-  .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
+  .bo-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin:1.2rem 0 1rem;flex-wrap:wrap;}
+  .bo-page-title{font-size:1.05rem;font-weight:700;margin:0 0 .2rem;}
+  .bo-page-desc{color:#8a93a0;font-size:.82rem;margin:0;max-width:600px;}
 
-  .bo-table{width:100%;border-collapse:collapse;font-size:.86rem;}
+  .bo-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:.5rem;}
   .bo-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
   .bo-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .bo-table tr:last-child td{border-bottom:0;}
   .bo-dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem;border:1px solid rgba(0,0,0,.1);}
 
+  .bo-empty{text-align:center;padding:3rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;}
+  .bo-empty p{margin:.75rem 0 1rem;font-size:.9rem;}
+
+  .past-hint{font-size:.75rem;color:#adb5bd;display:inline-flex;align-items:center;gap:.25rem;}
+
+  .snotice{padding:.6rem .9rem;border-radius:6px;margin-bottom:1rem;font-size:.88rem;}
+  .snotice.warn{background:#fff8e1;border-left:3px solid #f59e0b;color:#92400e;}
+
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
   .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
-  .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
-  .ft-del:hover{text-decoration:underline;}
-  .past-hint{font-size:.75rem;color:#adb5bd;display:inline-flex;align-items:center;gap:.25rem;}
+
+  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;font-weight:600;}
+  .btn:hover{filter:brightness(1.07);}
+
+  .cbtn-sm{padding:.28rem .6rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;cursor:pointer;}
+  .cbtn-sm:hover{background:#f3f5f7;}
+  .cbtn-sm.cbtn-danger{color:#c0392b;border-color:#f5c6cb;}
+  .cbtn-sm.cbtn-danger:hover{background:#fff0f0;}
+
+  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
+  .modal-back[hidden]{display:none;}
+  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
+  .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
+  .modal-actions{display:flex;align-items:center;gap:.5rem;}
+  .cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;}
+  .cbtn:hover{background:#f3f5f7;}
+  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
 </style>
 
 <script>
-function toggleBoRecur(sel) {
-  document.getElementById('bo-date-field').style.display = sel.value === 'one_off' ? '' : 'none';
-  document.getElementById('bo-weekday-field').style.display = sel.value === 'weekly' ? '' : 'none';
+(function(){
+  const addModal  = document.getElementById('add-bo-modal');
+  const editModal = document.getElementById('edit-bo-modal');
+
+  function openAdd() { addModal.hidden = false; }
+  const addBtn = document.getElementById('add-bo-btn');
+  if (addBtn) addBtn.addEventListener('click', openAdd);
+  document.getElementById('add-bo-cancel').addEventListener('click', () => { addModal.hidden = true; });
+  addModal.addEventListener('click', e => { if (e.target === addModal) addModal.hidden = true; });
+
+  document.getElementById('edit-bo-cancel').addEventListener('click', () => { editModal.hidden = true; });
+  editModal.addEventListener('click', e => { if (e.target === editModal) editModal.hidden = true; });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { addModal.hidden = true; editModal.hidden = true; }
+  });
+
+  window.openEditBo = function(id, typeId, label, recur, date, weekday, allDay, start, end) {
+    document.getElementById('ebm-id').value = id;
+    document.getElementById('ebm-label').value = label;
+
+    const typeEl = document.getElementById('ebm-type');
+    typeEl.value = typeId || '';
+
+    const recurEl = document.getElementById('ebm-recur');
+    recurEl.value = recur;
+    toggleBoRecur(recurEl, 'ebm-date', 'ebm-weekday');
+
+    document.getElementById('ebm-date-val').value = date || '';
+
+    const wdEl = document.getElementById('ebm-weekday-val');
+    if (weekday !== '') wdEl.value = weekday;
+
+    const alldayEl = document.getElementById('ebm-allday');
+    alldayEl.checked = allDay;
+    toggleBoTime(alldayEl, 'ebm-times');
+
+    if (!allDay) {
+      document.getElementById('ebm-start').value = start || '';
+      document.getElementById('ebm-end').value = end || '';
+    }
+
+    editModal.hidden = false;
+  };
+})();
+
+function toggleBoRecur(sel, dateFieldId, weekdayFieldId) {
+  document.getElementById(dateFieldId).style.display = sel.value === 'one_off' ? '' : 'none';
+  document.getElementById(weekdayFieldId).style.display = sel.value === 'weekly' ? '' : 'none';
 }
-function toggleBoTime(cb) {
-  document.getElementById('bo-time-fields').style.display = cb.checked ? 'none' : 'flex';
+
+function toggleBoTime(cb, timesId) {
+  document.getElementById(timesId).style.display = cb.checked ? 'none' : 'flex';
 }
 </script>
 {% endblock %}

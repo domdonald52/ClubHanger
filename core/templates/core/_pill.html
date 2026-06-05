@@ -1,5 +1,5 @@
 {% load static %}
-<div class="pill {{ p.status }}{% if p.conflict %} conflict{% endif %}{% if p.override %} override{% endif %}"
+<div class="pill {{ p.status }}{% if p.paid %} paid{% endif %}{% if p.conflict %} conflict{% endif %}{% if p.override %} override{% endif %}"
      data-id="{{ p.id }}"
      data-left="{{ p.left }}"
      data-width="{{ p.width }}"
@@ -17,10 +17,14 @@
      data-issue-types="{{ p.issue_types }}"
      data-member-not-current="{{ p.member_not_current|yesno:'true,false' }}"
      data-member-standing="{{ p.member_standing }}"
+     data-records-hobbs="{{ p.records_hobbs|yesno:'true,false' }}"
+     data-records-tacho="{{ p.records_tacho|yesno:'true,false' }}"
+     data-records-airswitch="{{ p.records_airswitch|yesno:'true,false' }}"
+     data-paid="{{ p.paid|yesno:'true,false' }}"
      title="{{ p.member_name }} · {{ p.start_label }}–{{ p.end_label }}{% if p.member_not_current %} · ⚑ Member {{ p.member_standing }}{% endif %}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.override %} · booked over block-out{% endif %}"
      style="left:{{ p.left }}px;width:{{ p.width }}px;">
-  <div class="nm">{% if p.conflict %}⚠ {% endif %}{{ p.member_name }}</div>
-  <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
+  <div class="nm">{% if p.conflict %}⚠ {% endif %}{% if p.status == 'departed' %}✈ {% elif p.status == 'completed' %}{% if p.paid %}✓ {% else %}⏱ {% endif %}{% endif %}{{ p.member_name }}</div>
+  <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · departed{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
   {% if p.member_not_current %}<span class="pill-dot" title="Member {{ p.member_standing }}"></span>{% endif %}
   <div class="rs" data-resize></div>
 </div>

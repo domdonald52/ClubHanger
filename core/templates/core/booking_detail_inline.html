@@ -1,0 +1,274 @@
+{% load static %}
+{% comment %}Inline (no-chrome) version — rendered inside the calendar detail overlay.{% endcomment %}
+<style>
+  .bd-inline{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:.9rem;color:#1f2933;}
+  .bd-inline-header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.9rem 1.1rem;border-bottom:1px solid #eef1f4;background:#fafbfc;border-radius:10px 10px 0 0;flex-wrap:wrap;}
+  .bd-inline-header h2{margin:0;font-size:1rem;font-weight:650;}
+  .bd-close{background:none;border:1px solid #d6dae0;border-radius:6px;padding:.3rem .65rem;cursor:pointer;font-size:.82rem;color:#5b6573;display:flex;align-items:center;gap:.35rem;}
+  .bd-close:hover{background:#f3f5f7;}
+  .bd-body{padding:1rem 1.1rem;}
+  .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;}
+  .notice.ok{background:#eaf6ec;color:#216c2a;}
+  .notice.err{background:#fff0f0;color:#c0392b;}
+  .notice.warn{background:#fff8e6;color:#7a5800;}
+  .bcard{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.2rem;}
+  .bcard-head{background:#fafbfc;padding:.6rem .9rem;border-bottom:1px solid #eef1f4;display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.88rem;flex-wrap:wrap;}
+  .bcard-body{padding:.6rem .9rem;font-size:.85rem;}
+  .bcard-row{display:flex;gap:.5rem;align-items:baseline;margin-bottom:.3rem;}
+  .bl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;min-width:70px;flex-shrink:0;}
+  .sep{color:#d0d5dd;margin:0 .2rem;}
+  .sh2{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin:1rem 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid #eef1f4;}
+  .ch-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:.8rem;}
+  .ch-table th{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;padding:.3rem .5rem;border-bottom:2px solid #eef1f4;text-align:left;}
+  .ch-table td{padding:.4rem .5rem;border-bottom:1px solid #f1f3f5;}
+  .ch-table tfoot td{border-bottom:none;padding:.5rem .5rem;}
+  .del-btn{background:none;border:none;color:#e03131;cursor:pointer;font-size:1rem;padding:0 .2rem;line-height:1;}
+  .del-btn:hover{color:#c92a2a;}
+  .paid-badge{font-size:.72rem;font-weight:600;background:#eaf6ec;color:#216c2a;border-radius:6px;padding:.18rem .5rem;margin-left:.4rem;}
+  .add-wrap{border:1px solid #e3e6ea;border-radius:7px;margin-bottom:.6rem;}
+  .add-toggle{padding:.4rem .7rem;cursor:pointer;font-size:.82rem;color:var(--primary,#2563eb);font-weight:600;list-style:none;}
+  .add-wrap[open]{background:#fafbfc;}
+  .add-wrap[open] .add-toggle{border-bottom:1px solid #e3e6ea;margin-bottom:.6rem;}
+  .flabel{font-size:.78rem;color:#5b6573;display:block;}
+  .finput{display:block;width:100%;margin-top:.2rem;padding:.38rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  select.finput{appearance:auto;}
+  .btn{background:var(--primary,#2563eb);color:#fff;border:none;border-radius:7px;padding:.45rem .9rem;font-size:.85rem;font-weight:600;cursor:pointer;}
+  .btn:hover{filter:brightness(1.07);}
+  .btn.secondary{background:#f3f5f7;color:#1f2933;border:1px solid #d6dae0;}
+  .btn.secondary:hover{background:#eef1f4;}
+  .detail-link{font-size:.78rem;color:#8a93a0;text-decoration:none;display:inline-flex;align-items:center;gap:.2rem;margin-top:.6rem;}
+  .detail-link:hover{color:var(--primary,#2563eb);}
+</style>
+
+<div class="bd-inline">
+  <div class="bd-inline-header">
+    <h2>{{ booking.member.user.get_full_name }} · {{ booking.aircraft.registration }}</h2>
+    <button class="bd-close" data-close-overlay>✕ Close</button>
+  </div>
+  <div class="bd-body">
+
+    {% if error %}<div class="notice err">{{ error }}</div>{% endif %}
+    {% if success %}<div class="notice ok">{{ success }}</div>{% endif %}
+
+    <div class="bcard">
+      <div class="bcard-head">
+        <div>
+          <strong>{{ booking.member.user.get_full_name }}</strong>
+          <span class="sep">·</span>{{ booking.aircraft.registration }}
+          <span class="sep">·</span>{{ booking.flight_type.name }}
+          {% if booking.instructor %}<span class="sep">·</span>{{ booking.instructor.get_full_name }}{% endif %}
+        </div>
+        <span class="status-chip status-{{ booking.display_status_key }}">{{ booking.display_status }}</span>
+      </div>
+      <div class="bcard-body">
+        <div class="bcard-row">
+          <span class="bl">Scheduled</span>
+          {{ booking.scheduled_start|date:"D j M Y, H:i" }} – {{ booking.scheduled_end|time:"H:i" }}
+        </div>
+        {% if booking.departed_at %}
+        <div class="bcard-row"><span class="bl">Departed</span>{{ booking.departed_at|date:"H:i" }}
+          {% if booking.departed_without_declaration %}<span class="warn-chip">No declaration</span>{% endif %}
+        </div>
+        {% endif %}
+        {% if booking.arrived_at %}<div class="bcard-row"><span class="bl">Returned</span>{{ booking.arrived_at|date:"H:i" }}</div>{% endif %}
+        {% if booking.description %}<div class="bcard-row"><span class="bl">Notes</span>{{ booking.description }}</div>{% endif %}
+      </div>
+    </div>
+
+    {% if booking.status == 'completed' and fc %}
+    <h2 class="sh2">
+      Charges
+      {% if fc.is_paid %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>{% endif %}
+    </h2>
+
+    {% if fc.outcome != 'completed' %}
+    <div class="notice warn">Outcome: <strong>{{ fc.get_outcome_display }}</strong>{% if fc.outcome_notes %} — {{ fc.outcome_notes }}{% endif %}</div>
+    {% endif %}
+
+    {% if fc.actual_flight_hours %}
+    <div style="font-size:.82rem;color:#5b6573;margin-bottom:.6rem;">
+      Actual hours: <strong>{{ fc.actual_flight_hours }}h</strong>
+      ({{ booking.aircraft.get_total_time_method_display }})
+    </div>
+    {% endif %}
+
+    <table class="ch-table">
+      <thead><tr><th>Type</th><th>Description</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
+      <tbody>
+        {% for item in charge_items %}
+        <tr>
+          <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
+          <td>{{ item.description }}</td>
+          <td style="text-align:right;font-weight:600;">${{ item.amount }}</td>
+          <td style="width:32px;">
+            {% if not fc.is_paid %}
+            <form method="post" onsubmit="return confirm('Remove this charge?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_charge">
+              <input type="hidden" name="item_id" value="{{ item.id }}">
+              <input type="hidden" name="inline" value="1">
+              <button type="submit" class="del-btn">×</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" style="color:#8a93a0;font-size:.82rem;padding:.5rem;">No charges yet.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" style="text-align:right;font-weight:600;font-size:.88rem;padding:.5rem .5rem;">Total</td>
+          <td style="text-align:right;font-weight:700;font-size:.95rem;padding:.5rem .5rem;">${{ total }}</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    {% if not fc.is_paid %}
+    <!-- Add landing fee -->
+    <details class="add-wrap">
+      <summary class="add-toggle">+ Add landing fee</summary>
+      <div style="padding:0 .7rem .7rem;">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_charge">
+        <input type="hidden" name="item_type" value="landing">
+        <input type="hidden" name="inline" value="1">
+        {% if aerodromes %}
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;">
+          <label class="flabel" style="flex:2;min-width:180px;">Aerodrome
+            <select name="aerodrome_id" class="finput" onchange="bdFillFeeTypes(this,'bd-lf-fee-type','bd-lf-unit','bd-lf-desc','bd-lf-custom')">
+              <option value="">— custom / unknown —</option>
+              {% for ae in aerodromes %}
+              <option value="{{ ae.id }}"
+                data-fees='[{% for f in ae.fee_types.all %}{"id":{{ f.id }},"name":"{{ f.name }}","amount":"{{ f.default_amount }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                {{ ae.icao_code }} — {{ ae.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="flabel" style="flex:2;min-width:140px;">Fee type
+            <select id="bd-lf-fee-type" name="fee_type_id" class="finput" onchange="bdFillAmountFromFee(this,'bd-lf-unit','bd-lf-desc')">
+              <option value="">— select aerodrome first —</option>
+            </select>
+          </label>
+          <label class="flabel">Qty
+            <input type="number" name="quantity" id="bd-lf-qty" value="1" min="1" class="finput" style="width:55px;" oninput="bdCalcLfTotal()">
+          </label>
+          <label class="flabel">Unit $
+            <input type="number" name="unit_amount" id="bd-lf-unit" step="0.01" class="finput" style="width:70px;" oninput="bdCalcLfTotal()">
+          </label>
+          <label class="flabel">Total
+            <input type="number" name="amount" id="bd-lf-total" step="0.01" class="finput" style="width:70px;" required>
+          </label>
+          <button type="submit" class="btn" style="flex-shrink:0;">Add</button>
+        </div>
+        <input type="hidden" name="description" id="bd-lf-desc" value="Landing fee">
+        <div id="bd-lf-custom" style="display:none;margin-top:.4rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+          <label class="flabel">ICAO <input type="text" name="custom_icao" maxlength="4" class="finput" style="width:60px;text-transform:uppercase;" placeholder="NZMS"></label>
+          <label class="flabel" style="flex:1;min-width:140px;">Aerodrome name <input type="text" name="custom_name" class="finput" placeholder="e.g. Masterton"></label>
+          <label class="flabel" style="flex:2;min-width:160px;">Fee description <input type="text" name="description" class="finput" required placeholder="e.g. Full stop landing"></label>
+        </div>
+        {% else %}
+        <p style="font-size:.82rem;color:#8a93a0;">No aerodromes configured.</p>
+        {% endif %}
+      </form>
+      </div>
+    </details>
+
+    <!-- Add sundry charge -->
+    <details class="add-wrap">
+      <summary class="add-toggle">+ Add sundry / one-off charge</summary>
+      <div style="padding:0 .7rem .7rem;">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_charge">
+        <input type="hidden" name="item_type" value="one_off">
+        <input type="hidden" name="inline" value="1">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;">
+          <label class="flabel" style="flex:3;min-width:180px;">Description
+            <input type="text" name="description" class="finput" required placeholder="e.g. Headset hire">
+          </label>
+          <label class="flabel">Amount
+            <input type="number" name="amount" step="0.01" min="0" class="finput" style="width:80px;" required>
+          </label>
+          <button type="submit" class="btn" style="flex-shrink:0;">Add</button>
+        </div>
+      </form>
+      </div>
+    </details>
+
+    <!-- Payment -->
+    <div style="margin-top:.8rem;padding:.8rem;background:#f8f9fa;border-radius:8px;border:1px solid #e3e6ea;">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="confirm_payment">
+        <input type="hidden" name="inline" value="1">
+        <div style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
+          <label class="flabel">Payment method
+            <select name="payment_method" class="finput" style="width:auto;">
+              <option value="eftpos">EFTPOS</option>
+              <option value="credit">Account credit</option>
+              <option value="invoice">Invoice / bank transfer</option>
+            </select>
+          </label>
+          <button type="submit" class="btn"
+                  onclick="return confirm('Record payment of ${{ total }} — this cannot be undone.')">
+            Record payment — ${{ total }}
+          </button>
+        </div>
+        {% if booking.member.account %}
+        <div style="font-size:.78rem;color:#8a93a0;margin-top:.35rem;">
+          Account balance: <strong style="color:{% if booking.member.account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">
+            ${{ booking.member.account.balance }}</strong>
+        </div>
+        {% endif %}
+      </form>
+    </div>
+    {% endif %}{# not paid #}
+    {% endif %}{# completed #}
+
+    <a href="{% url 'core:booking_detail' club.slug booking.id %}" class="detail-link" target="_blank">
+      Open full booking page ↗
+    </a>
+
+  </div>{# bd-body #}
+</div>{# bd-inline #}
+
+<script>
+(function(){
+  function bdFillFeeTypes(sel, ftId, unitId, descId, customId) {
+    var ftSel = document.getElementById(ftId);
+    var custom = document.getElementById(customId);
+    ftSel.innerHTML = '<option value="">— custom —</option>';
+    var opt = sel.options[sel.selectedIndex];
+    var fees = [];
+    try { fees = JSON.parse(opt.dataset.fees || '[]'); } catch(e){}
+    fees.forEach(function(f){
+      var o = document.createElement('option');
+      o.value = f.id; o.textContent = f.name; o.dataset.amount = f.amount;
+      ftSel.appendChild(o);
+    });
+    if (custom) custom.style.display = sel.value ? 'none' : 'flex';
+  }
+  function bdFillAmountFromFee(sel, unitId, descId) {
+    var opt = sel.options[sel.selectedIndex];
+    if (opt && opt.dataset.amount) {
+      document.getElementById(unitId).value = opt.dataset.amount;
+      bdCalcLfTotal();
+    }
+    var descEl = document.getElementById(descId);
+    if (descEl && opt && opt.value) descEl.value = opt.textContent;
+  }
+  function bdCalcLfTotal() {
+    var qty = parseFloat(document.getElementById('bd-lf-qty')?.value || 1);
+    var unit = parseFloat(document.getElementById('bd-lf-unit')?.value || 0);
+    var tot = document.getElementById('bd-lf-total');
+    if (tot && !isNaN(qty) && !isNaN(unit)) tot.value = (qty * unit).toFixed(2);
+  }
+  window.bdFillFeeTypes = bdFillFeeTypes;
+  window.bdFillAmountFromFee = bdFillAmountFromFee;
+  window.bdCalcLfTotal = bdCalcLfTotal;
+})();
+</script>

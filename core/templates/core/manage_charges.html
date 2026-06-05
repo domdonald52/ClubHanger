@@ -1,0 +1,96 @@
+{% extends "core/base.html" %}
+{% block title %}Payments · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:2rem;max-width:1100px;">
+  <h1 style="margin-bottom:1.2rem;">Manage</h1>
+
+  {% include "core/_manage_nav.html" with active_section="charges" %}
+
+  <!-- Unpaid completions -->
+  <h2 class="sh2" style="margin-bottom:.6rem;">
+    Awaiting payment
+
+    <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ unpaid|length }})</span>
+  </h2>
+
+  {% if unpaid %}
+  <table class="ct">
+    <thead><tr>
+      <th>Member</th><th>Aircraft</th><th>Date</th><th>Flight type</th>
+      <th>Hours</th><th>Outcome</th><th style="text-align:right;">Total</th><th></th>
+    </tr></thead>
+    <tbody>
+      {% for fc in unpaid %}
+      <tr {% if fc.total_charge == 0 %}class="no-charge"{% endif %}>
+        <td>{{ fc.booking.member.user.get_full_name }}</td>
+        <td>{{ fc.booking.aircraft.registration }}</td>
+        <td style="white-space:nowrap;font-size:.85rem;">{{ fc.booking.scheduled_start|date:"j M Y" }}</td>
+        <td style="font-size:.82rem;color:#8a93a0;">{{ fc.booking.flight_type.name }}</td>
+        <td style="font-size:.85rem;">{{ fc.actual_flight_hours|default:"—" }}h</td>
+        <td>
+          {% if fc.outcome != 'completed' %}
+          <span class="out-chip">{{ fc.get_outcome_display }}</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right;font-weight:600;">${{ fc.total_charge }}</td>
+        <td style="text-align:right;">
+          <a href="{% url 'core:booking_detail' club.slug fc.booking.id %}" class="cbtn">Process →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:2rem;">All completed flights have been processed.</p>
+  {% endif %}
+
+  <hr style="border:none;border-top:1px solid #eef1f4;margin:2rem 0 1.4rem;">
+
+  <!-- Recent transactions -->
+  <h2 class="sh2" style="margin-bottom:.6rem;">Recent transactions <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">(last 50)</span></h2>
+
+  {% if recent_tx %}
+  <table class="ct">
+    <thead><tr>
+      <th>Member</th><th>Type</th><th>Description</th><th>Payment</th>
+      <th style="text-align:right;">Amount</th><th>Date</th>
+    </tr></thead>
+    <tbody>
+      {% for tx in recent_tx %}
+      <tr>
+        <td>{{ tx.account.club_member.user.get_full_name }}</td>
+        <td style="font-size:.8rem;color:#8a93a0;">{{ tx.get_transaction_type_display }}</td>
+        <td style="font-size:.85rem;">{{ tx.description }}</td>
+        <td style="font-size:.82rem;color:#8a93a0;">{{ tx.get_payment_method_display|default:"—" }}</td>
+        <td style="text-align:right;font-weight:600;color:{% if tx.direction == 'debit' %}#c0392b{% else %}#2a7a3b{% endif %};">
+          {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount }}
+        </td>
+        <td style="font-size:.82rem;color:#8a93a0;white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#8a93a0;font-size:.85rem;">No transactions yet.</p>
+  {% endif %}
+</div>
+
+<style>
+  .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;}
+  .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:.4rem;}
+  .mnav-link:hover,.mnav-link.active{color:var(--banner);}
+  .mnav-link.active{border-bottom-color:var(--primary);font-weight:650;}
+  .conflict-badge{background:#e03131;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:10px;line-height:1.2;}
+
+  .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
+  .ct{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1rem;}
+  .ct th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .ct td{padding:.55rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ct tr:last-child td{border-bottom:0;}
+  .ct tr.no-charge td{color:#adb5bd;}
+  .out-chip{font-size:.72rem;background:#fff3e0;color:#c76c00;padding:.1rem .4rem;border-radius:4px;font-weight:600;}
+  .cbtn{display:inline-flex;align-items:center;height:28px;padding:0 .65rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#1f2933;font-size:.8rem;cursor:pointer;text-decoration:none;}
+  .cbtn:hover{background:#f3f5f7;}
+</style>
+{% endblock %}

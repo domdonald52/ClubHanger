@@ -1,5 +1,6 @@
-{% extends "core/base.html" %}
+{% extends base_template|default:"core/base.html" %}
 {% block title %}{{ member.user.get_full_name }} · {{ club.name }}{% endblock %}
+{% block inline_title %}{{ inline_title }}{% endblock %}
 
 {% block content %}
 <div style="max-width:900px;margin:0 auto;padding:1rem;">
@@ -44,17 +45,17 @@
     </div>
   </div>
 
-  <!-- Sticky section nav -->
-  <nav class="section-nav" id="section-nav">
-    <a href="#contact" class="snav-link">Contact</a>
-    <a href="#membership" class="snav-link">Membership</a>
-    <a href="#credentials" class="snav-link">Credentials</a>
-    <a href="#account" class="snav-link">Account</a>
-    <a href="#bookings" class="snav-link">Bookings</a>
-  </nav>
+  <!-- Tab bar -->
+  <div class="stab-bar">
+    <button class="stab-btn" id="tabBtn-contact"      data-tab="contact">Contact</button>
+    <button class="stab-btn" id="tabBtn-membership"   data-tab="membership">Membership</button>
+    <button class="stab-btn" id="tabBtn-credentials"  data-tab="credentials">Credentials</button>
+    <button class="stab-btn" id="tabBtn-account"      data-tab="account">Account</button>
+    <button class="stab-btn" id="tabBtn-bookings"     data-tab="bookings">Bookings</button>
+  </div>
 
   <!-- ── CONTACT ── -->
-  <section id="contact" class="detail-section">
+  <section id="tab-contact" class="stab-panel detail-section">
     <h2 class="section-title">Contact details</h2>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
@@ -78,7 +79,7 @@
   </section>
 
   <!-- ── MEMBERSHIP ── -->
-  <section id="membership" class="detail-section">
+  <section id="tab-membership" class="stab-panel detail-section">
     <h2 class="section-title">Membership</h2>
     {% if club_member.is_admin %}
     <form method="post">
@@ -122,23 +123,49 @@
   </section>
 
   <!-- ── CREDENTIALS ── -->
-  <section id="credentials" class="detail-section">
-    <h2 class="section-title">Credentials</h2>
+  <section id="tab-credentials" class="stab-panel detail-section">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;">
+      <h2 class="section-title" style="margin:0;">Credentials</h2>
+      {% if club_member.is_admin or club_member.is_instructor %}
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-cred-modal').hidden=false">+ Add credential</button>
+      {% endif %}
+    </div>
     {% if credentials %}
     <table class="cred-table">
-      <thead><tr><th>Type</th><th>Certificate #</th><th>Issued</th><th>Expires</th><th>Status</th></tr></thead>
+      <thead><tr><th>Type</th><th>Name / sub-type</th><th>Certificate #</th><th>Issued</th><th>Expires</th><th>Status</th><th>Evidence</th>{% if club_member.is_admin or club_member.is_instructor %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for c in credentials %}
         <tr>
-          <td>{{ c.get_credential_type_display }}</td>
+          <td style="white-space:nowrap;">{{ c.get_credential_type_display }}</td>
+          <td style="color:#5b6573;font-size:.82rem;">{{ c.name|default:"—" }}</td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ c.certificate_number|default:"—" }}</td>
-          <td style="font-size:.83rem;">{{ c.issue_date }}</td>
-          <td style="font-size:.83rem;">{{ c.expiry_date }}</td>
+          <td style="font-size:.83rem;">{{ c.issue_date|default:"—" }}</td>
+          <td style="font-size:.83rem;">{{ c.expiry_date|default:"—" }}</td>
           <td>
-            {% if c.is_expired %}<span class="cred-chip expired">Expired</span>
+            {% if not c.expiry_date %}<span class="cred-chip ok">No expiry</span>
+            {% elif c.is_expired %}<span class="cred-chip expired">Expired</span>
             {% elif c.is_expiring_soon %}<span class="cred-chip soon">Due soon</span>
             {% else %}<span class="cred-chip ok">Current</span>{% endif %}
           </td>
+          <td>
+            {% if c.evidence %}
+            <a href="{{ c.evidence.url }}" target="_blank" style="font-size:.78rem;color:var(--primary);">View ↗</a>
+            {% else %}—{% endif %}
+          </td>
+          {% if club_member.is_admin or club_member.is_instructor %}
+          <td style="text-align:right;white-space:nowrap;">
+            <div style="display:inline-flex;gap:.3rem;">
+              <button type="button" class="cbtn-xs"
+                      onclick="openEditCred({{ c.id }},'{{ c.credential_type }}','{{ c.name|escapejs }}','{{ c.certificate_number|escapejs }}','{{ c.issue_date|default:'' }}','{{ c.expiry_date|default:'' }}','{{ c.notes|escapejs }}')">Edit</button>
+              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this credential?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_credential">
+                <input type="hidden" name="cred_id" value="{{ c.id }}">
+                <button type="submit" class="cbtn-xs" style="color:#c0392b;border-color:#f5c6cb;">Delete</button>
+              </form>
+            </div>
+          </td>
+          {% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -148,27 +175,215 @@
     {% endif %}
   </section>
 
+  <!-- Add credential modal -->
+  <div id="add-cred-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(560px,96vw);">
+      <h2>Add credential — {{ member.user.get_full_name }}</h2>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_credential">
+        <label class="flabel">Type
+          <select name="credential_type" class="finput" required>
+            <option value="">— select —</option>
+            {% for val, label in credential_types %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel" style="margin-top:.4rem;">Name / sub-type <span style="font-weight:400;">(e.g. aircraft type, aerodrome — required for Type Rating and Other)</span>
+          <input type="text" name="cred_name" class="finput" placeholder="e.g. Cessna 172 (ZK-ABC)">
+        </label>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.4rem;">
+          <label class="flabel" style="flex:1;">Certificate / reference #
+            <input type="text" name="certificate_number" class="finput" placeholder="e.g. NZ-PPL-12345">
+          </label>
+          <label class="flabel">Issued
+            <input type="date" name="issue_date" class="finput">
+          </label>
+          <label class="flabel">Expires
+            <input type="date" name="expiry_date" class="finput">
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.4rem;">Notes
+          <textarea name="notes" class="finput" rows="2" placeholder="Optional — any relevant notes"></textarea>
+        </label>
+        <label class="flabel" style="margin-top:.4rem;">Evidence photo/scan <span style="font-weight:400;">(optional — JPG, PNG or PDF)</span>
+          <input type="file" name="evidence" accept="image/*,.pdf" class="finput" style="padding:.3rem;">
+        </label>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Add credential</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit credential modal -->
+  <div id="edit-cred-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(560px,96vw);">
+      <h2>Edit credential</h2>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="edit_credential">
+        <input type="hidden" name="cred_id" id="ecm-id">
+        <label class="flabel">Type
+          <select name="credential_type" id="ecm-type" class="finput" required>
+            {% for val, label in credential_types %}
+            <option value="{{ val }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel" style="margin-top:.4rem;">Name / sub-type
+          <input type="text" name="cred_name" id="ecm-name" class="finput">
+        </label>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.4rem;">
+          <label class="flabel" style="flex:1;">Certificate / reference #
+            <input type="text" name="certificate_number" id="ecm-certnum" class="finput">
+          </label>
+          <label class="flabel">Issued
+            <input type="date" name="issue_date" id="ecm-issue" class="finput">
+          </label>
+          <label class="flabel">Expires
+            <input type="date" name="expiry_date" id="ecm-expiry" class="finput">
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.4rem;">Notes
+          <textarea name="notes" id="ecm-notes" class="finput" rows="2"></textarea>
+        </label>
+        <label class="flabel" style="margin-top:.4rem;">Replace evidence photo/scan <span style="font-weight:400;">(leave blank to keep existing)</span>
+          <input type="file" name="evidence" accept="image/*,.pdf" class="finput" style="padding:.3rem;">
+        </label>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('edit-cred-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ── ACCOUNT ── -->
-  <section id="account" class="detail-section">
+  <section id="tab-account" class="stab-panel detail-section">
     <h2 class="section-title">Account</h2>
     {% if account %}
-    <div class="field-grid" style="grid-template-columns:repeat(3,1fr);">
+    <div class="field-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.4rem;">
       <div class="ro-field">
         <span class="ro-label">Balance</span>
         <span style="font-size:1.2rem;font-weight:700;color:{% if account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">
           ${{ account.balance }}
         </span>
       </div>
-      <div class="ro-field"><span class="ro-label">Credit limit</span>{% if account.credit_limit is not None %}${{ account.credit_limit }}{% else %}Exempt{% endif %}</div>
-      <div class="ro-field"><span class="ro-label">Warning</span>{% if account.has_warning %}⚠ Over limit{% else %}—{% endif %}</div>
+      <div class="ro-field">
+        <span class="ro-label">Credit limit</span>
+        {% if account.credit_limit is not None %}${{ account.credit_limit }}{% else %}Exempt{% endif %}
+        {% if club_member.is_admin %}
+        <button type="button" class="cbtn-xs" style="margin-left:.4rem;"
+                onclick="document.getElementById('set-cl-wrap').hidden=!document.getElementById('set-cl-wrap').hidden">Edit</button>
+        <div id="set-cl-wrap" hidden style="margin-top:.5rem;">
+          <form method="post" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_credit_limit">
+            <input type="number" name="credit_limit" min="0" step="1" placeholder="e.g. 500"
+                   value="{% if account.credit_limit is not None %}{{ account.credit_limit }}{% endif %}"
+                   class="finput" style="width:110px;margin:0;">
+            <span style="font-size:.78rem;color:#8a93a0;">Leave blank = Exempt</span>
+            <button type="submit" class="btn" style="padding:.3rem .7rem;font-size:.8rem;">Save</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+      <div class="ro-field"><span class="ro-label">Status</span>{% if account.has_warning %}<span style="color:#c0392b;font-weight:600;">Over limit</span>{% else %}OK{% endif %}</div>
     </div>
+
+    {% if club_member.is_admin %}
+    <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1.6rem;">
+
+      <!-- Top-up -->
+      <details style="flex:1;min-width:220px;">
+        <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);list-style:none;padding:.35rem 0;">+ Record top-up</summary>
+        <form method="post" style="margin-top:.6rem;">
+          {% csrf_token %}<input type="hidden" name="action" value="account_topup">
+          <label class="flabel">Amount<input type="number" name="amount" min="0.01" step="0.01" class="finput" required></label>
+          <label class="flabel">Method
+            <select name="payment_method" class="finput">
+              <option value="bank_transfer">Bank transfer</option>
+              <option value="eftpos">EFTPOS</option>
+              <option value="cash">Cash</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label class="flabel">Reference<input type="text" name="reference" class="finput" placeholder="Optional bank ref or receipt no."></label>
+          <button type="submit" class="btn" style="margin-top:.3rem;">Add credit</button>
+        </form>
+      </details>
+
+      <!-- Adjustment -->
+      <details style="flex:1;min-width:220px;">
+        <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);list-style:none;padding:.35rem 0;">± Manual adjustment</summary>
+        <form method="post" style="margin-top:.6rem;">
+          {% csrf_token %}<input type="hidden" name="action" value="account_adjustment">
+          <label class="flabel">Direction
+            <select name="direction" class="finput">
+              <option value="credit">Credit (add funds)</option>
+              <option value="debit">Debit (charge)</option>
+            </select>
+          </label>
+          <label class="flabel">Amount<input type="number" name="amount" min="0.01" step="0.01" class="finput" required></label>
+          <label class="flabel">Description<input type="text" name="description" class="finput" required placeholder="Reason for adjustment"></label>
+          <button type="submit" class="btn" style="margin-top:.3rem;">Save</button>
+        </form>
+      </details>
+
+      <!-- Transfer -->
+      <details style="flex:1;min-width:220px;">
+        <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);list-style:none;padding:.35rem 0;">⇄ Transfer to member</summary>
+        <form method="post" style="margin-top:.6rem;">
+          {% csrf_token %}<input type="hidden" name="action" value="account_transfer">
+          <label class="flabel">To member
+            <select name="dest_member_id" class="finput" required>
+              <option value="">— select —</option>
+              {% for m in all_members %}<option value="{{ m.id }}">{{ m.user.get_full_name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="flabel">Amount<input type="number" name="amount" min="0.01" step="0.01" class="finput" required></label>
+          <label class="flabel">Notes<input type="text" name="description" class="finput" placeholder="Optional reason"></label>
+          <button type="submit" class="btn" style="margin-top:.3rem;">Transfer</button>
+        </form>
+      </details>
+    </div>
+    {% endif %}
+
+    <!-- Transaction list -->
+    <h3 style="font-size:.88rem;font-weight:650;color:#1f2933;margin:0 0 .6rem;">Recent transactions</h3>
+    {% if transactions %}
+    <table class="cred-table">
+      <thead><tr><th>Date</th><th>Type</th><th>Description</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Balance effect</th></tr></thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td style="font-size:.8rem;white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
+          <td style="font-size:.8rem;color:#8a93a0;">{{ tx.get_transaction_type_display }}</td>
+          <td style="font-size:.85rem;">{{ tx.description }}</td>
+          <td style="text-align:right;font-weight:600;">${{ tx.amount }}</td>
+          <td style="text-align:right;font-weight:600;color:{% if tx.direction == 'debit' %}#c0392b{% else %}#2a7a3b{% endif %};">
+            {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;">No transactions yet.</p>
+    {% endif %}
+
     {% else %}
     <p style="color:#8a93a0;font-size:.85rem;">No account record.</p>
     {% endif %}
   </section>
 
   <!-- ── BOOKINGS ── -->
-  <section id="bookings" class="detail-section">
+  <section id="tab-bookings" class="stab-panel detail-section">
     <h2 class="section-title">Upcoming bookings</h2>
     {% if upcoming_bookings %}
     <table class="cred-table" style="margin-bottom:1.5rem;">
@@ -180,7 +395,7 @@
           <td>{{ b.aircraft.registration|default:"—" }}</td>
           <td>{{ b.instructor.get_full_name|default:"Solo" }}</td>
           <td style="font-size:.82rem;color:#8a93a0;">{{ b.flight_type.name|default:"—" }}</td>
-          <td><span class="status-chip {{ b.status }}">{{ b.get_status_display }}</span></td>
+          <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -198,7 +413,7 @@
           <td>{{ b.aircraft.registration|default:"—" }}</td>
           <td>{{ b.instructor.get_full_name|default:"Solo" }}</td>
           <td style="font-size:.82rem;color:#8a93a0;">{{ b.flight_type.name|default:"—" }}</td>
-          <td><span class="status-chip {{ b.status }}">{{ b.get_status_display }}</span></td>
+          <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -225,12 +440,14 @@
   .standing-badge.standing-non_member{background:#f3f5f7;color:#8a93a0;}
   .role-chip{font-size:.75rem;background:#e8f0fb;color:#2f7dd1;padding:.2rem .5rem;border-radius:10px;font-weight:500;}
 
-  .section-nav{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #e3e6ea;display:flex;gap:0;margin-bottom:1.4rem;overflow-x:auto;}
-  .snav-link{padding:.55rem 1rem;font-size:.85rem;font-weight:500;color:#5b6573;text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent;transition:color .15s;}
-  .snav-link:hover,.snav-link.active{color:var(--banner);}
-  .snav-link.active{border-bottom-color:var(--primary);}
+  .stab-bar{display:flex;gap:2px;margin-bottom:1.2rem;border-bottom:2px solid #e3e6ea;}
+  .stab-btn{padding:.5rem 1rem;border:none;background:none;cursor:pointer;font-size:.88rem;font-weight:500;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;}
+  .stab-btn:hover{color:var(--banner);}
+  .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+  .stab-panel{display:none;}
+  .stab-panel.active{display:block;}
 
-  .detail-section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;scroll-margin-top:48px;}
+  .detail-section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;}
   .section-title{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 1rem;}
 
   .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
@@ -250,28 +467,62 @@
   .cred-chip.expired{background:#fee2e2;color:#c0392b;}
 
   .status-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
-  .status-chip.confirmed{background:#e6f4ea;color:#2a7a3b;}
-  .status-chip.pending{background:#fff3e0;color:#e65100;}
-  .status-chip.cancelled{background:#f3f5f7;color:#8a93a0;}
+  /* status-chip colours defined in base.html */
 
   .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
   .btn:hover{filter:brightness(1.07);}
+  .cbtn-xs{padding:.15rem .45rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.72rem;cursor:pointer;vertical-align:middle;}
+  .cbtn-xs:hover{background:#f3f5f7;}
+  .cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:600;cursor:pointer;}
+  .cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);}
+  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back[hidden]{display:none!important;}
+  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);max-height:90vh;overflow-y:auto;}
+  .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
+  .modal-actions{display:flex;align-items:center;gap:.5rem;}
+  .cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;}
+  .cbtn:hover{background:#f3f5f7;}
+  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
 </style>
 
 <script>
-// Highlight active section in sticky nav
 (function(){
-  const links = document.querySelectorAll('.snav-link');
-  const sections = [...links].map(l => document.querySelector(l.getAttribute('href')));
-  function update() {
-    let active = sections[0];
-    sections.forEach(s => { if (s && s.getBoundingClientRect().top <= 60) active = s; });
-    links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + (active && active.id)));
+  const TABS = ['contact','membership','credentials','account','bookings'];
+  function activate(id) {
+    TABS.forEach(t => {
+      document.getElementById('tab-'+t).classList.toggle('active', t===id);
+      document.getElementById('tabBtn-'+t).classList.toggle('active', t===id);
+    });
+    try { localStorage.setItem('memberDetailTab', id); } catch(e){}
   }
-  window.addEventListener('scroll', update, {passive:true});
-  update();
-
-  // avatar-upload-btn uses onclick inline — nothing else needed here
+  TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
+  const hash = location.hash.replace('#','');
+  const init = (TABS.includes(hash) ? hash : null)
+    || (()=>{ try{ return localStorage.getItem('memberDetailTab'); }catch(e){} })()
+    || 'contact';
+  activate(init);
 })();
+
+// Credential modals
+['add-cred-modal','edit-cred-modal'].forEach(id => {
+  const m = document.getElementById(id);
+  if (m) m.addEventListener('click', e => { if (e.target === m) m.hidden = true; });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') ['add-cred-modal','edit-cred-modal'].forEach(id => {
+    const m = document.getElementById(id); if (m) m.hidden = true;
+  });
+});
+
+function openEditCred(id, type, name, certNum, issueDate, expiryDate, notes) {
+  document.getElementById('ecm-id').value = id;
+  document.getElementById('ecm-type').value = type;
+  document.getElementById('ecm-name').value = name;
+  document.getElementById('ecm-certnum').value = certNum;
+  document.getElementById('ecm-issue').value = issueDate;
+  document.getElementById('ecm-expiry').value = expiryDate;
+  document.getElementById('ecm-notes').value = notes;
+  document.getElementById('edit-cred-modal').hidden = false;
+}
 </script>
 {% endblock %}

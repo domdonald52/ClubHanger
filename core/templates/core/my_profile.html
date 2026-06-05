@@ -87,14 +87,26 @@
     <h2 class="section-title">Upcoming bookings</h2>
     {% if upcoming %}
     <table class="bk-table" style="margin-bottom:1.5rem;">
-      <thead><tr><th>Date</th><th>Aircraft</th><th>Instructor</th><th>Status</th></tr></thead>
+      <thead><tr><th>Date</th><th>Aircraft</th><th>Instructor</th><th>Status</th><th></th></tr></thead>
       <tbody>
         {% for b in upcoming %}
         <tr>
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}–{{ b.scheduled_end|time:"H:i" }}</td>
           <td>{{ b.aircraft.registration|default:"—" }}</td>
           <td>{{ b.instructor.get_full_name|default:"Solo" }}</td>
-          <td><span class="status-chip {{ b.status }}">{{ b.get_status_display }}</span></td>
+          <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
+          <td style="text-align:right;white-space:nowrap;">
+            {% if b.status == 'confirmed' %}
+              {% if b.flight_type.requires_declaration %}
+              <a href="{% url 'core:booking_declaration' club.slug b.id %}" class="action-link">Declaration</a>
+              {% endif %}
+              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link depart-link">Depart →</a>
+            {% elif b.status == 'departed' %}
+              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link">Check in →</a>
+            {% elif b.status == 'completed' %}
+              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link">View →</a>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -111,7 +123,7 @@
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M Y" }} {{ b.scheduled_start|time:"H:i" }}</td>
           <td>{{ b.aircraft.registration|default:"—" }}</td>
           <td>{{ b.instructor.get_full_name|default:"Solo" }}</td>
-          <td><span class="status-chip {{ b.status }}">{{ b.get_status_display }}</span></td>
+          <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -222,14 +234,16 @@
   .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
   .ro-field{font-size:.88rem;color:#1f2933;padding:.4rem 0;}
   .ro-label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;}
+  .action-link{font-size:.78rem;color:var(--primary);text-decoration:none;font-weight:500;margin-left:.4rem;}
+  .action-link:hover{text-decoration:underline;}
+  .action-link.depart-link{background:var(--primary);color:#fff;padding:.2rem .5rem;border-radius:5px;margin-left:.3rem;}
+  .action-link.depart-link:hover{filter:brightness(1.08);text-decoration:none;}
   .bk-table{width:100%;border-collapse:collapse;font-size:.85rem;}
   .bk-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
   .bk-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .bk-table tr:last-child td{border-bottom:0;}
   .status-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
-  .status-chip.confirmed{background:#e6f4ea;color:#2a7a3b;}
-  .status-chip.pending{background:#fff3e0;color:#e65100;}
-  .status-chip.cancelled{background:#f3f5f7;color:#8a93a0;}
+  /* status-chip colours defined in base.html */
   .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
   .btn:hover{filter:brightness(1.07);}
 </style>

@@ -1,0 +1,257 @@
+{% extends base_template|default:"core/base.html" %}
+{% block title %}Departure Declaration · {{ booking.aircraft.registration }} · {{ club.name }}{% endblock %}
+{% block inline_title %}Departure Declaration · {{ booking.aircraft.registration }}{% endblock %}
+
+{% block content %}
+<div style="max-width:720px;margin:0 auto;padding:2rem;">
+
+  {% if not is_inline %}
+  <a href="{% url 'core:booking_detail' club.slug booking.id %}" class="back-link">← Back to booking</a>
+  {% endif %}
+
+  <h1 style="font-size:1.3rem;margin-bottom:.3rem;">Departure Declaration</h1>
+  <div style="font-size:.88rem;color:#8a93a0;margin-bottom:1.4rem;">
+    {{ booking.aircraft.registration }} · {{ booking.flight_type.name }} · {{ booking.scheduled_start|date:"D j M Y H:i" }}
+  </div>
+
+  {% if error %}<div class="notice err">{{ error }}</div>{% endif %}
+
+  {% if not decl.is_draft and booking.status != 'completed' %}
+  <div class="notice ok" style="margin-bottom:1.2rem;">
+    Submitted {{ decl.submitted_at|date:"j M Y H:i" }}
+    {% if decl.is_stale %}<span style="color:#c76c00;font-weight:600;margin-left:.5rem;">⚠ Submitted more than 6 hours ago — re-check weather and NOTAMs before departing.</span>{% endif %}
+  </div>
+  {% elif not decl.is_draft and booking.status == 'completed' %}
+  <div class="notice ok" style="margin-bottom:1.2rem;">Submitted {{ decl.submitted_at|date:"j M Y H:i" }}</div>
+  {% endif %}
+
+  {% if readonly and booking.status == 'completed' %}
+  <div class="notice ok" style="margin-bottom:1.2rem;">Read-only — declaration cannot be amended after the flight is completed.</div>
+  {% endif %}
+
+  <!-- ── Main declaration form ── -->
+  <form method="post" id="decl-form">
+    {% csrf_token %}
+    {% if readonly %}<fieldset disabled style="border:none;padding:0;margin:0;">{% endif %}
+
+    <div class="section">
+      <h2 class="sh2">Flight details</h2>
+      <label class="flabel" style="max-width:340px;">Authorising instructor
+        <select name="authorising_instructor_id" class="finput">
+          <option value="">— none / self-authorised —</option>
+          {% for instr in instructors %}
+          <option value="{{ instr.id }}" {% if decl.authorising_instructor_id == instr.id %}selected{% endif %}>
+            {{ instr.user.get_full_name }}
+          </option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="flabel">Route intentions
+        <textarea name="route_intentions" class="finput" rows="3"
+                  placeholder="e.g. NZWN → NZMS → NZWN, coastal route, 1500ft">{{ decl.route_intentions }}</textarea>
+      </label>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+        <label class="flabel" style="flex:1;min-width:200px;">Destination
+          <input type="text" name="destination" value="{{ decl.destination }}" class="finput"
+                 placeholder="e.g. NZMS Masterton">
+        </label>
+        <label class="flabel" style="max-width:220px;">Estimated return
+          <input type="datetime-local" name="estimated_return" class="finput"
+                 value="{% if decl.estimated_return %}{{ decl.estimated_return|date:'Y-m-d\TH:i' }}{% endif %}">
+        </label>
+      </div>
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:.88rem;margin-bottom:.8rem;">
+        <input type="checkbox" name="is_cross_country" {% if decl.is_cross_country %}checked{% endif %}>
+        Cross-country flight (pickets required)
+      </label>
+    </div>
+
+    <div class="section">
+      <h2 class="sh2">Next of kin</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .8rem;">Pre-filled from your profile. Override for this flight if needed.</p>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+        <label class="flabel" style="flex:1;min-width:200px;">Name
+          <input type="text" name="next_of_kin_name" class="finput"
+                 value="{{ decl.next_of_kin_name|default:member_nok_name }}"
+                 placeholder="{{ member_nok_name|default:'Full name' }}">
+        </label>
+        <label class="flabel" style="flex:1;min-width:160px;">Phone
+          <input type="text" name="next_of_kin_phone" class="finput"
+                 value="{{ decl.next_of_kin_phone|default:member_nok_phone }}"
+                 placeholder="{{ member_nok_phone|default:'Phone number' }}">
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="sh2">Passengers</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .8rem;">List all passengers on board.</p>
+
+      {% if passengers %}
+      <table class="cred-table" style="margin-bottom:.8rem;">
+        <thead><tr><th>Name</th><th>Phone</th><th>NOK name</th><th>NOK phone</th><th></th></tr></thead>
+        <tbody>
+          {% for pax in passengers %}
+          <tr>
+            <td>{{ pax.name }}</td>
+            <td style="color:#8a93a0;font-size:.85rem;">{{ pax.phone|default:"—" }}</td>
+            <td style="font-size:.85rem;">{{ pax.next_of_kin_name|default:"—" }}</td>
+            <td style="color:#8a93a0;font-size:.85rem;">{{ pax.next_of_kin_phone|default:"—" }}</td>
+            <td style="text-align:right;">
+              {% if not readonly %}
+              {# Passenger remove — separate form, NOT nested inside #decl-form #}
+              <button type="button" class="btn-link-red"
+                      onclick="removePax('{{ pax.id }}','{{ pax.name|escapejs }}')">Remove</button>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="font-size:.85rem;color:#8a93a0;margin-bottom:.8rem;font-style:italic;">No passengers listed yet.</p>
+      {% endif %}
+
+      {% if not readonly %}
+      {% if frequent_passengers %}
+      <div style="margin-bottom:.6rem;">
+        <span style="font-size:.82rem;color:#5b6573;font-weight:600;">Quick-add frequent passenger:</span>
+        <div style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.4rem;">
+          {% for fp in frequent_passengers %}
+          <button type="button" class="fp-chip"
+                  onclick="quickAddPax('{{ fp.name|escapejs }}','{{ fp.phone|escapejs }}','{{ fp.next_of_kin_name|escapejs }}','{{ fp.next_of_kin_phone|escapejs }}')">
+            {{ fp.name }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <details>
+        <summary style="cursor:pointer;font-size:.82rem;color:var(--primary);list-style:none;">+ Add new passenger</summary>
+        <div style="margin-top:.6rem;max-width:560px;">
+          <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+            <label class="flabel" style="flex:1;min-width:180px;">Name
+              <input type="text" id="pax-name" class="finput" placeholder="Full name">
+            </label>
+            <label class="flabel" style="flex:1;min-width:140px;">Phone
+              <input type="text" id="pax-phone" class="finput" placeholder="Mobile number">
+            </label>
+          </div>
+          <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+            <label class="flabel" style="flex:1;min-width:180px;">NOK name
+              <input type="text" id="pax-nok-name" class="finput" placeholder="Next of kin name">
+            </label>
+            <label class="flabel" style="flex:1;min-width:140px;">NOK phone
+              <input type="text" id="pax-nok-phone" class="finput" placeholder="NOK contact number">
+            </label>
+          </div>
+          <button type="button" class="btn secondary" style="margin-top:.2rem;" onclick="addNewPax()">Add passenger</button>
+        </div>
+      </details>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <h2 class="sh2">Pre-departure checklist</h2>
+      <div class="checklist">
+        <label class="check-item"><input type="checkbox" name="confirm_aip" {% if decl.confirm_aip %}checked{% endif %}> AIP / NOTAMs reviewed</label>
+        <label class="check-item"><input type="checkbox" name="confirm_weather" {% if decl.confirm_weather %}checked{% endif %}> Weather checked</label>
+        <label class="check-item"><input type="checkbox" name="confirm_fuel" {% if decl.confirm_fuel %}checked{% endif %}> Fuel requirements confirmed</label>
+        <label class="check-item"><input type="checkbox" name="confirm_fuel_card" {% if decl.confirm_fuel_card %}checked{% endif %}> Fuel card carried</label>
+        <label class="check-item"><input type="checkbox" name="confirm_maps" {% if decl.confirm_maps %}checked{% endif %}> Maps carried</label>
+        <label class="check-item"><input type="checkbox" name="confirm_afm" {% if decl.confirm_afm %}checked{% endif %}> AFM in aircraft</label>
+        <label class="check-item"><input type="checkbox" name="confirm_flight_plan" {% if decl.confirm_flight_plan %}checked{% endif %}> Flight plan filed (if required)</label>
+        <label class="check-item" id="pickets-item" {% if not decl.is_cross_country %}style="opacity:.45;"{% endif %}>
+          <input type="checkbox" name="confirm_pickets" {% if decl.confirm_pickets %}checked{% endif %}> Pickets carried (cross-country)
+        </label>
+      </div>
+    </div>
+
+    {% if not readonly %}
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.5rem;">
+      {% if decl.is_draft %}
+      <button type="submit" name="action" value="save_draft" class="btn secondary">Save draft</button>
+      <button type="submit" name="action" value="submit" class="btn">Submit declaration</button>
+      {% else %}
+      <button type="submit" name="action" value="submit" class="btn">Update &amp; re-submit</button>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if readonly %}</fieldset>{% endif %}
+  </form>
+
+  {# Hidden passenger action forms — outside the main form to avoid nesting #}
+  <form id="pax-action-form" method="post" style="display:none;">
+    {% csrf_token %}
+    <input type="hidden" name="action" id="pax-action-value">
+    <input type="hidden" name="pax_id" id="pax-action-id">
+    <input type="hidden" name="pax_name" id="pax-action-name">
+    <input type="hidden" name="pax_phone" id="pax-action-phone">
+    <input type="hidden" name="pax_nok_name" id="pax-action-nok-name">
+    <input type="hidden" name="pax_nok_phone" id="pax-action-nok-phone">
+  </form>
+
+</div>
+
+<style>
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link:hover{color:var(--banner);}
+  .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;}
+  .notice.ok{background:#eaf6ec;color:#216c2a;}
+  .notice.err{background:#fff0f0;color:#c0392b;}
+  .section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;}
+  .sh2{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 .9rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.7rem;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.42rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .checklist{display:flex;flex-direction:column;gap:.55rem;}
+  .check-item{display:flex;align-items:center;gap:.6rem;font-size:.88rem;color:#1f2933;cursor:pointer;}
+  .btn{padding:.42rem .85rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;font-weight:500;}
+  .btn:hover{filter:brightness(1.07);}
+  .btn.secondary{background:#f3f5f7;color:#1f2933;border:1px solid #d6dae0;}
+  .btn.secondary:hover{background:#e8eaed;}
+  .btn-link-red{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.85rem;padding:0;}
+  .btn-link-red:hover{text-decoration:underline;}
+  .cred-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+  .cred-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .cred-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .cred-table tr:last-child td{border-bottom:0;}
+  .fp-chip{padding:.28rem .65rem;border-radius:20px;border:1px solid #d6dae0;background:#f5f6f8;color:#5b6573;font-size:.8rem;cursor:pointer;}
+  .fp-chip:hover{background:#eef1f4;}
+</style>
+
+<script>
+document.querySelector('[name=is_cross_country]').addEventListener('change', function(){
+  document.getElementById('pickets-item').style.opacity = this.checked ? '1' : '.45';
+});
+
+function removePax(paxId, name) {
+  if (!confirm('Remove ' + name + '?')) return;
+  var f = document.getElementById('pax-action-form');
+  document.getElementById('pax-action-value').value = 'remove_passenger';
+  document.getElementById('pax-action-id').value = paxId;
+  f.submit();
+}
+
+function quickAddPax(name, phone, nokName, nokPhone) {
+  document.getElementById('pax-action-value').value = 'add_passenger';
+  document.getElementById('pax-action-name').value = name;
+  document.getElementById('pax-action-phone').value = phone;
+  document.getElementById('pax-action-nok-name').value = nokName;
+  document.getElementById('pax-action-nok-phone').value = nokPhone;
+  document.getElementById('pax-action-form').submit();
+}
+
+function addNewPax() {
+  var name = document.getElementById('pax-name').value.trim();
+  if (!name) { alert('Passenger name is required'); return; }
+  document.getElementById('pax-action-value').value = 'add_passenger';
+  document.getElementById('pax-action-name').value = name;
+  document.getElementById('pax-action-phone').value = document.getElementById('pax-phone').value.trim();
+  document.getElementById('pax-action-nok-name').value = document.getElementById('pax-nok-name').value.trim();
+  document.getElementById('pax-action-nok-phone').value = document.getElementById('pax-nok-phone').value.trim();
+  document.getElementById('pax-action-form').submit();
+}
+</script>
+{% endblock %}

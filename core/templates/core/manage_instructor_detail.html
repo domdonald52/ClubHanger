@@ -1,0 +1,417 @@
+{% extends base_template|default:"core/base.html" %}
+{% block title %}{{ instr.user.get_full_name }} · {{ club.name }}{% endblock %}
+{% block inline_title %}{{ inline_title }}{% endblock %}
+
+{% block content %}
+<div style="max-width:960px;margin:0 auto;padding:2rem;">
+
+  <a href="{% url 'core:manage_instructors' club.slug %}" class="back-link">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg>
+    Instructors
+  </a>
+
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.4rem;flex-wrap:wrap;">
+    <h1 style="margin:0;font-size:1.4rem;">{{ instr.user.get_full_name }}</h1>
+    {% if instr.instructor_grade %}
+    <span class="grade-badge">{{ instr.instructor_grade.name }} · ${{ instr.instructor_grade.hourly_rate }}/hr</span>
+    {% else %}
+    <span class="grade-badge no-grade">No grade assigned</span>
+    {% endif %}
+  </div>
+
+  <!-- Tab bar -->
+  <div class="stab-bar">
+    <button class="stab-btn" id="tabBtn-details"      data-tab="details">Details</button>
+    <button class="stab-btn" id="tabBtn-availability" data-tab="availability">Availability</button>
+    <button class="stab-btn" id="tabBtn-bookings"     data-tab="bookings">Upcoming bookings</button>
+  </div>
+
+  <!-- ── DETAILS tab ── -->
+  <div id="tab-details" class="stab-panel">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;flex-wrap:wrap;">
+
+      <!-- Contact details -->
+      <div>
+        <h2 class="sh2">Contact details</h2>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_contact">
+          <div class="fgrid" style="grid-template-columns:1fr 1fr;">
+            <label class="flabel">First name
+              <input type="text" name="first_name" value="{{ instr.user.first_name }}" class="finput" required>
+            </label>
+            <label class="flabel">Last name
+              <input type="text" name="last_name" value="{{ instr.user.last_name }}" class="finput" required>
+            </label>
+          </div>
+          <label class="flabel">Email
+            <input type="email" name="email" value="{{ instr.user.email }}" class="finput">
+          </label>
+          <label class="flabel">Mobile
+            <input type="text" name="phone_mobile" value="{{ instr.phone_mobile }}" class="finput">
+          </label>
+          <label class="flabel">Home phone
+            <input type="text" name="phone_home" value="{{ instr.phone_home }}" class="finput">
+          </label>
+          <label class="flabel">Work phone
+            <input type="text" name="phone_work" value="{{ instr.phone_work }}" class="finput">
+          </label>
+          <label class="flabel">CAA number
+            <input type="text" name="caa_number" value="{{ instr.caa_number }}" class="finput" placeholder="e.g. 99-12345">
+          </label>
+          <button type="submit" class="btn" style="margin-top:.4rem;">Save</button>
+        </form>
+      </div>
+
+      <!-- Grade & credentials -->
+      <div>
+        {% if club_member.is_admin %}
+        <h2 class="sh2">Grade assignment</h2>
+        <form method="post" style="margin-bottom:1.8rem;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_grade">
+          <label class="flabel">Instructor grade
+            <select name="grade_id" class="finput">
+              <option value="">— none —</option>
+              {% for g in instructor_grades %}
+              <option value="{{ g.id }}" {% if instr.instructor_grade_id == g.id %}selected{% endif %}>
+                {{ g.name }} (${{ g.hourly_rate }}/hr)
+              </option>
+              {% endfor %}
+            </select>
+          </label>
+          <button type="submit" class="btn">Save</button>
+        </form>
+        {% endif %}
+
+        <h2 class="sh2">Credentials</h2>
+        {% if credentials %}
+        <table class="ft-table">
+          <thead><tr><th>Type</th><th>Expires</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for c in credentials %}
+            <tr>
+              <td>{{ c.get_credential_type_display }}</td>
+              <td style="font-size:.85rem;">{{ c.expiry_date|default:"—" }}</td>
+              <td>
+                {% if c.is_expired %}
+                <span style="color:#c0392b;font-size:.78rem;font-weight:600;">Expired</span>
+                {% else %}
+                <span style="color:#2a7a3b;font-size:.78rem;font-weight:600;">Valid</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p style="color:#8a93a0;font-size:.85rem;">No credentials recorded. Add them on the <a href="{% url 'core:manage_member_detail' club.slug instr.id %}" data-overlay>member record</a>.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div><!-- /tab-details -->
+
+  <!-- ── AVAILABILITY tab ── -->
+  <div id="tab-availability" class="stab-panel">
+
+    <h2 class="sh2">Availability windows</h2>
+    <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">
+      If no windows are set, this instructor is treated as available all operating hours.
+      {% if past_av_count %}<span style="color:#adb5bd;">{{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }} not shown.</span>{% endif %}
+    </p>
+
+    {% if av_windows %}
+    <table class="ft-table">
+      <thead><tr><th>When</th><th>Hours</th><th>Valid</th><th>Notes</th><th></th></tr></thead>
+      <tbody>
+        {% for av in av_windows %}
+        <tr>
+          <td>{% if av.recurrence == 'weekly' %}{{ av.get_weekday_display }}s{% else %}{{ av.date }}{% endif %}</td>
+          <td>{% if av.all_day %}All day{% else %}{{ av.start_time|time:'H:i' }}–{{ av.end_time|time:'H:i' }}{% endif %}</td>
+          <td style="color:#8a93a0;font-size:.78rem;">
+            {% if av.active_from or av.active_until %}
+              {% if av.active_from %}from {{ av.active_from }}{% endif %}
+              {% if av.active_until %}until {{ av.active_until }}{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td style="color:#8a93a0;">{{ av.notes }}</td>
+          <td style="text-align:right;">
+            <form method="post" style="display:inline;" onsubmit="return confirm('Remove this window?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_instructor_availability">
+              <input type="hidden" name="av_id" value="{{ av.id }}">
+              <button type="submit" class="ft-del">Remove</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;margin-bottom:.8rem;">No windows set — treated as available all operating hours.</p>
+    {% endif %}
+
+    <button type="button" class="cbtn-add" style="margin-bottom:2rem;"
+            onclick="document.getElementById('add-av-modal').hidden=false">+ Add availability window</button>
+
+    <hr style="border:none;border-top:1px solid #eef1f4;margin:1.5rem 0;">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <h2 class="sh2" style="margin:0;">Block-outs</h2>
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-instr-bo-modal').hidden=false">+ Add</button>
+    </div>
+    {% if instr_blockouts %}
+    <table class="ft-table">
+      <thead><tr><th>Type</th><th>When</th><th>Hours</th><th>Label</th><th></th></tr></thead>
+      <tbody>
+        {% for bo in instr_blockouts %}
+        <tr>
+          <td>{% if bo.blockout_type %}<span class="bo-dot" style="background:{{ bo.blockout_type.color }};"></span>{{ bo.blockout_type.name }}{% else %}—{% endif %}</td>
+          <td>
+            {% if bo.recurrence == 'one_off' %}{{ bo.date }}
+            {% elif bo.recurrence == 'weekly' %}{{ bo.get_weekday_display }}s
+            {% else %}Daily{% endif %}
+          </td>
+          <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
+          <td style="color:#8a93a0;">{{ bo.label }}</td>
+          <td style="text-align:right;">
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this block-out?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_blockout">
+              <input type="hidden" name="bo_id" value="{{ bo.id }}">
+              <button type="submit" class="ft-del">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 .8rem;">No block-outs scheduled for this instructor.</p>
+    {% endif %}
+
+  </div><!-- /tab-availability -->
+
+  <!-- Add availability window modal -->
+  <div id="add-av-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(520px,95vw);">
+      <h2>Add availability window</h2>
+      <form method="post">{% csrf_token %}
+        <input type="hidden" name="action" value="add_instructor_availability">
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+          <label class="flabel">Recurrence
+            <select name="av_recurrence" class="finput" onchange="toggleAvDate(this)">
+              <option value="weekly">Weekly</option>
+              <option value="one_off">Specific date</option>
+            </select>
+          </label>
+          <label class="flabel av-weekly">Day
+            <select name="av_weekday" class="finput">
+              <option value="0">Monday</option><option value="1">Tuesday</option>
+              <option value="2">Wednesday</option><option value="3">Thursday</option>
+              <option value="4">Friday</option><option value="5">Saturday</option>
+              <option value="6">Sunday</option>
+            </select>
+          </label>
+          <label class="flabel av-oneoff" style="display:none;">Date
+            <input type="date" name="av_date" class="finput">
+          </label>
+        </div>
+        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin:.4rem 0;">
+          <input type="checkbox" name="av_all_day" id="av-allday" checked onchange="toggleAvTime(this)"> All day
+        </label>
+        <div id="av-time-fields" style="display:none;gap:.7rem;flex-wrap:wrap;">
+          <label class="flabel">From <input type="time" name="av_start_time" class="finput" value="08:30"></label>
+          <label class="flabel">To   <input type="time" name="av_end_time"   class="finput" value="17:00"></label>
+        </div>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
+          <label class="flabel">Active from <span style="font-weight:400;">(optional)</span>
+            <input type="date" name="av_active_from" class="finput">
+          </label>
+          <label class="flabel">Active until <span style="font-weight:400;">(optional)</span>
+            <input type="date" name="av_active_until" class="finput">
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.1rem;">Notes
+          <input type="text" name="av_notes" class="finput" placeholder="e.g. summer roster">
+        </label>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('add-av-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Save window</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add block-out modal (instructor) -->
+  <div id="add-instr-bo-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(480px,94vw);">
+      <h2>Add block-out — {{ instr.user.get_full_name }}</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_instructor_blockout">
+        <input type="hidden" name="instr_user_id" value="{{ instr.user.id }}">
+        <label class="flabel">Type
+          <select name="bot_id" class="finput">
+            <option value="">— none —</option>
+            {% for bt in instructor_blockout_types %}
+            <option value="{{ bt.id }}">{{ bt.name }}{% if not bt.is_hard %} (soft){% endif %}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel" style="margin-top:.5rem;">Label <span style="font-weight:400;">(optional)</span>
+          <input type="text" name="label" class="finput" placeholder="e.g. CFI course week">
+        </label>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.5rem;">
+          <label class="flabel">Recurrence
+            <select name="recurrence" class="finput" onchange="toggleBoRecur(this)">
+              <option value="one_off">One-off date</option>
+              <option value="weekly">Weekly (recurring)</option>
+              <option value="daily">Daily</option>
+            </select>
+          </label>
+          <label class="flabel bo-date-field">Date<input type="date" name="date" class="finput"></label>
+          <label class="flabel bo-weekday-field" style="display:none;">Day
+            <select name="weekday" class="finput">
+              <option value="0">Monday</option><option value="1">Tuesday</option>
+              <option value="2">Wednesday</option><option value="3">Thursday</option>
+              <option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
+            </select>
+          </label>
+        </div>
+        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin:.5rem 0;">
+          <input type="checkbox" name="all_day" checked onchange="toggleBoTime(this)"> All day
+        </label>
+        <div class="bo-time-fields" style="display:none;gap:.7rem;">
+          <label class="flabel">Start<input type="time" name="start_time" class="finput" value="08:00"></label>
+          <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
+        </div>
+        <div class="modal-actions" style="margin-top:.8rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('add-instr-bo-modal').hidden=true">Cancel</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Save block-out</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── BOOKINGS tab ── -->
+  <div id="tab-bookings" class="stab-panel">
+    <h2 class="sh2">Upcoming bookings as instructor</h2>
+    {% if upcoming_bookings %}
+    <table class="ft-table">
+      <thead><tr><th>Date/time</th><th>Member</th><th>Aircraft</th><th>Flight type</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for b in upcoming_bookings %}
+        <tr>
+          <td style="font-size:.85rem;white-space:nowrap;">{{ b.scheduled_start|date:"D j M, H:i" }}</td>
+          <td>{{ b.member.user.get_full_name }}</td>
+          <td style="color:#5b6573;">{{ b.aircraft.registration }}</td>
+          <td style="color:#8a93a0;font-size:.82rem;">{{ b.flight_type.name }}</td>
+          <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;">No upcoming bookings.</p>
+    {% endif %}
+  </div><!-- /tab-bookings -->
+
+</div>
+
+<style>
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link:hover{color:var(--banner);}
+
+  .grade-badge{font-size:.78rem;font-weight:600;padding:.25rem .65rem;border-radius:10px;background:#e8f0fb;color:var(--primary);}
+  .grade-badge.no-grade{background:#f3f5f7;color:#8a93a0;}
+
+  .cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:600;cursor:pointer;}
+  .cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);}
+  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back[hidden]{display:none!important;}
+  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
+  .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
+  .modal-actions{display:flex;align-items:center;gap:.5rem;}
+  .cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;}
+  .cbtn:hover{background:#f3f5f7;}
+  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;}
+  .stab-btn{padding:.55rem 1rem;border:none;background:none;cursor:pointer;font-size:.88rem;font-weight:500;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;}
+  .stab-btn:hover{color:var(--banner);}
+  .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+  .stab-panel{display:none;}
+  .stab-panel.active{display:block;}
+
+  .sh2{font-size:1rem;font-weight:650;color:#1f2933;margin:.4rem 0 .6rem;}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+
+  .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem;}
+  .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table tr:last-child td{border-bottom:0;}
+  .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
+  .ft-del:hover{text-decoration:underline;}
+
+  .bo-dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem;border:1px solid rgba(0,0,0,.1);}
+
+  .add-wrap{margin-top:.5rem;}
+  .add-toggle{cursor:pointer;font-size:.82rem;color:var(--primary);user-select:none;list-style:none;}
+  .add-toggle::-webkit-details-marker{display:none;}
+
+  /* status-chip colours defined in base.html */
+</style>
+
+<script>
+(function(){
+  const TABS = ['details','availability','bookings'];
+  function activate(id) {
+    TABS.forEach(t => {
+      document.getElementById('tab-'+t).classList.toggle('active', t===id);
+      document.getElementById('tabBtn-'+t).classList.toggle('active', t===id);
+    });
+    try { localStorage.setItem('instrDetailTab', id); } catch(e){}
+  }
+  TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
+  let init = 'details';
+  try { init = localStorage.getItem('instrDetailTab') || 'details'; } catch(e){}
+  activate(init);
+})();
+
+const instrBoModal = document.getElementById('add-instr-bo-modal');
+if (instrBoModal) {
+  instrBoModal.addEventListener('click', e => { if (e.target === instrBoModal) instrBoModal.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key==='Escape') instrBoModal.hidden = true; });
+}
+function toggleBoRecur(sel) {
+  const form = sel.closest('form');
+  const v = sel.value;
+  form.querySelectorAll('.bo-date-field').forEach(el => el.style.display = v==='one_off' ? '' : 'none');
+  form.querySelectorAll('.bo-weekday-field').forEach(el => el.style.display = v==='weekly' ? '' : 'none');
+}
+function toggleBoTime(cb) {
+  const form = cb.closest('form');
+  form.querySelectorAll('.bo-time-fields').forEach(el => el.style.display = cb.checked ? 'none' : 'flex');
+}
+function toggleAvDate(sel) {
+  const form = sel.closest('form');
+  const isOneOff = sel.value === 'one_off';
+  form.querySelectorAll('.av-weekly').forEach(el => el.style.display = isOneOff ? 'none' : '');
+  form.querySelectorAll('.av-oneoff').forEach(el => el.style.display = isOneOff ? '' : 'none');
+}
+function toggleAvTime(cb) {
+  const tf = document.getElementById('av-time-fields');
+  if (tf) tf.style.display = cb.checked ? 'none' : 'flex';
+}
+
+const avModal = document.getElementById('add-av-modal');
+if (avModal) {
+  avModal.addEventListener('click', e => { if (e.target === avModal) avModal.hidden = true; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') avModal.hidden = true; });
+}
+</script>
+{% endblock %}

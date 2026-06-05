@@ -11,6 +11,9 @@
             --accent: {{ theme.accent|default:'#e8943a' }};
             --confirmed: {{ theme.confirmed|default:'#2f9e44' }};
             --pending: {{ theme.pending|default:'#f08c00' }};
+            --departed: {{ theme.departed|default:'#d97706' }};
+            --returned: {{ theme.returned|default:'#2563eb' }};
+            --completed-paid: {{ theme.completed_paid|default:'#7c3aed' }};
             --weekend: {{ theme.weekend|default:'#fbf3e6' }};
             --atypical: {{ theme.atypical|default:'#eef1f4' }};
         }
@@ -109,12 +112,6 @@
                 </a>
                 {% endif %}
                 {% if club_member.is_admin %}
-                <a href="{% url 'core:club_rates' club.slug %}" class="{% if 'rates' in request.resolver_match.url_name %}active{% endif %}">
-                    <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M2 13L5 2h5l3 11M4 9h7"/>
-                    </svg>
-                    Rates
-                </a>
                 <a href="{% url 'core:club_settings' club.slug %}" class="{% if 'settings' in request.resolver_match.url_name %}active{% endif %}">
                     <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="7.5" cy="7.5" r="2"/>
@@ -162,6 +159,17 @@
         </div>
     </header>
     <main>{% block content %}{% endblock %}</main>
+<style>
+/* ── Booking status chips — canonical colours used everywhere ── */
+.status-chip{display:inline-block;font-size:.75rem;font-weight:600;padding:.18rem .55rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
+/* Both conventions: .status-chip.pending and .status-chip.status-pending */
+.status-chip.pending,.status-chip.status-pending{background:color-mix(in srgb,var(--pending) 15%,#fff);color:var(--pending);}
+.status-chip.confirmed,.status-chip.status-confirmed{background:color-mix(in srgb,var(--confirmed) 18%,#fff);color:color-mix(in srgb,var(--confirmed) 85%,#000);}
+.status-chip.departed,.status-chip.status-departed{background:color-mix(in srgb,var(--departed) 15%,#fff);color:var(--departed);}
+.status-chip.returned,.status-chip.status-returned{background:color-mix(in srgb,var(--returned) 15%,#fff);color:var(--returned);}
+.status-chip.completed,.status-chip.status-completed{background:color-mix(in srgb,var(--completed-paid) 15%,#fff);color:var(--completed-paid);}
+.status-chip.cancelled,.status-chip.status-cancelled{background:#f3f5f7;color:#8a93a0;}
+</style>
 <script>
 (function(){
   const btn = document.getElementById('user-btn');
@@ -175,6 +183,103 @@
   });
   document.addEventListener('click', () => { drop.hidden = true; btn.setAttribute('aria-expanded','false'); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { drop.hidden = true; } });
+})();
+</script>
+
+<!-- ── Generic page overlay — opened by [data-overlay] links ── -->
+<div id="page-overlay" class="page-overlay-back" hidden>
+  <div class="page-overlay-modal" id="page-overlay-modal">
+    <div id="page-overlay-body">
+      <p style="color:#8a93a0;padding:2rem;text-align:center;">Loading…</p>
+    </div>
+  </div>
+</div>
+<style>
+  .page-overlay-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:flex-start;justify-content:center;z-index:200;padding:2vh 0;overflow-y:auto;}
+  .page-overlay-modal{background:#fff;border-radius:10px;width:min(820px,96vw);box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;min-height:clamp(400px,65vh,680px);display:flex;flex-direction:column;}
+  .page-overlay-modal .pi-body{flex:1;}
+  [hidden]{display:none!important;}
+</style>
+<script>
+(function(){
+  const overlay = document.getElementById('page-overlay');
+  const body    = document.getElementById('page-overlay-body');
+  if (!overlay || !body) return;
+  let didChange = false;
+
+  function openOverlay(url) {
+    didChange = false;
+    overlay.hidden = false;
+    document.body.style.overflow = 'hidden';
+    body.innerHTML = '<p style="color:#8a93a0;padding:2.5rem;text-align:center;">Loading…</p>';
+    loadOverlay(url);
+  }
+
+  function runScripts(container) {
+    container.querySelectorAll('script').forEach(old => {
+      const s = document.createElement('script');
+      Array.from(old.attributes).forEach(a => s.setAttribute(a.name, a.value));
+      s.textContent = old.textContent;
+      old.parentNode.replaceChild(s, old);
+    });
+  }
+
+  async function loadOverlay(url) {
+    const sep = url.includes('?') ? '&' : '?';
+    try {
+      const resp = await fetch(url + sep + 'inline=1', {credentials:'same-origin'});
+      const html = await resp.text();
+      body.innerHTML = html;
+      runScripts(body);
+      attachHandlers(url);
+    } catch(e) {
+      body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load page.</p>';
+    }
+  }
+
+  function attachHandlers(baseUrl) {
+    body.querySelectorAll('[data-close-overlay]').forEach(el => {
+      el.addEventListener('click', closeOverlay);
+    });
+    body.querySelectorAll('form').forEach(f => {
+      f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        didChange = true;
+        const explicitAction = f.getAttribute('action');
+        const raw = explicitAction ? new URL(explicitAction, baseUrl).href : baseUrl;
+        const sep2 = raw.includes('?') ? '&' : '?';
+        const action = raw + sep2 + 'inline=1';
+        try {
+          const resp = await fetch(action, {method:'POST', body:new FormData(f), credentials:'same-origin'});
+          const html = await resp.text();
+          body.innerHTML = html;
+          runScripts(body);
+          attachHandlers(baseUrl);
+        } catch(e) {
+          alert('Error submitting — please try again.');
+        }
+      });
+    });
+  }
+
+  function closeOverlay() {
+    overlay.hidden = true;
+    document.body.style.overflow = '';
+    if (didChange) location.reload();
+  }
+
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) closeOverlay(); });
+
+  document.addEventListener('click', e => {
+    const link = e.target.closest('[data-overlay]');
+    if (!link || !link.href) return;
+    e.preventDefault();
+    openOverlay(link.href);
+  });
+
+  window.openPageOverlay = openOverlay;
+  window.closePageOverlay = closeOverlay;
 })();
 </script>
 </body>
