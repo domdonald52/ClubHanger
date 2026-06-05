@@ -39,12 +39,14 @@
           {% for tick in ticks %}
             <div class="tick" style="left: {{ tick.left }}px;"><span>{{ tick.label }}</span></div>
           {% endfor %}
+          {% if now_px %}<div class="now-line" style="left:{{ now_px }}px;"></div>{% endif %}
         </div>
       </div>
 
       {% if instructor_rows %}
-      <div class="section-label section-instructors">
-        <span class="section-icon">👤</span> Instructors
+      <div class="section-row section-instructors">
+        <div class="section-cell">Instructors</div>
+        <div class="section-track"></div>
       </div>
       {% for row in instructor_rows %}
         <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
@@ -72,8 +74,9 @@
       {% endfor %}
       {% endif %}
 
-      <div class="section-label section-aircraft">
-        <span class="section-icon">✈</span> Aircraft
+      <div class="section-row section-aircraft">
+        <div class="section-cell">Aircraft</div>
+        <div class="section-track"></div>
       </div>
       {% for row in aircraft_rows %}
         <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
@@ -354,19 +357,24 @@
   .row-label.ghost .row-name{text-decoration:line-through;text-decoration-color:#ccc}
   .ghost-badge{font-size:.6rem;font-weight:600;background:#fee2e2;color:#c0392b;border-radius:4px;padding:.05rem .3rem;white-space:nowrap;flex-shrink:0;}
   .track-ghost{opacity:.75}
-  /* Section labels — prominent dividers */
-  .section-label{display:flex;align-items:center;gap:.4rem;font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:.4rem .65rem;border-top:2px solid #e3e6ea;border-bottom:1px solid #eef1f4;background:#f8f9fa;position:sticky;left:0;z-index:3;width:100%;box-sizing:border-box;}
-  .section-icon{font-size:.75rem;opacity:.7;}
-  .section-instructors{color:var(--primary);border-top-color:color-mix(in srgb, var(--primary) 40%, #e3e6ea)}
-  .section-aircraft{color:#5b6573;border-top-color:#d6dae0;margin-top:2px}
+  /* Section dividers — grid-row style so the background spans the full scrollable width */
+  .section-row{display:flex;align-items:stretch;border-bottom:1px solid #e3e6ea;}
+  .section-cell{flex:0 0 130px;width:130px;display:flex;align-items:center;padding:.3rem .65rem;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;position:sticky;left:0;z-index:3;border-right:1px solid #e3e6ea;}
+  .section-track{position:relative;flex:1;min-width:var(--track-width);}
+  .section-instructors.section-row{border-top:2px solid color-mix(in srgb, var(--primary) 35%, #e3e6ea);}
+  .section-instructors .section-cell{background:color-mix(in srgb, var(--primary) 7%, #f5f7fc);color:var(--primary);}
+  .section-instructors .section-track{background:color-mix(in srgb, var(--primary) 3%, #f8f9fb);}
+  .section-aircraft.section-row{border-top:3px solid #b8bec8;margin-top:3px;}
+  .section-aircraft .section-cell{background:#eaecf0;color:#3d4650;}
+  .section-aircraft .section-track{background:#eceff3;}
   .track{position:relative;height:44px;width:max(var(--track-width),100%);flex:1;min-width:var(--track-width);background:linear-gradient(to right,var(--atypical) 0,var(--atypical) {{ typical_start_px }}px,transparent {{ typical_start_px }}px,transparent {{ typical_end_px }}px,var(--atypical) {{ typical_end_px }}px,var(--atypical) 100%)}
   .axis .track{height:26px}
   .axis .row-label{background:#fff}
   .tick{position:absolute;top:0;height:26px;border-left:1px solid #eef1f4}
   .tick span{position:absolute;top:6px;left:4px;font-size:.63rem;color:#8a93a0;white-space:nowrap}
   .gridline{position:absolute;top:0;bottom:0;border-left:1px solid #f1f3f5;pointer-events:none}
-  .now-line{position:absolute;top:0;bottom:0;width:2px;background:#e03131;z-index:9;pointer-events:none;opacity:.85;}
-  .now-line::before{content:'';position:absolute;top:-3px;left:-4px;width:10px;height:10px;border-radius:50%;background:#e03131;}
+  .now-line{position:absolute;top:0;bottom:0;width:2px;background:#e03131;z-index:9;pointer-events:none;}
+  .axis .now-line::after{content:'';position:absolute;bottom:-7px;left:-5px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #e03131;}
   .band{position:absolute;top:0;bottom:0;opacity:.28;z-index:1;pointer-events:none;border-left:1px solid rgba(0,0,0,.15);border-right:1px solid rgba(0,0,0,.15)}
   .band-soft{opacity:.14;border-left:2px dashed rgba(0,0,0,.2);border-right:2px dashed rgba(0,0,0,.2)}
   .roster-badge{font-size:.65rem;flex-shrink:0}
