@@ -141,7 +141,6 @@
             </button>
         </div>
         <div class="sidenav-body">
-            <div class="sidenav-section-label">Navigation</div>
             <a href="{% url 'core:gantt_day' club.slug %}" class="sidenav-link {% if 'gantt' in request.resolver_match.url_name %}active{% endif %}">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="2" width="13" height="12" rx="1.5"/><path d="M1 6h13M5 1v2.5M10 1v2.5"/></svg>
                 Calendar
@@ -151,26 +150,18 @@
                 Find Slots
             </a>
             {% if club_member.is_admin or club_member.is_instructor %}
-            <a href="{% url 'core:manage_bookings' club.slug %}" class="sidenav-link {% if 'manage' in request.resolver_match.url_name %}active{% endif %}">
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="4" r="2.5"/><path d="M1 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/><path d="M10.5 2.5a2 2 0 0 1 0 4"/><path d="M13.5 13.5c0-2-1.2-3.5-3-4"/></svg>
-                Manage
-            </a>
-            {% if 'manage' in request.resolver_match.url_name %}
-            <div style="padding:.1rem 0 .2rem .5rem;">
-              <a href="{% url 'core:manage_bookings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_bookings' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Bookings</a>
-              <a href="{% url 'core:manage_blockouts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_blockouts' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Block-outs</a>
-              {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_members' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Members</a>{% endif %}
-              <a href="{% url 'core:manage_aircraft' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aircraft' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Aircraft</a>
-              <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_instructors' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Instructors</a>
-              {% if club_member.is_admin %}<a href="{% url 'core:manage_invoices' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_invoices' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Invoices</a>{% endif %}
-            </div>
-            {% endif %}
-            {% endif %}
+            <div class="sidenav-section-label" style="margin-top:.6rem;">Manage</div>
+            <a href="{% url 'core:manage_bookings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_bookings' %}active{% endif %}">Bookings</a>
+            <a href="{% url 'core:manage_blockouts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_blockouts' %}active{% endif %}">Block-outs</a>
+            {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_members' %}active{% endif %}">Members</a>{% endif %}
+            <a href="{% url 'core:manage_aircraft' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aircraft' or request.resolver_match.url_name == 'manage_aircraft_detail' %}active{% endif %}">Aircraft</a>
+            <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_instructors' %}active{% endif %}">Instructors</a>
             {% if club_member.is_admin %}
-            <a href="{% url 'core:club_settings' club.slug %}" class="sidenav-link {% if 'settings' in request.resolver_match.url_name %}active{% endif %}">
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="7.5" r="2"/><path d="M7.5 1v1.5M7.5 12v1.5M1 7.5h1.5M12 7.5h1.5M3.2 3.2l1.1 1.1M10.7 10.7l1.1 1.1M3.2 11.8l1.1-1.1M10.7 4.3l1.1-1.1"/></svg>
-                Settings
-            </a>
+            <a href="{% url 'core:manage_charges' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_charges' %}active{% endif %}">Payments</a>
+            <a href="{% url 'core:manage_invoices' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_invoices' %}active{% endif %}">Invoices</a>
+            <div class="sidenav-section-label" style="margin-top:.6rem;">Admin</div>
+            <a href="{% url 'core:club_settings' club.slug %}" class="sidenav-link {% if 'settings' in request.resolver_match.url_name %}active{% endif %}">Settings</a>
+            {% endif %}
             {% endif %}
 
             <hr class="sidenav-divider" style="margin-top:.8rem;">
