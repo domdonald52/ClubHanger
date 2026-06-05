@@ -657,14 +657,19 @@
     if (!credCheckModal) { doConfirm(id); return; }
 
     // Fetch credential check before showing confirm
+    credCheckBody.innerHTML = '<p style="color:#8a93a0;font-size:.85rem;padding:.5rem 0;">Checking…</p>';
+    credCheckModal.hidden = false;
     fetch(`/api/booking/${id}/credential-check/`, { credentials: "same-origin" })
       .then(r => r.json())
       .then(data => {
-        const STATUS_ICON = { ok: "✓", warn: "⚠", info: "ℹ" };
+        const STATUS_ICON  = { ok: "✓", warn: "⚠", info: "ℹ" };
         const STATUS_COLOR = { ok: "#2a7a3b", warn: "#c76c00", info: "#2563eb" };
+        const URGENCY_BAR  = { green: "#4caf50", amber: "#ff9800", red: "#e03131" };
 
         credCheckTitle.textContent = `Confirm booking — ${data.member}`;
-        const rows = data.checks.map(c =>
+
+        // Member credential checks
+        const memberRows = (data.checks || []).map(c =>
           `<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.3rem 0;border-bottom:1px solid #f0f2f4;">
              <span style="font-size:.95rem;color:${STATUS_COLOR[c.status] || '#5b6573'};flex-shrink:0;width:18px;">${STATUS_ICON[c.status] || '?'}</span>
              <div>
@@ -674,14 +679,42 @@
            </div>`
         ).join('');
 
-        credCheckBody.innerHTML = rows ||
-          '<p style="color:#8a93a0;font-size:.85rem;">No credential checks configured for this flight type.</p>';
+        // Aircraft maintenance
+        const maintRows = (data.maintenance || []).map(m => {
+          const barColor = URGENCY_BAR[m.urgency] || '#4caf50';
+          const pct = m.progress_pct !== null ? m.progress_pct : null;
+          const bar = pct !== null
+            ? `<div style="height:5px;background:#eef1f4;border-radius:3px;margin-top:.3rem;overflow:hidden;">
+                 <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s;"></div>
+               </div>`
+            : '';
+          return `<div style="padding:.3rem 0;border-bottom:1px solid #f0f2f4;">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                      <span style="font-size:.84rem;font-weight:600;color:#1f2933;">${m.name}</span>
+                      <span style="font-size:.76rem;color:${barColor};font-weight:600;">${m.detail}</span>
+                    </div>
+                    ${bar}
+                  </div>`;
+        }).join('');
 
-        credCheckConfirm.textContent = data.has_warnings ? "Confirm anyway (staff override)" : "Confirm booking";
-        credCheckConfirm.style.background = data.has_warnings ? "#c76c00" : "";
-        credCheckConfirm.style.borderColor = data.has_warnings ? "#c76c00" : "";
+        const hobbsNote = data.current_hobbs !== null && data.current_hobbs !== undefined
+          ? `<div style="font-size:.78rem;color:#8a93a0;margin-top:.5rem;">Last recorded Hobbs: <strong>${data.current_hobbs}</strong></div>`
+          : '';
 
-        credCheckModal.hidden = false;
+        let html = '';
+        if (memberRows) {
+          html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.4rem 0 .2rem;">Pilot — ${data.member}</div>${memberRows}`;
+        }
+        if (maintRows) {
+          html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.6rem 0 .2rem;">Aircraft — ${data.aircraft_reg || ''}</div>${maintRows}${hobbsNote}`;
+        }
+        credCheckBody.innerHTML = html ||
+          '<p style="color:#8a93a0;font-size:.85rem;">No checks found.</p>';
+
+        const hasWarnings = data.has_warnings || data.has_maint_warnings;
+        credCheckConfirm.textContent = hasWarnings ? "Confirm anyway (staff override)" : "Confirm booking";
+        credCheckConfirm.style.background = hasWarnings ? "#c76c00" : "";
+        credCheckConfirm.style.borderColor = hasWarnings ? "#c76c00" : "";
       })
       .catch(() => { doConfirm(id); });  // fallback if check fails
   });

@@ -7,7 +7,9 @@ from django.db import transaction
 from datetime import datetime, timedelta, time, date
 from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
-                     Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem)
+                     Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem,
+                     FlightCompletion, AircraftMaintenanceItem, ChargeRate, FlightChargeItem,
+                     FlightLandingEntry, AccountTransaction)
 from .availability import find_available_slots, get_date_range
 from .services import booking_service
 from .services import availability_service
@@ -602,7 +604,7 @@ def prev_readings_api(request, booking_id):
 
 @login_required
 def credential_check_api(request, booking_id):
-    """Pre-confirmation credential check for staff."""
+    """Pre-confirmation credential check for staff — member credentials + aircraft maintenance."""
     booking = get_object_or_404(Booking, id=booking_id)
     try:
         actor = ClubMember.objects.get(user=request.user, club=booking.club)
@@ -612,12 +614,54 @@ def credential_check_api(request, booking_id):
         return JsonResponse({'error': 'Not authorized'}, status=403)
 
     checks = _credential_checks(booking)
+
+    # Aircraft maintenance items with progress
+    ac = booking.aircraft
+    maint_items = list(AircraftMaintenanceItem.objects.filter(aircraft=ac).order_by('urgency', 'due_date'))
+    latest_fc = (FlightCompletion.objects
+                 .filter(booking__aircraft=ac)
+                 .exclude(hobbs_end__isnull=True)
+                 .order_by('-booking__arrived_at', '-created_at')
+                 .values('hobbs_end', 'tacho_end').first())
+    current_hobbs = float(latest_fc['hobbs_end']) if latest_fc and latest_fc['hobbs_end'] else None
+
+    _today = date.today()
+    maint_data = []
+    for m in maint_items:
+        progress_pct = None
+        detail = ''
+        if m.last_completed_date and m.due_date:
+            total_days = max(1, (m.due_date - m.last_completed_date).days)
+            elapsed = (_today - m.last_completed_date).days
+            days_left = (m.due_date - _today).days
+            progress_pct = min(100, max(0, round(elapsed / total_days * 100)))
+            detail = f'{days_left}d remaining' if days_left >= 0 else f'{abs(days_left)}d overdue'
+        elif m.last_completed_hours is not None and m.due_hours is not None and current_hobbs is not None:
+            total_h = float(m.due_hours - m.last_completed_hours)
+            hrs_left = float(m.due_hours) - current_hobbs
+            if total_h > 0:
+                progress_pct = min(100, max(0, round((current_hobbs - float(m.last_completed_hours)) / total_h * 100)))
+            detail = f'{hrs_left:.1f}h remaining' if hrs_left >= 0 else f'{abs(hrs_left):.1f}h overdue'
+        elif m.due_date:
+            days_left = (m.due_date - _today).days
+            detail = f'{days_left}d remaining' if days_left >= 0 else f'{abs(days_left)}d overdue'
+        maint_data.append({
+            'name': m.name,
+            'urgency': m.urgency,
+            'progress_pct': progress_pct,
+            'detail': detail,
+        })
+
     return JsonResponse({
         'member': booking.member.user.get_full_name(),
         'flight_type': booking.flight_type.name,
         'is_solo': booking.flight_type.is_solo,
         'checks': checks,
         'has_warnings': any(c['status'] == 'warn' for c in checks),
+        'maintenance': maint_data,
+        'has_maint_warnings': any(m['urgency'] in ('amber', 'red') for m in maint_data),
+        'current_hobbs': current_hobbs,
+        'aircraft_reg': ac.registration,
     })
 
 
