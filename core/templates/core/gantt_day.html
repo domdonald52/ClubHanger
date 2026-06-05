@@ -438,23 +438,39 @@
 </div>
 
 <script src="{% static 'core/gantt.js' %}"></script>
-{% if now_px %}
 <script>
 (function() {
+  // Measure the actual rendered width of each row label and widen the column to fit.
+  // scrollWidth returns the full content width even when overflow:hidden clips it.
+  let maxW = 0;
+  document.querySelectorAll('.row-label .row-name').forEach(el => {
+    maxW = Math.max(maxW, el.scrollWidth);
+  });
+  if (maxW < 1) return;
+  // Add horizontal padding (2 × .55rem ≈ 18px) + left accent border (3px) + 4px breathing room
+  const labelW = Math.max(140, maxW + 25);
+  document.querySelectorAll('.row-label, .section-cell').forEach(el => {
+    el.style.flex = '0 0 ' + labelW + 'px';
+    el.style.width = labelW + 'px';
+  });
+  {% if now_px %}
+  // Shift the now-overlay by the difference from the server-computed initial width
   const overlay = document.getElementById('now-overlay');
-  if (!overlay) return;
-  const dayStart = new Date("{{ day_start_iso }}");
-  const pxPerMin = {{ px_per_min }};
-  const totalMins = {{ total_minutes }};
-  function update() {
-    const diffMin = (new Date() - dayStart) / 60000;
-    if (diffMin < 0 || diffMin > totalMins) { overlay.style.visibility = 'hidden'; return; }
-    overlay.style.visibility = '';
-    overlay.style.left = ({{ label_w }} + Math.round(diffMin * pxPerMin)) + 'px';
+  if (overlay) {
+    const serverLabelW = {{ label_w }};
+    const dayStart = new Date("{{ day_start_iso }}");
+    const pxPerMin = {{ px_per_min }};
+    const totalMins = {{ total_minutes }};
+    function update() {
+      const diffMin = (new Date() - dayStart) / 60000;
+      if (diffMin < 0 || diffMin > totalMins) { overlay.style.visibility = 'hidden'; return; }
+      overlay.style.visibility = '';
+      overlay.style.left = (labelW + Math.round(diffMin * pxPerMin)) + 'px';
+    }
+    update();
+    setInterval(update, 30000);
   }
-  update();
-  setInterval(update, 30000);
+  {% endif %}
 })();
 </script>
-{% endif %}
 {% endblock %}
