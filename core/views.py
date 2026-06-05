@@ -775,6 +775,8 @@ def checkin_booking(request, booking_id):
         return JsonResponse({'error': 'Instructors only'}, status=403)
     if booking.status != 'departed':
         return JsonResponse({'error': 'Booking has not departed'}, status=400)
+    if booking.scheduled_end > timezone.now():
+        return JsonResponse({'error': 'Cannot check in a flight that has not yet finished — wait until the scheduled end time has passed'}, status=400)
 
     outcome = request.POST.get('outcome', 'completed')
     outcome_notes = request.POST.get('outcome_notes', '').strip()

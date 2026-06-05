@@ -929,15 +929,29 @@
         });
       };
 
+      // Always confirm any reschedule — notifications may be sent automatically.
+      const origStart = new Date(pill.dataset.start);
+      const origDuration = parseInt(pill.dataset.duration, 10);
+      const timeChanged = newStart.getTime() !== origStart.getTime() || newDuration !== origDuration;
+
       const proceed = () => {
         if (changeMsg) askConfirm(changeMsg, () => send(false), () => location.reload());
         else send(false);
       };
-      if (isOutsideTypical(newStart, newDuration)) {
-        const typMsg = `This booking falls outside typical hours (${cfg.typicalStart}–${cfg.typicalEnd}).\n\nConfirm you intend to book off-hours?`;
-        askConfirm(typMsg, proceed, () => location.reload());
+      const proceedWithTypCheck = () => {
+        if (isOutsideTypical(newStart, newDuration)) {
+          const typMsg = `This booking falls outside typical hours (${cfg.typicalStart}–${cfg.typicalEnd}).\n\nConfirm you intend to book off-hours?`;
+          askConfirm(typMsg, proceed, () => location.reload());
+        } else {
+          proceed();
+        }
+      };
+      if (timeChanged && !changeMsg) {
+        const fmt = (d) => d.toLocaleString([], { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+        const moveMsg = `Move booking to ${fmt(newStart)}?\n\nAny notifications will be re-sent to the member.`;
+        askConfirm(moveMsg, proceedWithTypCheck, () => location.reload());
       } else {
-        proceed();
+        proceedWithTypCheck();
       }
     });
   }
