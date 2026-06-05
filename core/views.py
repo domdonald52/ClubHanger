@@ -1556,7 +1556,6 @@ def club_settings(request, club_slug):
             return redirect('core:club_settings', club_slug=club_slug)
 
         elif action == 'add_aircraft_type':
-            from .models import AircraftType
             at_name = request.POST.get('at_name', '').strip()
             at_icao = request.POST.get('at_icao', '').strip().upper()
             if at_name:
@@ -1565,7 +1564,6 @@ def club_settings(request, club_slug):
             return redirect('core:club_settings', club_slug=club_slug)
 
         elif action == 'edit_aircraft_type':
-            from .models import AircraftType
             at = AircraftType.objects.filter(club=club, id=request.POST.get('at_id')).first()
             if at:
                 name = request.POST.get('at_name', '').strip()
@@ -1576,7 +1574,6 @@ def club_settings(request, club_slug):
             return redirect('core:club_settings', club_slug=club_slug)
 
         elif action == 'delete_aircraft_type':
-            from .models import AircraftType
             at = AircraftType.objects.filter(club=club, id=request.POST.get('at_id')).first()
             if at:
                 if at.aircraft.exists():
