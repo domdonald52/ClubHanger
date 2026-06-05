@@ -16,6 +16,7 @@
     <button class="stab-btn" id="tabBtn-charge-types"  data-tab="charge-types">Charge types</button>
     <button class="stab-btn" id="tabBtn-blockout-types" data-tab="blockout-types">Block-out types</button>
     <button class="stab-btn" id="tabBtn-aircraft-types" data-tab="aircraft-types">Aircraft types</button>
+    <button class="stab-btn" id="tabBtn-billing"        data-tab="billing">Billing</button>
   </div>
 
   <!-- ── LOGO forms (outside settings-form to avoid nested-form breakage) ── -->
@@ -546,6 +547,68 @@
     </form>
   </div><!-- /tab-aircraft-types -->
 
+  <!-- ── BILLING tab ── -->
+  <div id="tab-billing" class="stab-panel">
+    <h2 style="font-size:1rem;margin-bottom:.9rem;">Billing &amp; invoicing</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_billing">
+
+      <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Club details on invoices</h3>
+      <div class="fgrid" style="margin-bottom:1rem;">
+        <label class="flabel">Legal name <span style="font-weight:400;color:#8a93a0;">(e.g. Wellington Aero Club Inc.)</span>
+          <input type="text" name="billing_name" value="{{ config.billing_name }}" class="finput">
+        </label>
+        <label class="flabel">Billing phone
+          <input type="text" name="billing_phone" value="{{ config.billing_phone }}" class="finput">
+        </label>
+        <label class="flabel">Billing email
+          <input type="email" name="billing_email" value="{{ config.billing_email }}" class="finput">
+        </label>
+        <label class="flabel">GST / tax number
+          <input type="text" name="gst_number" value="{{ config.gst_number }}" class="finput">
+        </label>
+        <label class="flabel">GST rate <span style="font-weight:400;color:#8a93a0;">(%)</span>
+          <input type="number" name="gst_rate" value="{{ config.gst_rate }}" step="0.01" min="0" max="99" class="finput" style="width:90px;">
+        </label>
+      </div>
+      <label class="flabel" style="margin-bottom:1rem;">Billing address <span style="font-weight:400;color:#8a93a0;">(postal, printed on invoices)</span>
+        <textarea name="billing_address" class="finput" rows="3">{{ config.billing_address }}</textarea>
+      </label>
+
+      <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Bank &amp; payment</h3>
+      <div class="fgrid" style="margin-bottom:1rem;">
+        <label class="flabel">Bank name
+          <input type="text" name="bank_name" value="{{ config.bank_name }}" class="finput" placeholder="e.g. BNZ Kilbirnie">
+        </label>
+        <label class="flabel">Bank account number
+          <input type="text" name="bank_account" value="{{ config.bank_account }}" class="finput" placeholder="e.g. 02-0520-0109798-00">
+        </label>
+        <label class="flabel">Payment terms <span style="font-weight:400;color:#8a93a0;">(days)</span>
+          <input type="number" name="payment_terms_days" value="{{ config.payment_terms_days }}" min="1" max="365" class="finput" style="width:90px;">
+        </label>
+      </div>
+      <label class="flabel" style="margin-bottom:1rem;">Payment instructions <span style="font-weight:400;color:#8a93a0;">(printed on invoice footer)</span>
+        <textarea name="payment_terms_text" class="finput" rows="3" placeholder="e.g. Please include your invoice number when paying by direct credit.">{{ config.payment_terms_text }}</textarea>
+      </label>
+
+      <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Invoice numbering</h3>
+      <div style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.2rem;">
+        <label class="flabel" style="margin:0;">Prefix <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+          <input type="text" name="invoice_number_prefix" value="{{ config.invoice_number_prefix }}" class="finput" style="width:80px;" placeholder="e.g. INV-">
+        </label>
+        <label class="flabel" style="margin:0;">Next number
+          <input type="number" name="invoice_number_next" value="{{ config.invoice_number_next }}" min="1" class="finput" style="width:100px;">
+        </label>
+        <div style="font-size:.8rem;color:#8a93a0;padding-bottom:.5rem;">
+          Next invoice will be: <strong>{{ config.invoice_number_prefix }}{{ config.invoice_number_next }}</strong>
+        </div>
+      </div>
+
+      <button type="submit" class="btn">Save billing settings</button>
+    </form>
+  </div><!-- /tab-billing -->
+
 </div>
 
 <!-- ════ SETTINGS MODALS ════ -->
@@ -853,7 +916,7 @@
 
 <script>
 (function(){
-  const TABS = ['general', 'appearance', 'scheduling', 'charge-types', 'blockout-types', 'aircraft-types'];
+  const TABS = ['general', 'appearance', 'scheduling', 'charge-types', 'blockout-types', 'aircraft-types', 'billing'];
 
   window.activateTab = function activateTab(id) {
     TABS.forEach(t => {
@@ -871,6 +934,8 @@
   try { initial = localStorage.getItem('settingsTab') || 'general'; } catch(e){}
   {% if ft_error %}initial = 'scheduling';{% endif %}
   {% if saved %}initial = localStorage.getItem('settingsTab') || 'general';{% endif %}
+  const _qs = new URLSearchParams(location.search);
+  if (_qs.get('tab')) initial = _qs.get('tab');
   activateTab(initial);
 
   // ── Palette-based appearance tab ──────────────────────────────────────────

@@ -111,10 +111,30 @@ class ClubConfig(models.Model):
     theme_completed_paid = models.CharField(max_length=7, default='#7c3aed', help_text="Completed & paid booking pills")
     theme_weekend = models.CharField(max_length=7, default='#f0f9ff', help_text="Weekend shading in search")
     theme_atypical = models.CharField(max_length=7, default='#f1f5f9', help_text="Outside-typical-hours shading")
-    
+
+    # ── Billing ──────────────────────────────────────────────────────────────
+    billing_name    = models.CharField(max_length=200, blank=True,
+                                       help_text="Legal name on invoices, e.g. 'Wellington Aero Club Inc.'")
+    billing_address = models.TextField(blank=True, help_text="Postal address printed on invoices")
+    billing_phone   = models.CharField(max_length=30, blank=True)
+    billing_email   = models.EmailField(blank=True)
+    gst_number      = models.CharField(max_length=30, blank=True, help_text="GST / tax registration number")
+    gst_rate        = models.DecimalField(max_digits=5, decimal_places=2, default=15,
+                                          help_text="GST rate as a percentage, e.g. 15 for 15%")
+    bank_name       = models.CharField(max_length=100, blank=True)
+    bank_account    = models.CharField(max_length=30, blank=True)
+    payment_terms_days = models.PositiveIntegerField(default=14,
+                                                      help_text="Days from invoice date until payment is due")
+    payment_terms_text = models.TextField(blank=True,
+                                          help_text="Payment instructions printed on invoice footer")
+    invoice_number_next   = models.PositiveIntegerField(default=1,
+                                                         help_text="Next invoice number to allocate — set this to continue from your current sequence")
+    invoice_number_prefix = models.CharField(max_length=10, blank=True,
+                                              help_text="Optional prefix, e.g. 'INV-'")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def __str__(self):
         return f"{self.club.name} Config"
 
@@ -1761,3 +1781,124 @@ class FlightLandingEntry(models.Model):
     def save(self, *args, **kwargs):
         self.total_fee = self.unit_amount * self.quantity
         super().save(*args, **kwargs)
+
+
+# ============================================================================
+# INVOICING
+# ============================================================================
+
+class Invoice(models.Model):
+    STATUS_DRAFT = 'draft'
+    STATUS_SENT  = 'sent'
+    STATUS_PAID  = 'paid'
+    STATUS_VOID  = 'void'
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('sent',  'Sent — awaiting payment'),
+        ('paid',  'Paid'),
+        ('void',  'Void'),
+    ]
+
+    club              = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='invoices')
+    member            = models.ForeignKey('ClubMember', on_delete=models.SET_NULL,
+                                           null=True, related_name='invoices')
+    flight_completion = models.OneToOneField('FlightCompletion', on_delete=models.SET_NULL,
+                                              null=True, blank=True, related_name='invoice')
+
+    invoice_number = models.PositiveIntegerField()
+    issue_date     = models.DateField()
+    due_date       = models.DateField()
+
+    description = models.CharField(max_length=200, blank=True)
+    notes       = models.TextField(blank=True)
+
+    status   = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
+    sent_at  = models.DateTimeField(null=True, blank=True)
+    paid_at  = models.DateTimeField(null=True, blank=True)
+
+    # Snapshot of GST rate at time of invoice creation
+    gst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=15)
+
+    # Payments reconciled against this invoice by the accountant
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='invoices_created')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-invoice_number']
+        unique_together = [('club', 'invoice_number')]
+
+    def __str__(self):
+        prefix = self.club.config.invoice_number_prefix if hasattr(self.club, 'config') else ''
+        return f"Invoice {prefix}{self.invoice_number}"
+
+    @property
+    def display_number(self):
+        try:
+            prefix = self.club.config.invoice_number_prefix
+        except Exception:
+            prefix = ''
+        return f"{prefix}{self.invoice_number}"
+
+    @property
+    def total(self):
+        from decimal import Decimal
+        return sum((item.amount for item in self.line_items.all()), Decimal('0'))
+
+    @property
+    def balance_due(self):
+        from decimal import Decimal
+        return max(Decimal('0'), self.total - self.amount_paid)
+
+    @property
+    def gst_amount(self):
+        """Extract included GST from total (e.g. 15% inclusive → total × 3/23)."""
+        from decimal import Decimal
+        rate = Decimal(str(self.gst_rate)) / 100
+        return round(self.total * rate / (1 + rate), 2)
+
+    @property
+    def is_overdue(self):
+        from datetime import date
+        return (self.status == self.STATUS_SENT and
+                self.due_date is not None and
+                self.due_date < date.today())
+
+    @property
+    def days_overdue(self):
+        if not self.is_overdue:
+            return 0
+        from datetime import date
+        return (date.today() - self.due_date).days
+
+    @property
+    def age_bucket(self):
+        d = self.days_overdue
+        if d <= 0:   return 'current'
+        if d <= 30:  return '1-30'
+        if d <= 60:  return '31-60'
+        if d <= 90:  return '61-90'
+        return '90+'
+
+
+class InvoiceLineItem(models.Model):
+    invoice     = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='line_items')
+    description = models.CharField(max_length=200)
+    quantity    = models.DecimalField(max_digits=8, decimal_places=2, default=1)
+    unit        = models.CharField(max_length=20, blank=True)
+    rate        = models.DecimalField(max_digits=10, decimal_places=2)
+    amount      = models.DecimalField(max_digits=10, decimal_places=2)
+    sort_order  = models.IntegerField(default=0)
+
+    # Optional back-link to the source charge item
+    charge_item = models.ForeignKey('FlightChargeItem', on_delete=models.SET_NULL,
+                                     null=True, blank=True, related_name='invoice_lines')
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return f"{self.description} — ${self.amount}"

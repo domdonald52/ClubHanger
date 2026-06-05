@@ -7,7 +7,7 @@ from django.db import transaction
 from datetime import datetime, timedelta, time
 from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
-                     Aerodrome, FuelSurchargeRate)
+                     Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem)
 from .availability import find_available_slots, get_date_range
 
 
@@ -1586,6 +1586,28 @@ def club_settings(request, club_slug):
                     at.delete()
             if not ft_error:
                 return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'save_billing':
+            for field in ['billing_name', 'billing_address', 'billing_phone', 'billing_email',
+                          'gst_number', 'bank_name', 'bank_account', 'payment_terms_text',
+                          'invoice_number_prefix']:
+                setattr(config, field, request.POST.get(field, '').strip())
+            try:
+                config.gst_rate = float(request.POST.get('gst_rate', config.gst_rate))
+            except (ValueError, TypeError):
+                pass
+            try:
+                config.payment_terms_days = int(request.POST.get('payment_terms_days', config.payment_terms_days))
+            except (ValueError, TypeError):
+                pass
+            try:
+                next_num = int(request.POST.get('invoice_number_next', ''))
+                if next_num > 0:
+                    config.invoice_number_next = next_num
+            except (ValueError, TypeError):
+                pass
+            config.save()
+            return redirect(f"{redirect('core:club_settings', club_slug=club_slug).url}?tab=billing&saved=1")
 
         else:
             club_name = request.POST.get('club_name', '').strip()
@@ -3395,3 +3417,209 @@ def manage_rates(request, club_slug):
 def club_rates(request, club_slug):
     """Rates page dissolved — hire rates on aircraft pages, grade/surcharge in Settings."""
     return redirect('core:club_settings', club_slug=club_slug)
+
+
+# ============================================================================
+# INVOICING
+# ============================================================================
+
+@login_required
+@transaction.atomic
+def generate_invoice(request, club_slug, booking_id):
+    """Create an Invoice from a completed booking's charge items."""
+    club = get_object_or_404(Club, slug=club_slug)
+    booking = get_object_or_404(Booking, club=club, id=booking_id)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not (actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    fc = getattr(booking, 'flight_completion', None)
+    if not fc:
+        return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
+
+    # If invoice already exists, go to it
+    if hasattr(fc, 'invoice') and fc.invoice:
+        return redirect('core:invoice_detail', club_slug=club_slug, invoice_id=fc.invoice.id)
+
+    config = get_config(club)
+    from datetime import date as _date, timedelta as _td
+
+    # Allocate invoice number atomically
+    from django.db.models import F
+    ClubConfig = config.__class__
+    ClubConfig.objects.filter(pk=config.pk).select_for_update().get()
+    config.refresh_from_db()
+    inv_number = config.invoice_number_next
+    config.invoice_number_next = F('invoice_number_next') + 1
+    config.save(update_fields=['invoice_number_next'])
+
+    today = _date.today()
+    due   = today + _td(days=config.payment_terms_days)
+
+    # Derive description from flight type
+    description = booking.flight_type.name if booking.flight_type else ''
+
+    invoice = Invoice.objects.create(
+        club=club,
+        member=booking.member,
+        flight_completion=fc,
+        invoice_number=inv_number,
+        issue_date=today,
+        due_date=due,
+        description=description,
+        gst_rate=config.gst_rate,
+        amount_paid=fc.amount_paid or 0,
+        created_by=request.user,
+    )
+
+    # Snapshot charge items as line items (FlightChargeItem has description + amount only)
+    UNIT_MAP = {'hire': 'Hr', 'instructor': 'Hr', 'fuel': 'Hr', 'landing': 'Ldg',
+                'surcharge': 'Ea', 'one_off': 'Ea'}
+    for order, ci in enumerate(fc.charge_items.all()):
+        InvoiceLineItem.objects.create(
+            invoice=invoice,
+            description=ci.description or ci.get_item_type_display(),
+            quantity=1,
+            unit=UNIT_MAP.get(ci.item_type, 'Ea'),
+            rate=ci.amount,
+            amount=ci.amount,
+            sort_order=order,
+            charge_item=ci,
+        )
+
+    return redirect('core:invoice_detail', club_slug=club_slug, invoice_id=invoice.id)
+
+
+@login_required
+def invoice_detail(request, club_slug, invoice_id):
+    """View, edit status, and print an invoice."""
+    club    = get_object_or_404(Club, slug=club_slug)
+    invoice = get_object_or_404(Invoice, club=club, id=invoice_id)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not (actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    config = get_config(club)
+    error = success = ''
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'mark_sent' and invoice.status == 'draft':
+            invoice.status = 'sent'
+            invoice.sent_at = timezone.now()
+            invoice.save(update_fields=['status', 'sent_at'])
+            success = 'Invoice marked as sent.'
+
+        elif action == 'mark_paid':
+            from decimal import Decimal as _D
+            pay_str = request.POST.get('payment_amount', '').strip()
+            try:
+                pay_amt = _D(pay_str)
+                if pay_amt <= 0:
+                    raise ValueError
+            except (ValueError, Exception):
+                error = 'Enter a valid payment amount.'
+                pay_amt = None
+            if pay_amt and not error:
+                invoice.amount_paid = (invoice.amount_paid or _D('0')) + pay_amt
+                if invoice.amount_paid >= invoice.total:
+                    invoice.status = 'paid'
+                    invoice.paid_at = timezone.now()
+                invoice.save(update_fields=['amount_paid', 'status', 'paid_at'])
+                # Also record AccountTransaction
+                from .models import AccountTransaction, Account as _Acct
+                acct, _ = _Acct.objects.get_or_create(
+                    club_member=invoice.member, defaults={'balance': 0}
+                )
+                AccountTransaction.objects.create(
+                    account=acct,
+                    transaction_type='flight',
+                    direction='debit',
+                    amount=pay_amt,
+                    description=f'Payment for invoice {invoice.display_number}',
+                    payment_method='bank_transfer',
+                    created_by=request.user,
+                )
+                acct.apply_transaction(pay_amt, 'debit')
+                success = f'Payment of ${pay_amt} recorded.'
+
+        elif action == 'void' and invoice.status in ('draft', 'sent'):
+            invoice.status = 'void'
+            invoice.save(update_fields=['status'])
+            success = 'Invoice voided.'
+
+        elif action == 'update_description':
+            invoice.description = request.POST.get('description', '').strip()
+            invoice.notes = request.POST.get('notes', '').strip()
+            invoice.save(update_fields=['description', 'notes'])
+
+    line_items = invoice.line_items.all()
+    return render(request, 'core/invoice_detail.html', {
+        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'invoice': invoice, 'line_items': line_items, 'config': config,
+        'error': error, 'success': success,
+    })
+
+
+@login_required
+def invoice_print(request, club_slug, invoice_id):
+    """Print-optimised view — browser Ctrl+P / Save as PDF."""
+    club    = get_object_or_404(Club, slug=club_slug)
+    invoice = get_object_or_404(Invoice, club=club, id=invoice_id)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not (actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+    config  = get_config(club)
+    return render(request, 'core/invoice_print.html', {
+        'club': club, 'invoice': invoice,
+        'line_items': invoice.line_items.all(), 'config': config,
+    })
+
+
+@login_required
+def manage_invoices(request, club_slug):
+    """List all invoices with overdue indicators."""
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not (actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    f_status = request.GET.get('status', '')
+    f_member = request.GET.get('member', '')
+
+    qs = (Invoice.objects.filter(club=club)
+          .select_related('member__user', 'flight_completion__booking')
+          .prefetch_related('line_items')
+          .order_by('-invoice_number'))
+
+    if f_status:
+        qs = qs.filter(status=f_status)
+    if f_member:
+        qs = qs.filter(member__user_id=f_member)
+
+    invoices = list(qs)
+    members_qs = ClubMember.objects.filter(club=club).select_related('user').order_by('user__last_name')
+
+    from datetime import date as _date
+    today = _date.today()
+    overdue_count = sum(1 for i in invoices if i.is_overdue)
+
+    return render(request, 'core/manage_invoices.html', {
+        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'invoices': invoices, 'f_status': f_status, 'f_member': f_member,
+        'members_qs': members_qs, 'overdue_count': overdue_count,
+        'status_choices': Invoice.STATUS_CHOICES,
+    })

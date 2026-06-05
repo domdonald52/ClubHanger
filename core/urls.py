@@ -37,4 +37,8 @@ urlpatterns = [
     path('manage/<slug:club_slug>/aerodromes/', views.manage_aerodromes, name='manage_aerodromes'),
     path('manage/<slug:club_slug>/bookings/<int:booking_id>/declaration/', views.booking_declaration, name='booking_declaration'),
     path('manage/<slug:club_slug>/rates/', views.manage_rates, name='manage_rates'),
+    path('manage/<slug:club_slug>/invoices/', views.manage_invoices, name='manage_invoices'),
+    path('manage/<slug:club_slug>/bookings/<int:booking_id>/generate-invoice/', views.generate_invoice, name='generate_invoice'),
+    path('manage/<slug:club_slug>/invoices/<int:invoice_id>/', views.invoice_detail, name='invoice_detail'),
+    path('manage/<slug:club_slug>/invoices/<int:invoice_id>/print/', views.invoice_print, name='invoice_print'),
 ]

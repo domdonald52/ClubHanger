@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Invoice {{ invoice.display_number }} — {{ config.billing_name|default:club.name }}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #111; background: #fff; }
+  .page { max-width: 760px; margin: 0 auto; padding: 32px 40px; }
+
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
+  .logo img { max-height: 80px; max-width: 180px; }
+  .club-details { text-align: right; font-size: 10pt; line-height: 1.6; }
+  .club-details strong { font-size: 11pt; }
+
+  /* TAX INVOICE heading */
+  .invoice-heading { text-align: center; font-size: 15pt; font-weight: bold; letter-spacing: .05em; margin: 18px 0 18px; border-top: 1.5px solid #111; border-bottom: 1.5px solid #111; padding: 6px 0; }
+
+  /* Meta row */
+  .meta { display: flex; justify-content: space-between; margin-bottom: 22px; }
+  .bill-to { font-size: 10.5pt; line-height: 1.7; }
+  .bill-to .name { font-size: 12pt; font-weight: bold; }
+  .inv-meta { text-align: right; font-size: 10.5pt; line-height: 1.8; }
+  .inv-meta td:first-child { color: #555; padding-right: 12px; }
+  .inv-meta td:last-child { font-weight: 600; }
+
+  /* Description line */
+  .description-row { font-size: 10.5pt; margin-bottom: 12px; }
+
+  /* Line items table */
+  table.items { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin-bottom: 0; }
+  table.items thead tr { border-top: 1px solid #333; border-bottom: 1px solid #333; }
+  table.items th { padding: 5px 8px; font-weight: 700; text-align: left; }
+  table.items th.r { text-align: right; }
+  table.items td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; }
+  table.items td.r { text-align: right; }
+  table.items td.c { text-align: center; }
+  table.items tfoot td { border-top: 1.5px solid #333; border-bottom: none; padding: 5px 8px; }
+  table.items tfoot td.label { text-align: right; color: #444; }
+  table.items tfoot td.amt { text-align: right; font-weight: 600; }
+  table.items tfoot tr.total-row td { font-size: 12pt; font-weight: 700; padding-top: 6px; }
+  table.items tfoot tr.balance-row td { font-size: 12pt; font-weight: 700; }
+  table.items tfoot tr.gst-row td { font-size: 9.5pt; color: #555; }
+
+  /* Footer */
+  .footer { margin-top: 28px; border-top: 1px solid #ccc; padding-top: 14px; font-size: 10pt; color: #333; line-height: 1.7; }
+
+  @media print {
+    body { font-size: 10pt; }
+    .page { padding: 0; max-width: 100%; }
+    @page { margin: 18mm 18mm 18mm 18mm; }
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Print button (hidden when printing) -->
+  <div class="no-print" style="text-align:right;margin-bottom:16px;">
+    <button onclick="window.print()" style="padding:.4rem .9rem;border-radius:6px;border:1px solid #ccc;background:#f8f9fa;cursor:pointer;font-size:.85rem;">Print / Save as PDF</button>
+    <a href="{% url 'core:invoice_detail' club.slug invoice.id %}" style="margin-left:.5rem;font-size:.82rem;color:#555;text-decoration:none;">← Back</a>
+  </div>
+
+  <div class="header">
+    <div class="logo">
+      {% if config.logo %}<img src="{{ config.logo.url }}" alt="{{ club.name }}">{% else %}<strong style="font-size:14pt;">{{ config.billing_name|default:club.name }}</strong>{% endif %}
+    </div>
+    <div class="club-details">
+      <strong>{{ config.billing_name|default:club.name }}</strong><br>
+      {% if config.billing_address %}{{ config.billing_address|linebreaksbr }}<br>{% endif %}
+      {% if config.billing_phone %}{{ config.billing_phone }}<br>{% endif %}
+      {% if config.billing_email %}{{ config.billing_email }}{% endif %}
+    </div>
+  </div>
+
+  <div class="invoice-heading">TAX INVOICE</div>
+
+  <div class="meta">
+    <div class="bill-to">
+      <div class="name">{{ invoice.member.user.get_full_name }}</div>
+      {% if invoice.member.user.email %}{{ invoice.member.user.email }}{% endif %}
+    </div>
+    <table class="inv-meta">
+      <tbody>
+        {% if config.gst_number %}<tr><td>GST Number:</td><td>{{ config.gst_number }}</td></tr>{% endif %}
+        <tr><td>Invoice Number:</td><td>{{ invoice.display_number }}</td></tr>
+        <tr><td>Date:</td><td>{{ invoice.issue_date|date:"j-M-Y" }}</td></tr>
+        <tr><td>Due:</td><td>{{ invoice.due_date|date:"j-M-Y" }}</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  {% if invoice.description %}
+  <div class="description-row"><strong>Description:</strong> &nbsp; {{ invoice.description }}</div>
+  {% endif %}
+
+  <table class="items">
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="r" style="width:60px;">Qty</th>
+        <th class="c" style="width:50px;">Units</th>
+        <th class="r" style="width:90px;">Rate</th>
+        <th class="r" style="width:100px;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in line_items %}
+      <tr>
+        <td>{{ item.description }}</td>
+        <td class="r">{{ item.quantity }}</td>
+        <td class="c">{{ item.unit }}</td>
+        <td class="r">${{ item.rate }}</td>
+        <td class="r">${{ item.amount }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="gst-row">
+        <td colspan="4" class="label">G.S.T. {{ invoice.gst_rate }}% Included</td>
+        <td class="amt" style="color:#555;">${{ invoice.gst_amount }}</td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="4" class="label">Invoice Total</td>
+        <td class="amt">${{ invoice.total }}</td>
+      </tr>
+      <tr>
+        <td colspan="4" class="label">Payments</td>
+        <td class="amt">${{ invoice.amount_paid }}</td>
+      </tr>
+      <tr class="balance-row" style="border-top:1.5px solid #333;">
+        <td colspan="4" class="label">Total Due</td>
+        <td class="amt">${{ invoice.balance_due }}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  {% if config.payment_terms_text %}
+  <div class="footer">{{ config.payment_terms_text|linebreaksbr }}</div>
+  {% elif config.bank_account %}
+  <div class="footer">
+    Please include your invoice number when paying by direct credit.<br>
+    {{ config.billing_name|default:club.name }}<br>
+    {% if config.bank_name %}{{ config.bank_name }}<br>{% endif %}
+    {{ config.bank_account }}
+  </div>
+  {% endif %}
+
+</div>
+</body>
+</html>

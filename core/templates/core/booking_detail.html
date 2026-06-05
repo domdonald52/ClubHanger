@@ -471,6 +471,29 @@
       </form>
     </div>
     {% endif %}
+
+    {% if booking.status == 'completed' and fc %}
+    <!-- Invoice section -->
+    <div class="ch-payment-wrap" style="border-top:1px solid #eef1f4;padding-top:1rem;margin-top:.5rem;">
+      {% if fc.invoice %}
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
+        <span style="font-size:.85rem;color:#5b6573;">Invoice
+          <strong>{{ fc.invoice.display_number }}</strong> —
+          <span class="status-badge status-{{ fc.invoice.status }}">{{ fc.invoice.get_status_display }}</span>
+          {% if fc.invoice.is_overdue %}<span style="color:#c0392b;font-size:.78rem;margin-left:.3rem;">⚠ {{ fc.invoice.days_overdue }} days overdue</span>{% endif %}
+        </span>
+        <a href="{% url 'core:invoice_detail' club.slug fc.invoice.id %}" class="btn" style="font-size:.82rem;padding:.3rem .75rem;">View invoice</a>
+        <a href="{% url 'core:invoice_print' club.slug fc.invoice.id %}" target="_blank" class="cbtn" style="font-size:.82rem;">Print / PDF</a>
+      </div>
+      {% else %}
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
+        <span style="font-size:.85rem;color:#8a93a0;">No invoice generated yet.</span>
+        <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="btn" style="font-size:.82rem;padding:.3rem .75rem;">Generate invoice</a>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
   </div>
   {% endif %}
 
