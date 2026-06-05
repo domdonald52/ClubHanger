@@ -15,6 +15,7 @@
     <button class="stab-btn" id="tabBtn-scheduling"    data-tab="scheduling">Flight Types</button>
     <button class="stab-btn" id="tabBtn-charge-types"  data-tab="charge-types">Charge types</button>
     <button class="stab-btn" id="tabBtn-blockout-types" data-tab="blockout-types">Block-out types</button>
+    <button class="stab-btn" id="tabBtn-aircraft-types" data-tab="aircraft-types">Aircraft types</button>
   </div>
 
   <!-- ── LOGO forms (outside settings-form to avoid nested-form breakage) ── -->
@@ -497,6 +498,54 @@
 
   </div><!-- /tab-blockout-types -->
 
+  <!-- ── AIRCRAFT TYPES tab ── -->
+  <div id="tab-aircraft-types" class="stab-panel">
+    <h2 style="font-size:1rem;margin-bottom:.9rem;">Aircraft types</h2>
+    <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
+      Define the aircraft types in your fleet. Aircraft and member type ratings both reference this list.
+    </p>
+
+    {% if ft_error %}<div class="snotice err" style="margin-bottom:.8rem;">{{ ft_error }}</div>{% endif %}
+
+    {% if aircraft_type_list %}
+    <table class="ft-table" style="margin-bottom:1.5rem;">
+      <thead><tr><th>Name</th><th>ICAO code</th><th>Aircraft</th><th>Type ratings</th><th></th></tr></thead>
+      <tbody>
+        {% for at in aircraft_type_list %}
+        <tr id="atr-{{ at.id }}">
+          <td><strong>{{ at.name }}</strong></td>
+          <td style="color:#8a93a0;">{{ at.icao_designator|default:"—" }}</td>
+          <td style="color:#8a93a0;">{{ at.aircraft.count }}</td>
+          <td style="color:#8a93a0;">{{ at.type_ratings.count }}</td>
+          <td style="text-align:right;white-space:nowrap;">
+            <button type="button" class="cbtn sm" onclick="openEditAircraftType({{ at.id }},'{{ at.name|escapejs }}','{{ at.icao_designator|escapejs }}')">Edit</button>
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ at.name }}?')">
+              {% csrf_token %}<input type="hidden" name="action" value="delete_aircraft_type">
+              <input type="hidden" name="at_id" value="{{ at.id }}">
+              <button type="submit" class="cbtn sm danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No aircraft types defined yet.</p>
+    {% endif %}
+
+    <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_aircraft_type">
+      <label class="flabel" style="margin:0;flex:1;min-width:160px;">Name
+        <input type="text" name="at_name" class="finput" placeholder="e.g. Cessna 172" required>
+      </label>
+      <label class="flabel" style="margin:0;width:110px;">ICAO code <span style="font-weight:400;">(optional)</span>
+        <input type="text" name="at_icao" class="finput" placeholder="e.g. C172" maxlength="10">
+      </label>
+      <button type="submit" class="btn" style="margin-bottom:1px;">Add type</button>
+    </form>
+  </div><!-- /tab-aircraft-types -->
+
 </div>
 
 <!-- ════ SETTINGS MODALS ════ -->
@@ -692,6 +741,27 @@
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="cbtn" onclick="sCloseModal('edit-bot-modal')">Cancel</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="edit-at-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(360px,95vw);">
+    <h2>Edit aircraft type</h2>
+    <form method="post">{% csrf_token %}
+      <input type="hidden" name="action" value="edit_aircraft_type">
+      <input type="hidden" name="at_id" id="eat-id">
+      <label class="flabel">Name
+        <input type="text" name="at_name" id="eat-name" required class="finput">
+      </label>
+      <label class="flabel" style="margin-top:.4rem;">ICAO code <span style="font-weight:400;">(optional)</span>
+        <input type="text" name="at_icao" id="eat-icao" class="finput" maxlength="10" placeholder="e.g. C172">
+      </label>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-at-modal')">Cancel</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Save</button>
       </div>
@@ -904,7 +974,8 @@
 
 // ── Settings modal helpers ────────────────────────────────────────────────
 const S_MODALS = ['add-ft-modal','edit-ft-modal','add-ig-modal','edit-ig-modal',
-                  'add-sc-modal','edit-sc-modal','add-bot-modal','edit-bot-modal'];
+                  'add-sc-modal','edit-sc-modal','add-bot-modal','edit-bot-modal',
+                  'edit-at-modal'];
 
 function sOpenModal(id) { document.getElementById(id).hidden = false; }
 function sCloseModal(id) { document.getElementById(id).hidden = true; }
@@ -953,6 +1024,12 @@ function sOpenEditBot(id, name, color) {
   document.getElementById('ebt-name').value = name;
   document.getElementById('ebt-color').value = color;
   sOpenModal('edit-bot-modal');
+}
+function openEditAircraftType(id, name, icao) {
+  document.getElementById('eat-id').value = id;
+  document.getElementById('eat-name').value = name;
+  document.getElementById('eat-icao').value = icao;
+  sOpenModal('edit-at-modal');
 }
 </script>
 {% endblock %}

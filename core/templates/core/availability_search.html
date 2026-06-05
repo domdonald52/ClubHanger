@@ -8,10 +8,10 @@
     
     <!-- Search Form -->
     <div style="background: #f8f9fa; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
-        <form method="post">
-            {% csrf_token %}
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <form method="get" id="avail-form">
+            <input type="hidden" name="s" value="1">
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
 
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Flight</label>
@@ -29,7 +29,7 @@
 
                 <div>
                     <label for="range_type" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Date Range</label>
-                    <select name="range_type" id="range_type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <select name="range_type" id="range_type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;" onchange="avSubmit()">
                         <option value="today" {% if filters_applied.range_type == 'today' %}selected{% endif %}>Today</option>
                         <option value="tomorrow" {% if filters_applied.range_type == 'tomorrow' %}selected{% endif %}>Tomorrow</option>
                         <option value="this_week" {% if filters_applied.range_type == 'this_week' %}selected{% endif %}>This Week</option>
@@ -41,7 +41,7 @@
 
                 <div>
                     <label for="aircraft_type" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Aircraft Type</label>
-                    <select name="aircraft_type" id="aircraft_type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <select name="aircraft_type" id="aircraft_type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;" onchange="avSubmit()">
                         <option value="">Any Type</option>
                         {% for atype in aircraft_types %}
                             <option value="{{ atype }}" {% if filters_applied.aircraft_type == atype %}selected{% endif %}>{{ atype }}</option>
@@ -61,7 +61,7 @@
 
                 <div id="instructor-field">
                     <label for="instructor" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Instructor</label>
-                    <select name="instructor" id="instructor" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <select name="instructor" id="instructor" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;" onchange="avSubmit()">
                         <option value="">Any Instructor</option>
                         {% for instr in instructors %}
                             <option value="{{ instr.user.id }}" {% if filters_applied.instructor|stringformat:"s" == instr.user.id|stringformat:"s" %}selected{% endif %}>{{ instr.user.first_name }} {{ instr.user.last_name }}</option>
@@ -71,7 +71,7 @@
 
                 <div>
                     <label for="duration" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Duration</label>
-                    <select name="duration" id="duration" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                    <select name="duration" id="duration" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;" onchange="avSubmit()">
                         {% for d in duration_choices %}
                             <option value="{{ d }}" {% if filters_applied.duration == d %}selected{% elif not filters_applied and d == default_duration %}selected{% endif %}>{{ d }} mins{% if d == default_duration %} (default){% endif %}</option>
                         {% endfor %}
@@ -80,9 +80,9 @@
 
             </div>
             
-            <div style="display: flex; gap: 1rem;">
-                <button type="submit" class="btn">🔍 Search Available Slots</button>
-                <a href="{% url 'core:availability_search' club.slug %}" class="btn secondary">Reset</a>
+            <div style="display:flex;align-items:center;gap:.8rem;margin-top:.25rem;">
+                <span style="font-size:.78rem;color:#8a93a0;">Filters apply automatically.</span>
+                <a href="{% url 'core:availability_search' club.slug %}" style="font-size:.8rem;color:#8a93a0;">Reset</a>
             </div>
         </form>
     </div>
@@ -151,6 +151,9 @@
     #lbl-dual, #lbl-solo { padding: .35rem; font-size: .85rem; }
 </style>
 <script>
+const _availForm = document.getElementById('avail-form');
+function avSubmit() { if (_availForm) _availForm.submit(); }
+
 (function(){
   const kindDual = document.getElementById('kind-dual');
   const kindSolo = document.getElementById('kind-solo');
@@ -166,13 +169,10 @@
     lblSolo.classList.toggle('active', solo);
     lblDual.classList.toggle('active', !solo);
   }
-  const searchForm = document.querySelector('form[method="post"]') || document.querySelector('form');
-  const _didSearch = {{ search_performed|yesno:'true,false' }};
-  function resubmit() { if (searchForm && _didSearch) searchForm.submit(); }
 
-  [kindDual, kindSolo].forEach(r => r.addEventListener('change', () => { syncKind(); resubmit(); }));
-  lblDual.addEventListener('click', () => { kindDual.checked = true; syncKind(); resubmit(); });
-  lblSolo.addEventListener('click', () => { kindSolo.checked = true; syncKind(); resubmit(); });
+  [kindDual, kindSolo].forEach(r => r.addEventListener('change', () => { syncKind(); avSubmit(); }));
+  lblDual.addEventListener('click', () => { kindDual.checked = true; syncKind(); avSubmit(); });
+  lblSolo.addEventListener('click', () => { kindSolo.checked = true; syncKind(); avSubmit(); });
 
   // Filter the specific-aircraft list to the chosen type; reset if invalid.
   function applyTypeFilter(){
@@ -187,14 +187,16 @@
     });
     if (resetNeeded) acSel.value = '';
   }
-  // Picking a specific aircraft sets the type to match.
+  // Picking a specific aircraft syncs the type filter, then submits.
   function syncTypeFromAircraft(){
     const opt = acSel.options[acSel.selectedIndex];
     if (opt && opt.value && opt.dataset.type) {
       typeSel.value = opt.dataset.type;
       applyTypeFilter();
     }
+    avSubmit();
   }
+  // aircraft_type select has onchange="avSubmit()" in HTML; we only need the UI-sync here.
   typeSel.addEventListener('change', applyTypeFilter);
   acSel.addEventListener('change', syncTypeFromAircraft);
 

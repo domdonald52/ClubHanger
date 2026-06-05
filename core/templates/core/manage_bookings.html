@@ -11,10 +11,10 @@
   <form method="get" id="filter-form">
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">
       <div class="view-toggle">
-        <a href="?view=conflicts" class="vtab {% if view == 'conflicts' %}active{% endif %}">
+        <a href="{{ url_conflicts }}" class="vtab {% if view == 'conflicts' %}active{% endif %}">
           Conflicts{% if conflict_count %} <span class="conflict-badge">{{ conflict_count }}</span>{% endif %}
         </a>
-        <a href="?view=all" class="vtab {% if view == 'all' %}active{% endif %}">All bookings</a>
+        <a href="{{ url_all }}" class="vtab {% if view == 'all' %}active{% endif %}">All bookings</a>
       </div>
 
       <input type="hidden" name="view" value="{{ view }}">
@@ -55,6 +55,12 @@
       <a href="?view={{ view }}" style="font-size:.8rem;color:#8a93a0;align-self:center;">Clear filters</a>
       {% endif %}
     </div>
+    {% if using_default_window %}
+    <div style="font-size:.8rem;color:#8a93a0;margin-top:-.3rem;margin-bottom:.5rem;">
+      Showing active bookings + completed in the last 30 days.
+      <a href="?view=all&amp;all_history=1" style="color:var(--primary);">Show full history</a>
+    </div>
+    {% endif %}
   </form>
 
   <!-- Bulk action bar -->
@@ -233,23 +239,5 @@
   });
 })();
 
-// Persist view toggle (conflicts / all) across navigation
-(function(){
-  const KEY = 'manageBookingsView';
-  const params = new URLSearchParams(location.search);
-  if (!params.has('view')) {
-    const stored = localStorage.getItem(KEY);
-    if (stored && stored !== 'conflicts') {
-      params.set('view', stored);
-      location.replace('?' + params.toString());
-    }
-  }
-  document.querySelectorAll('.vtab').forEach(link => {
-    link.addEventListener('click', function() {
-      const v = new URLSearchParams(new URL(this.href, location.href).search).get('view');
-      if (v) try { localStorage.setItem(KEY, v); } catch(e){}
-    });
-  });
-})();
 </script>
 {% endblock %}

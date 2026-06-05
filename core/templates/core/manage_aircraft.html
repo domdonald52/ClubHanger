@@ -64,7 +64,15 @@
                style="text-transform:uppercase;" autocomplete="off">
       </label>
       <label class="flabel" style="margin-top:.6rem;">Aircraft type
-        <input type="text" name="aircraft_type" placeholder="e.g. Cessna 172" required class="finput">
+        <select name="aircraft_type_id" class="finput" required>
+          <option value="">— select —</option>
+          {% for at in aircraft_type_list %}
+          <option value="{{ at.id }}">{{ at.name }}</option>
+          {% endfor %}
+        </select>
+        {% if not aircraft_type_list %}
+        <span style="font-size:.78rem;color:#b06800;margin-top:.2rem;display:block;">No aircraft types defined — add them in Settings → Aircraft types first.</span>
+        {% endif %}
       </label>
       <div class="modal-actions" style="margin-top:.9rem;">
         <button type="button" class="cbtn" id="add-ac-cancel">Cancel</button>

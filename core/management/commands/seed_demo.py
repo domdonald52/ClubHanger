@@ -6,7 +6,7 @@ from django.db import transaction
 
 from core.models import (
     Club, ClubConfig, Role, MembershipCategory, ClubMember,
-    Aircraft, FlightType,
+    Aircraft, AircraftType, FlightType,
 )
 
 User = get_user_model()
@@ -107,10 +107,18 @@ class Command(BaseCommand):
                 f"  Category '{name}': {'created' if created else 'exists'}"
             )
 
+        # Aircraft types (ensure they exist before aircraft)
+        for spec in AIRCRAFT:
+            type_name = spec["aircraft_type"]
+            AircraftType.objects.get_or_create(club=club, name=type_name)
+
         # Aircraft
         for spec in AIRCRAFT:
+            type_name = spec.pop("aircraft_type", None)
+            ac_type = AircraftType.objects.filter(club=club, name=type_name).first() if type_name else None
             ac, created = Aircraft.objects.get_or_create(
-                club=club, registration=spec["registration"], defaults=spec
+                club=club, registration=spec["registration"],
+                defaults={**spec, 'aircraft_type': ac_type}
             )
             self.stdout.write(
                 f"  Aircraft {spec['registration']}: {'created' if created else 'exists'}"

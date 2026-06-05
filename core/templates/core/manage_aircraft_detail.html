@@ -35,7 +35,12 @@
       <input type="hidden" name="action" value="save_details">
       <div class="fgrid">
         <label class="flabel">Type
-          <input type="text" name="aircraft_type" value="{{ ac.aircraft_type }}" class="finput" required>
+          <select name="aircraft_type_id" class="finput" required>
+            <option value="">— select —</option>
+            {% for at in aircraft_type_list %}
+            <option value="{{ at.id }}" {% if ac.aircraft_type_id == at.id %}selected{% endif %}>{{ at.name }}</option>
+            {% endfor %}
+          </select>
         </label>
         <label class="flabel">Serial number
           <input type="text" name="serial_number" value="{{ ac.serial_number }}" class="finput">

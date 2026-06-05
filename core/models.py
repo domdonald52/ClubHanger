@@ -292,10 +292,13 @@ class MemberCredential(models.Model):
     club_member = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='credentials')
     credential_type = models.CharField(max_length=20, choices=CredentialType.choices)
 
-    # Sub-type name — required for TYPE_RATING and OTHER, optional elsewhere
-    # e.g. "ZK-ABC Cessna 172", "Cross Country to NZWB"
+    # For type ratings — links to the managed aircraft type list
+    aircraft_type = models.ForeignKey('AircraftType', on_delete=models.SET_NULL,
+                                       null=True, blank=True, related_name='type_ratings')
+
+    # Sub-type name — required for OTHER, optional elsewhere; for type ratings prefer aircraft_type FK
     name = models.CharField(max_length=100, blank=True,
-                            help_text="Specific name — required for Type Rating and Other")
+                            help_text="Specific name — required for Other; supplementary for Type Rating (e.g. specific aircraft reg)")
 
     # Validity
     issue_date = models.DateField(null=True, blank=True)
@@ -350,6 +353,21 @@ class MemberCredential(models.Model):
 # AIRCRAFT & MAINTENANCE
 # ============================================================================
 
+class AircraftType(models.Model):
+    """Club-managed list of aircraft types. Aircraft and type-rating credentials reference this."""
+    club = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='aircraft_types')
+    name = models.CharField(max_length=60)
+    icao_designator = models.CharField(max_length=10, blank=True,
+                                       help_text="ICAO type designator, e.g. C172, PA38")
+
+    class Meta:
+        ordering = ['name']
+        unique_together = [('club', 'name')]
+
+    def __str__(self):
+        return self.name
+
+
 class AircraftStatus(models.TextChoices):
     """Aircraft operational status. Temporary unavailability (maintenance, grounding) is
     managed via block-outs rather than status changes."""
@@ -362,10 +380,11 @@ class Aircraft(models.Model):
     Aircraft in the fleet. Tracks hobbs/tacho, maintenance schedule, availability.
     """
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='aircraft')
-    
+
     # Identification
     registration = models.CharField(max_length=10)
-    aircraft_type = models.CharField(max_length=50)
+    aircraft_type = models.ForeignKey('AircraftType', on_delete=models.PROTECT,
+                                       null=True, blank=True, related_name='aircraft')
     serial_number = models.CharField(max_length=50, blank=True)
     
     # Configuration
@@ -422,7 +441,8 @@ class Aircraft(models.Model):
         ordering = ['registration']
     
     def __str__(self):
-        return f"{self.registration} ({self.aircraft_type})"
+        type_name = self.aircraft_type.name if self.aircraft_type_id else 'Unknown'
+        return f"{self.registration} ({type_name})"
     
     @property
     def is_online(self):

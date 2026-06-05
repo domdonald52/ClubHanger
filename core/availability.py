@@ -121,7 +121,7 @@ def find_free_spans_with_instructors(club, date_start, date_end, aircraft=None,
     if aircraft:
         ac_list = [aircraft]
     elif aircraft_type:
-        ac_list = list(Aircraft.objects.filter(club=club, aircraft_type=aircraft_type, status='online'))
+        ac_list = list(Aircraft.objects.filter(club=club, aircraft_type__name=aircraft_type, status='online'))
     else:
         ac_list = list(Aircraft.objects.filter(club=club, status='online'))
 
@@ -200,7 +200,7 @@ def find_free_spans(club, date_start, date_end, aircraft=None, aircraft_type=Non
     if aircraft:
         ac_list = [aircraft]
     elif aircraft_type:
-        ac_list = list(Aircraft.objects.filter(club=club, aircraft_type=aircraft_type, status='online'))
+        ac_list = list(Aircraft.objects.filter(club=club, aircraft_type__name=aircraft_type, status='online'))
     else:
         ac_list = list(Aircraft.objects.filter(club=club, status='online'))
 
@@ -246,7 +246,7 @@ def find_available_slots(club, date_start, date_end, aircraft=None, aircraft_typ
         date_start: datetime.date
         date_end: datetime.date
         aircraft: specific Aircraft object or None
-        aircraft_type: aircraft type string (e.g. 'PA38', 'C152') or None
+        aircraft_type: aircraft type name string (e.g. 'PA38', 'C152') or None
         instructor: specific User (instructor) object or None
         duration_minutes: default 90
         solo_only: True to exclude instructor requirement
@@ -272,7 +272,7 @@ def find_available_slots(club, date_start, date_end, aircraft=None, aircraft_typ
         elif aircraft_type:
             aircraft_list = Aircraft.objects.filter(
                 club=club,
-                aircraft_type=aircraft_type,
+                aircraft_type__name=aircraft_type,
                 status='online'
             )
         else:

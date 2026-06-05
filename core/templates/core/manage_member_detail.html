@@ -137,7 +137,10 @@
         {% for c in credentials %}
         <tr>
           <td style="white-space:nowrap;">{{ c.get_credential_type_display }}</td>
-          <td style="color:#5b6573;font-size:.82rem;">{{ c.name|default:"—" }}</td>
+          <td style="color:#5b6573;font-size:.82rem;">
+            {% if c.credential_type == 'type' and c.aircraft_type %}{{ c.aircraft_type.name }}{% if c.name %} <span style="color:#b0b8c4;">({{ c.name }})</span>{% endif %}
+            {% else %}{{ c.name|default:"—" }}{% endif %}
+          </td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ c.certificate_number|default:"—" }}</td>
           <td style="font-size:.83rem;">{{ c.issue_date|default:"—" }}</td>
           <td style="font-size:.83rem;">{{ c.expiry_date|default:"—" }}</td>
@@ -156,7 +159,7 @@
           <td style="text-align:right;white-space:nowrap;">
             <div style="display:inline-flex;gap:.3rem;">
               <button type="button" class="cbtn-xs"
-                      onclick="openEditCred({{ c.id }},'{{ c.credential_type }}','{{ c.name|escapejs }}','{{ c.certificate_number|escapejs }}','{{ c.issue_date|default:'' }}','{{ c.expiry_date|default:'' }}','{{ c.notes|escapejs }}')">Edit</button>
+                      onclick="openEditCred({{ c.id }},'{{ c.credential_type }}','{{ c.name|escapejs }}','{{ c.certificate_number|escapejs }}','{{ c.issue_date|default:'' }}','{{ c.expiry_date|default:'' }}','{{ c.notes|escapejs }}',{{ c.aircraft_type_id|default:'null' }})">Edit</button>
               <form method="post" style="display:inline;" onsubmit="return confirm('Delete this credential?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_credential">
@@ -183,15 +186,25 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="add_credential">
         <label class="flabel">Type
-          <select name="credential_type" class="finput" required>
+          <select name="credential_type" id="acm-type" class="finput" required onchange="toggleAcTypeField(this,'acm-ac-type-wrap')">
             <option value="">— select —</option>
             {% for val, label in credential_types %}
             <option value="{{ val }}">{{ label }}</option>
             {% endfor %}
           </select>
         </label>
-        <label class="flabel" style="margin-top:.4rem;">Name / sub-type <span style="font-weight:400;">(e.g. aircraft type, aerodrome — required for Type Rating and Other)</span>
-          <input type="text" name="cred_name" class="finput" placeholder="e.g. Cessna 172 (ZK-ABC)">
+        <div id="acm-ac-type-wrap" style="display:none;margin-top:.4rem;">
+          <label class="flabel">Aircraft type
+            <select name="cred_aircraft_type_id" class="finput">
+              <option value="">— select type —</option>
+              {% for at in aircraft_type_list %}
+              <option value="{{ at.id }}">{{ at.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.4rem;">Name / notes <span style="font-weight:400;">(required for Other; optional supplementary note for Type Rating, e.g. specific reg)</span>
+          <input type="text" name="cred_name" class="finput" placeholder="e.g. ZK-ABC (for type rating), or cross-country to NZWB">
         </label>
         <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.4rem;">
           <label class="flabel" style="flex:1;">Certificate / reference #
@@ -228,13 +241,23 @@
         <input type="hidden" name="action" value="edit_credential">
         <input type="hidden" name="cred_id" id="ecm-id">
         <label class="flabel">Type
-          <select name="credential_type" id="ecm-type" class="finput" required>
+          <select name="credential_type" id="ecm-type" class="finput" required onchange="toggleAcTypeField(this,'ecm-ac-type-wrap')">
             {% for val, label in credential_types %}
             <option value="{{ val }}">{{ label }}</option>
             {% endfor %}
           </select>
         </label>
-        <label class="flabel" style="margin-top:.4rem;">Name / sub-type
+        <div id="ecm-ac-type-wrap" style="display:none;margin-top:.4rem;">
+          <label class="flabel">Aircraft type
+            <select name="cred_aircraft_type_id" id="ecm-ac-type" class="finput">
+              <option value="">— select type —</option>
+              {% for at in aircraft_type_list %}
+              <option value="{{ at.id }}">{{ at.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.4rem;">Name / notes
           <input type="text" name="cred_name" id="ecm-name" class="finput">
         </label>
         <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.4rem;">
@@ -514,9 +537,16 @@ document.addEventListener('keydown', e => {
   });
 });
 
-function openEditCred(id, type, name, certNum, issueDate, expiryDate, notes) {
+function toggleAcTypeField(sel, wrapId) {
+  document.getElementById(wrapId).style.display = sel.value === 'type' ? '' : 'none';
+}
+function openEditCred(id, type, name, certNum, issueDate, expiryDate, notes, acTypeId) {
   document.getElementById('ecm-id').value = id;
-  document.getElementById('ecm-type').value = type;
+  const typeSel = document.getElementById('ecm-type');
+  typeSel.value = type;
+  toggleAcTypeField(typeSel, 'ecm-ac-type-wrap');
+  const acTypeSel = document.getElementById('ecm-ac-type');
+  if (acTypeSel) acTypeSel.value = acTypeId || '';
   document.getElementById('ecm-name').value = name;
   document.getElementById('ecm-certnum').value = certNum;
   document.getElementById('ecm-issue').value = issueDate;

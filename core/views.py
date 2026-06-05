@@ -5,7 +5,7 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
 from datetime import datetime, timedelta, time
-from .models import (Club, ClubMember, Booking, Aircraft, Role, FlightType, BlockOutType,
+from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate)
 from .availability import find_available_slots, get_date_range
@@ -377,7 +377,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         ac_bands = bands_for_aircraft(ac) if is_online else []
         aircraft_rows.append({
             'type': 'aircraft',
-            'label': f"{ac.registration} ({ac.aircraft_type})",
+            'label': f"{ac.registration} ({ac.aircraft_type.name if ac.aircraft_type_id else '?'})",
             'row_key': f"aircraft:{ac.id}",
             'resource_id': ac.id,
             'pills': [booking_geometry(b) for b in ac_bookings],
@@ -416,7 +416,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'acct_warning': acct_warning,
         })
     aircraft_data = [
-        {'id': a.id, 'reg': a.registration, 'type': a.aircraft_type} for a in aircraft_list
+        {'id': a.id, 'reg': a.registration, 'type': a.aircraft_type.name if a.aircraft_type_id else ''} for a in aircraft_list
     ]
     instructors_data = [
         {'id': i.user.id, 'name': f"{i.user.first_name} {i.user.last_name}".strip()} for i in instructors
@@ -1128,27 +1128,31 @@ def availability_search(request, club_slug):
     config = get_config(club)
     instructors = ClubMember.objects.filter(club=club, role__name__iexact='instructor').select_related('user')
     aircraft_list = Aircraft.objects.filter(club=club, status='online')
-    aircraft_types = sorted(set(a.aircraft_type for a in aircraft_list))
+    aircraft_types = sorted(set(
+        a.aircraft_type.name for a in aircraft_list if a.aircraft_type_id
+    ))
     
     results = []
     search_performed = False
     filters_applied = {}
     result_count = 0
     
-    if request.method == 'POST' or request.GET.get('search'):
+    # Support both POST (legacy) and GET (preferred — allows bookmarkable URLs and auto-resubmit)
+    _p = request.GET if request.method == 'GET' else request.POST
+    if request.method == 'POST' or request.GET.get('s'):
         search_performed = True
-        range_type = request.POST.get('range_type') or request.GET.get('range_type', 'this_week')
-        aircraft_filter = request.POST.get('aircraft') or request.GET.get('aircraft', '')
-        aircraft_type_filter = request.POST.get('aircraft_type') or request.GET.get('aircraft_type', '')
-        instructor_filter = request.POST.get('instructor') or request.GET.get('instructor', '')
-        booking_kind = request.POST.get('booking_kind') or request.GET.get('booking_kind', 'dual')
-        duration = int(request.POST.get('duration') or request.GET.get('duration') or config.default_booking_duration)
+        range_type = _p.get('range_type', 'this_week')
+        aircraft_filter = _p.get('aircraft', '')
+        aircraft_type_filter = _p.get('aircraft_type', '')
+        instructor_filter = _p.get('instructor', '')
+        booking_kind = _p.get('booking_kind', 'dual')
+        duration = int(_p.get('duration') or config.default_booking_duration)
 
         # --- Reconcile aircraft type vs specific aircraft (specific wins) ---
         specific_aircraft = Aircraft.objects.filter(club=club, id=aircraft_filter).first() if aircraft_filter else None
         if specific_aircraft:
             # A specific tail implies its type; ignore any conflicting type filter.
-            aircraft_type_filter = specific_aircraft.aircraft_type
+            aircraft_type_filter = specific_aircraft.aircraft_type.name if specific_aircraft.aircraft_type_id else ''
         elif aircraft_type_filter:
             # Type chosen but no specific aircraft: leave as type-only filter.
             pass
@@ -1257,7 +1261,7 @@ def availability_search(request, club_slug):
     
     # Aircraft -> type map for the live JS reconciliation
     import json as _json
-    aircraft_type_map = _json.dumps({str(a.id): a.aircraft_type for a in aircraft_list})
+    aircraft_type_map = _json.dumps({str(a.id): (a.aircraft_type.name if a.aircraft_type_id else '') for a in aircraft_list})
 
     context = {
         'club': club,
@@ -1314,7 +1318,7 @@ def reschedule_options(request, booking_id):
     
     available_aircraft = Aircraft.objects.filter(
         club=club,
-        aircraft_type=booking.aircraft.aircraft_type,
+        aircraft_type=booking.aircraft.aircraft_type_id,
         status='online'
     ).exclude(id__in=busy_aircraft)
     
@@ -1551,6 +1555,39 @@ def club_settings(request, club_slug):
                 st.save(update_fields=['name', 'description', 'amount'])
             return redirect('core:club_settings', club_slug=club_slug)
 
+        elif action == 'add_aircraft_type':
+            from .models import AircraftType
+            at_name = request.POST.get('at_name', '').strip()
+            at_icao = request.POST.get('at_icao', '').strip().upper()
+            if at_name:
+                AircraftType.objects.get_or_create(club=club, name=at_name,
+                                                    defaults={'icao_designator': at_icao})
+            return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'edit_aircraft_type':
+            from .models import AircraftType
+            at = AircraftType.objects.filter(club=club, id=request.POST.get('at_id')).first()
+            if at:
+                name = request.POST.get('at_name', '').strip()
+                if name:
+                    at.name = name
+                at.icao_designator = request.POST.get('at_icao', '').strip().upper()
+                at.save(update_fields=['name', 'icao_designator'])
+            return redirect('core:club_settings', club_slug=club_slug)
+
+        elif action == 'delete_aircraft_type':
+            from .models import AircraftType
+            at = AircraftType.objects.filter(club=club, id=request.POST.get('at_id')).first()
+            if at:
+                if at.aircraft.exists():
+                    ft_error = f"Cannot delete '{at.name}' — it is assigned to aircraft in the fleet."
+                elif at.type_ratings.exists():
+                    ft_error = f"Cannot delete '{at.name}' — it is referenced by member type ratings."
+                else:
+                    at.delete()
+            if not ft_error:
+                return redirect('core:club_settings', club_slug=club_slug)
+
         else:
             club_name = request.POST.get('club_name', '').strip()
             if club_name:
@@ -1619,6 +1656,7 @@ def club_settings(request, club_slug):
         'flight_types': FlightType.objects.filter(club=club),
         'instructor_grades': InstructorGrade.objects.filter(club=club),
         'surcharge_types': AircraftSurchargeType.objects.filter(club=club),
+        'aircraft_type_list': AircraftType.objects.filter(club=club),
         'saved': saved,
         'ft_error': ft_error,
     })
@@ -1666,6 +1704,9 @@ def manage_bookings(request, club_slug):
                 qs.update(instructor=instr)
         return redirect(request.get_full_path())
 
+    from datetime import timedelta
+    from urllib.parse import urlencode
+
     view = request.GET.get('view', 'conflicts')
     f_aircraft = request.GET.get('aircraft', '')
     f_instructor = request.GET.get('instructor', '')
@@ -1673,6 +1714,7 @@ def manage_bookings(request, club_slug):
     f_status = request.GET.get('status', '')
     f_date_from = request.GET.get('date_from', '')
     f_date_to = request.GET.get('date_to', '')
+    show_all_history = request.GET.get('all_history') == '1'
 
     qs = (Booking.objects
           .filter(club=club)
@@ -1682,6 +1724,19 @@ def manage_bookings(request, club_slug):
 
     if view == 'conflicts':
         qs = qs.filter(_conflict_q)
+
+    # Default window for "all bookings": active flights (any date) + completed within last 30 days.
+    # Disabled when explicit date/status filters are applied, or when user requests full history.
+    using_default_window = False
+    if view == 'all' and not (f_date_from or f_date_to or f_status or show_all_history):
+        from django.db.models import Q as _Q2
+        cutoff = today - timedelta(days=30)
+        qs = qs.filter(
+            _Q2(status__in=['pending', 'confirmed', 'departed']) |
+            _Q2(status__in=['completed', 'transferred'], scheduled_start__date__gte=cutoff)
+        )
+        using_default_window = True
+
     if f_aircraft:
         qs = qs.filter(aircraft_id=f_aircraft)
     if f_instructor:
@@ -1724,12 +1779,21 @@ def manage_bookings(request, club_slug):
     members_qs = ClubMember.objects.filter(club=club).select_related('user').order_by('user__last_name')
     conflict_count = Booking.objects.filter(club=club).exclude(status='cancelled').filter(_conflict_q).count()
 
+    # Build view-toggle URLs that preserve current filter params
+    def _toggle_url(new_view):
+        p = {k: v for k, v in request.GET.items() if k != 'view' and v}
+        p['view'] = new_view
+        return '?' + urlencode(p)
+
     return render(request, 'core/manage_bookings.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'bookings_data': bookings_data, 'view': view, 'conflict_count': conflict_count,
         'f_aircraft': f_aircraft, 'f_instructor': f_instructor, 'f_member': f_member,
         'f_status': f_status, 'f_date_from': f_date_from, 'f_date_to': f_date_to,
         'aircraft_list': aircraft_list, 'instructors': instructors, 'members_qs': members_qs,
+        'url_conflicts': _toggle_url('conflicts'),
+        'url_all': _toggle_url('all'),
+        'using_default_window': using_default_window,
     })
 
 
@@ -2195,9 +2259,13 @@ def manage_member_detail(request, club_slug, member_id):
             issue_str = request.POST.get('issue_date', '').strip() or None
             expiry_str = request.POST.get('expiry_date', '').strip() or None
             notes = request.POST.get('notes', '').strip()
+            ac_type_id = request.POST.get('cred_aircraft_type_id', '').strip()
+            ac_type_obj = (AircraftType.objects.filter(club=club, id=ac_type_id).first()
+                           if ac_type_id and cred_type == 'type' else None)
             if action == 'add_credential' and cred_type:
                 cred = MemberCredential(
                     club_member=member, credential_type=cred_type, name=name,
+                    aircraft_type=ac_type_obj,
                     certificate_number=cert_num, issue_date=issue_str,
                     expiry_date=expiry_str, notes=notes, created_by=request.user,
                 )
@@ -2210,6 +2278,7 @@ def manage_member_detail(request, club_slug, member_id):
                 if cred:
                     if cred_type:
                         cred.credential_type = cred_type
+                    cred.aircraft_type = ac_type_obj
                     cred.name = name
                     cred.certificate_number = cert_num
                     cred.issue_date = issue_str
@@ -2337,6 +2406,7 @@ def manage_member_detail(request, club_slug, member_id):
         'all_members': all_members, 'roles': roles,
         'standing_choices': ClubMember.STANDING_CHOICES,
         'credential_types': CredentialType.choices,
+        'aircraft_type_list': AircraftType.objects.filter(club=club),
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
         'inline_title': f"Member — {member.user.get_full_name()}",
     })
@@ -2627,11 +2697,12 @@ def manage_aircraft(request, club_slug):
                 ac.save(update_fields=['status'])
         elif action == 'add_aircraft' and actor.is_admin:
             reg = request.POST.get('registration', '').strip().upper()
-            ac_type = request.POST.get('aircraft_type', '').strip()
-            if reg and ac_type:
+            ac_type_id = request.POST.get('aircraft_type_id', '').strip()
+            ac_type_obj = AircraftType.objects.filter(club=club, id=ac_type_id).first() if ac_type_id else None
+            if reg:
                 Aircraft.objects.get_or_create(
                     club=club, registration=reg,
-                    defaults={'aircraft_type': ac_type}
+                    defaults={'aircraft_type': ac_type_obj}
                 )
         elif action == 'add_aircraft_blockout':
             ac_id = request.POST.get('ac_id')
@@ -2683,6 +2754,7 @@ def manage_aircraft(request, club_slug):
         'club_member': actor,
         'is_instructor': actor.is_instructor,
         'aircraft_list': aircraft_list,
+        'aircraft_type_list': AircraftType.objects.filter(club=club),
         'status_choices': AircraftStatus.choices,
         'aircraft_blockout_types': aircraft_blockout_types,
     })
@@ -2705,7 +2777,10 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         action = request.POST.get('action', '')
 
         if action == 'save_details' and actor.is_admin:
-            ac.aircraft_type = request.POST.get('aircraft_type', ac.aircraft_type).strip() or ac.aircraft_type
+            ac_type_id = request.POST.get('aircraft_type_id', '').strip()
+            ac_type_obj = AircraftType.objects.filter(club=club, id=ac_type_id).first() if ac_type_id else None
+            if ac_type_obj:
+                ac.aircraft_type = ac_type_obj
             ac.serial_number = request.POST.get('serial_number', '').strip()
             seats = request.POST.get('seats', '')
             if seats.isdigit():
@@ -2873,6 +2948,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'aircraft_blockout_types': aircraft_blockout_types,
         'ac_blockouts': ac_blockouts,
         'flight_history': flight_history,
+        'aircraft_type_list': AircraftType.objects.filter(club=club),
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
         'inline_title': f"Aircraft — {ac.registration}",
     })
