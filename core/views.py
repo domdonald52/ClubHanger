@@ -9,6 +9,7 @@ from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, Fl
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem)
 from .availability import find_available_slots, get_date_range
+from .services import booking_service
 
 
 def _aware(dt):
@@ -19,15 +20,9 @@ def _aware(dt):
 
 
 def _audit(booking, user, event_type, notes='', field_name='', old_value='', new_value=''):
-    """Write a booking audit log entry, swallowing errors so it never blocks an action."""
-    try:
-        from .models import BookingAuditLog
-        BookingAuditLog.objects.create(
-            booking=booking, user=user, event_type=event_type,
-            notes=notes, field_name=field_name, old_value=str(old_value), new_value=str(new_value),
-        )
-    except Exception as e:
-        print(f"audit log failed: {e}")
+    """Thin wrapper — logic lives in booking_service.audit."""
+    booking_service.audit(booking, user, event_type, notes=notes,
+                          field_name=field_name, old_value=old_value, new_value=new_value)
 
 
 def _blockout_check(club, aircraft, instructor, start_dt, end_dt, actor, override, exclude_booking_id=None):
@@ -702,27 +697,22 @@ def credential_check_api(request, booking_id):
 def confirm_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
     club = booking.club
-    
     try:
         club_member = ClubMember.objects.get(user=request.user, club=club)
     except ClubMember.DoesNotExist:
         return JsonResponse({'error': 'Not authorized'}, status=403)
-    
     if not (club_member.is_admin or club_member.is_instructor):
         return JsonResponse({'error': 'Only instructors and admins can confirm'}, status=403)
 
-    booking.status = 'confirmed'
-    booking.confirmed_by = request.user
-    booking.confirmed_at = timezone.now()
-    booking.save()
-    
+    result = booking_service.confirm(booking, request.user)
+    if not result.ok:
+        return JsonResponse({'error': result.error}, status=400)
     return JsonResponse({'success': True})
 
 
 @login_required
 @require_POST
 def depart_booking(request, booking_id):
-    from .models import FlightCompletion, FuelSurchargeRate
     booking = get_object_or_404(Booking, id=booking_id)
     club = booking.club
     try:
@@ -732,31 +722,11 @@ def depart_booking(request, booking_id):
     is_own = (booking.member.user == request.user)
     if not (actor.is_admin or actor.is_instructor or is_own):
         return JsonResponse({'error': 'Not authorized'}, status=403)
-    if booking.status != 'confirmed':
-        return JsonResponse({'error': 'Booking is not confirmed'}, status=400)
 
     no_decl_reason = request.POST.get('no_declaration_reason', '').strip()
-    requires_decl = booking.flight_type.requires_declaration
-    has_decl = hasattr(booking, 'declaration') and not booking.declaration.is_draft
-    if requires_decl and not has_decl and not no_decl_reason:
-        return JsonResponse({'error': 'Declaration required', 'needs_reason': True}, status=400)
-
-    booking.status = 'departed'
-    booking.departed_at = timezone.now()
-    if requires_decl and not has_decl:
-        booking.departed_without_declaration = True
-        booking.departed_without_declaration_reason = no_decl_reason
-    booking.save()
-
-    fuel_rate = FuelSurchargeRate.current_rate(club, booking.aircraft)
-    FlightCompletion.objects.get_or_create(
-        booking=booking,
-        defaults={
-            'logged_by': request.user,
-            'fuel_surcharge_rate_snapshot': fuel_rate.rate if fuel_rate else None,
-        }
-    )
-    _audit(booking, request.user, 'departed')
+    result = booking_service.depart(booking, request.user, no_decl_reason)
+    if not result.ok:
+        return JsonResponse({'error': result.error, **result.data}, status=400)
     return JsonResponse({'success': True, 'status': 'departed'})
 
 
@@ -764,7 +734,6 @@ def depart_booking(request, booking_id):
 @require_POST
 @transaction.atomic
 def checkin_booking(request, booking_id):
-    from .models import FlightCompletion, FlightChargeItem, ChargeRate
     booking = get_object_or_404(Booking, id=booking_id)
     club = booking.club
     try:
@@ -773,102 +742,22 @@ def checkin_booking(request, booking_id):
         return JsonResponse({'error': 'Not authorized'}, status=403)
     if not (actor.is_admin or actor.is_instructor):
         return JsonResponse({'error': 'Instructors only'}, status=403)
-    if booking.status != 'departed':
-        return JsonResponse({'error': 'Booking has not departed'}, status=400)
-    if booking.scheduled_end > timezone.now():
-        return JsonResponse({'error': 'Cannot check in a flight that has not yet finished — wait until the scheduled end time has passed'}, status=400)
 
-    outcome = request.POST.get('outcome', 'completed')
-    outcome_notes = request.POST.get('outcome_notes', '').strip()
-    hobbs_start      = request.POST.get('hobbs_start', '').strip() or None
-    hobbs_end        = request.POST.get('hobbs_end', '').strip() or None
-    tacho_start      = request.POST.get('tacho_start', '').strip() or None
-    tacho_end        = request.POST.get('tacho_end', '').strip() or None
-    airswitch_start  = request.POST.get('airswitch_start', '').strip() or None
-    airswitch_end    = request.POST.get('airswitch_end', '').strip() or None
-
-    ac = booking.aircraft
-    if ac.records_hobbs and (not hobbs_start or not hobbs_end):
-        return JsonResponse({'error': 'Hobbs start and end are required for this aircraft'}, status=400)
-    if ac.records_tacho and (not tacho_start or not tacho_end):
-        return JsonResponse({'error': 'Tacho start and end are required for this aircraft'}, status=400)
-    if ac.records_airswitch and (not airswitch_start or not airswitch_end):
-        return JsonResponse({'error': 'Air switch start and end are required for this aircraft'}, status=400)
-    try:
-        if hobbs_start and hobbs_end and float(hobbs_end) <= float(hobbs_start):
-            return JsonResponse({'error': 'Hobbs end must be greater than start'}, status=400)
-        if tacho_start and tacho_end and float(tacho_end) <= float(tacho_start):
-            return JsonResponse({'error': 'Tacho end must be greater than start'}, status=400)
-        if airswitch_start and airswitch_end and float(airswitch_end) <= float(airswitch_start):
-            return JsonResponse({'error': 'Air switch end must be greater than start'}, status=400)
-    except ValueError:
-        return JsonResponse({'error': 'Invalid meter reading values'}, status=400)
-
-    fc, _ = FlightCompletion.objects.get_or_create(booking=booking, defaults={'logged_by': request.user})
-    fc.outcome          = outcome
-    fc.outcome_notes    = outcome_notes
-    fc.hobbs_start      = hobbs_start
-    fc.hobbs_end        = hobbs_end
-    fc.tacho_start      = tacho_start
-    fc.tacho_end        = tacho_end
-    fc.airswitch_start  = airswitch_start
-    fc.airswitch_end    = airswitch_end
-    fc.logged_by = request.user
-
-    method = booking.aircraft.total_time_method
-    try:
-        if method == 'hobbs' and hobbs_start and hobbs_end:
-            fc.actual_flight_hours = round(float(hobbs_end) - float(hobbs_start), 2)
-        elif method in ('tacho', 'tacho_less_5') and tacho_start and tacho_end:
-            h = float(tacho_end) - float(tacho_start)
-            fc.actual_flight_hours = round(h * 0.95, 2) if method == 'tacho_less_5' else round(h, 2)
-        elif method == 'airswitch' and airswitch_start and airswitch_end:
-            fc.actual_flight_hours = round(float(airswitch_end) - float(airswitch_start), 2)
-    except (ValueError, TypeError):
-        pass
-
-    if booking.instructor:
-        instr_member = ClubMember.objects.filter(user=booking.instructor, club=club).first()
-        if instr_member and instr_member.instructor_grade:
-            fc.instructor_rate_snapshot = instr_member.instructor_grade.hourly_rate
-
-    fc.save()
-    booking.status = 'completed'
-    booking.arrived_at = timezone.now()
-    booking.save(update_fields=['status', 'arrived_at'])
-
-    hours = fc.actual_flight_hours
-    hire_rate = ChargeRate.objects.filter(
-        aircraft=booking.aircraft, flight_type=booking.flight_type,
-        time_method=booking.aircraft.total_time_method
-    ).first()
-    if hire_rate and hours:
-        FlightChargeItem.objects.get_or_create(
-            flight_completion=fc, item_type='hire',
-            defaults={'description': f'Aircraft hire — {booking.aircraft.registration}',
-                      'amount': round(float(hire_rate.amount) * float(hours), 2)}
-        )
-    if fc.fuel_surcharge_rate_snapshot and hours:
-        FlightChargeItem.objects.get_or_create(
-            flight_completion=fc, item_type='fuel',
-            defaults={'description': 'Fuel levy',
-                      'amount': round(float(fc.fuel_surcharge_rate_snapshot) * float(hours), 2)}
-        )
-    if fc.instructor_rate_snapshot and hours and booking.instructor:
-        FlightChargeItem.objects.get_or_create(
-            flight_completion=fc, item_type='instructor',
-            defaults={'description': f'Instructor fee — {booking.instructor.get_full_name()}',
-                      'amount': round(float(fc.instructor_rate_snapshot) * float(hours), 2)}
-        )
-    for sc in booking.aircraft.surcharges.all():
-        FlightChargeItem.objects.get_or_create(
-            flight_completion=fc, item_type='surcharge',
-            defaults={'description': sc.name, 'amount': sc.amount}
-        )
-    _update_total(fc)
-    _audit(booking, request.user, 'completed')
+    result = booking_service.check_in(
+        booking, request.user,
+        outcome=request.POST.get('outcome', 'completed'),
+        outcome_notes=request.POST.get('outcome_notes', '').strip(),
+        hobbs_start=request.POST.get('hobbs_start', '').strip() or None,
+        hobbs_end=request.POST.get('hobbs_end', '').strip() or None,
+        tacho_start=request.POST.get('tacho_start', '').strip() or None,
+        tacho_end=request.POST.get('tacho_end', '').strip() or None,
+        airswitch_start=request.POST.get('airswitch_start', '').strip() or None,
+        airswitch_end=request.POST.get('airswitch_end', '').strip() or None,
+    )
+    if not result.ok:
+        return JsonResponse({'error': result.error}, status=400)
     return JsonResponse({'success': True, 'status': 'completed',
-                         'charges_url': f'/manage/{club.slug}/bookings/{booking.id}/'})
+                         'charges_url': result.data.get('charges_url', '')})
 
 
 @login_required
@@ -893,24 +782,18 @@ def toggle_watch(request, booking_id):
 def reject_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
     club = booking.club
-
     try:
         club_member = ClubMember.objects.get(user=request.user, club=club)
     except ClubMember.DoesNotExist:
         return JsonResponse({'error': 'Not authorized'}, status=403)
-
     is_own = booking.member == club_member
     if not (club_member.is_admin or club_member.is_instructor or is_own):
         return JsonResponse({'error': 'Not authorized'}, status=403)
 
-    booking.status = 'cancelled'
-
-    if request.POST.get('release') == '1':
-        booking.slot_released = True
-        booking.slot_released_at = timezone.now()
-        booking.slot_released_by = request.user
-
-    booking.save()
+    result = booking_service.cancel(booking, request.user,
+                                    release_slot=request.POST.get('release') == '1')
+    if not result.ok:
+        return JsonResponse({'error': result.error}, status=400)
     return JsonResponse({'success': True})
 
 
@@ -2220,10 +2103,8 @@ def _inline_redirect(request, view_name, **kwargs):
 
 
 def _update_total(fc):
-    from django.db.models import Sum
-    total = fc.charge_items.aggregate(t=Sum('amount'))['t'] or 0
-    fc.total_charge = total
-    fc.save(update_fields=['total_charge'])
+    """Thin wrapper — logic lives in booking_service.update_total."""
+    booking_service.update_total(fc)
 
 
 @login_required
