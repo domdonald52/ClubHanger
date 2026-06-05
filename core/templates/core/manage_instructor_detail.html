@@ -114,7 +114,10 @@
   <!-- ── AVAILABILITY tab ── -->
   <div id="tab-availability" class="stab-panel">
 
-    <h2 class="sh2">Availability windows</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+      <h2 class="sh2" style="margin:0;">Availability windows</h2>
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-av-modal').hidden=false">+ Add</button>
+    </div>
     <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">
       If no windows are set, this instructor is treated as available all operating hours.
       {% if past_av_count %}<span style="color:#adb5bd;">{{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }} not shown.</span>{% endif %}
@@ -150,9 +153,6 @@
     {% else %}
     <p style="color:#8a93a0;font-size:.85rem;margin-bottom:.8rem;">No windows set — treated as available all operating hours.</p>
     {% endif %}
-
-    <button type="button" class="cbtn-add" style="margin-bottom:2rem;"
-            onclick="document.getElementById('add-av-modal').hidden=false">+ Add availability window</button>
 
     <hr style="border:none;border-top:1px solid #eef1f4;margin:1.5rem 0;">
 

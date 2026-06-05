@@ -556,13 +556,13 @@
 
       <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Club details on invoices</h3>
       <div class="fgrid" style="margin-bottom:1rem;">
-        <label class="flabel">Legal name <span style="font-weight:400;color:#8a93a0;">(e.g. Wellington Aero Club Inc.)</span>
-          <input type="text" name="billing_name" value="{{ config.billing_name }}" class="finput">
+        <label class="flabel">Legal name
+          <input type="text" name="billing_name" value="{{ config.billing_name }}" class="finput" placeholder="e.g. Aero Club Inc.">
         </label>
-        <label class="flabel">Billing phone
+        <label class="flabel">Phone
           <input type="text" name="billing_phone" value="{{ config.billing_phone }}" class="finput">
         </label>
-        <label class="flabel">Billing email
+        <label class="flabel">Email
           <input type="email" name="billing_email" value="{{ config.billing_email }}" class="finput">
         </label>
         <label class="flabel">GST / tax number
@@ -572,7 +572,7 @@
           <input type="number" name="gst_rate" value="{{ config.gst_rate }}" step="0.01" min="0" max="99" class="finput" style="width:90px;">
         </label>
       </div>
-      <label class="flabel" style="margin-bottom:1rem;">Billing address <span style="font-weight:400;color:#8a93a0;">(postal, printed on invoices)</span>
+      <label class="flabel" style="margin-bottom:1rem;">Address <span style="font-weight:400;color:#8a93a0;">(postal, printed on invoices)</span>
         <textarea name="billing_address" class="finput" rows="3">{{ config.billing_address }}</textarea>
       </label>
 
