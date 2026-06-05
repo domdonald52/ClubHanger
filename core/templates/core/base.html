@@ -155,6 +155,16 @@
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.5" cy="4" r="2.5"/><path d="M1 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"/><path d="M10.5 2.5a2 2 0 0 1 0 4"/><path d="M13.5 13.5c0-2-1.2-3.5-3-4"/></svg>
                 Manage
             </a>
+            {% if 'manage' in request.resolver_match.url_name %}
+            <div style="padding:.1rem 0 .2rem .5rem;">
+              <a href="{% url 'core:manage_bookings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_bookings' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Bookings</a>
+              <a href="{% url 'core:manage_blockouts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_blockouts' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Block-outs</a>
+              {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_members' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Members</a>{% endif %}
+              <a href="{% url 'core:manage_aircraft' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aircraft' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Aircraft</a>
+              <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_instructors' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Instructors</a>
+              {% if club_member.is_admin %}<a href="{% url 'core:manage_invoices' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_invoices' %}active{% endif %}" style="font-size:.82rem;padding:.35rem .75rem .35rem 1.5rem;">Invoices</a>{% endif %}
+            </div>
+            {% endif %}
             {% endif %}
             {% if club_member.is_admin %}
             <a href="{% url 'core:club_settings' club.slug %}" class="sidenav-link {% if 'settings' in request.resolver_match.url_name %}active{% endif %}">
@@ -183,6 +193,12 @@
 
     <main>{% block content %}{% endblock %}</main>
 <style>
+/* ── Manage sub-nav tabs (shared across all manage pages) ── */
+.mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;flex-wrap:wrap;}
+.mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:.4rem;}
+.mnav-link:hover{color:var(--banner);}
+.mnav-link.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+.conflict-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#e03131;color:#fff;font-size:.65rem;font-weight:700;}
 /* ── Booking status chips — canonical colours used everywhere ── */
 .status-chip{display:inline-block;font-size:.75rem;font-weight:600;padding:.18rem .55rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
 /* Both conventions: .status-chip.pending and .status-chip.status-pending */

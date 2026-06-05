@@ -346,6 +346,10 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'ghost_reason': 'retired' if ghost else None,
         })
 
+    # Row-label width: fit the longest instructor/aircraft label (7px/char approx at .76rem)
+    all_labels = [r['label'] for r in instructor_rows + aircraft_rows]
+    label_w = max(140, min(220, max((len(l) * 7 + 18 for l in all_labels), default=140)))
+
     # Navigation
     prev_date = selected_date - timedelta(days=1)
     next_date = selected_date + timedelta(days=1)
@@ -435,6 +439,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             .values_list('booking_id', flat=True)
         ),
         'now_px': now_px,
+        'label_w': label_w,
     }
 
     return render(request, 'core/gantt_day.html', context)
@@ -2242,6 +2247,17 @@ def my_profile(request, club_slug):
     except NotificationPreference.DoesNotExist:
         notification_pref = None
 
+    # Bookings where this user is the instructor (next 7 days)
+    upcoming_as_instructor = None
+    if member.is_instructor:
+        upcoming_as_instructor = (Booking.objects
+            .filter(club=club, instructor=request.user,
+                    status__in=('pending', 'confirmed', 'departed'),
+                    scheduled_start__gte=_now,
+                    scheduled_start__lt=_now + timedelta(days=7))
+            .select_related('aircraft', 'member__user', 'flight_type')
+            .order_by('scheduled_start'))
+
     club_aircraft = Aircraft.objects.filter(club=club, status='online').order_by('registration')
     club_instructors = ClubMember.objects.filter(
         club=club, role__name__iexact='instructor'
@@ -2253,6 +2269,7 @@ def my_profile(request, club_slug):
         'notification_pref': notification_pref,
         'club_aircraft': club_aircraft,
         'club_instructors': club_instructors,
+        'upcoming_as_instructor': upcoming_as_instructor,
     })
 
 

@@ -885,6 +885,8 @@
 
     pill.addEventListener("pointerdown", (e) => {
       mode = e.target.hasAttribute("data-resize") ? "resize" : "move";
+      // Departed bookings can only be resized (to extend end time), not moved
+      if (mode === "move" && pill.dataset.status === "departed") return;
       startX = e.clientX;
       startY = e.clientY;
       origLeft = parseFloat(pill.style.left);

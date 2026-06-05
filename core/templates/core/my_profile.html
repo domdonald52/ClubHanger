@@ -100,7 +100,7 @@
               {% if b.flight_type.requires_declaration %}
               <a href="{% url 'core:booking_declaration' club.slug b.id %}" class="action-link">Declaration</a>
               {% endif %}
-              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link depart-link">Depart →</a>
+              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link depart-link">Check out →</a>
             {% elif b.status == 'departed' %}
               <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link">Check in →</a>
             {% elif b.status == 'completed' %}
@@ -129,6 +129,24 @@
       </tbody>
     </table>
     {% else %}<p style="color:#8a93a0;font-size:.85rem;">No past bookings recorded.</p>{% endif %}
+
+    {% if upcoming_as_instructor %}
+    <h2 class="section-title" style="margin-top:1.5rem;">My instruction schedule — next 7 days</h2>
+    <table class="bk-table">
+      <thead><tr><th>Date/Time</th><th>Aircraft</th><th>Member</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for b in upcoming_as_instructor %}
+        <tr>
+          <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}–{{ b.scheduled_end|time:"H:i" }}</td>
+          <td>{{ b.aircraft.registration|default:"—" }}</td>
+          <td>{{ b.member.user.get_full_name|default:"—" }}</td>
+          <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
+          <td><a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link">View →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
   </section>
 
   <!-- ── NOTIFICATIONS ── -->
