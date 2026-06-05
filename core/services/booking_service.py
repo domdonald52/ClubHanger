@@ -243,3 +243,249 @@ def cancel(booking, user, release_slot: bool = False) -> ServiceResult:
         booking.slot_released_by = user
     booking.save()
     return ServiceResult(ok=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Block-out check
+# ─────────────────────────────────────────────────────────────────────────────
+
+def check_blockout(club, aircraft, instructor, start_dt, end_dt, actor, override,
+                   exclude_booking_id=None):
+    """
+    Scope-aware block-out conflict check for a prospective booking slot.
+
+    Returns (blocked: bool, message: str, hits: list[BlockOut], is_soft: bool).
+
+    Hard block-outs (BlockOutType.is_hard=True, or no type): members are blocked
+    outright; staff can override with confirmation.
+    Soft block-outs (BlockOutType.is_hard=False): everyone gets a warning and can
+    confirm to proceed — no staff-only gate.
+    """
+    from ..models import BlockOut
+
+    class _Probe:
+        pass
+    probe = _Probe()
+    probe.club = club
+    probe.aircraft_id = aircraft.id if aircraft else None
+    probe.instructor_id = instructor.id if instructor else None
+    probe.scheduled_start = start_dt
+    probe.scheduled_end = end_dt
+
+    hits = [
+        bo for bo in BlockOut.objects.filter(club=club)
+                                     .prefetch_related('aircraft', 'instructors', 'blockout_type')
+        if bo.overlaps_booking(probe)
+    ]
+    if not hits:
+        return (False, '', [], False)
+
+    def _name(h):
+        return h.blockout_type.name if h.blockout_type else (h.label or 'block-out')
+
+    hard_hits = [h for h in hits if not h.blockout_type or h.blockout_type.effective_is_hard]
+    soft_hits = [h for h in hits if h.blockout_type and not h.blockout_type.effective_is_hard]
+    is_staff = actor and (actor.is_admin or actor.is_instructor)
+
+    if hard_hits:
+        names = ', '.join(sorted({_name(h) for h in hard_hits}))
+        if is_staff and override:
+            return (False, names, hits, False)
+        if is_staff:
+            return (True, f"This overlaps a block-out ({names}). Override?", hits, False)
+        return (True, f"This time is blocked ({names}) and can't be booked.", hits, False)
+
+    # Soft block-outs only — anyone can confirm and proceed
+    names = ', '.join(sorted({_name(h) for h in soft_hits}))
+    if override:
+        return (False, names, hits, True)
+    return (True, f"Advisory: {names} is in effect. Book anyway?", hits, True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Create
+# ─────────────────────────────────────────────────────────────────────────────
+
+def create(club, actor, aircraft, start_dt, end_dt, flight_type, instructor=None,
+           booking_member=None, description='', override=False) -> ServiceResult:
+    """
+    Create a new booking after all conflict and block-out checks.
+
+    actor       — the ClubMember performing the action (may differ from booking_member).
+    booking_member — who the booking is FOR; defaults to actor.
+    """
+    from ..models import Booking, FlightType as _FT
+
+    if booking_member is None:
+        booking_member = actor
+
+    # Past-booking guard — admins/instructors may backdate
+    if start_dt < timezone.now() and not (actor.is_admin or actor.is_instructor):
+        return ServiceResult(ok=False, error='Bookings cannot be made in the past')
+
+    # Aircraft conflict
+    if Booking.objects.filter(
+        club=club, aircraft=aircraft,
+        scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
+    ).exclude(status='cancelled').exists():
+        return ServiceResult(ok=False, error='Aircraft already booked at that time')
+
+    # Instructor conflict
+    if instructor and Booking.objects.filter(
+        club=club, instructor=instructor,
+        scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
+    ).exclude(status='cancelled').exists():
+        return ServiceResult(ok=False, error='Instructor already booked at that time')
+
+    # Block-out check
+    blocked, msg, hits, is_soft = check_blockout(
+        club, aircraft, instructor, start_dt, end_dt, actor, override
+    )
+    if blocked:
+        can_override = is_soft or bool(actor.is_admin or actor.is_instructor)
+        return ServiceResult(ok=False, error=msg,
+                             data={'blockout': True, 'can_override': can_override, 'soft': is_soft})
+
+    # Solo flight types must not carry an instructor
+    if flight_type and flight_type.is_solo:
+        instructor = None
+
+    booking = Booking.objects.create(
+        club=club,
+        member=booking_member,
+        aircraft=aircraft,
+        scheduled_start=start_dt,
+        scheduled_end=end_dt,
+        created_by=actor.user,
+        instructor=instructor,
+        status='pending',
+        flight_type=flight_type,
+        description=description,
+        blockout_override=bool(hits and override),
+    )
+    audit(booking, actor.user, 'created', notes='Booking created')
+    if hits and override:
+        audit(booking, actor.user, 'warning_acknowledged',
+              notes=f"Staff override of block-out: {msg}")
+    return ServiceResult(ok=True, data={'booking_id': booking.id})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Edit
+# ─────────────────────────────────────────────────────────────────────────────
+
+def edit(booking, actor, aircraft, start_dt, end_dt, flight_type=None,
+         instructor=None, booking_member=None, description='', override=False) -> ServiceResult:
+    """
+    Edit an existing booking's time, aircraft, instructor, member, flight type, description.
+    actor — the ClubMember performing the edit.
+    """
+    from ..models import Booking, recompute_blockout_conflict
+
+    club = booking.club
+
+    # Aircraft conflict (exclude self, ignore cancelled)
+    if Booking.objects.filter(
+        club=club, aircraft=aircraft,
+        scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
+    ).exclude(id=booking.id).exclude(status='cancelled').exists():
+        return ServiceResult(ok=False, error='Aircraft already booked at that time')
+
+    # Instructor conflict
+    if instructor and Booking.objects.filter(
+        club=club, instructor=instructor,
+        scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
+    ).exclude(id=booking.id).exclude(status='cancelled').exists():
+        return ServiceResult(ok=False, error='Instructor already booked at that time')
+
+    # Block-out check
+    blocked, msg, hits, is_soft = check_blockout(
+        club, aircraft, instructor, start_dt, end_dt, actor, override,
+        exclude_booking_id=booking.id
+    )
+    if blocked:
+        can_override = is_soft or bool(actor.is_admin or actor.is_instructor)
+        return ServiceResult(ok=False, error=msg,
+                             data={'blockout': True, 'can_override': can_override, 'soft': is_soft})
+
+    if booking_member:
+        booking.member = booking_member
+    if flight_type:
+        booking.flight_type = flight_type
+    # Solo flight types must not carry an instructor
+    if booking.flight_type and booking.flight_type.is_solo:
+        instructor = None
+
+    booking.aircraft = aircraft
+    booking.instructor = instructor
+    booking.scheduled_start = start_dt
+    booking.scheduled_end = end_dt
+    booking.description = description
+    booking.blockout_override = bool(hits and override)
+    booking.save()
+
+    recompute_blockout_conflict(booking)
+    audit(booking, actor.user, 'field_changed', notes='Booking edited')
+    if hits and override:
+        audit(booking, actor.user, 'warning_acknowledged',
+              notes=f"Staff override of block-out on edit: {msg}")
+    return ServiceResult(ok=True)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reschedule
+# ─────────────────────────────────────────────────────────────────────────────
+
+def reschedule(booking, actor, new_start_dt, duration_minutes,
+               aircraft=None, instructor=None, override=False) -> ServiceResult:
+    """
+    Move a booking to a new time (and optionally a new aircraft or instructor).
+    actor — the ClubMember performing the reschedule.
+    """
+    from ..models import Booking, recompute_blockout_conflict
+    from datetime import timedelta
+
+    club = booking.club
+    new_end_dt = new_start_dt + timedelta(minutes=duration_minutes)
+    target_aircraft  = aircraft  or booking.aircraft
+    target_instructor = instructor if instructor is not None else booking.instructor
+
+    # Aircraft conflict
+    if Booking.objects.filter(
+        club=club, aircraft=target_aircraft,
+        scheduled_start__lt=new_end_dt, scheduled_end__gt=new_start_dt,
+    ).exclude(id=booking.id).exclude(status='cancelled').exists():
+        return ServiceResult(ok=False, error='Aircraft not available at new time')
+
+    # Instructor conflict (only if we're explicitly setting one)
+    if instructor is not None and instructor and Booking.objects.filter(
+        club=club, instructor=instructor,
+        scheduled_start__lt=new_end_dt, scheduled_end__gt=new_start_dt,
+    ).exclude(id=booking.id).exclude(status='cancelled').exists():
+        return ServiceResult(ok=False, error='Instructor not available at new time')
+
+    # Block-out check
+    blocked, msg, hits, is_soft = check_blockout(
+        club, target_aircraft, target_instructor, new_start_dt, new_end_dt,
+        actor, override, exclude_booking_id=booking.id
+    )
+    if blocked:
+        can_override = is_soft or bool(actor.is_admin or actor.is_instructor)
+        return ServiceResult(ok=False, error=msg,
+                             data={'blockout': True, 'can_override': can_override, 'soft': is_soft})
+
+    booking.scheduled_start = new_start_dt
+    booking.scheduled_end   = new_end_dt
+    if aircraft:
+        booking.aircraft = aircraft
+    if instructor is not None:
+        booking.instructor = target_instructor
+    booking.blockout_override = bool(hits and override)
+    booking.save()
+
+    recompute_blockout_conflict(booking)
+    audit(booking, actor.user, 'field_changed', notes='Rescheduled')
+    if hits and override:
+        audit(booking, actor.user, 'warning_acknowledged',
+              notes=f"Staff override of block-out on reschedule: {msg}")
+    return ServiceResult(ok=True)

@@ -10,6 +10,7 @@ from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, Fl
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem)
 from .availability import find_available_slots, get_date_range
 from .services import booking_service
+from .services import availability_service
 
 
 def _aware(dt):
@@ -26,52 +27,11 @@ def _audit(booking, user, event_type, notes='', field_name='', old_value='', new
 
 
 def _blockout_check(club, aircraft, instructor, start_dt, end_dt, actor, override, exclude_booking_id=None):
-    """
-    Scope-aware block-out conflict check for a prospective booking.
-    Returns (blocked: bool, message: str, hits: list, is_soft: bool).
-
-    Hard block-outs (BlockOutType.is_hard=True, or no type): members are blocked outright;
-      staff can override with confirmation.
-    Soft block-outs (BlockOutType.is_hard=False): everyone gets a warning and can confirm
-      to proceed — no staff-only gate.
-    """
-    from .models import BlockOut
-
-    class _Probe:
-        pass
-    probe = _Probe()
-    probe.club = club
-    probe.aircraft_id = aircraft.id if aircraft else None
-    probe.instructor_id = instructor.id if instructor else None
-    probe.scheduled_start = start_dt
-    probe.scheduled_end = end_dt
-
-    hits = [bo for bo in BlockOut.objects.filter(club=club).prefetch_related('aircraft', 'instructors', 'blockout_type')
-            if bo.overlaps_booking(probe)]
-    if not hits:
-        return (False, '', [], False)
-
-    def _name(h):
-        return h.blockout_type.name if h.blockout_type else (h.label or 'block-out')
-
-    # Aircraft block-out types are always hard; instructor types respect is_hard
-    hard_hits = [h for h in hits if not h.blockout_type or h.blockout_type.effective_is_hard]
-    soft_hits = [h for h in hits if h.blockout_type and not h.blockout_type.effective_is_hard]
-    is_staff = actor and (actor.is_admin or actor.is_instructor)
-
-    if hard_hits:
-        names = ', '.join(sorted({_name(h) for h in hard_hits}))
-        if is_staff and override:
-            return (False, names, hits, False)
-        if is_staff:
-            return (True, f"This overlaps a block-out ({names}). Override?", hits, False)
-        return (True, f"This time is blocked ({names}) and can't be booked.", hits, False)
-
-    # Soft block-outs only — anyone can confirm and proceed
-    names = ', '.join(sorted({_name(h) for h in soft_hits}))
-    if override:
-        return (False, names, hits, True)
-    return (True, f"Advisory: {names} is in effect. Book anyway?", hits, True)
+    """Thin wrapper — logic lives in booking_service.check_blockout."""
+    return booking_service.check_blockout(
+        club, aircraft, instructor, start_dt, end_dt, actor, override,
+        exclude_booking_id=exclude_booking_id
+    )
 
 
 @login_required
@@ -474,89 +434,48 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
 def reschedule_booking(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
     club = booking.club
-    
     try:
         club_member = ClubMember.objects.get(user=request.user, club=club)
     except ClubMember.DoesNotExist:
         return JsonResponse({'error': 'Not authorized'}, status=403)
-    
-    # Allow admin and instructor to reschedule
     if not (club_member.is_admin or club_member.is_instructor):
         return JsonResponse({'error': 'Only instructors and admins can reschedule'}, status=403)
-    
-    new_start = request.POST.get('new_start')
-    aircraft_id = request.POST.get('aircraft_id')
-    instructor_id = request.POST.get('instructor_id')
-    duration_param = request.POST.get('duration')
-    
-    if not new_start:
+
+    new_start_str = request.POST.get('new_start')
+    if not new_start_str:
         return JsonResponse({'error': 'Missing new_start'}, status=400)
-    
+
     try:
-        new_start_dt = _aware(datetime.fromisoformat(new_start))
-        if duration_param:
-            duration = int(duration_param)
-        else:
-            duration = (booking.scheduled_end - booking.scheduled_start).total_seconds() / 60
-        new_end_dt = new_start_dt + timedelta(minutes=duration)
-        
-        # Determine aircraft to check
-        aircraft = booking.aircraft
+        new_start_dt  = _aware(datetime.fromisoformat(new_start_str))
+        duration_param = request.POST.get('duration')
+        duration = int(duration_param) if duration_param else int(
+            (booking.scheduled_end - booking.scheduled_start).total_seconds() / 60
+        )
+
+        aircraft_id   = request.POST.get('aircraft_id')
+        instructor_id = request.POST.get('instructor_id')
+        override      = request.POST.get('override') in ('1', 'true', 'on')
+
+        aircraft = None
         if aircraft_id:
             aircraft = Aircraft.objects.filter(id=aircraft_id, club=club).first()
             if not aircraft:
                 return JsonResponse({'error': 'Aircraft not found'}, status=404)
-        
-        # Aircraft conflict (ignore cancelled, exclude self)
-        if Booking.objects.filter(
-            club=club, aircraft=aircraft,
-            scheduled_start__lt=new_end_dt, scheduled_end__gt=new_start_dt,
-        ).exclude(id=booking.id).exclude(status='cancelled').exists():
-            return JsonResponse({'error': 'Aircraft not available at new time'}, status=409)
-        
-        # Instructor conflict if specified
-        target_instructor = booking.instructor
+
+        instructor = None
         if instructor_id:
-            from .models import User
-            instructor = User.objects.filter(id=instructor_id).first()
-            if instructor:
-                if Booking.objects.filter(
-                    club=club, instructor=instructor,
-                    scheduled_start__lt=new_end_dt, scheduled_end__gt=new_start_dt,
-                ).exclude(id=booking.id).exclude(status='cancelled').exists():
-                    return JsonResponse({'error': 'Instructor not available at new time'}, status=409)
-                target_instructor = instructor
+            from .models import User as _User
+            instructor = _User.objects.filter(id=instructor_id).first()
 
-        # Block-out check (scope-aware)
-        override = request.POST.get('override') in ('1', 'true', 'on')
-        blocked, msg, hits, is_soft = _blockout_check(club, aircraft, target_instructor,
-                                                      new_start_dt, new_end_dt, club_member, override,
-                                                      exclude_booking_id=booking.id)
-        if blocked:
-            can_override = is_soft or bool(club_member.is_admin or club_member.is_instructor)
-            return JsonResponse({'error': msg, 'blockout': True,
-                                 'can_override': can_override, 'soft': is_soft}, status=409)
-
-        if instructor_id and target_instructor:
-            booking.instructor = target_instructor
-        booking.scheduled_start = new_start_dt
-        booking.scheduled_end = new_end_dt
-        if aircraft_id:
-            booking.aircraft = aircraft
-        booking.blockout_override = bool(hits and override)
-
-        booking.save()
-
-        # Recompute conflict flag against current block-outs after the move
-        from .models import recompute_blockout_conflict
-        recompute_blockout_conflict(booking)
-
-        _audit(booking, request.user, 'field_changed', notes='Rescheduled')
-        if hits and override:
-            _audit(booking, request.user, 'warning_acknowledged',
-                   notes=f"Staff override of block-out on reschedule: {msg}")
-
+        result = booking_service.reschedule(
+            booking, club_member, new_start_dt, duration,
+            aircraft=aircraft, instructor=instructor, override=override
+        )
+        if not result.ok:
+            status_code = 409 if result.data.get('blockout') else 400
+            return JsonResponse({'error': result.error, **result.data}, status=status_code)
         return JsonResponse({'success': True})
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -806,61 +725,37 @@ def create_booking(request):
         if not actor:
             return JsonResponse({'error': 'Not a club member'}, status=403)
 
-        club = actor.club
-        config = get_config(club)
-        aircraft_id = request.POST.get('aircraft_id')
-        start_time = request.POST.get('start_time')
-        duration = int(request.POST.get('duration') or config.default_booking_duration)
+        club     = actor.club
+        config   = get_config(club)
+        aircraft_id   = request.POST.get('aircraft_id')
+        start_time    = request.POST.get('start_time')
+        duration      = int(request.POST.get('duration') or config.default_booking_duration)
         instructor_id = request.POST.get('instructor_id')
-        member_id = request.POST.get('member_id')
-        description = request.POST.get('description', '')
+        member_id     = request.POST.get('member_id')
+        description   = request.POST.get('description', '')
+        override      = request.POST.get('override') in ('1', 'true', 'on')
 
         if not aircraft_id or not start_time:
             return JsonResponse({'error': 'Missing aircraft or start time'}, status=400)
 
-        # Who is the booking FOR? Staff can book on another member's behalf.
+        aircraft = Aircraft.objects.get(id=aircraft_id, club=club)
+        start_dt = _aware(datetime.fromisoformat(start_time))
+        end_dt   = start_dt + timedelta(minutes=duration)
+
+        # Who is the booking FOR?
         booking_member = actor
         if member_id and (actor.is_admin or actor.is_instructor):
-            from .models import User
-            target_user = User.objects.filter(id=member_id).first()
+            from .models import User as _User
+            target_user = _User.objects.filter(id=member_id).first()
             if target_user:
                 booking_member = ClubMember.objects.filter(user=target_user, club=club).first() or actor
 
-        aircraft = Aircraft.objects.get(id=aircraft_id, club=club)
-
-        start_dt = _aware(datetime.fromisoformat(start_time))
-        end_dt = start_dt + timedelta(minutes=duration)
-
-        # Block bookings in the past — admins may override for manual backdating
-        if start_dt < timezone.now() and not (actor.is_admin or actor.is_instructor):
-            return JsonResponse({'error': 'Bookings cannot be made in the past'}, status=400)
-
-        # Aircraft conflict
-        if Booking.objects.filter(
-            club=club, aircraft=aircraft,
-            scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
-        ).exclude(status='cancelled').exists():
-            return JsonResponse({'error': 'Aircraft already booked at that time'}, status=409)
-
         instructor = None
         if instructor_id:
-            from .models import User
-            instructor = User.objects.filter(id=instructor_id).first()
-            # Instructor conflict
-            if instructor and Booking.objects.filter(
-                club=club, instructor=instructor,
-                scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
-            ).exclude(status='cancelled').exists():
-                return JsonResponse({'error': 'Instructor already booked at that time'}, status=409)
+            from .models import User as _User
+            instructor = _User.objects.filter(id=instructor_id).first()
 
-        # Block-out check: hard blocks need staff override; soft blocks anyone can confirm.
-        override = request.POST.get('override') in ('1', 'true', 'on')
-        blocked, msg, hits, is_soft = _blockout_check(club, aircraft, instructor, start_dt, end_dt, actor, override)
-        if blocked:
-            can_override = is_soft or bool(actor.is_admin or actor.is_instructor)
-            return JsonResponse({'error': msg, 'blockout': True,
-                                 'can_override': can_override, 'soft': is_soft}, status=409)
-
+        # Flight type resolution
         flight_type_id = request.POST.get('flight_type_id')
         if flight_type_id:
             flight_type = FlightType.objects.filter(club=club, id=flight_type_id).first()
@@ -875,30 +770,15 @@ def create_booking(request):
         if not flight_type:
             return JsonResponse({'error': 'No flight types configured'}, status=400)
 
-        # Solo flight types must not have an instructor
-        if flight_type.is_solo:
-            instructor = None
-
-        booking = Booking.objects.create(
-            club=club,
-            member=booking_member,
-            aircraft=aircraft,
-            scheduled_start=start_dt,
-            scheduled_end=end_dt,
-            created_by=request.user,
-            instructor=instructor,
-            status='pending',
-            flight_type=flight_type,
-            description=description,
-            blockout_override=bool(hits and override),
+        result = booking_service.create(
+            club, actor, aircraft, start_dt, end_dt, flight_type,
+            instructor=instructor, booking_member=booking_member,
+            description=description, override=override,
         )
-
-        _audit(booking, request.user, 'created', notes='Booking created')
-        if hits and override:
-            _audit(booking, request.user, 'warning_acknowledged',
-                   notes=f"Staff override of block-out: {msg}")
-
-        return JsonResponse({'success': True, 'booking_id': booking.id})
+        if not result.ok:
+            status_code = 409 if result.data.get('blockout') else 400
+            return JsonResponse({'error': result.error, **result.data}, status=status_code)
+        return JsonResponse({'success': True, 'booking_id': result.data['booking_id']})
 
     except Aircraft.DoesNotExist:
         return JsonResponse({'error': 'Aircraft not found'}, status=404)
@@ -924,76 +804,44 @@ def edit_booking(request, booking_id):
         return JsonResponse({'error': 'Only instructors and admins can edit bookings'}, status=403)
 
     try:
-        config = get_config(club)
-        aircraft_id = request.POST.get('aircraft_id')
-        start_time = request.POST.get('start_time')
-        duration = int(request.POST.get('duration') or config.default_booking_duration)
+        config        = get_config(club)
+        aircraft_id   = request.POST.get('aircraft_id')
+        start_time    = request.POST.get('start_time')
+        duration      = int(request.POST.get('duration') or config.default_booking_duration)
         instructor_id = request.POST.get('instructor_id')
-        member_id = request.POST.get('member_id')
-        description = request.POST.get('description', '')
+        member_id     = request.POST.get('member_id')
+        description   = request.POST.get('description', '')
+        override      = request.POST.get('override') in ('1', 'true', 'on')
 
         aircraft = Aircraft.objects.get(id=aircraft_id, club=club) if aircraft_id else booking.aircraft
         start_dt = _aware(datetime.fromisoformat(start_time)) if start_time else booking.scheduled_start
-        end_dt = start_dt + timedelta(minutes=duration)
-
-        # Conflicts (exclude self, ignore cancelled)
-        if Booking.objects.filter(
-            club=club, aircraft=aircraft,
-            scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
-        ).exclude(id=booking.id).exclude(status='cancelled').exists():
-            return JsonResponse({'error': 'Aircraft already booked at that time'}, status=409)
+        end_dt   = start_dt + timedelta(minutes=duration)
 
         instructor = None
         if instructor_id:
-            from .models import User
-            instructor = User.objects.filter(id=instructor_id).first()
-            if instructor and Booking.objects.filter(
-                club=club, instructor=instructor,
-                scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
-            ).exclude(id=booking.id).exclude(status='cancelled').exists():
-                return JsonResponse({'error': 'Instructor already booked at that time'}, status=409)
+            from .models import User as _User
+            instructor = _User.objects.filter(id=instructor_id).first()
 
+        booking_member = None
         if member_id:
-            from .models import User
-            tu = User.objects.filter(id=member_id).first()
+            from .models import User as _User
+            tu = _User.objects.filter(id=member_id).first()
             if tu:
-                booking.member = ClubMember.objects.filter(user=tu, club=club).first() or booking.member
+                booking_member = ClubMember.objects.filter(user=tu, club=club).first()
 
-        # Block-out check (scope-aware)
-        override = request.POST.get('override') in ('1', 'true', 'on')
-        blocked, msg, hits, is_soft = _blockout_check(club, aircraft, instructor, start_dt, end_dt,
-                                                      actor, override, exclude_booking_id=booking.id)
-        if blocked:
-            can_override = is_soft or bool(actor.is_admin or actor.is_instructor)
-            return JsonResponse({'error': msg, 'blockout': True,
-                                 'can_override': can_override, 'soft': is_soft}, status=409)
-
+        flight_type = None
         flight_type_id = request.POST.get('flight_type_id')
         if flight_type_id:
-            ft = FlightType.objects.filter(club=club, id=flight_type_id).first()
-            if ft:
-                booking.flight_type = ft
+            flight_type = FlightType.objects.filter(club=club, id=flight_type_id).first()
 
-        # Solo flight types must not carry an instructor
-        if booking.flight_type and booking.flight_type.is_solo:
-            instructor = None
-
-        booking.aircraft = aircraft
-        booking.instructor = instructor
-        booking.scheduled_start = start_dt
-        booking.scheduled_end = end_dt
-        booking.description = description
-        booking.blockout_override = bool(hits and override)
-        booking.save()
-
-        from .models import recompute_blockout_conflict
-        recompute_blockout_conflict(booking)
-
-        _audit(booking, request.user, 'field_changed', notes='Booking edited')
-        if hits and override:
-            _audit(booking, request.user, 'warning_acknowledged',
-                   notes=f"Staff override of block-out on edit: {msg}")
-
+        result = booking_service.edit(
+            booking, actor, aircraft, start_dt, end_dt,
+            flight_type=flight_type, instructor=instructor,
+            booking_member=booking_member, description=description, override=override,
+        )
+        if not result.ok:
+            status_code = 409 if result.data.get('blockout') else 400
+            return JsonResponse({'error': result.error, **result.data}, status=status_code)
         return JsonResponse({'success': True})
 
     except Aircraft.DoesNotExist:
@@ -1075,9 +923,8 @@ def availability_search(request, club_slug):
 
         if is_solo:
             # Aircraft-only spans; no instructor.
-            from .availability import find_free_spans
-            raw = find_free_spans(
-                club=club, date_start=date_start, date_end=date_end,
+            raw = availability_service.free_spans_solo(
+                club, date_start, date_end,
                 aircraft=specific_aircraft, aircraft_type=aircraft_type_filter or None,
                 min_minutes=config.time_slot_interval,
             )
@@ -1099,9 +946,8 @@ def availability_search(request, club_slug):
                     })
         else:
             # Dual: aircraft AND instructor both free.
-            from .availability import find_free_spans_with_instructors
-            raw = find_free_spans_with_instructors(
-                club=club, date_start=date_start, date_end=date_end,
+            raw = availability_service.free_spans_dual(
+                club, date_start, date_end,
                 aircraft=specific_aircraft, aircraft_type=aircraft_type_filter or None,
                 instructor=specific_instructor, min_minutes=config.time_slot_interval,
             )
