@@ -2809,6 +2809,8 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
             engines = request.POST.get('engine_count', '')
             if engines.isdigit():
                 ac.engine_count = int(engines)
+            ac.is_leased = request.POST.get('is_leased') == 'on'
+            ac.is_available_for_hire = request.POST.get('is_available_for_hire') == 'on'
             ac.records_hobbs = request.POST.get('records_hobbs') == 'on'
             ac.records_tacho = request.POST.get('records_tacho') == 'on'
             ac.records_airswitch = request.POST.get('records_airswitch') == 'on'

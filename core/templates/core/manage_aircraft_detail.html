@@ -53,7 +53,16 @@
         </label>
       </div>
 
-      <h2 class="sh2" style="margin-top:1.4rem;">Recording instruments</h2>
+      <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
+          <input type="checkbox" name="is_leased" {% if ac.is_leased %}checked{% endif %}> Leased-in (not club-owned)
+        </label>
+        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
+          <input type="checkbox" name="is_available_for_hire" {% if ac.is_available_for_hire %}checked{% endif %}> Available for hire
+        </label>
+      </div>
+
+      <h2 class="sh2" style="margin-top:1rem;">Recording instruments</h2>
       <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;">
         <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
           <input type="checkbox" name="records_hobbs" {% if ac.records_hobbs %}checked{% endif %}> Hobbs meter

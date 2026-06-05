@@ -451,6 +451,7 @@ class Aircraft(models.Model):
     # Status
     status = models.CharField(max_length=20, choices=AircraftStatus.choices, default=AircraftStatus.ONLINE)
     is_available_for_hire = models.BooleanField(default=True)
+    is_leased = models.BooleanField(default=False, help_text="Leased-in aircraft (not club-owned)")
     
     # Audit
     created_at = models.DateTimeField(auto_now_add=True)
