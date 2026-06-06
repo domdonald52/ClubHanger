@@ -560,13 +560,15 @@
           <input type="text" name="billing_name" value="{{ config.billing_name }}" class="finput" placeholder="e.g. Aero Club Inc.">
         </label>
         <label class="flabel">Phone
-          <input type="text" name="billing_phone" value="{{ config.billing_phone }}" class="finput">
+          <input type="text" name="billing_phone" value="{{ config.billing_phone }}" class="finput"
+                 pattern="[0-9+\(\)\s\-]{7,20}" title="7–20 digits, spaces, +, -, ()">
         </label>
         <label class="flabel">Email
           <input type="email" name="billing_email" value="{{ config.billing_email }}" class="finput">
         </label>
-        <label class="flabel">GST / tax number
-          <input type="text" name="gst_number" value="{{ config.gst_number }}" class="finput">
+        <label class="flabel">GST / tax number <span style="font-weight:400;color:#8a93a0;">(8–9 digits)</span>
+          <input type="text" name="gst_number" value="{{ config.gst_number }}" class="finput"
+                 pattern="\d{8,9}" title="NZ GST number: 8 or 9 digits">
         </label>
         <label class="flabel">GST rate <span style="font-weight:400;color:#8a93a0;">(%)</span>
           <input type="number" name="gst_rate" value="{{ config.gst_rate }}" step="0.01" min="0" max="99" class="finput" style="width:90px;">
@@ -581,8 +583,10 @@
         <label class="flabel">Bank name
           <input type="text" name="bank_name" value="{{ config.bank_name }}" class="finput" placeholder="e.g. BNZ Kilbirnie">
         </label>
-        <label class="flabel">Bank account number
-          <input type="text" name="bank_account" value="{{ config.bank_account }}" class="finput" placeholder="e.g. 02-0520-0109798-00">
+        <label class="flabel">Bank account number <span style="font-weight:400;color:#8a93a0;">(XX-XXXX-XXXXXXX-XX)</span>
+          <input type="text" name="bank_account" value="{{ config.bank_account }}" class="finput"
+                 placeholder="02-0520-0109798-00"
+                 pattern="\d{2}-\d{4}-\d{7}-\d{2,3}" title="NZ format: XX-XXXX-XXXXXXX-XX">
         </label>
         <label class="flabel">Payment terms <span style="font-weight:400;color:#8a93a0;">(days)</span>
           <input type="number" name="payment_terms_days" value="{{ config.payment_terms_days }}" min="1" max="365" class="finput" style="width:90px;">
@@ -605,7 +609,10 @@
         </div>
       </div>
 
-      <button type="submit" class="btn">Save billing settings</button>
+      <div style="display:flex;align-items:center;gap:.8rem;">
+        <button type="submit" class="btn">Save</button>
+        <span class="saved-badge" id="billing-saved">✓ Saved</span>
+      </div>
     </form>
   </div><!-- /tab-billing -->
 
@@ -847,7 +854,11 @@
 
   .sh2{font-size:1rem;font-weight:650;margin:.4rem 0 .7rem;color:#1f2933;}
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
+  .saved-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;font-weight:600;color:#2a7a3b;opacity:0;transition:opacity .3s;}
+  .saved-badge.show{opacity:1;}
+  input:invalid{border-color:#f59e0b;}
+  input:invalid:focus{outline-color:#f59e0b;}
   .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
 
   .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem;}
@@ -937,6 +948,14 @@
   const _qs = new URLSearchParams(location.search);
   if (_qs.get('tab')) initial = _qs.get('tab');
   activateTab(initial);
+
+  if (_qs.get('saved') === '1' && _qs.get('tab') === 'billing') {
+    const badge = document.getElementById('billing-saved');
+    if (badge) {
+      badge.classList.add('show');
+      setTimeout(() => badge.classList.remove('show'), 3000);
+    }
+  }
 
   // ── Palette-based appearance tab ──────────────────────────────────────────
   const PALETTES = [
