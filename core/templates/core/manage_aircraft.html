@@ -9,7 +9,7 @@
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
     <h2 class="sh2" style="margin:0;">Fleet <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ aircraft_list|length }})</span></h2>
-    {% if club_member.is_admin %}<button type="button" class="btn" id="add-ac-btn" style="font-size:.85rem;">+ Add aircraft</button>{% endif %}
+    {% if club_member.is_admin %}<button type="button" class="cbtn-add" id="add-ac-btn">+ Add aircraft</button>{% endif %}
   </div>
 
   {% if aircraft_list %}
