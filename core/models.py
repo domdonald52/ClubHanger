@@ -1056,6 +1056,17 @@ class Booking(models.Model):
     departed_without_declaration = models.BooleanField(default=False)
     departed_without_declaration_reason = models.CharField(max_length=500, blank=True)
 
+    # Cancellation reason
+    CANCELLATION_REASON_CHOICES = [
+        ('weather',                'Weather'),
+        ('aircraft_unserviceable', 'Aircraft unserviceable'),
+        ('instructor_unavailable', 'Instructor unavailable'),
+        ('no_longer_required',     'No longer required'),
+        ('other',                  'Other'),
+    ]
+    cancellation_reason       = models.CharField(max_length=30, blank=True, choices=CANCELLATION_REASON_CHOICES)
+    cancellation_reason_other = models.CharField(max_length=200, blank=True)
+
     # Slot release — set when staff/member explicitly frees the slot for others
     slot_released = models.BooleanField(default=False)
     slot_released_at = models.DateTimeField(null=True, blank=True)

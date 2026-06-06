@@ -614,20 +614,38 @@
 
   const cancelChoiceModal = document.getElementById("cancel-choice");
   const cancelReleaseCheck = document.getElementById("cancel-release-check");
+  const cancelReasonSel    = document.getElementById("cancel-reason");
+  const cancelReasonOtherW = document.getElementById("cancel-reason-other-wrap");
+  const cancelReasonOther  = document.getElementById("cancel-reason-other");
   const ccKeep = document.getElementById("cc-keep");
   const ccConfirm = document.getElementById("cc-confirm");
+
+  cancelReasonSel.addEventListener("change", () => {
+    cancelReasonOtherW.hidden = cancelReasonSel.value !== "other";
+    if (cancelReasonSel.value !== "other") cancelReasonOther.value = "";
+  });
 
   btnDelete.addEventListener("click", () => {
     if (!fId.value) return;
     cancelReleaseCheck.checked = false;
+    cancelReasonSel.value = "";
+    cancelReasonOtherW.hidden = true;
+    cancelReasonOther.value = "";
     cancelChoiceModal.hidden = false;
   });
   ccKeep.addEventListener("click", () => { cancelChoiceModal.hidden = true; });
   ccConfirm.addEventListener("click", () => {
+    if (!cancelReasonSel.value) {
+      cancelReasonSel.style.borderColor = "#c0392b";
+      setTimeout(() => cancelReasonSel.style.borderColor = "", 1500);
+      return;
+    }
     const id = fId.value;
     const release = cancelReleaseCheck.checked ? "1" : "0";
+    const reason = cancelReasonSel.value;
+    const reason_other = cancelReasonOther.value.trim();
     cancelChoiceModal.hidden = true;
-    post(`/api/booking/${id}/reject/`, { release }).then((res) => {
+    post(`/api/booking/${id}/reject/`, { release, reason, reason_other }).then((res) => {
       if (res.ok && res.data.success) location.reload();
       else toast(res.data.error || "Could not cancel");
     });

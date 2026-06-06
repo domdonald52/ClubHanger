@@ -268,7 +268,21 @@
 <div id="cancel-choice" class="modal-back" hidden>
   <div class="modal small">
     <h2>Cancel booking</h2>
-    <p style="font-size:.85rem;color:#5b6573;margin:.3rem 0 1rem;">Do you want to let other members know this slot has become available?</p>
+    <label class="flabel" style="margin-bottom:.7rem;">Reason for cancellation
+      <select id="cancel-reason" class="finput" style="margin-top:.3rem;">
+        <option value="">— select a reason —</option>
+        <option value="weather">Weather</option>
+        <option value="aircraft_unserviceable">Aircraft unserviceable</option>
+        <option value="instructor_unavailable">Instructor unavailable</option>
+        <option value="no_longer_required">No longer required</option>
+        <option value="other">Other</option>
+      </select>
+    </label>
+    <div id="cancel-reason-other-wrap" hidden style="margin-bottom:.7rem;">
+      <label class="flabel">Please specify
+        <input type="text" id="cancel-reason-other" class="finput" style="margin-top:.3rem;" placeholder="Describe the reason…" maxlength="200">
+      </label>
+    </div>
     <label style="display:block;font-size:.85rem;cursor:pointer;padding:.55rem .7rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:7px;margin-bottom:1.1rem;">
       <input type="checkbox" id="cancel-release-check" style="width:auto;margin-right:.45rem;vertical-align:middle;">
       Send a slot alert to interested members

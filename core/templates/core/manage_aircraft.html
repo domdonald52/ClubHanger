@@ -6,7 +6,18 @@
   <h1 style="margin-bottom:1.2rem;">Manage</h1>
 
   {% include "core/_manage_nav.html" with active_section="aircraft" %}
-  {% if retire_error %}<div class="notice err" style="margin-bottom:1rem;">{{ retire_error }}</div>{% endif %}
+  {% if retire_error %}
+  <div class="notice warn" style="margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <span>{{ retire_error.msg }}</span>
+    <form method="post" style="display:inline;">{% csrf_token %}
+      <input type="hidden" name="action" value="set_status">
+      <input type="hidden" name="ac_id" value="{{ retire_error.ac_id }}">
+      <input type="hidden" name="status" value="retired">
+      <input type="hidden" name="force" value="1">
+      <button type="submit" class="cbtn cbtn-danger" style="white-space:nowrap;">Retire anyway</button>
+    </form>
+  </div>
+  {% endif %}
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
     <h2 class="sh2" style="margin:0;">Fleet <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ online_aircraft|length }} online{% if retired_aircraft %}, {{ retired_aircraft|length }} retired{% endif %})</span></h2>

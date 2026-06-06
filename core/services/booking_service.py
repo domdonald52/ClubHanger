@@ -231,12 +231,15 @@ def check_in(
     return ServiceResult(ok=True, data={'charges_url': f'/manage/{club.slug}/bookings/{booking.id}/'})
 
 
-def cancel(booking, user, release_slot: bool = False) -> ServiceResult:
+def cancel(booking, user, release_slot: bool = False,
+           reason: str = '', reason_other: str = '') -> ServiceResult:
     """
     Cancel a booking (also used for member self-cancellation / instructor rejection).
     Caller verifies actor permission.
     """
     booking.status = 'cancelled'
+    booking.cancellation_reason = reason
+    booking.cancellation_reason_other = reason_other if reason == 'other' else ''
     if release_slot:
         booking.slot_released = True
         booking.slot_released_at = timezone.now()

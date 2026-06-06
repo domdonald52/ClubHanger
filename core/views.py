@@ -776,8 +776,12 @@ def reject_booking(request, booking_id):
     if not (club_member.is_admin or club_member.is_instructor or is_own):
         return JsonResponse({'error': 'Not authorized'}, status=403)
 
-    result = booking_service.cancel(booking, request.user,
-                                    release_slot=request.POST.get('release') == '1')
+    result = booking_service.cancel(
+        booking, request.user,
+        release_slot=request.POST.get('release') == '1',
+        reason=request.POST.get('reason', ''),
+        reason_other=request.POST.get('reason_other', ''),
+    )
     if not result.ok:
         return JsonResponse({'error': result.error}, status=400)
     return JsonResponse({'success': True})
@@ -1558,7 +1562,8 @@ def manage_bookings(request, club_slug):
                 status='confirmed', confirmed_by=request.user, confirmed_at=timezone.now()
             )
         elif action == 'cancel':
-            qs.update(status='cancelled')
+            reason = request.POST.get('bulk_cancel_reason', 'no_longer_required')
+            qs.update(status='cancelled', cancellation_reason=reason)
         elif action == 'move_aircraft':
             ac = Aircraft.objects.filter(club=club, id=request.POST.get('target_aircraft_id'), status='online').first()
             if ac:
@@ -2575,20 +2580,23 @@ def manage_aircraft(request, club_slug):
         if action == 'set_status' and actor.is_admin:
             ac_id = request.POST.get('ac_id')
             status = request.POST.get('status')
+            force = request.POST.get('force') == '1'
             ac = Aircraft.objects.filter(club=club, id=ac_id).first()
             if ac and status in [s.value for s in AircraftStatus]:
-                if status == 'retired':
+                if status == 'retired' and not force:
                     future_count = Booking.objects.filter(
                         club=club, aircraft=ac,
                         scheduled_start__gt=timezone.now(),
                     ).exclude(status='cancelled').count()
                     if future_count:
                         retire_error = (
-                            f"Cannot retire {ac.registration} — "
-                            f"{future_count} future booking{'s' if future_count != 1 else ''} still reference it. "
-                            "Cancel or reassign them first."
+                            f"{ac.registration} has "
+                            f"{future_count} future booking{'s' if future_count != 1 else ''} — "
+                            "they will appear on the Exceptions screen for reassignment."
                         )
-                        status = None  # skip save
+                        # Store pending retire context for the confirm button
+                        retire_error = {'msg': retire_error, 'ac_id': ac_id, 'count': future_count}
+                        status = None  # don't save yet
                 if status:
                     ac.status = status
                     ac.save(update_fields=['status'])
