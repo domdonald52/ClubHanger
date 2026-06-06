@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 {% block title %}Invoice {{ invoice.display_number }} · {{ club.name }}{% endblock %}
 {% block content %}
-<div class="container" style="padding:2rem;max-width:900px;">
+<div style="padding:2rem;max-width:900px;margin:0 auto;">
   <a href="{% url 'core:manage_invoices' club.slug %}" class="back-link">← Invoices</a>
 
   {% if error %}<div class="notice err">{{ error }}</div>{% endif %}
@@ -18,7 +18,7 @@
       </div>
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-      <span class="status-badge status-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
+      <span class="inv-badge inv-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
       <a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn">Print / PDF ↗</a>
       {% if invoice.flight_completion %}
       <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}" class="cbtn">View booking</a>
@@ -27,8 +27,8 @@
   </div>
 
   <!-- Line items -->
-  <div class="bcard" style="margin-bottom:1.2rem;">
-    <div class="bcard-head">Charges</div>
+  <div class="inv-card" style="margin-bottom:1.2rem;">
+    <div class="inv-card-head">Charges</div>
     <div style="padding:.5rem 0;">
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
         <thead>
@@ -77,10 +77,10 @@
     </div>
   </div>
 
-  <!-- Actions -->
+  <!-- Actions (hidden once paid or voided) -->
   {% if invoice.status != 'void' and invoice.status != 'paid' %}
-  <div class="bcard" style="margin-bottom:1.2rem;">
-    <div class="bcard-head">Actions</div>
+  <div class="inv-card" style="margin-bottom:1.2rem;">
+    <div class="inv-card-head">Actions</div>
     <div style="padding:.8rem .9rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
       {% if invoice.status == 'draft' %}
       <form method="post" style="display:inline;">
@@ -103,15 +103,15 @@
       {% endif %}
       <form method="post" style="display:inline;" onsubmit="return confirm('Void this invoice?')">
         {% csrf_token %}<input type="hidden" name="action" value="void">
-        <button type="submit" class="cbtn danger">Void invoice</button>
+        <button type="submit" class="cbtn cbtn-danger">Void invoice</button>
       </form>
     </div>
   </div>
   {% endif %}
 
-  <!-- Description / notes -->
-  <div class="bcard">
-    <div class="bcard-head">Description &amp; notes</div>
+  <!-- Description / notes — always editable (admin notes, not financial data) -->
+  <div class="inv-card">
+    <div class="inv-card-head">Description &amp; notes</div>
     <div style="padding:.8rem .9rem;">
       <form method="post">
         {% csrf_token %}<input type="hidden" name="action" value="update_description">
@@ -121,7 +121,7 @@
         <label class="flabel" style="margin-top:.5rem;">Internal notes
           <textarea name="notes" class="finput" rows="2">{{ invoice.notes }}</textarea>
         </label>
-        <button type="submit" class="cbtn" style="margin-top:.5rem;">Save</button>
+        <button type="submit" class="btn" style="margin-top:.6rem;">Save</button>
       </form>
     </div>
   </div>
@@ -133,20 +133,15 @@
   .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;}
   .notice.ok{background:#eaf6ec;color:#216c2a;}
   .notice.err{background:#fff0f0;color:#c0392b;}
-  .bcard{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.2rem;}
-  .bcard-head{background:#fafbfc;padding:.6rem .9rem;border-bottom:1px solid #eef1f4;font-size:.88rem;font-weight:600;}
-  .status-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;background:#e3e6ea;color:#5b6573;}
-  .status-badge.status-draft{background:#f3f5f7;color:#5b6573;}
-  .status-badge.status-sent{background:#dbeafe;color:#1d4ed8;}
-  .status-badge.status-paid{background:#dcfce7;color:#166534;}
-  .status-badge.status-void{background:#fee2e2;color:#991b1b;}
-  .cbtn{display:inline-flex;align-items:center;height:34px;padding:0 .85rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#1f2933;font-size:.83rem;cursor:pointer;text-decoration:none;}
-  .cbtn:hover{background:#f3f5f7;}
-  .cbtn.danger{color:#c0392b;border-color:#f5b7b1;}
+  .inv-card{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.2rem;}
+  .inv-card-head{background:#fafbfc;padding:.6rem .9rem;border-bottom:1px solid #eef1f4;font-size:.88rem;font-weight:600;}
+  .inv-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;}
+  .inv-draft{background:#f3f5f7;color:#5b6573;}
+  .inv-sent{background:#dbeafe;color:#1d4ed8;}
+  .inv-paid{background:#dcfce7;color:#166534;}
+  .inv-void{background:#fee2e2;color:#991b1b;}
   .money-wrap{position:relative;display:inline-flex;align-items:center;}
   .money-sym{position:absolute;left:.5rem;color:#8a93a0;font-size:.85rem;}
   .money-input{padding-left:1.4rem!important;}
-  .flabel{display:flex;flex-direction:column;font-size:.83rem;font-weight:600;color:#374151;}
-  .finput{border:1px solid #d1d5db;border-radius:6px;padding:.38rem .5rem;font-size:.85rem;margin-top:.2rem;}
 </style>
 {% endblock %}

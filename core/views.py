@@ -3467,6 +3467,7 @@ def invoice_detail(request, club_slug, invoice_id):
             invoice.description = request.POST.get('description', '').strip()
             invoice.notes = request.POST.get('notes', '').strip()
             invoice.save(update_fields=['description', 'notes'])
+            success = 'Description saved.'
 
     line_items = invoice.line_items.all()
     return render(request, 'core/invoice_detail.html', {
