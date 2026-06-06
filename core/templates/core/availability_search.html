@@ -15,7 +15,7 @@
 
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Flight</label>
-                    <div style="display:flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;">
+                    <div style="display:flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;height:32px;">
                         <label style="flex:1;text-align:center;cursor:pointer;" id="lbl-dual">
                             <input type="radio" name="booking_kind" value="dual" id="kind-dual" style="display:none;" {% if filters_applied.booking_kind != 'solo' %}checked{% endif %}>
                             <span>Dual</span>
@@ -148,8 +148,7 @@
     .container form input[type="text"],
     .container form input[type="number"] { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
     .container form label { font-size: 0.85rem; }
-    #lbl-dual, #lbl-solo { padding:0 .5rem; font-size:.85rem; height:32px; display:flex; align-items:center; justify-content:center; box-sizing:border-box; }
-    #lbl-dual, #lbl-solo, .container form select { height:32px; }
+    #lbl-dual, #lbl-solo { flex:1; display:flex; align-items:center; justify-content:center; font-size:.85rem; }
 </style>
 <script>
 const _availForm = document.getElementById('avail-form');

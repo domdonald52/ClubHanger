@@ -9,7 +9,7 @@ from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, Fl
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem,
                      FlightCompletion, AircraftMaintenanceItem, ChargeRate, FlightChargeItem,
-                     FlightLandingEntry, AccountTransaction)
+                     FlightLandingEntry, AccountTransaction, ClubConfig)
 from .availability import find_available_slots, get_date_range
 from .services import booking_service
 from .services import availability_service
