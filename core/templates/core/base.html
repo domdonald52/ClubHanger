@@ -199,6 +199,9 @@
 
     <main>{% block content %}{% endblock %}</main>
 <style>
+/* ── Shared action buttons ── */
+.cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:500;cursor:pointer;}
+.cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);}
 /* ── Manage sub-nav tabs (shared across all manage pages) ── */
 .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;flex-wrap:wrap;}
 .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:.4rem;}
@@ -362,11 +365,8 @@
         const sep2 = raw.includes('?') ? '&' : '?';
         const action = raw + sep2 + 'inline=1';
         try {
-          const resp = await fetch(action, {method:'POST', body:new FormData(f), credentials:'same-origin'});
-          const html = await resp.text();
-          body.innerHTML = html;
-          runScripts(body);
-          attachHandlers(baseUrl);
+          await fetch(action, {method:'POST', body:new FormData(f), credentials:'same-origin'});
+          await loadOverlay(baseUrl);
         } catch(e) {
           alert('Error submitting — please try again.');
         }
