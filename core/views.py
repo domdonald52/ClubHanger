@@ -3719,7 +3719,7 @@ def ai_ask(request, club_slug):
     # Completed flights — all time
     fcs = (FlightCompletion.objects
            .filter(booking__club=club, actual_flight_hours__isnull=False)
-           .select_related('booking__aircraft', 'booking__instructor__user', 'booking__member__user')
+           .select_related('booking__aircraft', 'booking__instructor', 'booking__member__user')
            .prefetch_related('charge_items')
            .order_by('booking__arrived_at'))
     flight_rows = []
@@ -3730,7 +3730,7 @@ def ai_ask(request, club_slug):
             'date': b.arrived_at.strftime('%Y-%m-%d') if b.arrived_at else None,
             'aircraft': b.aircraft.registration if b.aircraft else None,
             'member': b.member.user.get_full_name() if b.member else None,
-            'instructor': b.instructor.user.get_full_name() if b.instructor else None,
+            'instructor': b.instructor.get_full_name() if b.instructor else None,
             'hours': round(float(fc.actual_flight_hours), 1),
             'charged': round(charged, 2),
             'paid': round(float(fc.amount_paid or 0), 2),
