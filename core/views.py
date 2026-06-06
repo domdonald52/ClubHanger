@@ -3441,21 +3441,6 @@ def invoice_detail(request, club_slug, invoice_id):
                     invoice.status = 'paid'
                     invoice.paid_at = timezone.now()
                 invoice.save(update_fields=['amount_paid', 'status', 'paid_at'])
-                # Also record AccountTransaction
-                from .models import AccountTransaction, Account as _Acct
-                acct, _ = _Acct.objects.get_or_create(
-                    club_member=invoice.member, defaults={'balance': 0}
-                )
-                AccountTransaction.objects.create(
-                    account=acct,
-                    transaction_type='flight',
-                    direction='debit',
-                    amount=pay_amt,
-                    description=f'Payment for invoice {invoice.display_number}',
-                    payment_method='bank_transfer',
-                    created_by=request.user,
-                )
-                acct.apply_transaction(pay_amt, 'debit')
                 success = f'Payment of ${pay_amt} recorded.'
 
         elif action == 'void' and invoice.status in ('draft', 'sent'):

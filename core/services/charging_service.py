@@ -128,22 +128,23 @@ def record_payment(fc, booking, user, amount, method: str) -> ServiceResult:
     fc.payment_method = method
     if fc.paid_at is None:
         fc.paid_at = timezone.now()
-    fc.save(update_fields=['payment_method', 'paid_at', 'total_charge', 'amount_paid'])
+    fc.save(update_fields=['payment_method', 'paid_at', 'amount_paid'])
 
-    AccountTransaction.objects.create(
-        account=acct,
-        transaction_type='flight',
-        direction='debit',
-        amount=pay_amount,
-        description=(
-            f'Flight {booking.aircraft.registration} {booking.scheduled_start.date()}'
-            + (f' (partial — ${fc.balance_owing:.2f} remaining)' if fc.is_partially_paid else '')
-        ),
-        flight_completion=fc,
-        payment_method=method,
-        created_by=user,
-    )
     if method == 'credit':
+        # Paying from pre-paid account credit — debit the balance
+        AccountTransaction.objects.create(
+            account=acct,
+            transaction_type='flight',
+            direction='debit',
+            amount=pay_amount,
+            description=(
+                f'Flight {booking.aircraft.registration} {booking.scheduled_start.date()}'
+                + (f' (partial — ${fc.balance_owing:.2f} remaining)' if fc.is_partially_paid else '')
+            ),
+            flight_completion=fc,
+            payment_method=method,
+            created_by=user,
+        )
         acct.apply_transaction(pay_amount, 'debit')
 
     if fc.is_paid:
