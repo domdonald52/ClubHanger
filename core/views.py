@@ -2015,8 +2015,8 @@ def booking_detail(request, club_slug, booking_id):
     return render(request, 'core/booking_detail.html', ctx)
 
 
-def _inline_redirect(request, view_name, saved=False, **kwargs):
-    """Redirect back to the same page, preserving ?inline=1 and optionally ?saved=1."""
+def _inline_redirect(request, view_name, saved=False, error='', **kwargs):
+    """Redirect back to the same page, preserving ?inline=1 and optionally ?saved=1 or ?err=..."""
     from django.urls import reverse
     url = reverse(view_name, kwargs=kwargs)
     params = []
@@ -2024,6 +2024,9 @@ def _inline_redirect(request, view_name, saved=False, **kwargs):
         params.append('inline=1')
     if saved:
         params.append('saved=1')
+    if error:
+        from urllib.parse import quote
+        params.append(f'err={quote(error)}')
     if params:
         url += '?' + '&'.join(params)
     return redirect(url)
@@ -2081,8 +2084,22 @@ def manage_member_detail(request, club_slug, member_id):
             sub_exp = request.POST.get('subscription_expires')
             member.subscription_expires = sub_exp or None
             role_id = request.POST.get('role_id')
-            member.role = Role.objects.filter(club=club, id=role_id).first() if role_id else None
-            member.has_admin_access = request.POST.get('has_admin_access') == 'on'
+            new_role = Role.objects.filter(club=club, id=role_id).first() if role_id else None
+            new_has_admin = request.POST.get('has_admin_access') == 'on'
+            # Guard: don't remove the last admin
+            would_be_admin = new_has_admin or (new_role and new_role.effective_is_admin)
+            if not would_be_admin:
+                other_admins = ClubMember.objects.filter(club=club).exclude(id=member.id).filter(
+                    models.Q(has_admin_access=True) |
+                    models.Q(role__is_superadmin=True) |
+                    models.Q(role__can_access_settings=True)
+                )
+                if not other_admins.exists():
+                    return _inline_redirect(request, 'core:manage_member_detail',
+                                            club_slug=club_slug, member_id=member_id,
+                                            error='Cannot remove admin access — at least one admin must remain.')
+            member.role = new_role
+            member.has_admin_access = new_has_admin
             member.save()
         elif action == 'save_notes' and actor.is_admin:
             pass  # notes field not yet on model — placeholder
@@ -2552,6 +2569,7 @@ def manage_aircraft(request, club_slug):
         return render(request, 'core/no_access.html', {'club': club}, status=403)
 
     from .models import AircraftStatus, BlockOut, BlockOutType
+    retire_error = ''
     if request.method == 'POST':
         action = request.POST.get('action', '')
         if action == 'set_status' and actor.is_admin:
@@ -2559,8 +2577,21 @@ def manage_aircraft(request, club_slug):
             status = request.POST.get('status')
             ac = Aircraft.objects.filter(club=club, id=ac_id).first()
             if ac and status in [s.value for s in AircraftStatus]:
-                ac.status = status
-                ac.save(update_fields=['status'])
+                if status == 'retired':
+                    future_count = Booking.objects.filter(
+                        club=club, aircraft=ac,
+                        scheduled_start__gt=timezone.now(),
+                    ).exclude(status='cancelled').count()
+                    if future_count:
+                        retire_error = (
+                            f"Cannot retire {ac.registration} — "
+                            f"{future_count} future booking{'s' if future_count != 1 else ''} still reference it. "
+                            "Cancel or reassign them first."
+                        )
+                        status = None  # skip save
+                if status:
+                    ac.status = status
+                    ac.save(update_fields=['status'])
         elif action == 'add_aircraft' and actor.is_admin:
             reg = request.POST.get('registration', '').strip().upper()
             ac_type_id = request.POST.get('aircraft_type_id', '').strip()
@@ -2578,7 +2609,8 @@ def manage_aircraft(request, club_slug):
         elif action == 'delete_blockout':
             bo_id = request.POST.get('bo_id')
             BlockOut.objects.filter(club=club, id=bo_id).delete()
-        return redirect('core:manage_aircraft', club_slug=club_slug)
+        if not retire_error:
+            return redirect('core:manage_aircraft', club_slug=club_slug)
 
     online_aircraft  = Aircraft.objects.filter(club=club, status='online').order_by('registration')
     retired_aircraft = Aircraft.objects.filter(club=club, status='retired').order_by('registration')
@@ -2627,6 +2659,7 @@ def manage_aircraft(request, club_slug):
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'status_choices': AircraftStatus.choices,
         'aircraft_blockout_types': aircraft_blockout_types,
+        'retire_error': retire_error,
     })
 
 

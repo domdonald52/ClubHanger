@@ -323,6 +323,17 @@ def create(club, actor, aircraft, start_dt, end_dt, flight_type, instructor=None
     if start_dt < timezone.now() and not (actor.is_admin or actor.is_instructor):
         return ServiceResult(ok=False, error='Bookings cannot be made in the past')
 
+    # Subscription expiry guard — block member self-booking; admins/instructors may override
+    from datetime import date as _date
+    if (not (actor.is_admin or actor.is_instructor)
+            and booking_member.subscription_expires
+            and booking_member.subscription_expires < _date.today()):
+        return ServiceResult(
+            ok=False,
+            error=f'Membership subscription expired on {booking_member.subscription_expires.strftime("%d %b %Y")}. '
+                  'Please renew before booking.'
+        )
+
     # Aircraft conflict
     if Booking.objects.filter(
         club=club, aircraft=aircraft,

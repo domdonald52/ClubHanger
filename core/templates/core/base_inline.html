@@ -58,3 +58,4 @@
   [hidden]{display:none!important;}
 </style>
 {% if request.GET.saved %}<script>if(window.showSavedToast)window.showSavedToast();</script>{% endif %}
+{% if request.GET.err %}<div class="notice err" style="margin:.6rem 1.2rem 0;">{{ request.GET.err }}</div>{% endif %}

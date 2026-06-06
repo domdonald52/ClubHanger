@@ -6,6 +6,7 @@
   <h1 style="margin-bottom:1.2rem;">Manage</h1>
 
   {% include "core/_manage_nav.html" with active_section="aircraft" %}
+  {% if retire_error %}<div class="notice err" style="margin-bottom:1rem;">{{ retire_error }}</div>{% endif %}
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
     <h2 class="sh2" style="margin:0;">Fleet <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ online_aircraft|length }} online{% if retired_aircraft %}, {{ retired_aircraft|length }} retired{% endif %})</span></h2>
