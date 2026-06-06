@@ -30,15 +30,14 @@
         .sidenav.open { left: 0; }
         .sidenav-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 399; opacity: 0; pointer-events: none; transition: opacity .22s; }
         .sidenav-overlay.open { opacity: 1; pointer-events: auto; }
-        /* Desktop: sidebar always open, content shifted right */
+        /* Desktop: fixed full-width header + always-open sidebar below it */
         @media (min-width: 900px) {
-          .sidenav { left: 0; top: 0; height: 100%; box-shadow: none; border-right: 1px solid #e3e6ea; transition: none; }
-          .sidenav-close { display: none; }
-          .sidenav-club { white-space: normal; overflow: visible; text-overflow: clip; }
+          header { position: fixed; top: 0; left: 0; right: 0; z-index: 450; }
+          .sidenav { left: 0; top: 52px; height: calc(100% - 52px); box-shadow: none; border-right: 1px solid #e3e6ea; transition: none; }
+          .sidenav-head { display: none !important; }
           .sidenav-overlay { display: none !important; }
           .hamburger { display: none; }
-          .header-logo { display: none !important; }
-          body { padding-left: 270px; }
+          body { padding-left: 270px; padding-top: 52px; }
         }
         .sidenav-head { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem .9rem 1.1rem; background: var(--banner); color: #fff; flex-shrink: 0; min-height: 52px; }
         .sidenav-club { font-size: .92rem; font-weight: 650; opacity: .95; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -216,7 +215,42 @@
 .status-chip.completed,.status-chip.status-completed{background:color-mix(in srgb,var(--completed-paid) 15%,#fff);color:var(--completed-paid);}
 .status-chip.cancelled,.status-chip.status-cancelled{background:#f3f5f7;color:#8a93a0;}
 </style>
+<style>
+  .toast-rack{position:fixed;bottom:1.4rem;right:1.4rem;z-index:600;display:flex;flex-direction:column;gap:.5rem;pointer-events:none;}
+  .toast{background:#1f2933;color:#fff;padding:.55rem 1rem;border-radius:8px;font-size:.84rem;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:.5rem;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:auto;}
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast.ok{background:#2a7a3b;}
+  .toast.err{background:#c0392b;}
+</style>
+<div class="toast-rack" id="toast-rack"></div>
 <script>
+(function(){
+  // Global toast — window.toast(msg, type='ok'|'err'|'')
+  const rack = document.getElementById('toast-rack');
+  window.toast = function(msg, type) {
+    const t = document.createElement('div');
+    t.className = 'toast' + (type ? ' ' + type : ' ok');
+    t.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="2 7 6 11 12 3"/></svg>' + msg;
+    rack.appendChild(t);
+    requestAnimationFrame(() => t.classList.add('show'));
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 3000);
+  };
+  // Auto-show toast for ?saved=1 in URL
+  document.addEventListener('DOMContentLoaded', () => {
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('saved')) {
+      window.toast('Saved');
+      const u = new URL(location.href); u.searchParams.delete('saved');
+      history.replaceState({}, '', u);
+    }
+    // Convert any inline success notices to toasts and remove them
+    document.querySelectorAll('.notice.ok, .snotice.ok').forEach(el => {
+      const msg = el.textContent.trim();
+      if (msg) window.toast(msg);
+      el.remove();
+    });
+  });
+})();
 (function(){
   // User dropdown
   const btn = document.getElementById('user-btn');

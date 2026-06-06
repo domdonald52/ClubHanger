@@ -621,7 +621,6 @@
       </label>
 
       <button type="submit" class="btn">Save</button>
-        <span class="saved-badge" id="billing-saved">✓ Saved</span>
       </div>
     </form>
   </div><!-- /tab-billing -->
@@ -959,13 +958,6 @@
   if (_qs.get('tab')) initial = _qs.get('tab');
   activateTab(initial);
 
-  if (_qs.get('saved') === '1' && _qs.get('tab') === 'billing') {
-    const badge = document.getElementById('billing-saved');
-    if (badge) {
-      badge.classList.add('show');
-      setTimeout(() => badge.classList.remove('show'), 3000);
-    }
-  }
 
   // ── Palette-based appearance tab ──────────────────────────────────────────
   const PALETTES = [
