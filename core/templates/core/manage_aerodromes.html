@@ -11,7 +11,7 @@
       <h2 class="ae-page-title">Aerodromes &amp; Landing Fees</h2>
       <p class="ae-page-desc">Aerodromes you fly to and their landing fee rates. Used when completing a flight charge.</p>
     </div>
-    <button type="button" class="btn" id="add-ae-btn">+ Add aerodrome</button>
+    <button type="button" class="cbtn-add" id="add-ae-btn">+ Add aerodrome</button>
   </div>
 
   {% if error %}<div class="snotice err">{{ error }}</div>{% endif %}
@@ -96,7 +96,7 @@
       <path d="M20 13v7M20 27h.01"/>
     </svg>
     <p>No aerodromes configured yet.</p>
-    <button type="button" class="btn" id="add-ae-empty-btn">+ Add first aerodrome</button>
+    <button type="button" class="cbtn-add" id="add-ae-empty-btn">+ Add first aerodrome</button>
   </div>
   {% endfor %}
 </div>
@@ -172,13 +172,9 @@
   .ae-status-btn.ae-active:hover{background:#d1f0da;}
   .ae-status-btn.ae-inactive{background:#f3f5f7;color:#8a93a0;}
   .ae-status-btn.ae-inactive:hover{background:#eef1f4;}
-
-  .cbtn-sm{padding:.28rem .6rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;cursor:pointer;}
-  .cbtn-sm:hover{background:#f3f5f7;}
-  .cbtn-sm.cbtn-danger{color:#c0392b;border-color:#f5c6cb;}
-  .cbtn-sm.cbtn-danger:hover{background:#fff0f0;}
-
-  .ae-fees{padding:.7rem 1rem;}
+.cbtn-sm
+.cbtn-sm
+.ae-fees{padding:.7rem 1rem;}
   .ae-fees-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin-bottom:.5rem;}
   .fee-row{display:flex;align-items:center;gap:.5rem;padding:.22rem 0;border-bottom:1px solid #f5f6f8;}
   .fee-row:last-of-type{border-bottom:none;}
