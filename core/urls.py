@@ -39,6 +39,7 @@ urlpatterns = [
     path('manage/<slug:club_slug>/rates/', views.manage_rates, name='manage_rates'),
     path('manage/<slug:club_slug>/invoices/', views.manage_invoices, name='manage_invoices'),
     path('manage/<slug:club_slug>/vouchers/', views.manage_vouchers, name='manage_vouchers'),
+    path('notifications/<slug:club_slug>/', views.notifications, name='notifications'),
     path('reports/<slug:club_slug>/', views.reports, name='reports'),
     path('reports/<slug:club_slug>/ask/', views.ai_ask, name='ai_ask'),
     path('data/<slug:club_slug>/', views.data_page, name='data_page'),

@@ -151,78 +151,81 @@
 
   <!-- ── NOTIFICATIONS ── -->
   <section id="notifications" class="detail-section stab-panel">
-    <h2 class="section-title">Slot release notifications</h2>
+    <h2 class="section-title">Notification preferences</h2>
     <p style="font-size:.83rem;color:#5b6573;margin-bottom:1.2rem;">
-      Get emailed when a booking is cancelled and its slot is explicitly released for others.
-      Leave aircraft or instructor filters empty to match any.
+      Choose which alerts appear in your <a href="{% url 'core:notifications' club.slug %}">notifications inbox</a>.
+      All are on by default except slot releases (opt-in).
     </p>
 
-    {% if notification_pref %}
-      <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="save_notifications">
+    {% with pref=notification_pref %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_notifications">
 
-        {% if club_aircraft %}
-        <div style="margin-bottom:1.1rem;">
-          <div class="flabel" style="margin-bottom:.5rem;">Aircraft <span style="font-weight:400;color:#8a93a0;">(empty = any)</span></div>
-          <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
-            {% for ac in club_aircraft %}
-            <label style="display:flex;align-items:center;gap:.35rem;font-size:.84rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:6px;padding:.3rem .65rem;cursor:pointer;">
-              <input type="checkbox" name="notify_aircraft" value="{{ ac.id }}"
-                     {% if ac in notification_pref.aircraft.all %}checked{% endif %}>
-              {{ ac.registration }}
-            </label>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
+      <table style="width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:1.4rem;">
+        <thead><tr style="border-bottom:2px solid #e3e6ea;">
+          <th style="padding:.4rem .6rem;text-align:left;color:#8a93a0;font-size:.75rem;text-transform:uppercase;">Alert</th>
+          <th style="padding:.4rem .6rem;text-align:center;color:#8a93a0;font-size:.75rem;text-transform:uppercase;width:56px;">On/Off</th>
+        </tr></thead>
+        <tbody>
+          {% for t in notification_toggle_fields %}
+          <tr style="border-bottom:1px solid #f0f2f4;">
+            <td style="padding:.5rem .6rem;">{{ t.label }}</td>
+            <td style="padding:.5rem .6rem;text-align:center;">
+              <label class="tog-sw">
+                <input type="checkbox" name="{{ t.field }}" {% if t.enabled %}checked{% endif %}>
+                <span class="tog-track"></span>
+              </label>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
 
-        {% if club_instructors %}
-        <div style="margin-bottom:1.1rem;">
-          <div class="flabel" style="margin-bottom:.5rem;">Instructor <span style="font-weight:400;color:#8a93a0;">(empty = any)</span></div>
-          <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
-            {% for instr in club_instructors %}
-            <label style="display:flex;align-items:center;gap:.35rem;font-size:.84rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:6px;padding:.3rem .65rem;cursor:pointer;">
-              <input type="checkbox" name="notify_instructors" value="{{ instr.user.id }}"
-                     {% if instr.user in notification_pref.instructors.all %}checked{% endif %}>
-              {{ instr.user.get_full_name }}
-            </label>
-            {% endfor %}
-          </div>
-        </div>
-        {% endif %}
-
-        <div style="margin-bottom:1.2rem;">
-          <label class="flabel">Only notify for slots within
-            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem;">
-              <input type="number" name="max_days_ahead" min="1" max="90"
-                     value="{{ notification_pref.max_days_ahead|default:'' }}"
-                     placeholder="any"
-                     style="width:80px;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;">
-              <span style="font-size:.84rem;color:#5b6573;">days ahead (leave blank for no limit)</span>
-            </div>
+      {% if club_aircraft or club_instructors %}
+      <h3 style="font-size:.9rem;font-weight:650;margin:.5rem 0 .4rem;">Slot release filters</h3>
+      <p style="font-size:.82rem;color:#5b6573;margin-bottom:.8rem;">When a booking is released, only notify me if it matches these filters (leave empty to match any).</p>
+      {% if club_aircraft %}
+      <div style="margin-bottom:.9rem;">
+        <div class="flabel" style="margin-bottom:.4rem;">Aircraft</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
+          {% for ac in club_aircraft %}
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:6px;padding:.28rem .6rem;cursor:pointer;">
+            <input type="checkbox" name="notify_aircraft" value="{{ ac.id }}"
+                   {% if pref and ac in pref.aircraft.all %}checked{% endif %}>
+            {{ ac.registration }}
           </label>
+          {% endfor %}
         </div>
-
-        <div style="display:flex;align-items:center;gap:.8rem;">
-          <button type="submit" class="btn">Save preferences</button>
-          <button type="button" class="btn" style="background:#e53e3e;"
-                  onclick="if(confirm('Turn off slot notifications?')) document.getElementById('notif-off-form').submit()">Turn off</button>
+      </div>
+      {% endif %}
+      {% if club_instructors %}
+      <div style="margin-bottom:.9rem;">
+        <div class="flabel" style="margin-bottom:.4rem;">Instructor</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
+          {% for instr in club_instructors %}
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:6px;padding:.28rem .6rem;cursor:pointer;">
+            <input type="checkbox" name="notify_instructors" value="{{ instr.user.id }}"
+                   {% if pref and instr.user in pref.instructors.all %}checked{% endif %}>
+            {{ instr.user.get_full_name }}
+          </label>
+          {% endfor %}
         </div>
-      </form>
-      <form method="post" id="notif-off-form" style="display:none;">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="delete_notifications">
-      </form>
+      </div>
+      {% endif %}
+      <label class="flabel" style="margin-bottom:.9rem;">Only within
+        <div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem;">
+          <input type="number" name="max_days_ahead" min="1" max="90"
+                 value="{{ pref.max_days_ahead|default:'' }}" placeholder="any"
+                 class="finput" style="width:80px;">
+          <span style="font-size:.83rem;color:#5b6573;">days ahead</span>
+        </div>
+      </label>
+      {% endif %}
 
-    {% else %}
-      <p style="font-size:.84rem;color:#8a93a0;margin-bottom:1rem;">Slot release notifications are currently <strong>off</strong>.</p>
-      <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="save_notifications">
-        <button type="submit" class="btn">Turn on notifications</button>
-      </form>
-    {% endif %}
+      <button type="submit" class="btn">Save</button>
+    </form>
+    {% endwith %}
   </section>
 
 </div>

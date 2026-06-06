@@ -1699,6 +1699,8 @@ def booking_detail(request, club_slug, booking_id):
             booking.confirmed_at = timezone.now()
             booking.save()
             _audit(booking, request.user, 'confirmed')
+            from .services import notification_service
+            notification_service.notify_booking_confirmed(booking)
             success = 'Booking confirmed.'
 
         elif action == 'depart' and booking.status == 'confirmed':
@@ -2301,6 +2303,16 @@ def my_profile(request, club_slug):
         elif action == 'save_notifications':
             from .models import NotificationPreference
             pref, _ = NotificationPreference.objects.get_or_create(club_member=member)
+            # Per-type alert toggles
+            _toggle_fields = [
+                'booking_confirmed', 'booking_cancelled', 'booking_reminder',
+                'credential_expiring', 'subscription_expiring',
+                'instructor_booking_urgent', 'instructor_booking_upcoming',
+                'maintenance_alert', 'lapsed_credentials', 'slot_released',
+            ]
+            for f in _toggle_fields:
+                setattr(pref, f, request.POST.get(f) == 'on')
+            # Slot-release filters
             pref.aircraft.set(request.POST.getlist('notify_aircraft'))
             pref.instructors.set(request.POST.getlist('notify_instructors'))
             raw_days = request.POST.get('max_days_ahead', '').strip()
@@ -2368,10 +2380,28 @@ def my_profile(request, club_slug):
         club=club, is_on_instructor_roster=True
     ).select_related('user').order_by('user__last_name')
 
+    _raw_toggles = [
+        ('booking_confirmed',           'Booking confirmed',                             True),
+        ('booking_cancelled',           'Booking cancelled',                             True),
+        ('booking_reminder',            'Booking reminder (day before)',                 True),
+        ('credential_expiring',         'Credential expiring (medical, BFR, etc.)',      True),
+        ('subscription_expiring',       'Subscription expiring',                         True),
+        ('instructor_booking_urgent',   'New booking assigned — within 2 days (urgent)', True),
+        ('instructor_booking_upcoming', 'New booking assigned — within 10 days',         True),
+        ('maintenance_alert',           'Maintenance alert (amber/red items)',            True),
+        ('lapsed_credentials',          'Member has lapsed credentials — flight today',   True),
+        ('slot_released',               'Slot released by another member (opt-in)',       False),
+    ]
+    _notif_toggles = [
+        {'field': f, 'label': l,
+         'enabled': getattr(notification_pref, f, default) if notification_pref else default}
+        for f, l, default in _raw_toggles
+    ]
     return render(request, 'core/my_profile.html', {
         'club': club, 'club_member': member, 'is_instructor': member.is_instructor,
         'member': member, 'upcoming': upcoming, 'past': past, 'account': account,
         'notification_pref': notification_pref,
+        'notification_toggle_fields': _notif_toggles,
         'club_aircraft': club_aircraft,
         'club_instructors': club_instructors,
         'upcoming_as_instructor': upcoming_as_instructor,
@@ -3466,7 +3496,7 @@ def invoice_detail(request, club_slug, invoice_id):
             invoice.save(update_fields=['status', 'sent_at'])
             success = 'Invoice marked as sent.'
 
-        elif action == 'mark_paid':
+        elif action == 'mark_paid' and invoice.status == 'sent':
             from decimal import Decimal as _D
             pay_str = request.POST.get('payment_amount', '').strip()
             try:
@@ -3804,6 +3834,30 @@ def ai_ask(request, club_slug):
         return JsonResponse({'answer': resp.choices[0].message.content})
     except Exception as exc:
         return JsonResponse({'error': f'AI error: {exc}'}, status=500)
+
+
+@login_required
+def notifications(request, club_slug):
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        member = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'mark_read':
+            member.notifications.filter(id=request.POST.get('id')).update(is_read=True)
+        elif action == 'mark_all_read':
+            member.notifications.filter(is_read=False).update(is_read=True)
+        return redirect('core:notifications', club_slug=club_slug)
+
+    items = list(member.notifications.all()[:60])
+    member.notifications.filter(is_read=False).update(is_read=True)
+    return render(request, 'core/notifications.html', {
+        'club': club, 'club_member': member, 'is_instructor': member.is_instructor,
+        'notifications': items,
+    })
 
 
 @login_required

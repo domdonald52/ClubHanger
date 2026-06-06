@@ -1374,6 +1374,18 @@ class NotificationPreference(models.Model):
         help_text="Only notify for slots starting within this many days. Null = no limit."
     )
 
+    # Per-type alert toggles (default ON, except slot_released which is opt-in OFF)
+    booking_confirmed           = models.BooleanField(default=True)
+    booking_cancelled           = models.BooleanField(default=True)
+    booking_reminder            = models.BooleanField(default=True)
+    credential_expiring         = models.BooleanField(default=True)
+    subscription_expiring       = models.BooleanField(default=True)
+    instructor_booking_urgent   = models.BooleanField(default=True)
+    instructor_booking_upcoming = models.BooleanField(default=True)
+    maintenance_alert           = models.BooleanField(default=True)
+    lapsed_credentials          = models.BooleanField(default=True)
+    slot_released               = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1395,6 +1407,34 @@ class NotificationPreference(models.Model):
             if not (0 <= days_away <= self.max_days_ahead):
                 return False
         return True
+
+
+class Notification(models.Model):
+    """In-app notification inbox item for a club member."""
+    TYPES = [
+        ('booking_confirmed',          'Booking confirmed'),
+        ('booking_cancelled',          'Booking cancelled'),
+        ('booking_reminder',           'Booking reminder'),
+        ('credential_expiring',        'Credential expiring'),
+        ('subscription_expiring',      'Subscription expiring'),
+        ('instructor_booking_urgent',  'New booking assigned (urgent)'),
+        ('instructor_booking_upcoming','New booking assigned'),
+        ('maintenance_alert',          'Maintenance alert'),
+        ('lapsed_credentials',         'Lapsed credentials — flight today'),
+    ]
+    club_member       = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=40, choices=TYPES)
+    subject           = models.CharField(max_length=200)
+    body              = models.TextField(blank=True)
+    action_url        = models.CharField(max_length=500, blank=True)
+    is_read           = models.BooleanField(default=False)
+    created_at        = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.club_member} — {self.subject}"
 
 
 class SlotReleaseNotification(models.Model):

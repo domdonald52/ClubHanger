@@ -39,4 +39,8 @@ def theme(request):
         cm = ClubMember.objects.filter(user=request.user, club=club).select_related('role').first()
         if cm:
             ctx['club_member'] = cm
+            try:
+                ctx['unread_notifications_count'] = cm.notifications.filter(is_read=False).count()
+            except Exception:
+                ctx['unread_notifications_count'] = 0
     return ctx
