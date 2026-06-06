@@ -14,6 +14,7 @@
     <button class="stab-btn" id="tabBtn-members"     data-tab="members">Members</button>
     <button class="stab-btn" id="tabBtn-payments"    data-tab="payments">Payments</button>
     <button class="stab-btn" id="tabBtn-analytics"   data-tab="analytics">Analytics ✦</button>
+    <button class="stab-btn" id="tabBtn-ask"         data-tab="ask">Ask AI ✦</button>
   </div>
 
   <!-- ── AIRCRAFT tab ── -->
@@ -118,6 +119,33 @@
     </div>
   </div>
 
+  <!-- ── ASK AI tab ── -->
+  <div id="tab-ask" class="stab-panel">
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .3rem;">Ask about your club data</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1.2rem;">Ask questions in plain English — e.g. "Which aircraft flew the most hours this year?" or "How much revenue did we collect last month?"</p>
+
+      <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
+        <input type="text" id="ai-question" placeholder="Ask a question…"
+               class="finput" style="flex:1;font-size:.9rem;"
+               onkeydown="if(event.key==='Enter'){askAI();}">
+        <button onclick="askAI()" class="btn" id="ai-submit-btn">Ask</button>
+      </div>
+
+      <div id="ai-suggestions" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1.2rem;">
+        {% for q in ai_suggestions %}
+        <button class="cbtn" style="font-size:.78rem;padding:.25rem .6rem;" onclick="document.getElementById('ai-question').value=this.textContent;askAI();">{{ q }}</button>
+        {% endfor %}
+      </div>
+
+      <div id="ai-response" style="display:none;">
+        <div id="ai-answer" style="background:#f8f9fa;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;font-size:.88rem;line-height:1.6;white-space:pre-wrap;"></div>
+      </div>
+      <div id="ai-loading" style="display:none;font-size:.85rem;color:#8a93a0;">Thinking…</div>
+      <div id="ai-error" style="display:none;font-size:.85rem;color:#c0392b;"></div>
+    </div>
+  </div>
+
   <!-- ── ANALYTICS tab (drag-and-drop concept demo) ── -->
   <div id="tab-analytics" class="stab-panel">
     <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
@@ -169,7 +197,7 @@
 <script>
 // ── Report tabs ──────────────────────────────────────────────────────────────
 (function(){
-  const TABS = ['aircraft','instructors','members','payments','analytics'];
+  const TABS = ['aircraft','instructors','members','payments','analytics','ask'];
   function activate(id) {
     TABS.forEach(t => {
       document.getElementById('tab-'+t).classList.toggle('active', t===id);
@@ -292,6 +320,40 @@ function runAnalytics() {
   html += `</tbody></table>`;
   document.getElementById('analytics-table-wrap').innerHTML = html;
   document.getElementById('analytics-result').style.display = 'block';
+}
+
+// ── Ask AI ───────────────────────────────────────────────────────────────────
+function askAI() {
+  const q = document.getElementById('ai-question').value.trim();
+  if (!q) return;
+  document.getElementById('ai-response').style.display = 'none';
+  document.getElementById('ai-error').style.display = 'none';
+  document.getElementById('ai-loading').style.display = 'block';
+  document.getElementById('ai-submit-btn').disabled = true;
+
+  const form = new FormData();
+  form.append('question', q);
+  form.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+  fetch('{% url "core:ai_ask" club_slug=club.slug %}', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('ai-loading').style.display = 'none';
+      document.getElementById('ai-submit-btn').disabled = false;
+      if (data.error) {
+        document.getElementById('ai-error').textContent = data.error;
+        document.getElementById('ai-error').style.display = 'block';
+      } else {
+        document.getElementById('ai-answer').textContent = data.answer;
+        document.getElementById('ai-response').style.display = 'block';
+      }
+    })
+    .catch(() => {
+      document.getElementById('ai-loading').style.display = 'none';
+      document.getElementById('ai-submit-btn').disabled = false;
+      document.getElementById('ai-error').textContent = 'Request failed — check the server logs.';
+      document.getElementById('ai-error').style.display = 'block';
+    });
 }
 </script>
 {% endblock %}

@@ -27,6 +27,8 @@ if _env_file.exists():
 
 SECRET_KEY = os.environ['SECRET_KEY']
 
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')

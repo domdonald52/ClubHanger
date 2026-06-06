@@ -3667,7 +3667,164 @@ def reports(request, club_slug):
         'payment_total_collected': round(pay_total_collected, 2),
         'analytics_fields': analytics_fields,
         'analytics_demo': _json.dumps(analytics_demo),
+        'ai_suggestions': [
+            'Which aircraft flew the most hours this year?',
+            'How much revenue did we collect last month?',
+            'Who are the most active members this year?',
+            'Which instructor has the most hours this year?',
+            'Are any aircraft overdue for maintenance?',
+            'How many active members do we have?',
+        ],
     })
+
+
+@login_required
+def ai_ask(request, club_slug):
+    """Natural-language query endpoint powered by Gemini function calling."""
+    import json as _json
+    from django.conf import settings as _settings
+    from google import genai
+    from google.genai import types as _gtypes
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return JsonResponse({'error': 'Not a member'}, status=403)
+    if not actor.is_admin:
+        return JsonResponse({'error': 'Admin access required'}, status=403)
+
+    question = request.POST.get('question', '').strip()
+    if not question:
+        return JsonResponse({'error': 'No question provided'}, status=400)
+
+    api_key = _settings.GEMINI_API_KEY
+    if not api_key:
+        return JsonResponse({'error': 'AI not configured — add GEMINI_API_KEY to .env and restart the server.'}, status=503)
+
+    # ── Query tools (closures over club) ─────────────────────────────────────
+    def get_flight_summary(date_from: str = '', date_to: str = '', group_by: str = 'aircraft') -> dict:
+        """Return flight hours and counts for a date range grouped by aircraft, instructor, member, or month.
+        date_from and date_to are ISO strings (YYYY-MM-DD). group_by is one of: aircraft, instructor, member, month."""
+        from django.db.models import Sum
+        qs = FlightCompletion.objects.filter(
+            booking__club=club, actual_flight_hours__isnull=False
+        ).select_related('booking__aircraft', 'booking__instructor__user', 'booking__member__user')
+        if date_from:
+            try:
+                qs = qs.filter(booking__arrived_at__date__gte=date_from)
+            except Exception:
+                pass
+        if date_to:
+            try:
+                qs = qs.filter(booking__arrived_at__date__lte=date_to)
+            except Exception:
+                pass
+        groups = {}
+        for fc in qs:
+            b = fc.booking
+            if group_by == 'aircraft':
+                key = b.aircraft.registration if b.aircraft else 'Unknown'
+            elif group_by == 'instructor':
+                key = b.instructor.user.get_full_name() if b.instructor else 'No instructor'
+            elif group_by == 'member':
+                key = b.member.user.get_full_name() if b.member else 'Unknown'
+            elif group_by == 'month':
+                key = b.arrived_at.strftime('%Y-%m') if b.arrived_at else 'Unknown'
+            else:
+                key = 'total'
+            if key not in groups:
+                groups[key] = {'hours': 0.0, 'flights': 0}
+            groups[key]['hours'] += float(fc.actual_flight_hours)
+            groups[key]['flights'] += 1
+        rows = sorted(
+            [{group_by: k, 'hours': round(v['hours'], 1), 'flights': v['flights']} for k, v in groups.items()],
+            key=lambda r: -r['hours']
+        )
+        return {'group_by': group_by, 'date_from': date_from or 'all time', 'date_to': date_to or 'present', 'rows': rows}
+
+    def get_member_stats() -> dict:
+        """Return member counts broken down by role and standing (active, lapsed, etc.)."""
+        members = ClubMember.objects.filter(club=club).select_related('role')
+        by_role = {}
+        by_standing = {}
+        for m in members:
+            role_name = m.role.name if m.role else 'No role'
+            by_role[role_name] = by_role.get(role_name, 0) + 1
+            standing = m.standing or 'unknown'
+            by_standing[standing] = by_standing.get(standing, 0) + 1
+        return {'total': members.count(), 'by_role': by_role, 'by_standing': by_standing}
+
+    def get_payment_summary(date_from: str = '', date_to: str = '') -> dict:
+        """Return revenue charged, amount collected, and outstanding balance for a date range.
+        date_from and date_to are ISO strings (YYYY-MM-DD)."""
+        qs = FlightCompletion.objects.filter(
+            booking__club=club, actual_flight_hours__isnull=False
+        ).prefetch_related('charge_items')
+        if date_from:
+            try:
+                qs = qs.filter(booking__arrived_at__date__gte=date_from)
+            except Exception:
+                pass
+        if date_to:
+            try:
+                qs = qs.filter(booking__arrived_at__date__lte=date_to)
+            except Exception:
+                pass
+        total_charged = 0.0
+        total_paid = 0.0
+        for fc in qs:
+            total_charged += sum(float(ci.amount) for ci in fc.charge_items.all())
+            total_paid += float(fc.amount_paid or 0)
+        return {
+            'date_from': date_from or 'all time',
+            'date_to': date_to or 'present',
+            'flights': qs.count(),
+            'total_charged': round(total_charged, 2),
+            'total_collected': round(total_paid, 2),
+            'outstanding': round(total_charged - total_paid, 2),
+        }
+
+    def get_aircraft_status() -> dict:
+        """Return current status of all active club aircraft including any overdue or urgent maintenance items."""
+        aircraft = Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration').prefetch_related('maintenance_items')
+        result = []
+        for ac in aircraft:
+            items = list(ac.maintenance_items.all())
+            result.append({
+                'registration': ac.registration,
+                'type': ac.aircraft_type.name if ac.aircraft_type else 'Unknown',
+                'status': ac.status,
+                'is_leased': ac.is_leased,
+                'overdue_items': [m.name for m in items if getattr(m, 'urgency', '') == 'red'],
+                'warning_items': [m.name for m in items if getattr(m, 'urgency', '') == 'amber'],
+            })
+        return {'aircraft': result}
+
+    # ── Gemini call ───────────────────────────────────────────────────────────
+    try:
+        client = genai.Client(api_key=api_key)
+        system = (
+            f"You are a helpful assistant for {club.name}, an aviation club. "
+            f"Today is {date.today().strftime('%d %B %Y')}. "
+            "Answer questions about flights, members, payments, and aircraft using the provided tools. "
+            "Be concise and clear. Format currency as $X,XXX.XX and hours as X.X hrs. "
+            "If asked about a date range, use ISO date strings (YYYY-MM-DD) when calling tools."
+        )
+        response = client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=question,
+            config=_gtypes.GenerateContentConfig(
+                system_instruction=system,
+                tools=[get_flight_summary, get_member_stats, get_payment_summary, get_aircraft_status],
+            ),
+        )
+        return JsonResponse({'answer': response.text})
+    except Exception as exc:
+        return JsonResponse({'error': f'AI error: {exc}'}, status=500)
 
 
 @login_required

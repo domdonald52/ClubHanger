@@ -40,6 +40,7 @@ urlpatterns = [
     path('manage/<slug:club_slug>/invoices/', views.manage_invoices, name='manage_invoices'),
     path('manage/<slug:club_slug>/vouchers/', views.manage_vouchers, name='manage_vouchers'),
     path('reports/<slug:club_slug>/', views.reports, name='reports'),
+    path('reports/<slug:club_slug>/ask/', views.ai_ask, name='ai_ask'),
     path('data/<slug:club_slug>/', views.data_page, name='data_page'),
     path('data/<slug:club_slug>/import-template/', views.export_import_template, name='export_import_template'),
     path('settings/<slug:club_slug>/export/<str:export_type>/', views.export_data, name='export_data'),
