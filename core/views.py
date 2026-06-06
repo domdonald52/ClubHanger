@@ -3680,11 +3680,10 @@ def reports(request, club_slug):
 
 @login_required
 def ai_ask(request, club_slug):
-    """Natural-language query endpoint powered by Gemini function calling."""
+    """Natural-language query endpoint powered by Groq + Llama tool calling."""
     import json as _json
     from django.conf import settings as _settings
-    from google import genai
-    from google.genai import types as _gtypes
+    from groq import Groq
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
@@ -3701,128 +3700,156 @@ def ai_ask(request, club_slug):
     if not question:
         return JsonResponse({'error': 'No question provided'}, status=400)
 
-    api_key = _settings.GEMINI_API_KEY
+    api_key = _settings.GROQ_API_KEY
     if not api_key:
-        return JsonResponse({'error': 'AI not configured — add GEMINI_API_KEY to .env and restart the server.'}, status=503)
+        return JsonResponse({'error': 'AI not configured — add GROQ_API_KEY to .env and restart the server.'}, status=503)
 
-    # ── Query tools (closures over club) ─────────────────────────────────────
-    def get_flight_summary(date_from: str = '', date_to: str = '', group_by: str = 'aircraft') -> dict:
-        """Return flight hours and counts for a date range grouped by aircraft, instructor, member, or month.
-        date_from and date_to are ISO strings (YYYY-MM-DD). group_by is one of: aircraft, instructor, member, month."""
-        from django.db.models import Sum
-        qs = FlightCompletion.objects.filter(
-            booking__club=club, actual_flight_hours__isnull=False
-        ).select_related('booking__aircraft', 'booking__instructor__user', 'booking__member__user')
-        if date_from:
-            try:
-                qs = qs.filter(booking__arrived_at__date__gte=date_from)
-            except Exception:
-                pass
-        if date_to:
-            try:
-                qs = qs.filter(booking__arrived_at__date__lte=date_to)
-            except Exception:
-                pass
-        groups = {}
-        for fc in qs:
-            b = fc.booking
-            if group_by == 'aircraft':
-                key = b.aircraft.registration if b.aircraft else 'Unknown'
-            elif group_by == 'instructor':
-                key = b.instructor.user.get_full_name() if b.instructor else 'No instructor'
-            elif group_by == 'member':
-                key = b.member.user.get_full_name() if b.member else 'Unknown'
-            elif group_by == 'month':
-                key = b.arrived_at.strftime('%Y-%m') if b.arrived_at else 'Unknown'
-            else:
-                key = 'total'
-            if key not in groups:
-                groups[key] = {'hours': 0.0, 'flights': 0}
-            groups[key]['hours'] += float(fc.actual_flight_hours)
-            groups[key]['flights'] += 1
-        rows = sorted(
-            [{group_by: k, 'hours': round(v['hours'], 1), 'flights': v['flights']} for k, v in groups.items()],
-            key=lambda r: -r['hours']
-        )
-        return {'group_by': group_by, 'date_from': date_from or 'all time', 'date_to': date_to or 'present', 'rows': rows}
+    # ── Tool implementations (closures over club) ─────────────────────────────
+    def _run_tool(name, args):
+        if name == 'get_flight_summary':
+            date_from = args.get('date_from', '')
+            date_to   = args.get('date_to', '')
+            group_by  = args.get('group_by', 'aircraft')
+            qs = FlightCompletion.objects.filter(
+                booking__club=club, actual_flight_hours__isnull=False
+            ).select_related('booking__aircraft', 'booking__instructor__user', 'booking__member__user')
+            if date_from:
+                try: qs = qs.filter(booking__arrived_at__date__gte=date_from)
+                except Exception: pass
+            if date_to:
+                try: qs = qs.filter(booking__arrived_at__date__lte=date_to)
+                except Exception: pass
+            groups = {}
+            for fc in qs:
+                b = fc.booking
+                if group_by == 'aircraft':
+                    key = b.aircraft.registration if b.aircraft else 'Unknown'
+                elif group_by == 'instructor':
+                    key = b.instructor.user.get_full_name() if b.instructor else 'No instructor'
+                elif group_by == 'member':
+                    key = b.member.user.get_full_name() if b.member else 'Unknown'
+                elif group_by == 'month':
+                    key = b.arrived_at.strftime('%Y-%m') if b.arrived_at else 'Unknown'
+                else:
+                    key = 'total'
+                if key not in groups:
+                    groups[key] = {'hours': 0.0, 'flights': 0}
+                groups[key]['hours'] += float(fc.actual_flight_hours)
+                groups[key]['flights'] += 1
+            rows = sorted(
+                [{group_by: k, 'hours': round(v['hours'], 1), 'flights': v['flights']} for k, v in groups.items()],
+                key=lambda r: -r['hours']
+            )
+            return {'group_by': group_by, 'date_from': date_from or 'all time', 'date_to': date_to or 'present', 'rows': rows}
 
-    def get_member_stats() -> dict:
-        """Return member counts broken down by role and standing (active, lapsed, etc.)."""
-        members = ClubMember.objects.filter(club=club).select_related('role')
-        by_role = {}
-        by_standing = {}
-        for m in members:
-            role_name = m.role.name if m.role else 'No role'
-            by_role[role_name] = by_role.get(role_name, 0) + 1
-            standing = m.standing or 'unknown'
-            by_standing[standing] = by_standing.get(standing, 0) + 1
-        return {'total': members.count(), 'by_role': by_role, 'by_standing': by_standing}
+        elif name == 'get_member_stats':
+            members = ClubMember.objects.filter(club=club).select_related('role')
+            by_role, by_standing = {}, {}
+            for m in members:
+                rn = m.role.name if m.role else 'No role'
+                by_role[rn] = by_role.get(rn, 0) + 1
+                st = m.standing or 'unknown'
+                by_standing[st] = by_standing.get(st, 0) + 1
+            return {'total': members.count(), 'by_role': by_role, 'by_standing': by_standing}
 
-    def get_payment_summary(date_from: str = '', date_to: str = '') -> dict:
-        """Return revenue charged, amount collected, and outstanding balance for a date range.
-        date_from and date_to are ISO strings (YYYY-MM-DD)."""
-        qs = FlightCompletion.objects.filter(
-            booking__club=club, actual_flight_hours__isnull=False
-        ).prefetch_related('charge_items')
-        if date_from:
-            try:
-                qs = qs.filter(booking__arrived_at__date__gte=date_from)
-            except Exception:
-                pass
-        if date_to:
-            try:
-                qs = qs.filter(booking__arrived_at__date__lte=date_to)
-            except Exception:
-                pass
-        total_charged = 0.0
-        total_paid = 0.0
-        for fc in qs:
-            total_charged += sum(float(ci.amount) for ci in fc.charge_items.all())
-            total_paid += float(fc.amount_paid or 0)
-        return {
-            'date_from': date_from or 'all time',
-            'date_to': date_to or 'present',
-            'flights': qs.count(),
-            'total_charged': round(total_charged, 2),
-            'total_collected': round(total_paid, 2),
-            'outstanding': round(total_charged - total_paid, 2),
-        }
+        elif name == 'get_payment_summary':
+            date_from = args.get('date_from', '')
+            date_to   = args.get('date_to', '')
+            qs = FlightCompletion.objects.filter(
+                booking__club=club, actual_flight_hours__isnull=False
+            ).prefetch_related('charge_items')
+            if date_from:
+                try: qs = qs.filter(booking__arrived_at__date__gte=date_from)
+                except Exception: pass
+            if date_to:
+                try: qs = qs.filter(booking__arrived_at__date__lte=date_to)
+                except Exception: pass
+            charged = sum(sum(float(ci.amount) for ci in fc.charge_items.all()) for fc in qs)
+            paid    = sum(float(fc.amount_paid or 0) for fc in qs)
+            return {'date_from': date_from or 'all time', 'date_to': date_to or 'present',
+                    'flights': qs.count(), 'total_charged': round(charged, 2),
+                    'total_collected': round(paid, 2), 'outstanding': round(charged - paid, 2)}
 
-    def get_aircraft_status() -> dict:
-        """Return current status of all active club aircraft including any overdue or urgent maintenance items."""
-        aircraft = Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration').prefetch_related('maintenance_items')
-        result = []
-        for ac in aircraft:
-            items = list(ac.maintenance_items.all())
-            result.append({
-                'registration': ac.registration,
-                'type': ac.aircraft_type.name if ac.aircraft_type else 'Unknown',
-                'status': ac.status,
-                'is_leased': ac.is_leased,
-                'overdue_items': [m.name for m in items if getattr(m, 'urgency', '') == 'red'],
-                'warning_items': [m.name for m in items if getattr(m, 'urgency', '') == 'amber'],
-            })
-        return {'aircraft': result}
+        elif name == 'get_aircraft_status':
+            aircraft = Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration').prefetch_related('maintenance_items')
+            result = []
+            for ac in aircraft:
+                items = list(ac.maintenance_items.all())
+                result.append({
+                    'registration': ac.registration,
+                    'type': ac.aircraft_type.name if ac.aircraft_type else 'Unknown',
+                    'status': ac.status, 'is_leased': ac.is_leased,
+                    'overdue_items':  [m.name for m in items if getattr(m, 'urgency', '') == 'red'],
+                    'warning_items':  [m.name for m in items if getattr(m, 'urgency', '') == 'amber'],
+                })
+            return {'aircraft': result}
 
-    # ── Gemini call ───────────────────────────────────────────────────────────
+        return {'error': f'Unknown tool: {name}'}
+
+    # ── Tool schemas (OpenAI/Groq format) ─────────────────────────────────────
+    tools = [
+        {'type': 'function', 'function': {
+            'name': 'get_flight_summary',
+            'description': 'Get flight hours and counts, optionally filtered by date range and grouped by aircraft, instructor, member, or month.',
+            'parameters': {'type': 'object', 'properties': {
+                'date_from': {'type': 'string', 'description': 'Start date YYYY-MM-DD, or empty for all time'},
+                'date_to':   {'type': 'string', 'description': 'End date YYYY-MM-DD, or empty for today'},
+                'group_by':  {'type': 'string', 'enum': ['aircraft', 'instructor', 'member', 'month'],
+                              'description': 'How to group results'},
+            }, 'required': []},
+        }},
+        {'type': 'function', 'function': {
+            'name': 'get_member_stats',
+            'description': 'Get total member count broken down by role and standing (active, lapsed, etc.).',
+            'parameters': {'type': 'object', 'properties': {}, 'required': []},
+        }},
+        {'type': 'function', 'function': {
+            'name': 'get_payment_summary',
+            'description': 'Get revenue charged, amount collected, and outstanding balance for a date range.',
+            'parameters': {'type': 'object', 'properties': {
+                'date_from': {'type': 'string', 'description': 'Start date YYYY-MM-DD, or empty for all time'},
+                'date_to':   {'type': 'string', 'description': 'End date YYYY-MM-DD, or empty for today'},
+            }, 'required': []},
+        }},
+        {'type': 'function', 'function': {
+            'name': 'get_aircraft_status',
+            'description': 'Get current status of all active club aircraft, including any overdue or warning maintenance items.',
+            'parameters': {'type': 'object', 'properties': {}, 'required': []},
+        }},
+    ]
+
+    # ── Groq call with tool loop ───────────────────────────────────────────────
     try:
-        client = genai.Client(api_key=api_key)
+        client = Groq(api_key=api_key)
         system = (
             f"You are a helpful assistant for {club.name}, an aviation club. "
             f"Today is {date.today().strftime('%d %B %Y')}. "
             "Answer questions about flights, members, payments, and aircraft using the provided tools. "
-            "Be concise and clear. Format currency as $X,XXX.XX and hours as X.X hrs. "
-            "If asked about a date range, use ISO date strings (YYYY-MM-DD) when calling tools."
+            "Be concise. Format currency as $X,XXX.XX and hours as X.X hrs."
         )
-        response = client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=question,
-            config=_gtypes.GenerateContentConfig(
-                system_instruction=system,
-                tools=[get_flight_summary, get_member_stats, get_payment_summary, get_aircraft_status],
-            ),
-        )
-        return JsonResponse({'answer': response.text})
+        messages = [
+            {'role': 'system', 'content': system},
+            {'role': 'user',   'content': question},
+        ]
+        for _ in range(5):  # max tool-call rounds
+            resp = client.chat.completions.create(
+                model='llama-3.3-70b-versatile',
+                messages=messages,
+                tools=tools,
+                tool_choice='auto',
+            )
+            msg = resp.choices[0].message
+            if not msg.tool_calls:
+                return JsonResponse({'answer': msg.content})
+            messages.append(msg)
+            for tc in msg.tool_calls:
+                result = _run_tool(tc.function.name, _json.loads(tc.function.arguments or '{}'))
+                messages.append({
+                    'role': 'tool',
+                    'tool_call_id': tc.id,
+                    'content': _json.dumps(result),
+                })
+        return JsonResponse({'answer': 'Could not complete the query — too many tool calls.'})
     except Exception as exc:
         return JsonResponse({'error': f'AI error: {exc}'}, status=500)
 
