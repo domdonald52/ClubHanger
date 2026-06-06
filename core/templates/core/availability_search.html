@@ -16,11 +16,11 @@
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Flight</label>
                     <div style="display:flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;">
-                        <label style="flex:1;text-align:center;padding:.5rem;cursor:pointer;" id="lbl-dual">
+                        <label style="flex:1;text-align:center;cursor:pointer;" id="lbl-dual">
                             <input type="radio" name="booking_kind" value="dual" id="kind-dual" style="display:none;" {% if filters_applied.booking_kind != 'solo' %}checked{% endif %}>
                             <span>Dual</span>
                         </label>
-                        <label style="flex:1;text-align:center;padding:.5rem;cursor:pointer;border-left:1px solid #ddd;" id="lbl-solo">
+                        <label style="flex:1;text-align:center;cursor:pointer;border-left:1px solid #ddd;" id="lbl-solo">
                             <input type="radio" name="booking_kind" value="solo" id="kind-solo" style="display:none;" {% if filters_applied.booking_kind == 'solo' %}checked{% endif %}>
                             <span>Solo</span>
                         </label>
