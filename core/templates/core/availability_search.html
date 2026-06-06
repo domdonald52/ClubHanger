@@ -15,15 +15,10 @@
 
                 <div>
                     <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Flight</label>
-                    <div style="display:flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;height:32px;">
-                        <label style="flex:1;text-align:center;cursor:pointer;" id="lbl-dual">
-                            <input type="radio" name="booking_kind" value="dual" id="kind-dual" style="display:none;" {% if filters_applied.booking_kind != 'solo' %}checked{% endif %}>
-                            <span>Dual</span>
-                        </label>
-                        <label style="flex:1;text-align:center;cursor:pointer;border-left:1px solid #ddd;" id="lbl-solo">
-                            <input type="radio" name="booking_kind" value="solo" id="kind-solo" style="display:none;" {% if filters_applied.booking_kind == 'solo' %}checked{% endif %}>
-                            <span>Solo</span>
-                        </label>
+                    <div style="display:inline-flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;">
+                        <input type="hidden" name="booking_kind" id="booking_kind_val" value="{{ filters_applied.booking_kind|default:'dual' }}">
+                        <button type="button" id="btn-dual" onclick="setKind('dual')" style="width:52px;height:32px;border:none;border-right:1px solid #ddd;cursor:pointer;font-size:.85rem;padding:0;">Dual</button>
+                        <button type="button" id="btn-solo" onclick="setKind('solo')" style="width:52px;height:32px;border:none;cursor:pointer;font-size:.85rem;padding:0;">Solo</button>
                     </div>
                 </div>
 
@@ -143,36 +138,34 @@
 
 <style>
     table tbody tr:hover { background: #f8f9fa; }
-    #lbl-dual.active, #lbl-solo.active { background:var(--primary); color:#fff; }
     .container form select,
     .container form input[type="text"],
     .container form input[type="number"] { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
     .container form label { font-size: 0.85rem; }
-    #lbl-dual, #lbl-solo { flex:1; display:flex; align-items:center; justify-content:center; font-size:.85rem; }
 </style>
 <script>
 const _availForm = document.getElementById('avail-form');
 function avSubmit() { if (_availForm) _availForm.submit(); }
 
 (function(){
-  const kindDual = document.getElementById('kind-dual');
-  const kindSolo = document.getElementById('kind-solo');
-  const lblDual = document.getElementById('lbl-dual');
-  const lblSolo = document.getElementById('lbl-solo');
   const instrField = document.getElementById('instructor-field');
   const typeSel = document.getElementById('aircraft_type');
   const acSel = document.getElementById('aircraft');
+  const PRIMARY = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#2f7dd1';
 
-  function syncKind(){
-    const solo = kindSolo.checked;
-    instrField.style.display = solo ? 'none' : '';
-    lblSolo.classList.toggle('active', solo);
-    lblDual.classList.toggle('active', !solo);
+  function setKind(k) {
+    document.getElementById('booking_kind_val').value = k;
+    const dual = document.getElementById('btn-dual');
+    const solo = document.getElementById('btn-solo');
+    dual.style.background = k === 'dual' ? PRIMARY : '#fff';
+    dual.style.color = k === 'dual' ? '#fff' : '#333';
+    solo.style.background = k === 'solo' ? PRIMARY : '#fff';
+    solo.style.color = k === 'solo' ? '#fff' : '#333';
+    instrField.style.display = k === 'solo' ? 'none' : '';
+    avSubmit();
   }
-
-  [kindDual, kindSolo].forEach(r => r.addEventListener('change', () => { syncKind(); avSubmit(); }));
-  lblDual.addEventListener('click', () => { kindDual.checked = true; syncKind(); avSubmit(); });
-  lblSolo.addEventListener('click', () => { kindSolo.checked = true; syncKind(); avSubmit(); });
+  // Init on load
+  setKind(document.getElementById('booking_kind_val').value || 'dual');
 
   // Filter the specific-aircraft list to the chosen type; reset if invalid.
   function applyTypeFilter(){

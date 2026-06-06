@@ -234,5 +234,16 @@
   });
 })();
 
+// Persist view toggle (all/conflicts) in localStorage
+(function(){
+  const KEY = 'mb_view_{{ club.slug }}';
+  const qs = new URLSearchParams(location.search);
+  if (qs.has('view')) {
+    localStorage.setItem(KEY, qs.get('view'));
+  } else {
+    const saved = localStorage.getItem(KEY);
+    if (saved) { qs.set('view', saved); location.replace('?' + qs.toString()); }
+  }
+})();
 </script>
 {% endblock %}

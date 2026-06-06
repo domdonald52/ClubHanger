@@ -1959,7 +1959,7 @@ def booking_detail(request, club_slug, booking_id):
         'prev_tacho_end': prev_tacho_end,
         'prev_airswitch_end': prev_airswitch_end,
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
-        'inline_title': f"Booking — {booking.member.user.get_full_name()} · {booking.aircraft.registration}",
+        'inline_title': f'Manage <span class="crumb-sep">›</span> Bookings <span class="crumb-sep">›</span> <span class="crumb-cur">{booking.member.user.get_full_name()} · {booking.aircraft.registration}</span>',
     }
     return render(request, 'core/booking_detail.html', ctx)
 
@@ -2181,7 +2181,7 @@ def manage_member_detail(request, club_slug, member_id):
         'credential_types': CredentialType.choices,
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
-        'inline_title': f"Member — {member.user.get_full_name()}",
+        'inline_title': f'Manage <span class="crumb-sep">›</span> Members <span class="crumb-sep">›</span> <span class="crumb-cur">{member.user.get_full_name()}</span>',
     })
 
 
@@ -2758,7 +2758,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'flight_history': flight_history,
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
-        'inline_title': f"Aircraft — {ac.registration}",
+        'inline_title': f'Manage <span class="crumb-sep">›</span> Aircraft <span class="crumb-sep">›</span> <span class="crumb-cur">{ac.registration}</span>',
     })
 
 
@@ -2834,7 +2834,7 @@ def manage_instructor_detail(request, club_slug, member_id):
     if request.method == 'POST':
         action = request.POST.get('action', '')
 
-        if action == 'save_contact':
+        if action in ('save_contact', 'save_details'):
             u = instr.user
             u.first_name = request.POST.get('first_name', '').strip()
             u.last_name = request.POST.get('last_name', '').strip()
@@ -2844,6 +2844,9 @@ def manage_instructor_detail(request, club_slug, member_id):
             instr.phone_home = request.POST.get('phone_home', '').strip()
             instr.phone_work = request.POST.get('phone_work', '').strip()
             instr.caa_number = request.POST.get('caa_number', '').strip()
+            if actor.is_admin and request.POST.get('grade_id') is not None:
+                grade_id = request.POST.get('grade_id')
+                instr.instructor_grade = InstructorGrade.objects.filter(club=club, id=grade_id).first() if grade_id else None
             instr.save()
 
         elif action == 'save_grade' and actor.is_admin:
@@ -2924,7 +2927,7 @@ def manage_instructor_detail(request, club_slug, member_id):
         'instructor_blockout_types': instructor_blockout_types,
         'upcoming_bookings': upcoming_bookings,
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
-        'inline_title': f"Instructor — {instr.user.get_full_name()}",
+        'inline_title': f'Manage <span class="crumb-sep">›</span> Instructors <span class="crumb-sep">›</span> <span class="crumb-cur">{instr.user.get_full_name()}</span>',
     })
 
 
@@ -3115,7 +3118,7 @@ def booking_declaration(request, club_slug, booking_id):
         'readonly': readonly,
         'is_inline': _is_inline,
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
-        'inline_title': f"Declaration — {booking.aircraft.registration} {booking.scheduled_start.strftime('%j %b')}",
+        'inline_title': f'Bookings <span class="crumb-sep">›</span> {booking.aircraft.registration} {booking.scheduled_start.strftime("%j %b")} <span class="crumb-sep">›</span> <span class="crumb-cur">Declaration</span>',
     })
 
 

@@ -333,13 +333,17 @@
   }
 
   async function loadOverlay(url) {
-    const sep = url.includes('?') ? '&' : '?';
+    // Split hash from URL before fetching (fetch ignores fragments)
+    const [urlWithoutHash, hash] = url.split('#');
+    const sep = urlWithoutHash.includes('?') ? '&' : '?';
     try {
-      const resp = await fetch(url + sep + 'inline=1', {credentials:'same-origin'});
+      const resp = await fetch(urlWithoutHash + sep + 'inline=1', {credentials:'same-origin'});
       const html = await resp.text();
       body.innerHTML = html;
+      // Inject hash into location so tab JS can read it
+      if (hash) history.replaceState({}, '', location.pathname + location.search + '#' + hash);
       runScripts(body);
-      attachHandlers(url);
+      attachHandlers(urlWithoutHash);
     } catch(e) {
       body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load page.</p>';
     }

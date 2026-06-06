@@ -28,61 +28,38 @@
 
   <!-- ── DETAILS tab ── -->
   <div id="tab-details" class="stab-panel">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;flex-wrap:wrap;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_details">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;">
 
-      <!-- Contact details -->
-      <div>
-        <h2 class="sh2">Contact details</h2>
-        <form method="post">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="save_contact">
+        <!-- Contact details -->
+        <div>
+          <h2 class="sh2">Contact details</h2>
           <div class="fgrid" style="grid-template-columns:1fr 1fr;">
-            <label class="flabel">First name
-              <input type="text" name="first_name" value="{{ instr.user.first_name }}" class="finput" required>
-            </label>
-            <label class="flabel">Last name
-              <input type="text" name="last_name" value="{{ instr.user.last_name }}" class="finput" required>
-            </label>
+            <label class="flabel">First name<input type="text" name="first_name" value="{{ instr.user.first_name }}" class="finput" required></label>
+            <label class="flabel">Last name<input type="text" name="last_name" value="{{ instr.user.last_name }}" class="finput" required></label>
           </div>
-          <label class="flabel">Email
-            <input type="email" name="email" value="{{ instr.user.email }}" class="finput">
-          </label>
-          <label class="flabel">Mobile
-            <input type="text" name="phone_mobile" value="{{ instr.phone_mobile }}" class="finput">
-          </label>
-          <label class="flabel">Home phone
-            <input type="text" name="phone_home" value="{{ instr.phone_home }}" class="finput">
-          </label>
-          <label class="flabel">Work phone
-            <input type="text" name="phone_work" value="{{ instr.phone_work }}" class="finput">
-          </label>
-          <label class="flabel">CAA number
-            <input type="text" name="caa_number" value="{{ instr.caa_number }}" class="finput" placeholder="e.g. 99-12345">
-          </label>
-          <button type="submit" class="btn" style="margin-top:.4rem;">Save details</button>
-        </form>
-      </div>
+          <label class="flabel">Email<input type="email" name="email" value="{{ instr.user.email }}" class="finput"></label>
+          <label class="flabel">Mobile<input type="text" name="phone_mobile" value="{{ instr.phone_mobile }}" class="finput"></label>
+          <label class="flabel">Home phone<input type="text" name="phone_home" value="{{ instr.phone_home }}" class="finput"></label>
+          <label class="flabel">Work phone<input type="text" name="phone_work" value="{{ instr.phone_work }}" class="finput"></label>
+          <label class="flabel">CAA number<input type="text" name="caa_number" value="{{ instr.caa_number }}" class="finput" placeholder="e.g. 99-12345"></label>
+        </div>
 
-      <!-- Grade & credentials -->
-      <div>
-        {% if club_member.is_admin %}
-        <h2 class="sh2">Grade assignment</h2>
-        <form method="post" style="margin-bottom:1.8rem;">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="save_grade">
-          <label class="flabel">Instructor grade
+        <!-- Grade & credentials -->
+        <div>
+          {% if club_member.is_admin %}
+          <h2 class="sh2">Grade</h2>
+          <label class="flabel" style="margin-bottom:1.8rem;">Instructor grade
             <select name="grade_id" class="finput">
               <option value="">— none —</option>
               {% for g in instructor_grades %}
-              <option value="{{ g.id }}" {% if instr.instructor_grade_id == g.id %}selected{% endif %}>
-                {{ g.name }} (${{ g.hourly_rate }}/hr)
-              </option>
+              <option value="{{ g.id }}" {% if instr.instructor_grade_id == g.id %}selected{% endif %}>{{ g.name }} (${{ g.hourly_rate }}/hr)</option>
               {% endfor %}
             </select>
           </label>
-          <button type="submit" class="btn">Save grade</button>
-        </form>
-        {% endif %}
+          {% endif %}
 
         <h2 class="sh2">Credentials</h2>
         {% if credentials %}
@@ -105,10 +82,14 @@
           </tbody>
         </table>
         {% else %}
-        <p style="color:#8a93a0;font-size:.85rem;">No credentials recorded. Add them on the <a href="{% url 'core:manage_member_detail' club.slug instr.id %}" data-overlay>member record</a>.</p>
+        <p style="color:#8a93a0;font-size:.85rem;">No credentials recorded. Add them on the <a href="{% url 'core:manage_member_detail' club.slug instr.id %}#credentials" data-overlay>member record</a>.</p>
         {% endif %}
       </div>
-    </div>
+      </div><!-- grid -->
+      <div style="margin-top:1.2rem;border-top:1px solid #eef1f4;padding-top:1rem;">
+        <button type="submit" class="btn">Save</button>
+      </div>
+    </form>
   </div><!-- /tab-details -->
 
   <!-- ── AVAILABILITY tab ── -->
