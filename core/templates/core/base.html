@@ -37,7 +37,7 @@
           .sidenav-club { white-space: normal; overflow: visible; text-overflow: clip; }
           .sidenav-overlay { display: none !important; }
           .hamburger { display: none; }
-          .header-logo { display: none; }
+          .header-logo { display: none !important; }
           body { padding-left: 270px; }
         }
         .sidenav-head { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem .9rem 1.1rem; background: var(--banner); color: #fff; flex-shrink: 0; min-height: 52px; }
@@ -269,7 +269,7 @@
   </div>
 </div>
 <style>
-  .page-overlay-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:flex-start;justify-content:center;z-index:200;padding:2vh 0;overflow-y:auto;}
+  .page-overlay-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:flex-start;justify-content:center;z-index:500;padding:2vh 0;overflow-y:auto;}
   .page-overlay-modal{background:#fff;border-radius:10px;width:min(820px,96vw);box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;min-height:clamp(400px,65vh,680px);display:flex;flex-direction:column;}
   .page-overlay-modal .pi-body{flex:1;}
   [hidden]{display:none!important;}
