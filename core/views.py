@@ -3680,7 +3680,7 @@ def reports(request, club_slug):
 
 @login_required
 def ai_ask(request, club_slug):
-    """Natural-language query endpoint powered by Groq + Llama tool calling."""
+    """Natural-language query endpoint — fetches club data upfront and passes as context to Groq."""
     import json as _json
     from django.conf import settings as _settings
     from groq import Groq
@@ -3704,152 +3704,77 @@ def ai_ask(request, club_slug):
     if not api_key:
         return JsonResponse({'error': 'AI not configured — add GROQ_API_KEY to .env and restart the server.'}, status=503)
 
-    # ── Tool implementations (closures over club) ─────────────────────────────
-    def _run_tool(name, args):
-        if name == 'get_flight_summary':
-            date_from = args.get('date_from', '')
-            date_to   = args.get('date_to', '')
-            group_by  = args.get('group_by', 'aircraft')
-            qs = FlightCompletion.objects.filter(
-                booking__club=club, actual_flight_hours__isnull=False
-            ).select_related('booking__aircraft', 'booking__instructor__user', 'booking__member__user')
-            if date_from:
-                try: qs = qs.filter(booking__arrived_at__date__gte=date_from)
-                except Exception: pass
-            if date_to:
-                try: qs = qs.filter(booking__arrived_at__date__lte=date_to)
-                except Exception: pass
-            groups = {}
-            for fc in qs:
-                b = fc.booking
-                if group_by == 'aircraft':
-                    key = b.aircraft.registration if b.aircraft else 'Unknown'
-                elif group_by == 'instructor':
-                    key = b.instructor.user.get_full_name() if b.instructor else 'No instructor'
-                elif group_by == 'member':
-                    key = b.member.user.get_full_name() if b.member else 'Unknown'
-                elif group_by == 'month':
-                    key = b.arrived_at.strftime('%Y-%m') if b.arrived_at else 'Unknown'
-                else:
-                    key = 'total'
-                if key not in groups:
-                    groups[key] = {'hours': 0.0, 'flights': 0}
-                groups[key]['hours'] += float(fc.actual_flight_hours)
-                groups[key]['flights'] += 1
-            rows = sorted(
-                [{group_by: k, 'hours': round(v['hours'], 1), 'flights': v['flights']} for k, v in groups.items()],
-                key=lambda r: -r['hours']
-            )
-            return {'group_by': group_by, 'date_from': date_from or 'all time', 'date_to': date_to or 'present', 'rows': rows}
+    # ── Build club data snapshot ──────────────────────────────────────────────
+    # Members
+    members = ClubMember.objects.filter(club=club).select_related('role', 'user')
+    member_rows = []
+    for m in members:
+        member_rows.append({
+            'name': m.user.get_full_name(),
+            'role': m.role.name if m.role else 'No role',
+            'standing': m.standing or 'unknown',
+            'subscription_expires': str(m.subscription_expires) if m.subscription_expires else None,
+        })
 
-        elif name == 'get_member_stats':
-            members = ClubMember.objects.filter(club=club).select_related('role')
-            by_role, by_standing = {}, {}
-            for m in members:
-                rn = m.role.name if m.role else 'No role'
-                by_role[rn] = by_role.get(rn, 0) + 1
-                st = m.standing or 'unknown'
-                by_standing[st] = by_standing.get(st, 0) + 1
-            return {'total': members.count(), 'by_role': by_role, 'by_standing': by_standing}
+    # Completed flights — all time
+    fcs = (FlightCompletion.objects
+           .filter(booking__club=club, actual_flight_hours__isnull=False)
+           .select_related('booking__aircraft', 'booking__instructor__user', 'booking__member__user')
+           .prefetch_related('charge_items')
+           .order_by('booking__arrived_at'))
+    flight_rows = []
+    for fc in fcs:
+        b = fc.booking
+        charged = sum(float(ci.amount) for ci in fc.charge_items.all())
+        flight_rows.append({
+            'date': b.arrived_at.strftime('%Y-%m-%d') if b.arrived_at else None,
+            'aircraft': b.aircraft.registration if b.aircraft else None,
+            'member': b.member.user.get_full_name() if b.member else None,
+            'instructor': b.instructor.user.get_full_name() if b.instructor else None,
+            'hours': round(float(fc.actual_flight_hours), 1),
+            'charged': round(charged, 2),
+            'paid': round(float(fc.amount_paid or 0), 2),
+        })
 
-        elif name == 'get_payment_summary':
-            date_from = args.get('date_from', '')
-            date_to   = args.get('date_to', '')
-            qs = FlightCompletion.objects.filter(
-                booking__club=club, actual_flight_hours__isnull=False
-            ).prefetch_related('charge_items')
-            if date_from:
-                try: qs = qs.filter(booking__arrived_at__date__gte=date_from)
-                except Exception: pass
-            if date_to:
-                try: qs = qs.filter(booking__arrived_at__date__lte=date_to)
-                except Exception: pass
-            charged = sum(sum(float(ci.amount) for ci in fc.charge_items.all()) for fc in qs)
-            paid    = sum(float(fc.amount_paid or 0) for fc in qs)
-            return {'date_from': date_from or 'all time', 'date_to': date_to or 'present',
-                    'flights': qs.count(), 'total_charged': round(charged, 2),
-                    'total_collected': round(paid, 2), 'outstanding': round(charged - paid, 2)}
+    # Aircraft
+    aircraft_rows = []
+    for ac in Aircraft.objects.filter(club=club).exclude(status='retired').prefetch_related('maintenance_items'):
+        items = list(ac.maintenance_items.all())
+        aircraft_rows.append({
+            'registration': ac.registration,
+            'type': ac.aircraft_type.name if ac.aircraft_type else 'Unknown',
+            'status': ac.status,
+            'is_leased': ac.is_leased,
+            'overdue_maintenance': [m.name for m in items if getattr(m, 'urgency', '') == 'red'],
+            'warning_maintenance': [m.name for m in items if getattr(m, 'urgency', '') == 'amber'],
+        })
 
-        elif name == 'get_aircraft_status':
-            aircraft = Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration').prefetch_related('maintenance_items')
-            result = []
-            for ac in aircraft:
-                items = list(ac.maintenance_items.all())
-                result.append({
-                    'registration': ac.registration,
-                    'type': ac.aircraft_type.name if ac.aircraft_type else 'Unknown',
-                    'status': ac.status, 'is_leased': ac.is_leased,
-                    'overdue_items':  [m.name for m in items if getattr(m, 'urgency', '') == 'red'],
-                    'warning_items':  [m.name for m in items if getattr(m, 'urgency', '') == 'amber'],
-                })
-            return {'aircraft': result}
+    data_context = _json.dumps({
+        'members': member_rows,
+        'completed_flights': flight_rows,
+        'aircraft': aircraft_rows,
+    }, default=str)
 
-        return {'error': f'Unknown tool: {name}'}
-
-    # ── Tool schemas (OpenAI/Groq format) ─────────────────────────────────────
-    tools = [
-        {'type': 'function', 'function': {
-            'name': 'get_flight_summary',
-            'description': 'Get flight hours and counts, optionally filtered by date range and grouped by aircraft, instructor, member, or month.',
-            'parameters': {'type': 'object', 'properties': {
-                'date_from': {'type': 'string', 'description': 'Start date YYYY-MM-DD, or empty for all time'},
-                'date_to':   {'type': 'string', 'description': 'End date YYYY-MM-DD, or empty for today'},
-                'group_by':  {'type': 'string', 'enum': ['aircraft', 'instructor', 'member', 'month'],
-                              'description': 'How to group results'},
-            }, 'required': []},
-        }},
-        {'type': 'function', 'function': {
-            'name': 'get_member_stats',
-            'description': 'Get total member count broken down by role and standing (active, lapsed, etc.).',
-            'parameters': {'type': 'object', 'properties': {}, 'required': []},
-        }},
-        {'type': 'function', 'function': {
-            'name': 'get_payment_summary',
-            'description': 'Get revenue charged, amount collected, and outstanding balance for a date range.',
-            'parameters': {'type': 'object', 'properties': {
-                'date_from': {'type': 'string', 'description': 'Start date YYYY-MM-DD, or empty for all time'},
-                'date_to':   {'type': 'string', 'description': 'End date YYYY-MM-DD, or empty for today'},
-            }, 'required': []},
-        }},
-        {'type': 'function', 'function': {
-            'name': 'get_aircraft_status',
-            'description': 'Get current status of all active club aircraft, including any overdue or warning maintenance items.',
-            'parameters': {'type': 'object', 'properties': {}, 'required': []},
-        }},
-    ]
-
-    # ── Groq call with tool loop ───────────────────────────────────────────────
+    # ── Groq call ─────────────────────────────────────────────────────────────
     try:
         client = Groq(api_key=api_key)
         system = (
-            f"You are a helpful assistant for {club.name}, an aviation club. "
+            f"You are a helpful data assistant for {club.name}, an aviation club. "
             f"Today is {date.today().strftime('%d %B %Y')}. "
-            "Answer questions about flights, members, payments, and aircraft using the provided tools. "
-            "Be concise. Format currency as $X,XXX.XX and hours as X.X hrs."
+            "The following JSON contains all club data — members, completed flights, and aircraft. "
+            "Answer questions using only this data. Be concise. "
+            "Format currency as $X,XXX.XX and hours as X.X hrs.\n\n"
+            f"CLUB DATA:\n{data_context}"
         )
-        messages = [
-            {'role': 'system', 'content': system},
-            {'role': 'user',   'content': question},
-        ]
-        for _ in range(5):  # max tool-call rounds
-            resp = client.chat.completions.create(
-                model='llama-3.3-70b-versatile',
-                messages=messages,
-                tools=tools,
-                tool_choice='auto',
-            )
-            msg = resp.choices[0].message
-            if not msg.tool_calls:
-                return JsonResponse({'answer': msg.content})
-            messages.append(msg)
-            for tc in msg.tool_calls:
-                result = _run_tool(tc.function.name, _json.loads(tc.function.arguments or '{}'))
-                messages.append({
-                    'role': 'tool',
-                    'tool_call_id': tc.id,
-                    'content': _json.dumps(result),
-                })
-        return JsonResponse({'answer': 'Could not complete the query — too many tool calls.'})
+        resp = client.chat.completions.create(
+            model='llama-3.3-70b-versatile',
+            messages=[
+                {'role': 'system', 'content': system},
+                {'role': 'user',   'content': question},
+            ],
+            max_tokens=1024,
+        )
+        return JsonResponse({'answer': resp.choices[0].message.content})
     except Exception as exc:
         return JsonResponse({'error': f'AI error: {exc}'}, status=500)
 
