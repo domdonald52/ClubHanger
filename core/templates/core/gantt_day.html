@@ -49,7 +49,7 @@
       </div>
       {% for row in instructor_rows %}
         <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
-          <div class="row-label row-label-instructor {% if row.is_current_user %}me{% endif %}{% if row.ghost %} ghost{% endif %}">
+          <div class="row-label row-label-instructor {% if row.is_current_user %}me{% endif %}{% if row.ghost %} ghost{% endif %}"{% if is_instructor or can_manage %} data-detail-url="{% url 'core:manage_instructor_detail' club.slug row.detail_id %}"{% endif %}>
             <span class="row-name">{{ row.label }}</span>
             {% if row.ghost_reason == 'inactive' %}
               <span class="ghost-badge" title="Instructor inactive — bookings need reassignment">Inactive</span>
@@ -76,7 +76,7 @@
       </div>
       {% for row in aircraft_rows %}
         <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
-          <div class="row-label row-label-aircraft{% if row.ghost %} ghost{% endif %}">
+          <div class="row-label row-label-aircraft{% if row.ghost %} ghost{% endif %}"{% if is_instructor or can_manage %} data-detail-url="{% url 'core:manage_aircraft_detail' club.slug row.detail_id %}"{% endif %}>
             <span class="row-name">{{ row.label }}</span>
             {% if row.ghost_reason == 'retired' %}
               <span class="ghost-badge" title="Aircraft retired — bookings need reassignment">Retired</span>
@@ -303,6 +303,8 @@
   "dayStart": "{{ day_start_iso }}",
   "pxPerMin": {{ px_per_min }},
   "totalMins": {{ total_minutes }},
+  "serverLabelW": {{ label_w }},
+  "trackWidth": {{ track_width }},
   "slotMin": {{ slot_minutes }},
   "defaultDuration": {{ default_duration }},
   "canBook": {{ can_book|yesno:"true,false" }},
@@ -352,6 +354,8 @@
   /* Ghost rows — inactive or off-roster with residual bookings */
   .row-label.ghost{background:#f7f7f7;color:#adb5bd;font-style:italic}
   .row-label.ghost .row-name{text-decoration:line-through;text-decoration-color:#ccc}
+  .row-label[data-detail-url]{cursor:pointer;}
+  .row-label[data-detail-url]:hover{background:#eef1f5;}
   .ghost-badge{font-size:.6rem;font-weight:600;background:#fee2e2;color:#c0392b;border-radius:4px;padding:.05rem .3rem;white-space:nowrap;flex-shrink:0;}
   .track-ghost{opacity:.75}
   /* Section dividers — grid-row style so the background spans the full scrollable width */
@@ -397,6 +401,7 @@
   .pill.conflict::before{content:'';position:absolute;top:0;left:0;bottom:0;width:4px;background:#e03131;border-radius:5px 0 0 5px;z-index:1;}
   .pill.override{box-shadow:0 0 0 2px #fff,0 0 0 4px #845ef7}
   .pill-dot{position:absolute;top:4px;right:10px;width:7px;height:7px;border-radius:50%;background:#e03131;border:1.5px solid rgba(255,255,255,.75);pointer-events:none;}
+  .pill-dot-decl{background:#f59e0b;right:20px;}
   .preview{position:absolute;top:4px;height:36px;border-radius:5px;border:2px dashed var(--primary);background:color-mix(in srgb, var(--primary) 15%, transparent);z-index:6;pointer-events:none}
   .preview span{position:absolute;top:11px;left:8px;font-size:.72rem;color:var(--primary);font-weight:600}
   .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500}
@@ -412,7 +417,7 @@
   .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:.4rem}
   .toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,.25)}
   /* Detail overlay */
-  .detail-overlay-modal{width:min(660px,96vw);max-height:90vh;overflow-y:auto;padding:0;border-radius:10px;}
+  .detail-overlay-modal{width:min(1100px,96vw);max-height:92vh;overflow-y:auto;padding:0;border-radius:10px;}
 </style>
 
 <!-- Pre-confirmation credential check modal -->
@@ -440,24 +445,44 @@
 <script src="{% static 'core/gantt.js' %}"></script>
 <script>
 (function() {
-  // Measure the actual rendered width of each row label and widen the column to fit.
-  // scrollWidth returns the full content width even when overflow:hidden clips it.
+  const scroll   = document.querySelector('.grid-scroll');
+  const grid     = document.querySelector('.grid');
+  const SERVER_TRACK_W = {{ track_width }};
+
+  // Measure the actual rendered label width (scrollWidth sees past overflow:hidden).
   let maxW = 0;
   document.querySelectorAll('.row-label .row-name').forEach(el => {
     maxW = Math.max(maxW, el.scrollWidth);
   });
-  if (maxW < 1) return;
-  // Add horizontal padding (2 × .55rem ≈ 18px) + left accent border (3px) + 4px breathing room
   const labelW = Math.max(140, maxW + 25);
   document.querySelectorAll('.row-label, .section-cell').forEach(el => {
     el.style.flex = '0 0 ' + labelW + 'px';
     el.style.width = labelW + 'px';
   });
+
+  // Expand --track-width to exactly fill available space, eliminating spurious
+  // scrollbar when the window is wide enough.
+  function fitTrack() {
+    if (!scroll || !grid) return;
+    // Temporarily hide overflow so clientWidth reflects the true container width
+    // (not reduced by a pre-existing scrollbar).
+    scroll.style.overflowX = 'hidden';
+    const avail = scroll.clientWidth - labelW - 2; // 2px for left+right border
+    const tw = avail > SERVER_TRACK_W ? avail : SERVER_TRACK_W;
+    grid.style.setProperty('--track-width', tw + 'px');
+    scroll.style.overflowX = '';  // restore (auto from CSS)
+  }
+  // Run after layout is fully settled so clientWidth is accurate.
+  requestAnimationFrame(fitTrack);
+  let _fitTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(_fitTimer);
+    _fitTimer = setTimeout(fitTrack, 60);
+  });
+
   {% if now_px %}
-  // Shift the now-overlay by the difference from the server-computed initial width
   const overlay = document.getElementById('now-overlay');
   if (overlay) {
-    const serverLabelW = {{ label_w }};
     const dayStart = new Date("{{ day_start_iso }}");
     const pxPerMin = {{ px_per_min }};
     const totalMins = {{ total_minutes }};
@@ -471,6 +496,159 @@
     setInterval(update, 30000);
   }
   {% endif %}
+})();
+</script>
+
+<!-- ── ADS-B right-click context menu ── -->
+<div id="pill-ctx" style="display:none;position:fixed;z-index:800;background:#fff;border:1px solid #e3e6ea;border-radius:8px;box-shadow:0 4px 16px rgba(16,24,40,.18);min-width:160px;overflow:hidden;">
+  <div id="pill-ctx-track" style="padding:.5rem .9rem;font-size:.84rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+    ✈ <span id="pill-ctx-label">Track aircraft</span>
+  </div>
+  <div id="pill-ctx-open" style="padding:.5rem .9rem;font-size:.84rem;cursor:pointer;border-top:1px solid #f0f2f4;display:flex;align-items:center;gap:.5rem;">
+    📋 Open booking
+  </div>
+</div>
+
+<!-- ADS-B slide-in panel -->
+<div id="adsb-track-panel" style="display:none;position:fixed;top:52px;right:0;width:340px;bottom:0;background:#fff;border-left:1px solid #e3e6ea;z-index:700;flex-direction:column;box-shadow:-4px 0 16px rgba(16,24,40,.1);">
+  <!-- Resize handle -->
+  <div id="adsb-resize-handle" style="position:absolute;left:-5px;top:0;bottom:0;width:10px;cursor:ew-resize;z-index:10;display:flex;align-items:center;justify-content:center;">
+    <div style="width:3px;height:40px;border-radius:2px;background:#d6dae0;pointer-events:none;"></div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #eef1f4;background:#fafbfc;flex-shrink:0;">
+    <span id="adsb-panel-title" style="font-size:.88rem;font-weight:650;"></span>
+    <button onclick="closeAdsbPanel()" style="background:none;border:none;cursor:pointer;font-size:1rem;color:#8a93a0;line-height:1;">✕</button>
+  </div>
+  <div id="adsb-panel-status" style="font-size:.8rem;color:#8a93a0;padding:.5rem 1rem;flex-shrink:0;"></div>
+  <div id="adsb-panel-map" style="flex:1;"></div>
+  <div id="adsb-panel-info" style="font-size:.78rem;color:#5b6573;padding:.5rem 1rem;border-top:1px solid #f0f2f4;flex-shrink:0;min-height:1.8rem;"></div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+<script>
+(function(){
+  const ctx = document.getElementById('pill-ctx');
+  const panel = document.getElementById('adsb-track-panel');
+  let adsbMap, adsbMarker, adsbTimer;
+  let activePill = null;
+
+  document.addEventListener('contextmenu', e => {
+    const pill = e.target.closest('.pill');
+    if (!pill) return;
+    e.preventDefault();
+    activePill = pill;
+    const reg = pill.dataset.registration || 'aircraft';
+    document.getElementById('pill-ctx-label').textContent = `Track ${reg} live`;
+    ctx.style.display = 'block';
+    ctx.style.left = Math.min(e.clientX, window.innerWidth - 175) + 'px';
+    ctx.style.top = Math.min(e.clientY, window.innerHeight - 95) + 'px';
+  });
+  document.addEventListener('click', e => { if (!ctx.contains(e.target)) ctx.style.display = 'none'; });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') { ctx.style.display = 'none'; closeAdsbPanel(); }});
+
+  document.getElementById('pill-ctx-open').addEventListener('click', () => {
+    ctx.style.display = 'none';
+    if (activePill) activePill.dispatchEvent(new MouseEvent('click', {bubbles:true}));
+  });
+  document.getElementById('pill-ctx-track').addEventListener('click', () => {
+    ctx.style.display = 'none';
+    if (!activePill) return;
+    openAdsbPanel(activePill.dataset.aircraftId, activePill.dataset.registration || 'Aircraft');
+  });
+
+  window.closeAdsbPanel = function() {
+    panel.style.display = 'none';
+    clearInterval(adsbTimer); adsbTimer = null;
+  };
+
+  function openAdsbPanel(acId, reg) {
+    panel.style.display = 'flex';
+    document.getElementById('adsb-panel-title').textContent = reg + ' · Live position';
+    document.getElementById('adsb-panel-status').textContent = 'Checking ADS-B…';
+    document.getElementById('adsb-panel-info').textContent = '';
+    if (!adsbMap) {
+      adsbMap = L.map('adsb-panel-map').setView([-41.3, 174.8], 7);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        {attribution:'© OpenStreetMap', maxZoom:18}).addTo(adsbMap);
+    }
+    setTimeout(() => adsbMap.invalidateSize(), 80);
+    clearInterval(adsbTimer);
+    const url = `/api/{{ club.slug }}/adsb/${acId}/`;
+
+    async function poll() {
+      try {
+        const r = await fetch(url, {credentials:'same-origin'});
+        const d = await r.json();
+        if (d.found && d.lat && d.lon) {
+          const ll = [d.lat, d.lon];
+          document.getElementById('adsb-panel-status').textContent = `${reg} airborne · ${d.seen ?? 0}s ago`;
+          document.getElementById('adsb-panel-status').style.color = '#2a7a3b';
+          const deg = d.track != null ? d.track : 0;
+          const icon = L.divIcon({
+            className: '',
+            html: `<svg viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg">
+              <g transform="rotate(${deg},12,12)" fill="#1e3a5f" stroke="#fff" stroke-width="0.6" stroke-linejoin="round">
+                <path d="M12,1 L10,5 L9.5,9 L9.5,19 L10.5,23 L12,24 L13.5,23 L14.5,19 L14.5,9 L14,5 Z"/>
+                <path d="M9.5,10 L0.5,15 L1.5,17 L9.5,13 Z"/>
+                <path d="M14.5,10 L23.5,15 L22.5,17 L14.5,13 Z"/>
+                <path d="M9.5,20 L5.5,23 L6.5,24 L10,22 Z"/>
+                <path d="M14.5,20 L18.5,23 L17.5,24 L14,22 Z"/>
+              </g>
+            </svg>`,
+            iconSize: [28, 28], iconAnchor: [14, 14]
+          });
+          if (!adsbMarker) {
+            adsbMarker = L.marker(ll, {icon, title: reg}).addTo(adsbMap);
+            adsbMap.setView(ll, 10);  // centre on first fix only
+          } else {
+            adsbMarker.setLatLng(ll).setIcon(icon);  // move + rotate, don't re-centre
+          }
+          const p = [];
+          if (d.alt_ft)    p.push(`Alt ${d.alt_ft} ft`);
+          if (d.speed_kt)  p.push(`${d.speed_kt} kt`);
+          if (d.track != null) p.push(`Hdg ${d.track}°`);
+          if (d.squawk)    p.push(`Squawk ${d.squawk}`);
+          if (d.source)    p.push(d.source);
+          document.getElementById('adsb-panel-status').textContent = `${reg} airborne`;
+          document.getElementById('adsb-panel-info').textContent = p.join(' · ');
+        } else {
+          document.getElementById('adsb-panel-status').textContent = d.note || `${reg} — not currently on ADS-B`;
+          document.getElementById('adsb-panel-status').style.color = '#8a93a0';
+        }
+      } catch(err) { document.getElementById('adsb-panel-status').textContent = 'ADS-B unavailable'; }
+    }
+    poll();
+    adsbTimer = setInterval(poll, 10000);  // 10s — OpenSky anonymous rate limit
+  }
+
+  ['pill-ctx-track','pill-ctx-open'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('mouseenter', () => el.style.background = '#f0f4ff');
+    el.addEventListener('mouseleave', () => el.style.background = '');
+  });
+
+  // ── Panel resize handle ───────────────────────────────────────────────────
+  const handle = document.getElementById('adsb-resize-handle');
+  handle.addEventListener('mousedown', e => {
+    e.preventDefault();
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'ew-resize';
+    function onMove(ev) {
+      const newWidth = Math.max(240, Math.min(window.innerWidth * 0.6, window.innerWidth - ev.clientX));
+      panel.style.width = newWidth + 'px';
+      if (adsbMap) adsbMap.invalidateSize();
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+      if (adsbMap) adsbMap.invalidateSize();
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
 })();
 </script>
 {% endblock %}

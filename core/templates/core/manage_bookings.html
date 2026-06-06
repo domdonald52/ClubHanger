@@ -10,11 +10,11 @@
   <!-- View toggle + filters -->
   <form method="get" id="filter-form">
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">
-      <div class="view-toggle">
-        <a href="{{ url_conflicts }}" class="vtab {% if view == 'conflicts' %}active{% endif %}">
+      <div class="seg-ctrl">
+        <a href="{{ url_conflicts }}" class="seg-btn {% if view == 'conflicts' %}active{% endif %}">
           Conflicts{% if conflict_count %} <span class="conflict-badge">{{ conflict_count }}</span>{% endif %}
         </a>
-        <a href="{{ url_all }}" class="vtab {% if view == 'all' %}active{% endif %}">All bookings</a>
+        <a href="{{ url_all }}" class="seg-btn {% if view == 'all' %}active{% endif %}">All bookings</a>
       </div>
 
       <input type="hidden" name="view" value="{{ view }}">
@@ -147,10 +147,6 @@
 </div>
 
 <style>
-
-  .view-toggle{display:flex;background:#f3f5f7;border-radius:7px;padding:2px;gap:2px;}
-  .vtab{padding:.3rem .8rem;border-radius:5px;font-size:.83rem;font-weight:500;color:#5b6573;text-decoration:none;display:inline-flex;align-items:center;gap:.35rem;}
-  .vtab.active{background:#fff;color:var(--banner);box-shadow:0 1px 3px rgba(0,0,0,.1);}
 
   .bulk-bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;background:#f8f9fa;border:1px solid #e3e6ea;border-radius:8px;padding:.5rem .75rem;margin-bottom:.75rem;}
 

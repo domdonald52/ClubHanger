@@ -1,0 +1,123 @@
+{% extends "core/base.html" %}
+{% block title %}Vouchers · {{ club.name }}{% endblock %}
+{% block content %}
+<div class="container" style="padding:2rem;max-width:1100px;">
+  <h1 style="margin-bottom:1.2rem;">Manage</h1>
+  {% include "core/_manage_nav.html" with active_section="vouchers" %}
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+    <div>
+      <h2 style="font-size:1rem;font-weight:650;margin:0;">Vouchers</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 0;">Redeeming a voucher credits the member's account. Vouchers can only be used once.</p>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center;">
+      <div class="seg-ctrl">
+        <a href="?show=pending"  class="seg-btn {% if f_show == 'pending' %}active{% endif %}">Pending</a>
+        <a href="?show=redeemed" class="seg-btn {% if f_show == 'redeemed' %}active{% endif %}">Redeemed</a>
+        <a href="?show=all"      class="seg-btn {% if f_show == 'all' %}active{% endif %}">All</a>
+      </div>
+      <button class="cbtn-add" onclick="document.getElementById('create-modal').hidden=false">+ New voucher</button>
+    </div>
+  </div>
+
+  <table style="width:100%;border-collapse:collapse;font-size:.88rem;">
+    <thead>
+      <tr style="border-bottom:2px solid #e3e6ea;">
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Code</th>
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Description</th>
+        <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Value</th>
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Status</th>
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Redeemed by</th>
+        <th style="padding:.4rem .6rem;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for v in vouchers %}
+      <tr style="border-bottom:1px solid #f0f2f4;">
+        <td style="padding:.55rem .6rem;font-family:monospace;font-size:.9rem;font-weight:600;">{{ v.code }}</td>
+        <td style="padding:.55rem .6rem;color:#5b6573;font-size:.85rem;">{{ v.description|default:"—" }}</td>
+        <td style="padding:.55rem .6rem;text-align:right;font-weight:600;">${{ v.value }}</td>
+        <td style="padding:.55rem .6rem;">
+          {% if v.is_redeemed %}
+          <span class="status-pill sp-off">Redeemed</span>
+          {% else %}
+          <span class="status-pill sp-on">Pending</span>
+          {% endif %}
+        </td>
+        <td style="padding:.55rem .6rem;font-size:.85rem;">
+          {% if v.is_redeemed %}{{ v.redeemed_by.user.get_full_name }} · {{ v.redeemed_at|date:"j M Y" }}{% else %}—{% endif %}
+        </td>
+        <td style="padding:.55rem .6rem;text-align:right;">
+          {% if not v.is_redeemed %}
+          <button class="cbtn-sm" onclick="openRedeem({{ v.id }},'{{ v.code }}','{{ v.value }}')">Redeem</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" style="padding:2rem;text-align:center;color:#8a93a0;font-size:.88rem;">No vouchers found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Create modal -->
+<div id="create-modal" hidden style="position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500;">
+  <div style="background:#fff;border-radius:10px;width:min(440px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
+    <h2 style="font-size:1rem;font-weight:650;margin:0 0 1rem;">New voucher</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_voucher">
+      <label class="flabel">Code <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(unique, will be uppercased)</span>
+        <input type="text" name="code" class="finput" required placeholder="e.g. HARB24-001">
+      </label>
+      <label class="flabel">Value ($)
+        <input type="number" name="value" class="finput" min="0" step="0.01" required placeholder="e.g. 250.00">
+      </label>
+      <label class="flabel">Description <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(optional)</span>
+        <input type="text" name="description" class="finput" placeholder="e.g. Harbour Circuit Trial Flight">
+      </label>
+      <label class="flabel">Notes <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(internal)</span>
+        <textarea name="notes" class="finput" rows="2"></textarea>
+      </label>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;">
+        <button type="button" class="cbtn" onclick="document.getElementById('create-modal').hidden=true">Cancel</button>
+        <button type="submit" class="cbtn primary">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Redeem modal -->
+<div id="redeem-modal" hidden style="position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500;">
+  <div style="background:#fff;border-radius:10px;width:min(400px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
+    <h2 style="font-size:1rem;font-weight:650;margin:0 0 .3rem;">Redeem voucher</h2>
+    <p id="redeem-desc" style="font-size:.85rem;color:#5b6573;margin:0 0 1rem;"></p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="redeem_voucher">
+      <input type="hidden" name="voucher_id" id="redeem-voucher-id">
+      <label class="flabel">Credit to member
+        <select name="member_id" class="finput" required>
+          <option value="">— select member —</option>
+          {% for m in members %}
+          <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;">
+        <button type="button" class="cbtn" onclick="document.getElementById('redeem-modal').hidden=true">Cancel</button>
+        <button type="submit" class="cbtn primary">Redeem &amp; credit account</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+function openRedeem(id, code, value) {
+  document.getElementById('redeem-voucher-id').value = id;
+  document.getElementById('redeem-desc').textContent = 'Voucher ' + code + ' · $' + value + ' will be credited to the member\'s account.';
+  document.getElementById('redeem-modal').hidden = false;
+}
+document.getElementById('create-modal').addEventListener('click', e => { if (e.target.id==='create-modal') e.target.hidden=true; });
+document.getElementById('redeem-modal').addEventListener('click', e => { if (e.target.id==='redeem-modal') e.target.hidden=true; });
+</script>
+{% endblock %}

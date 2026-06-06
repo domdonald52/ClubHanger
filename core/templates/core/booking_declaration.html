@@ -55,9 +55,14 @@
           <input type="text" name="destination" value="{{ decl.destination }}" class="finput"
                  placeholder="e.g. NZMS Masterton">
         </label>
-        <label class="flabel" style="max-width:220px;">Estimated return
+        <label class="flabel" style="flex:1;min-width:200px;">Estimated return
           <input type="datetime-local" name="estimated_return" class="finput"
                  value="{% if decl.estimated_return %}{{ decl.estimated_return|date:'Y-m-d\TH:i' }}{% endif %}">
+        </label>
+        <label class="flabel" style="flex:1;min-width:200px;">SAR time
+          <input type="datetime-local" name="sar_time" class="finput"
+                 value="{% if decl.sar_time %}{{ decl.sar_time|date:'Y-m-d\TH:i' }}{% endif %}">
+          <span style="font-size:.72rem;color:#8a93a0;margin-top:.2rem;display:block;">Time at which SAR should be notified if not returned</span>
         </label>
       </div>
       <label style="display:flex;align-items:center;gap:.5rem;font-size:.88rem;margin-bottom:.8rem;">

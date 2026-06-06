@@ -164,14 +164,17 @@
             <a href="{% url 'core:manage_blockouts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_blockouts' %}active{% endif %}">Block-outs</a>
             {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_members' %}active{% endif %}">Members</a>{% endif %}
             <a href="{% url 'core:manage_aircraft' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aircraft' or request.resolver_match.url_name == 'manage_aircraft_detail' %}active{% endif %}">Aircraft</a>
-            <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_instructors' %}active{% endif %}">Instructors</a>
+            <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_instructors' or request.resolver_match.url_name == 'manage_instructor_detail' %}active{% endif %}">Instructors</a>
+            <a href="{% url 'core:manage_aerodromes' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aerodromes' %}active{% endif %}">Aerodromes</a>
             {% if club_member.is_admin %}
             <a href="{% url 'core:manage_charges' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_charges' %}active{% endif %}">Payments</a>
             <a href="{% url 'core:manage_invoices' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_invoices' %}active{% endif %}">Invoices</a>
+            <a href="{% url 'core:manage_vouchers' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_vouchers' %}active{% endif %}">Vouchers</a>
             {% endif %}
             {% if club_member.is_admin or club_member.is_instructor %}
             <div class="sidenav-section-label" style="margin-top:.6rem;">Analytics</div>
             <a href="{% url 'core:reports' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">Reports</a>
+            {% if club_member.is_admin %}<a href="{% url 'core:data_page' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'data_page' %}active{% endif %}">Data</a>{% endif %}
             {% endif %}
             {% if club_member.is_admin %}
             <div class="sidenav-section-label" style="margin-top:.6rem;">Admin</div>
@@ -199,19 +202,75 @@
 
     <main>{% block content %}{% endblock %}</main>
 <style>
+/* ── Form primitives (used on full pages AND overlays — keep in sync with base_inline.html) ── */
+.sh2{font-size:1rem;font-weight:650;margin:.4rem 0 .7rem;color:#1f2933;}
+.flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+.finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
+textarea.finput{resize:vertical;}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
+/* ── Modal ── */
+.modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+.modal-back[hidden]{display:none!important;}
+.modal{background:#fff;border-radius:12px;padding:1.4rem 1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(480px,94vw);}
+.modal h2{margin:0 0 1rem;font-size:1rem;font-weight:650;font-family:inherit;}
+.modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:1rem;}
 /* ── Shared action buttons ── */
+.cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;font-family:inherit;}
+.cbtn:hover{background:#f3f5f7;}
+.cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
 .cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:500;cursor:pointer;}
 .cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);}
-.cbtn-sm{padding:.22rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;}
+.cbtn-sm{padding:.22rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;}
 .cbtn-sm:hover{background:#f3f5f7;}
 .cbtn-danger{border-color:#fca5a5;color:#c0392b;}
 .cbtn-danger:hover{background:#fff0f0;}
-/* ── Manage sub-nav tabs (shared across all manage pages) ── */
+/* ── Tab bar (shared style for both top-nav tabs and in-page sub-tabs) ── */
+/* .mnav = manage page top nav;  .stab-bar = in-page sub-tabs (detail views, settings) */
+/* Both use the same font, size, and active indicator so they look identical. */
 .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;flex-wrap:wrap;}
 .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-flex;align-items:center;gap:.4rem;}
 .mnav-link:hover{color:var(--banner);}
 .mnav-link.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
 .conflict-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:#e03131;color:#fff;font-size:.65rem;font-weight:700;}
+/* ── Segmented filter control (All/Conflicts, Dual/Solo, All/Owned/Leased etc.) ── */
+/* Use for mutually-exclusive filter choices; links or buttons both work. */
+.seg-ctrl{display:inline-flex;gap:2px;background:#f3f5f7;border-radius:7px;padding:2px;}
+.seg-btn{padding:.3rem .8rem;border-radius:5px;font-size:.83rem;font-weight:500;color:#5b6573;text-decoration:none;border:none;background:none;cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;transition:background .15s,color .15s;}
+.seg-btn.active,.seg-btn:not([href]).active{background:#fff;color:var(--banner);box-shadow:0 1px 3px rgba(0,0,0,.1);}
+.seg-btn:hover:not(.active){color:var(--banner);}
+/* ── Inline select (per-row form-submit dropdown: status, active/inactive) ── */
+.inline-sel{padding:.28rem .4rem;border:1px solid #d6dae0;border-radius:5px;font-size:.82rem;background:#fff;cursor:pointer;color:#333;}
+/* Green = active/online, grey = inactive/retired — used by aircraft AND aerodromes dropdowns */
+.inline-sel[data-val="online"],.inline-sel[data-val="1"]{color:#2f9e44;border-color:#b2dfb7;}
+.inline-sel[data-val="retired"],.inline-sel[data-val="0"]{color:#8a93a0;border-color:#d6dae0;}
+/* ── Status pill (per-row form-submit toggle: active/inactive, online/retired) ── */
+.status-pill{display:inline-block;font-size:.75rem;font-weight:600;padding:.22rem .55rem;border-radius:10px;border:none;cursor:pointer;line-height:1.4;white-space:nowrap;}
+.status-pill.sp-on{background:#e6f4ea;color:#2a7a3b;}
+.status-pill.sp-on:hover{background:#d1f0da;}
+.status-pill.sp-off{background:#f3f5f7;color:#8a93a0;}
+.status-pill.sp-off:hover{background:#eef1f4;}
+.status-pill.sp-warn{background:#fff7e6;color:#b06800;}
+.status-pill.sp-warn:hover{background:#ffeece;}
+/* In-page sub-tab bar (settings, aircraft detail, instructor detail, profile) */
+.stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;flex-wrap:wrap;}
+.stab-btn{padding:.55rem 1.1rem;border:none;background:none;cursor:pointer;font-size:.9rem;font-weight:500;font-family:inherit;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s;}
+.stab-btn:hover{color:var(--banner);}
+.stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
+.stab-panel{display:none;}
+.stab-panel.active{display:block;}
+/* ── Inline toggle pills (table rows: solo/dual, hard/soft, on/off) ── */
+.ft-pill{padding:.28rem .65rem;border-radius:20px;border:1px solid #d6dae0;background:#f5f6f8;color:#5b6573;font-size:.78rem;cursor:pointer;font-weight:500;line-height:1;}
+.ft-pill:hover{background:#eef1f4;}
+.ft-pill.ft-pill-active{background:var(--primary);border-color:var(--primary);color:#fff;}
+.ft-pill.ft-pill-hard.ft-pill-active{background:#c0392b;border-color:#c0392b;}
+.ft-pill.ft-pill-soft.ft-pill-active{background:#e67e22;border-color:#e67e22;}
+/* ── Toggle switch (single boolean settings) ── */
+.tog-sw{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;}
+.tog-sw input{opacity:0;width:0;height:0;}
+.tog-sw .tog-track{position:absolute;inset:0;border-radius:20px;background:#cdd2d8;transition:background .2s;cursor:pointer;}
+.tog-sw input:checked+.tog-track{background:var(--primary);}
+.tog-sw .tog-track::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.tog-sw input:checked+.tog-track::after{transform:translateX(16px);}
 /* ── Booking status chips — canonical colours used everywhere ── */
 .status-chip{display:inline-block;font-size:.75rem;font-weight:600;padding:.18rem .55rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
 /* Both conventions: .status-chip.pending and .status-chip.status-pending */
@@ -223,11 +282,12 @@
 .status-chip.cancelled,.status-chip.status-cancelled{background:#f3f5f7;color:#8a93a0;}
 </style>
 <style>
-  .toast-rack{position:fixed;bottom:1.4rem;right:1.4rem;z-index:600;display:flex;flex-direction:column;gap:.5rem;pointer-events:none;}
-  .toast{background:#1f2933;color:#fff;padding:.55rem 1rem;border-radius:8px;font-size:.84rem;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:center;gap:.5rem;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:auto;}
+  .toast-rack{position:fixed;bottom:1.4rem;right:1.4rem;z-index:600;display:flex;flex-direction:column;gap:.5rem;pointer-events:none;max-width:420px;}
+  .toast{background:#1f2933;color:#fff;padding:.55rem 1rem;border-radius:8px;font-size:.84rem;font-weight:500;box-shadow:0 4px 14px rgba(0,0,0,.22);display:flex;align-items:flex-start;gap:.5rem;opacity:0;transform:translateY(8px);transition:opacity .2s,transform .2s;pointer-events:auto;cursor:pointer;line-height:1.4;}
   .toast.show{opacity:1;transform:translateY(0);}
   .toast.ok{background:#2a7a3b;}
   .toast.err{background:#c0392b;}
+  .toast.info{background:#2f5fa8;}
 </style>
 <div class="toast-rack" id="toast-rack"></div>
 <script>
@@ -237,10 +297,12 @@
   window.toast = function(msg, type) {
     const t = document.createElement('div');
     t.className = 'toast' + (type ? ' ' + type : ' ok');
-    t.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="2 7 6 11 12 3"/></svg>' + msg;
+    t.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><polyline points="2 7 6 11 12 3"/></svg>' + msg;
     rack.appendChild(t);
+    const delay = type === 'info' ? 15000 : 3000;  // info toasts (e.g. generated passwords) stay 15s
     requestAnimationFrame(() => t.classList.add('show'));
-    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, 3000);
+    const tid = setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 220); }, delay);
+    t.addEventListener('click', () => { clearTimeout(tid); t.classList.remove('show'); setTimeout(() => t.remove(), 220); });
   };
   // Auto-show toast for ?saved=1 in URL
   document.addEventListener('DOMContentLoaded', () => {
@@ -256,6 +318,9 @@
       if (msg) window.toast(msg);
       el.remove();
     });
+    {% if messages %}{% for msg in messages %}
+    window.toast('{{ msg.message|escapejs }}', '{% if msg.level_tag == "error" %}err{% elif msg.level_tag == "info" %}info{% else %}ok{% endif %}');
+    {% endfor %}{% endif %}
   });
 })();
 (function(){
@@ -345,6 +410,10 @@
     const sep = urlWithoutHash.includes('?') ? '&' : '?';
     try {
       const resp = await fetch(urlWithoutHash + sep + 'inline=1', {credentials:'same-origin'});
+      if (!resp.ok) {
+        body.innerHTML = `<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load page (HTTP ${resp.status}).</p>`;
+        return;
+      }
       const html = await resp.text();
       body.innerHTML = html;
       // Inject hash into location so tab JS can read it
@@ -367,12 +436,18 @@
         const explicitAction = f.getAttribute('action');
         const raw = explicitAction ? new URL(explicitAction, baseUrl).href : baseUrl;
         const sep2 = raw.includes('?') ? '&' : '?';
-        const action = raw + sep2 + 'inline=1';
+        const postUrl = raw + sep2 + 'inline=1';
         try {
-          await fetch(action, {method:'POST', body:new FormData(f), credentials:'same-origin'});
+          const resp = await fetch(postUrl, {method:'POST', body:new FormData(f), credentials:'same-origin'});
+          if (!resp.ok && resp.status !== 302) {
+            body.innerHTML = `<p style="color:#c0392b;padding:2rem;text-align:center;">Save failed (HTTP ${resp.status}). Close and try again.</p>`;
+            return;
+          }
+          const wasSaved = new URL(resp.url, location.href).searchParams.has('saved');
           await loadOverlay(baseUrl);
-        } catch(e) {
-          alert('Error submitting — please try again.');
+          if (wasSaved && window.showSavedToast) window.showSavedToast();
+        } catch(err) {
+          body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Network error — check your connection and try again.</p>';
         }
       });
     });
@@ -396,6 +471,24 @@
 
   window.openPageOverlay = openOverlay;
   window.closePageOverlay = closeOverlay;
+})();
+</script>
+
+<style>
+  .save-toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#2a7a3b;color:#fff;padding:.5rem 1.1rem;border-radius:8px;font-size:.87rem;font-weight:500;z-index:9999;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;pointer-events:none;box-shadow:0 4px 16px rgba(16,24,40,.18);}
+  .save-toast.show{opacity:1;transform:translateY(0);}
+</style>
+<div id="save-toast" class="save-toast">Saved ✓</div>
+<script>
+(function(){
+  var t = document.getElementById('save-toast');
+  window.showSavedToast = function(msg) {
+    t.textContent = msg || 'Saved ✓';
+    t.classList.add('show');
+    clearTimeout(t._hide);
+    t._hide = setTimeout(function(){ t.classList.remove('show'); }, 2500);
+  };
+  if (new URLSearchParams(location.search).has('saved')) window.showSavedToast();
 })();
 </script>
 </body>

@@ -21,9 +21,11 @@
   <!-- Tab bar -->
   <div class="stab-bar">
     <button class="stab-btn" id="tabBtn-details"     data-tab="details">Details</button>
+    <button class="stab-btn" id="tabBtn-instruments" data-tab="instruments">Instruments</button>
     <button class="stab-btn" id="tabBtn-rates"       data-tab="rates">Rates</button>
     <button class="stab-btn" id="tabBtn-surcharges"  data-tab="surcharges">Surcharges</button>
     <button class="stab-btn" id="tabBtn-maintenance" data-tab="maintenance">Maintenance</button>
+    <button class="stab-btn" id="tabBtn-live"        data-tab="live">Live</button>
     <button class="stab-btn" id="tabBtn-history"     data-tab="history">Flight history</button>
   </div>
 
@@ -52,27 +54,61 @@
           <input type="number" name="engine_count" value="{{ ac.engine_count }}" min="1" max="4" class="finput" style="width:100px;">
         </label>
       </div>
-
-      <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;">
-        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
-          <input type="checkbox" name="is_leased" {% if ac.is_leased %}checked{% endif %}> Leased-in (not club-owned)
-        </label>
-        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
-          <input type="checkbox" name="is_available_for_hire" {% if ac.is_available_for_hire %}checked{% endif %}> Available for hire
-        </label>
+      <div style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1.2rem;">
+        <div style="display:flex;align-items:flex-start;gap:.75rem;">
+          <label class="tog-sw" style="margin-top:.1rem;">
+            <input type="checkbox" name="is_leased" {% if ac.is_leased %}checked{% endif %}>
+            <span class="tog-track"></span>
+          </label>
+          <div>
+            <div style="font-size:.88rem;font-weight:500;">Leased-in aircraft</div>
+            <div style="font-size:.78rem;color:#8a93a0;">Not club-owned — affects financial reporting (leased vs owned split in reports).</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:.75rem;">
+          <label class="tog-sw" style="margin-top:.1rem;">
+            <input type="checkbox" name="is_available_for_hire" {% if ac.is_available_for_hire %}checked{% endif %}>
+            <span class="tog-track"></span>
+          </label>
+          <div>
+            <div style="font-size:.88rem;font-weight:500;">Available for member bookings</div>
+            <div style="font-size:.78rem;color:#8a93a0;">Turn off if this aircraft should not appear in the booking calendar (e.g. temporarily suspended, or an owner's aircraft not available to general members). Separate from the Online/Retired status — use Retired only when the aircraft permanently leaves the fleet.</div>
+          </div>
+        </div>
       </div>
+      <div style="margin-top:1rem;">
+        <button type="submit" class="btn">Save details</button>
+      </div>
+    </form>
+    {% else %}
+    <table class="info-table">
+      <tr><th>Type</th><td>{{ ac.aircraft_type }}</td></tr>
+      <tr><th>Serial</th><td>{{ ac.serial_number|default:"—" }}</td></tr>
+      <tr><th>Seats</th><td>{{ ac.seats }}</td></tr>
+      <tr><th>Engines</th><td>{{ ac.engine_count }}</td></tr>
+    </table>
+    {% endif %}
+  </div><!-- /tab-details -->
 
-      <h2 class="sh2" style="margin-top:1rem;">Recording instruments</h2>
-      <div style="display:flex;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;">
-        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
-          <input type="checkbox" name="records_hobbs" {% if ac.records_hobbs %}checked{% endif %}> Hobbs meter
+  <!-- ── INSTRUMENTS tab ── -->
+  <div id="tab-instruments" class="stab-panel">
+    {% if club_member.is_admin %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_instruments">
+
+      <h2 class="sh2">Recording instruments</h2>
+      <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .7rem;">Enable each instrument fitted to this aircraft. These determine which meter readings are available at check-in.</p>
+      <div style="display:flex;gap:1.4rem;flex-wrap:wrap;margin-bottom:1rem;">
+        {% for fname, label, checked in records_instruments %}
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.88rem;cursor:pointer;">
+          <label class="tog-sw">
+            <input type="checkbox" name="{{ fname }}" {% if checked %}checked{% endif %}>
+            <span class="tog-track"></span>
+          </label>
+          {{ label }}
         </label>
-        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
-          <input type="checkbox" name="records_tacho" {% if ac.records_tacho %}checked{% endif %}> Tachometer
-        </label>
-        <label style="display:flex;align-items:center;gap:.4rem;font-size:.88rem;">
-          <input type="checkbox" name="records_airswitch" {% if ac.records_airswitch %}checked{% endif %}> Air switch
-        </label>
+        {% endfor %}
       </div>
       <label class="flabel" style="max-width:260px;">Time calculation method
         <select name="total_time_method" class="finput">
@@ -92,10 +128,10 @@
       <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .5rem;">The readings when this aircraft was entered into the system — used to compute cumulative totals.</p>
       {% if ac.hobbs_initial or ac.tacho_initial or ac.airswitch_initial %}
       <div class="notice warn" style="margin-bottom:.7rem;font-size:.82rem;">
-        <strong>Warning:</strong> These values are already set. Changing them will affect all cumulative hour calculations and maintenance scheduling. Only correct a data entry error — not a routine update.
+        <strong>Warning:</strong> These values are already set. Changing them will affect all cumulative hour calculations and maintenance scheduling. Only correct a data entry error.
       </div>
       {% endif %}
-      <div class="fgrid" style="max-width:420px;">
+      <div class="fgrid" style="max-width:420px;margin-bottom:.8rem;">
         <label class="flabel">Hobbs initial
           <input type="number" name="hobbs_initial" value="{{ ac.hobbs_initial|default:'' }}"
                  min="0" step="0.1" class="finput" placeholder="e.g. 2340.5">
@@ -110,23 +146,43 @@
         </label>
       </div>
 
-      <div style="margin-top:1.4rem;">
-        <button type="submit" class="btn">Save details</button>
+      <h2 class="sh2" style="margin-top:1.4rem;">Maintenance hours</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .7rem;">
+        Choose which instrument to use and what fraction of each reading to count as "maintenance hours" (e.g. 95% of tacho = Tachometer at 0.95).
+      </p>
+      <div class="fgrid" style="max-width:500px;margin-bottom:.8rem;">
+        <label class="flabel">Source instrument
+          <select name="maint_time_source" class="finput">
+            {% for val, label in ac.MAINT_SOURCE_CHOICES %}
+            <option value="{{ val }}" {% if ac.maint_time_source == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel">Fraction
+          <input type="number" name="maint_time_fraction" value="{{ ac.maint_time_fraction }}"
+                 min="0.5" max="1.0" step="0.01" class="finput" style="width:120px;" placeholder="e.g. 0.95">
+          <span style="font-size:.78rem;color:#8a93a0;">0.50–1.00</span>
+        </label>
+        <label class="flabel">Initial maintenance hours
+          <input type="number" name="maint_hours_initial" value="{{ ac.maint_hours_initial|default:'' }}"
+                 min="0" step="0.1" class="finput" placeholder="e.g. 1425.0">
+          <span style="font-size:.78rem;color:#8a93a0;">Accumulated hours when entered into this system</span>
+        </label>
+      </div>
+
+      <div style="margin-top:1rem;">
+        <button type="submit" class="btn">Save instruments</button>
       </div>
     </form>
     {% else %}
     <table class="info-table">
-      <tr><th>Type</th><td>{{ ac.aircraft_type }}</td></tr>
-      <tr><th>Serial</th><td>{{ ac.serial_number|default:"—" }}</td></tr>
-      <tr><th>Seats</th><td>{{ ac.seats }}</td></tr>
-      <tr><th>Engines</th><td>{{ ac.engine_count }}</td></tr>
       <tr><th>Time method</th><td>{{ ac.get_total_time_method_display }}</td></tr>
       <tr><th>Hobbs initial</th><td>{{ ac.hobbs_initial|default:"—" }}</td></tr>
       <tr><th>Tacho initial</th><td>{{ ac.tacho_initial|default:"—" }}</td></tr>
       <tr><th>Air switch initial</th><td>{{ ac.airswitch_initial|default:"—" }}</td></tr>
     </table>
     {% endif %}
-  </div><!-- /tab-details -->
+  </div><!-- /tab-instruments -->
 
   <!-- ── RATES tab ── -->
   <div id="tab-rates" class="stab-panel">
@@ -353,6 +409,36 @@
     {% endif %}
 
     <hr style="border:none;border-top:1px solid #eef1f4;margin:2rem 0 1.4rem;">
+
+    <h2 class="sh2" style="margin:0 0 .6rem;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100 entries)</span></h2>
+    <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .8rem;">Auto-recorded at each check-in. Cross-check against the paper tech log.</p>
+    {% if maint_log %}
+    <table class="ft-table" style="margin-bottom:1.5rem;">
+      <thead><tr>
+        <th>Date</th><th>Flight</th><th>Hobbs</th><th>Tacho</th><th>Air sw.</th>
+        <th style="text-align:right;">This flight</th><th style="text-align:right;">Total maint hrs</th>
+      </tr></thead>
+      <tbody>
+        {% for e in maint_log %}
+        <tr>
+          <td style="font-size:.82rem;">{{ e.date }}</td>
+          <td style="font-size:.82rem;color:#8a93a0;">
+            {% if e.flight_completion %}{{ e.flight_completion.booking.member.user.get_full_name }}{% else %}Manual{% endif %}
+          </td>
+          <td style="font-size:.82rem;">{{ e.hobbs_reading|default:"—" }}</td>
+          <td style="font-size:.82rem;">{{ e.tacho_reading|default:"—" }}</td>
+          <td style="font-size:.82rem;">{{ e.airswitch_reading|default:"—" }}</td>
+          <td style="text-align:right;font-size:.82rem;">{{ e.maint_hours_flight }}</td>
+          <td style="text-align:right;font-size:.85rem;font-weight:500;">{{ e.maint_hours_total }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 1.5rem;">No log entries yet — entries are created automatically at each check-in.</p>
+    {% endif %}
+
+    <hr style="border:none;border-top:1px solid #eef1f4;margin:0 0 1.4rem;">
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
       <h2 class="sh2" style="margin:0;">Block-outs</h2>
@@ -605,6 +691,21 @@
     </div>
   </div>
 
+  <!-- ── LIVE tab ── -->
+  <div id="tab-live" class="stab-panel">
+    <div id="adsb-panel">
+      <div id="adsb-status" style="font-size:.88rem;font-weight:500;color:#8a93a0;margin-bottom:.3rem;">Waiting…</div>
+      <div id="adsb-info" style="font-size:.82rem;color:#5b6573;margin-bottom:.4rem;display:none;"></div>
+      <div id="adsb-map" style="height:340px;border-radius:8px;border:1px solid #e3e6ea;display:none;margin-bottom:.4rem;"></div>
+      <div id="adsb-meta" style="font-size:.75rem;color:#adb5bd;display:none;">
+        <span id="adsb-last-updated"></span> · refreshes every 60s ·
+        <a href="https://opensky-network.org" target="_blank" style="color:inherit;">OpenSky</a> /
+        <a href="https://adsb.fi" target="_blank" style="color:inherit;">adsb.fi</a> /
+        <a href="https://adsb.one" target="_blank" style="color:inherit;">ADSB.one</a>
+      </div>
+    </div>
+  </div><!-- /tab-live -->
+
   <!-- ── HISTORY tab ── -->
   <div id="tab-history" class="stab-panel">
     <h2 class="sh2">Flight history <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100)</span></h2>
@@ -660,12 +761,6 @@
   .cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;}
   .cbtn:hover{background:#f3f5f7;}
   .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
-  .stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;}
-  .stab-btn{padding:.55rem 1rem;border:none;background:none;cursor:pointer;font-size:.88rem;font-weight:500;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;}
-  .stab-btn:hover{color:var(--banner);}
-  .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
-  .stab-panel{display:none;}
-  .stab-panel.active{display:block;}
 
   .sh2{font-size:1rem;font-weight:650;color:#1f2933;margin:.4rem 0 .6rem;}
   .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
@@ -726,16 +821,29 @@
 .cbtn-sm
 .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:.6rem;}
   .notice.warn{background:#fff8e6;color:#7a5800;border-left:3px solid #f59e0b;}
+  @keyframes adsb-spin{to{transform:rotate(360deg)}}
+  .adsb-spinner{display:inline-block;width:11px;height:11px;border:2px solid #d0d6de;border-top-color:#6b7785;border-radius:50%;animation:adsb-spin .7s linear infinite;vertical-align:middle;margin-right:.35rem;flex-shrink:0;}
 </style>
 
 <script>
 (function(){
-  const TABS = ['details','rates','surcharges','maintenance','history'];
+  const TABS = ['details','instruments','rates','surcharges','maintenance','live','history'];
   function activate(id) {
     TABS.forEach(t => {
       document.getElementById('tab-'+t).classList.toggle('active', t===id);
       document.getElementById('tabBtn-'+t).classList.toggle('active', t===id);
     });
+    if (id === 'live') {
+      // Show spinner immediately — even before the ADS-B IIFE has loaded
+      const s = document.getElementById('adsb-status');
+      if (s) { s.innerHTML = '<span class="adsb-spinner"></span>Contacting ADS-B services…'; s.style.color = '#6b7785'; }
+      if (window._adsbStartPolling) {
+        window._adsbStartPolling();
+      } else {
+        window._adsbLivePending = true;
+      }
+      setTimeout(() => { try { window._adsbMap && window._adsbMap.invalidateSize(); } catch(e){} }, 80);
+    }
     try { localStorage.setItem('acDetailTab', id); } catch(e){}
   }
   TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
@@ -788,5 +896,107 @@ function toggleBoTime(cb) {
   const form = cb.closest('form');
   form.querySelectorAll('.bo-time-fields').forEach(el => el.style.display = cb.checked ? 'none' : 'flex');
 }
+</script>
+
+<!-- ── ADS-B live tracking ── -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9/dist/leaflet.js"></script>
+<script>
+(function(){
+  const ADSB_URL = '{% url "core:adsb_proxy" club.slug ac.id %}';
+  const statusEl  = document.getElementById('adsb-status');
+  const mapEl     = document.getElementById('adsb-map');
+  const infoEl    = document.getElementById('adsb-info');
+  const metaEl    = document.getElementById('adsb-meta');
+  const lastUpdEl = document.getElementById('adsb-last-updated');
+  if (!statusEl) return;
+
+  let map, marker, lastPollAt = null;
+
+  // Tick "last updated Xs ago" every second
+  setInterval(() => {
+    if (!lastPollAt || !lastUpdEl) return;
+    const secs = Math.round((Date.now() - lastPollAt) / 1000);
+    lastUpdEl.textContent = secs < 5 ? 'just updated' : `updated ${secs}s ago`;
+  }, 1000);
+
+  function makeIcon(track) {
+    const deg = track != null ? track : 0;
+    return L.divIcon({
+      className: '',
+      html: `<svg viewBox="0 0 24 24" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
+        <g transform="rotate(${deg},12,12)" fill="#1e3a5f" stroke="#fff" stroke-width="0.6" stroke-linejoin="round">
+          <path d="M12,1 L10,5 L9.5,9 L9.5,19 L10.5,23 L12,24 L13.5,23 L14.5,19 L14.5,9 L14,5 Z"/>
+          <path d="M9.5,10 L0.5,15 L1.5,17 L9.5,13 Z"/>
+          <path d="M14.5,10 L23.5,15 L22.5,17 L14.5,13 Z"/>
+          <path d="M9.5,20 L5.5,23 L6.5,24 L10,22 Z"/>
+          <path d="M14.5,20 L18.5,23 L17.5,24 L14,22 Z"/>
+        </g>
+      </svg>`,
+      iconSize: [32, 32], iconAnchor: [16, 16]
+    });
+  }
+
+  function initMap(lat, lon, track) {
+    if (!map) {
+      mapEl.style.display = 'block';
+      map = window._adsbMap = L.map('adsb-map').setView([lat, lon], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+        maxZoom: 18
+      }).addTo(map);
+      marker = L.marker([lat, lon], {icon: makeIcon(track)}).addTo(map);
+    } else {
+      marker.setLatLng([lat, lon]);
+      marker.setIcon(makeIcon(track));
+    }
+  }
+
+  async function poll() {
+    statusEl.innerHTML = '<span class="adsb-spinner"></span>Checking ADS-B sources…';
+    statusEl.style.color = '#6b7785';
+    try {
+      const r = await fetch(ADSB_URL, {credentials:'same-origin'});
+      const d = await r.json();
+      lastPollAt = Date.now();
+      metaEl.style.display = '';
+      const triedStr = d.tried && d.tried.length ? ` [${d.tried.join(' → ')}]` : '';
+      if (d.found && d.lat && d.lon) {
+        statusEl.innerHTML = '{{ ac.registration }} airborne';
+        statusEl.style.color = '#2a7a3b';
+        initMap(d.lat, d.lon, d.track);
+        const parts = [`${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}`];
+        if (d.alt_ft)        parts.push(`${d.alt_ft} ft`);
+        if (d.speed_kt)      parts.push(`${d.speed_kt} kt`);
+        if (d.track != null) parts.push(`Hdg ${d.track}°`);
+        if (d.squawk)        parts.push(`Squawk ${d.squawk}`);
+        infoEl.textContent = parts.join(' · ');
+        infoEl.style.display = '';
+      } else if (d.found === false) {
+        statusEl.textContent = `{{ ac.registration }} not detected${triedStr}`;
+        statusEl.style.color = '#8a93a0';
+        infoEl.style.display = 'none';
+      } else if (d.error) {
+        statusEl.textContent = `Error: ${d.error}`;
+        statusEl.style.color = '#c0392b';
+      }
+    } catch(e) {
+      statusEl.textContent = 'Could not reach ADS-B proxy.';
+      statusEl.style.color = '#c0392b';
+    }
+  }
+
+  let pollTimer = null;
+  window._adsbStartPolling = function() {
+    if (pollTimer) return;
+    poll();
+    pollTimer = setInterval(poll, 60000);
+  };
+  // Handle race: if Live tab was activated before this script ran
+  if (window._adsbLivePending) {
+    window._adsbLivePending = false;
+    window._adsbStartPolling();
+  }
+})();
 </script>
 {% endblock %}

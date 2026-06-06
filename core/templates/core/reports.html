@@ -1,41 +1,297 @@
 {% extends "core/base.html" %}
 {% block title %}Reports · {{ club.name }}{% endblock %}
 {% block content %}
-<div style="max-width:960px;margin:0 auto;padding:2rem;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.5rem;">
-    <div>
-      <h1 style="font-size:1.3rem;font-weight:700;margin:0;">Reports</h1>
-      <div style="font-size:.82rem;color:#8a93a0;margin-top:.2rem;">Financial year {{ fy_label }}</div>
+<div style="max-width:1040px;margin:0 auto;padding:2rem;">
+  <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+    <h1 style="font-size:1.3rem;font-weight:700;margin:0;">Reports</h1>
+    <span style="font-size:.82rem;color:#8a93a0;">{{ fy_label }}</span>
+  </div>
+
+  <!-- Report tabs -->
+  <div class="stab-bar">
+    <button class="stab-btn" id="tabBtn-aircraft"    data-tab="aircraft">Aircraft hours</button>
+    <button class="stab-btn" id="tabBtn-instructors" data-tab="instructors">Instructor hours</button>
+    <button class="stab-btn" id="tabBtn-members"     data-tab="members">Members</button>
+    <button class="stab-btn" id="tabBtn-payments"    data-tab="payments">Payments</button>
+    <button class="stab-btn" id="tabBtn-analytics"   data-tab="analytics">Analytics ✦</button>
+  </div>
+
+  <!-- ── AIRCRAFT tab ── -->
+  <div id="tab-aircraft" class="stab-panel">
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;flex-wrap:wrap;">
+      <span style="font-size:.82rem;color:#8a93a0;">Filter:</span>
+      <div class="seg-ctrl">
+        <a href="?leased=all"    class="seg-btn {% if leased_filter == 'all' %}active{% endif %}">All</a>
+        <a href="?leased=owned"  class="seg-btn {% if leased_filter == 'owned' %}active{% endif %}">Owned</a>
+        <a href="?leased=leased" class="seg-btn {% if leased_filter == 'leased' %}active{% endif %}">Leased</a>
+      </div>
     </div>
-    <div style="display:flex;gap:.3rem;background:#f3f5f7;border-radius:7px;padding:2px;">
-      <a href="?leased=all" style="padding:.3rem .8rem;border-radius:5px;font-size:.82rem;font-weight:500;text-decoration:none;{% if leased_filter == 'all' %}background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1);{% else %}color:#5b6573;{% endif %}">All</a>
-      <a href="?leased=owned" style="padding:.3rem .8rem;border-radius:5px;font-size:.82rem;font-weight:500;text-decoration:none;{% if leased_filter == 'owned' %}background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1);{% else %}color:#5b6573;{% endif %}">Owned</a>
-      <a href="?leased=leased" style="padding:.3rem .8rem;border-radius:5px;font-size:.82rem;font-weight:500;text-decoration:none;{% if leased_filter == 'leased' %}background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1);{% else %}color:#5b6573;{% endif %}">Leased</a>
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 1rem;">Flight hours by aircraft — {{ fy_label }}</h2>
+      {% if datasets != "[]" %}
+      <canvas id="hours-chart" height="280"></canvas>
+      {% else %}
+      <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
+      {% endif %}
     </div>
   </div>
 
-  <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-    <h2 style="font-size:.95rem;font-weight:650;margin:0 0 1rem;">Flight hours by aircraft</h2>
-    <canvas id="hours-chart" height="320"></canvas>
+  <!-- ── INSTRUCTORS tab ── -->
+  <div id="tab-instructors" class="stab-panel">
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 1rem;">Instructor hours — {{ fy_label }}</h2>
+      {% if instr_datasets != "[]" %}
+      <canvas id="instr-chart" height="260"></canvas>
+      {% else %}
+      <p style="font-size:.85rem;color:#8a93a0;margin:0;">No dual flights recorded in this period.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── MEMBERS tab ── -->
+  <div id="tab-members" class="stab-panel">
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .4rem;">Member activity — {{ fy_label }}</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Member flight hours and booking counts for this financial year.</p>
+      {% if member_rows %}
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+        <thead>
+          <tr style="border-bottom:2px solid #e3e6ea;">
+            <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Member</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Hours</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in member_rows %}
+          <tr style="border-bottom:1px solid #f0f2f4;">
+            <td style="padding:.5rem .6rem;">{{ row.name }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ row.flight_count }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;font-weight:600;">{{ row.total_hours }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── PAYMENTS tab ── -->
+  <div id="tab-payments" class="stab-panel">
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .4rem;">Payments — {{ fy_label }}</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Revenue collected from completed flights.</p>
+      {% if payment_rows %}
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+        <thead>
+          <tr style="border-bottom:2px solid #e3e6ea;">
+            <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Month</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Charged</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Collected</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in payment_rows %}
+          <tr style="border-bottom:1px solid #f0f2f4;">
+            <td style="padding:.5rem .6rem;">{{ row.label }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ row.count }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;">${{ row.charged }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;font-weight:600;">${{ row.collected }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr style="border-top:2px solid #e3e6ea;background:#f8f9fa;">
+            <td style="padding:.5rem .6rem;font-weight:650;">Total</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ payment_total_count }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;">${{ payment_total_charged }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;font-weight:650;">${{ payment_total_collected }}</td>
+          </tr>
+        </tfoot>
+      </table>
+      {% else %}
+      <p style="font-size:.85rem;color:#8a93a0;margin:0;">No payment data for this period.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── ANALYTICS tab (drag-and-drop concept demo) ── -->
+  <div id="tab-analytics" class="stab-panel">
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .3rem;">Analytics builder</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1.2rem;">Drag fields to build a custom pivot table. This is a concept preview — not yet connected to live data.</p>
+
+      <div style="display:grid;grid-template-columns:180px 1fr;gap:1.2rem;align-items:start;">
+        <!-- Field palette -->
+        <div>
+          <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;margin-bottom:.5rem;">Fields</div>
+          <div id="field-palette" style="display:flex;flex-direction:column;gap:.3rem;">
+            {% for f in analytics_fields %}
+            <div class="analytics-field" draggable="true" data-field="{{ f.id }}"
+                 style="padding:.35rem .65rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.4rem;">
+              <span style="opacity:.4;">⠿</span> {{ f.label }}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Drop zones + result -->
+        <div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem;">
+            <div>
+              <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;margin-bottom:.4rem;">Rows</div>
+              <div class="drop-zone" id="drop-rows" data-zone="rows"
+                   style="min-height:60px;border:2px dashed #d6dae0;border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;"></div>
+            </div>
+            <div>
+              <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;margin-bottom:.4rem;">Values</div>
+              <div class="drop-zone" id="drop-values" data-zone="values"
+                   style="min-height:60px;border:2px dashed #d6dae0;border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;"></div>
+            </div>
+          </div>
+
+          <button onclick="runAnalytics()" class="cbtn primary" style="margin-bottom:1rem;">Build report</button>
+
+          <div id="analytics-result" style="display:none;">
+            <div id="analytics-table-wrap" style="overflow-x:auto;"></div>
+            <p style="font-size:.78rem;color:#8a93a0;margin:.5rem 0 0;">Drag-and-drop analytics — concept preview. Live data queries coming soon.</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
+// ── Report tabs ──────────────────────────────────────────────────────────────
+(function(){
+  const TABS = ['aircraft','instructors','members','payments','analytics'];
+  function activate(id) {
+    TABS.forEach(t => {
+      document.getElementById('tab-'+t).classList.toggle('active', t===id);
+      document.getElementById('tabBtn-'+t).classList.toggle('active', t===id);
+    });
+    try { localStorage.setItem('reportTab', id); } catch(e){}
+  }
+  TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
+  let init = 'aircraft';
+  try { init = localStorage.getItem('reportTab') || 'aircraft'; } catch(e){}
+  // preserve tab when returning from leased filter link
+  const hash = location.hash.replace('#','');
+  activate(TABS.includes(hash) ? hash : init);
+})();
+
+// ── Theme-aware chart palette ────────────────────────────────────────────────
+// Reads CSS custom properties so charts always match the club's theme.
+function _themeColors(n) {
+  const cs = getComputedStyle(document.documentElement);
+  const primary = cs.getPropertyValue('--primary').trim() || '#2f7dd1';
+  // Fixed offsets around primary hue for multi-series readability
+  const OFFSETS = [0, 120, 240, 60, 180, 300, 30, 210, 90, 150];
+  // Parse hex to HSL, rotate hue
+  function hexToHsl(hex) {
+    let r = parseInt(hex.slice(1,3),16)/255,
+        g = parseInt(hex.slice(3,5),16)/255,
+        b = parseInt(hex.slice(5,7),16)/255;
+    const max=Math.max(r,g,b), min=Math.min(r,g,b);
+    let h,s,l=(max+min)/2;
+    if(max===min){h=s=0;}else{
+      const d=max-min; s=l>.5?d/(2-max-min):d/(max+min);
+      h=max===r?((g-b)/d+(g<b?6:0)):max===g?((b-r)/d+2):((r-g)/d+4); h/=6;
+    }
+    return [Math.round(h*360), Math.round(s*100), Math.round(l*100)];
+  }
+  const [h,s,l] = hexToHsl(primary.length===7 ? primary : '#2f7dd1');
+  return Array.from({length:n}, (_,i) => `hsl(${(h+OFFSETS[i%OFFSETS.length])%360},${Math.max(40,s)}%,${Math.min(55,Math.max(38,l))}%)`);
+}
+
+function _applyColors(datasets) {
+  const colors = _themeColors(datasets.length);
+  return datasets.map((ds,i) => ({...ds, backgroundColor: colors[i]}));
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+const _chartOpts = {
+  responsive: true,
+  plugins: { legend: { position: 'bottom' } },
+  scales: {
+    x: { stacked: true, grid: { display: false } },
+    y: { stacked: true, title: { display: true, text: 'Hours' }, beginAtZero: true },
+  },
+};
+{% if datasets != "[]" %}
 new Chart(document.getElementById('hours-chart'), {
   type: 'bar',
-  data: {
-    labels: {{ month_labels|safe }},
-    datasets: {{ datasets|safe }},
-  },
-  options: {
-    responsive: true,
-    plugins: { legend: { position: 'bottom' } },
-    scales: {
-      x: { stacked: true, grid: { display: false } },
-      y: { stacked: true, title: { display: true, text: 'Hours' }, beginAtZero: true },
-    },
-  },
+  data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ datasets|safe }}) },
+  options: _chartOpts,
 });
+{% endif %}
+{% if instr_datasets != "[]" %}
+new Chart(document.getElementById('instr-chart'), {
+  type: 'bar',
+  data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ instr_datasets|safe }}) },
+  options: { ..._chartOpts, scales: { ..._chartOpts.scales,
+    y: { title: { display: true, text: 'Instructor hours' }, beginAtZero: true }
+  }},
+});
+{% endif %}
+
+// ── Analytics drag-and-drop demo ─────────────────────────────────────────────
+const DEMO_DATA = {{ analytics_demo|safe }};
+
+document.querySelectorAll('.analytics-field').forEach(el => {
+  el.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', el.dataset.field));
+});
+document.querySelectorAll('.drop-zone').forEach(zone => {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor='var(--primary)'; });
+  zone.addEventListener('dragleave', () => zone.style.borderColor='#d6dae0');
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.style.borderColor='#d6dae0';
+    const fid = e.dataTransfer.getData('text/plain');
+    const label = document.querySelector(`.analytics-field[data-field="${fid}"]`)?.textContent.trim();
+    if (!label) return;
+    if (zone.querySelector(`[data-field="${fid}"]`)) return;  // already here
+    const chip = document.createElement('div');
+    chip.dataset.field = fid;
+    chip.innerHTML = `<span>${label}</span> <button onclick="this.parentNode.remove()" style="border:none;background:none;cursor:pointer;color:#8a93a0;font-size:.85rem;padding:0 0 0 .2rem;">✕</button>`;
+    chip.style.cssText = 'display:inline-flex;align-items:center;gap:.2rem;padding:.25rem .5rem;background:color-mix(in srgb,var(--primary) 12%,#fff);border:1px solid var(--primary);border-radius:20px;font-size:.78rem;color:var(--primary);';
+    zone.appendChild(chip);
+  });
+});
+
+function runAnalytics() {
+  const rowFields  = [...document.querySelectorAll('#drop-rows [data-field]')].map(e=>e.dataset.field);
+  const valFields  = [...document.querySelectorAll('#drop-values [data-field]')].map(e=>e.dataset.field);
+  if (!rowFields.length || !valFields.length) {
+    alert('Add at least one Row field and one Value field.');
+    return;
+  }
+  // Demo: group DEMO_DATA by first row field, sum value fields
+  const rf = rowFields[0], vf = valFields[0];
+  const groups = {};
+  DEMO_DATA.forEach(row => {
+    const key = row[rf] || '—';
+    if (!groups[key]) groups[key] = {};
+    valFields.forEach(v => { groups[key][v] = (groups[key][v]||0) + (parseFloat(row[v])||0); });
+  });
+  const fieldLabel = f => document.querySelector(`.analytics-field[data-field="${f}"]`)?.textContent.trim() || f;
+  let html = `<table style="width:100%;border-collapse:collapse;font-size:.84rem;"><thead><tr style="border-bottom:2px solid #e3e6ea;">`;
+  html += `<th style="padding:.4rem .6rem;text-align:left;font-weight:600;">${fieldLabel(rf)}</th>`;
+  valFields.forEach(v => html += `<th style="padding:.4rem .6rem;text-align:right;font-weight:600;">${fieldLabel(v)}</th>`);
+  html += `</tr></thead><tbody>`;
+  Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([key, vals]) => {
+    html += `<tr style="border-bottom:1px solid #f0f2f4;"><td style="padding:.45rem .6rem;">${key}</td>`;
+    valFields.forEach(v => html += `<td style="padding:.45rem .6rem;text-align:right;">${(vals[v]||0).toFixed(2)}</td>`);
+    html += `</tr>`;
+  });
+  html += `</tbody></table>`;
+  document.getElementById('analytics-table-wrap').innerHTML = html;
+  document.getElementById('analytics-result').style.display = 'block';
+}
 </script>
 {% endblock %}

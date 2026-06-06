@@ -17,6 +17,7 @@
     <button class="stab-btn" id="tabBtn-blockout-types" data-tab="blockout-types">Block-out types</button>
     <button class="stab-btn" id="tabBtn-aircraft-types" data-tab="aircraft-types">Aircraft types</button>
     <button class="stab-btn" id="tabBtn-billing"        data-tab="billing">Billing</button>
+    <button class="stab-btn" id="tabBtn-roles"          data-tab="roles">Roles</button>
   </div>
 
   <!-- ── LOGO forms (outside settings-form to avoid nested-form breakage) ── -->
@@ -420,11 +421,14 @@
             <span style="font-family:monospace;font-size:.78rem;color:#8a93a0;">{{ bt.color }}</span>
           </td>
           <td>
-            <form method="post" style="display:inline-flex;gap:2px;">{% csrf_token %}
+            <form method="post" style="display:inline-flex;align-items:center;gap:.5rem;">{% csrf_token %}
               <input type="hidden" name="action" value="set_blockout_type_hard">
               <input type="hidden" name="bot_id" value="{{ bt.id }}">
-              <button type="submit" name="is_hard" value="1" class="ft-pill {% if bt.is_hard %}ft-pill-active ft-pill-hard{% endif %}">Hard</button>
-              <button type="submit" name="is_hard" value="0" class="ft-pill {% if not bt.is_hard %}ft-pill-active ft-pill-soft{% endif %}">Soft</button>
+              <label class="tog-sw">
+                <input type="checkbox" name="is_hard" {% if bt.is_hard %}checked{% endif %} onchange="this.form.submit()">
+                <span class="tog-track"></span>
+              </label>
+              <span style="font-size:.78rem;color:#8a93a0;">{% if bt.is_hard %}Hard{% else %}Soft{% endif %}</span>
             </form>
           </td>
           <td style="text-align:right;">
@@ -470,11 +474,14 @@
             <span style="font-family:monospace;font-size:.78rem;color:#8a93a0;">{{ bt.color }}</span>
           </td>
           <td>
-            <form method="post" style="display:inline-flex;gap:2px;">{% csrf_token %}
+            <form method="post" style="display:inline-flex;align-items:center;gap:.5rem;">{% csrf_token %}
               <input type="hidden" name="action" value="set_blockout_type_hard">
               <input type="hidden" name="bot_id" value="{{ bt.id }}">
-              <button type="submit" name="is_hard" value="1" class="ft-pill {% if bt.is_hard %}ft-pill-active ft-pill-hard{% endif %}">Hard</button>
-              <button type="submit" name="is_hard" value="0" class="ft-pill {% if not bt.is_hard %}ft-pill-active ft-pill-soft{% endif %}">Soft</button>
+              <label class="tog-sw">
+                <input type="checkbox" name="is_hard" {% if bt.is_hard %}checked{% endif %} onchange="this.form.submit()">
+                <span class="tog-track"></span>
+              </label>
+              <span style="font-size:.78rem;color:#8a93a0;">{% if bt.is_hard %}Hard{% else %}Soft{% endif %}</span>
             </form>
           </td>
           <td style="text-align:right;">
@@ -624,6 +631,112 @@
       </div>
     </form>
   </div><!-- /tab-billing -->
+
+  <!-- ── ROLES tab ── -->
+  <div id="tab-roles" class="stab-panel">
+    <div class="s-section-hdr">
+      <div>
+        <h2 class="sh2" style="margin:0 0 .2rem;">Roles &amp; permissions</h2>
+        <p class="s-desc">Each member is assigned one role. Permissions are set per role. New roles start with minimum access.</p>
+      </div>
+    </div>
+
+    {% if roles %}
+    <div style="overflow-x:auto;margin-bottom:1.5rem;">
+    <table class="ft-table" style="min-width:620px;">
+      <thead>
+        <tr>
+          <th style="min-width:130px;">Role</th>
+          <th style="min-width:130px;">Bookings</th>
+          <th style="text-align:center;min-width:64px;">Manage</th>
+          <th style="text-align:center;min-width:64px;">Settings</th>
+          <th style="text-align:center;min-width:64px;">Reports</th>
+          <th style="text-align:center;min-width:64px;">Superadmin</th>
+          <th style="text-align:center;min-width:64px;">Renewal</th>
+          <th style="min-width:100px;">Member fee</th>
+          <th></th>
+        </tr>
+        <tr class="perm-desc-row">
+          <td></td>
+          <td style="font-size:.72rem;color:#adb5bd;">Booking access level</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Members, a/c, charges</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Club config</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Analytics</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Full access</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Annual cycle</td>
+          <td style="font-size:.72rem;color:#adb5bd;">$ per year</td>
+          <td></td>
+        </tr>
+      </thead>
+      <tbody>
+        {% for role in roles %}
+        <tr>
+          <td><strong>{{ role.name }}</strong>{% if role.is_superadmin %} <span class="status-tag st-warn">super</span>{% endif %}</td>
+          <td>
+            <form method="post">{% csrf_token %}
+              <input type="hidden" name="action" value="set_role_permission">
+              <input type="hidden" name="role_id" value="{{ role.id }}">
+              <input type="hidden" name="perm" value="bookings_access">
+              <select name="value" class="inline-sel" onchange="this.form.submit()" style="font-size:.78rem;">
+                <option value="none"       {% if role.bookings_access == 'none' %}selected{% endif %}>None</option>
+                <option value="view_own"   {% if role.bookings_access == 'view_own' %}selected{% endif %}>View own</option>
+                <option value="manage_own" {% if role.bookings_access == 'manage_own' %}selected{% endif %}>Manage own</option>
+                <option value="manage_all" {% if role.bookings_access == 'manage_all' %}selected{% endif %}>Manage all</option>
+              </select>
+            </form>
+          </td>
+          {% for perm, val in role.perm_items %}
+          <td style="text-align:center;">
+            <form method="post" style="display:inline-flex;">{% csrf_token %}
+              <input type="hidden" name="action" value="set_role_permission">
+              <input type="hidden" name="role_id" value="{{ role.id }}">
+              <input type="hidden" name="perm" value="{{ perm }}">
+              <button type="submit" name="value" value="{% if val %}0{% else %}1{% endif %}"
+                      class="ft-pill {% if val %}ft-pill-active{% endif %}" style="min-width:32px;">
+                {% if val %}✓{% else %}–{% endif %}
+              </button>
+            </form>
+          </td>
+          {% endfor %}
+          <td>
+            <form method="post" style="display:flex;gap:.3rem;align-items:center;">{% csrf_token %}
+              <input type="hidden" name="action" value="set_role_fee">
+              <input type="hidden" name="role_id" value="{{ role.id }}">
+              <input type="number" name="fee" value="{{ role.annual_renewal_fee|default:'' }}"
+                     min="0" step="0.01" class="finput" style="width:80px;font-size:.82rem;" placeholder="—">
+              <button type="submit" class="cbtn-sm">✓</button>
+            </form>
+          </td>
+          <td style="text-align:right;">
+            <form method="post" style="display:inline;"
+                  onsubmit="return confirm('Delete role \'{{ role.name|escapejs }}\'?{% if role.member_count %} {{ role.member_count }} member{{ role.member_count|pluralize }} will lose this role and drop to no access.{% endif %}')">{% csrf_token %}
+              <input type="hidden" name="action" value="delete_role">
+              <input type="hidden" name="role_id" value="{{ role.id }}">
+              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="s-empty"><p>No roles defined yet.</p></div>
+    {% endif %}
+
+    <div class="s-section-hdr" style="margin-top:.5rem;">
+      <h2 class="sh2" style="margin:0;">Add role</h2>
+    </div>
+    <form method="post" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_role">
+      <label class="flabel" style="margin:0;flex:1;min-width:160px;">Name
+        <input type="text" name="role_name" class="finput" placeholder="e.g. Student" required autocomplete="off">
+      </label>
+      <button type="submit" class="btn" style="margin-bottom:0;">Add role</button>
+    </form>
+  </div><!-- /tab-roles -->
+
 
 </div>
 
@@ -853,15 +966,11 @@
   .snotice.ok{background:#eaf6ec;color:#216c2a;}
   .snotice.err{background:#fff0f0;color:#c0392b;}
 
-  .stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;padding-bottom:0;}
-  .stab-btn{padding:.55rem 1rem;border:none;background:none;cursor:pointer;font-size:.88rem;font-weight:500;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s;}
-  .stab-btn:hover{color:var(--banner);}
-  .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
-
-  .stab-panel{display:none;}
-  .stab-panel.active{display:block;}
-
   .sh2{font-size:1rem;font-weight:650;margin:.4rem 0 .7rem;color:#1f2933;}
+  .export-row{display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem;border:1px solid #e3e6ea;border-radius:10px;background:#fff;margin-bottom:.5rem;}
+  .export-icon{font-size:1.3rem;flex-shrink:0;width:1.8rem;text-align:center;}
+  .export-title{font-size:.88rem;font-weight:650;margin-bottom:.1rem;}
+  .export-desc{font-size:.78rem;color:#8a93a0;line-height:1.3;}
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
   .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
   .saved-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;font-weight:600;color:#2a7a3b;opacity:0;transition:opacity .3s;}
@@ -875,11 +984,6 @@
   .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .ft-table tr:last-child td{border-bottom:0;}
 
-  .ft-pill{padding:.28rem .65rem;border-radius:20px;border:1px solid #d6dae0;background:#f5f6f8;color:#5b6573;font-size:.78rem;cursor:pointer;font-weight:500;line-height:1;}
-  .ft-pill:hover{background:#eef1f4;}
-  .ft-pill.ft-pill-active{background:var(--primary);border-color:var(--primary);color:#fff;}
-  .ft-pill.ft-pill-hard.ft-pill-active{background:#c0392b;border-color:#c0392b;}
-  .ft-pill.ft-pill-soft.ft-pill-active{background:#e67e22;border-color:#e67e22;}
   .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
   .ft-del:hover{text-decoration:underline;}
   .ft-save{padding:.28rem .65rem;border-radius:5px;border:1px solid #d6dae0;background:#f5f6f8;color:#5b6573;font-size:.78rem;cursor:pointer;}
@@ -931,7 +1035,7 @@
 
 <script>
 (function(){
-  const TABS = ['general', 'appearance', 'scheduling', 'charge-types', 'blockout-types', 'aircraft-types', 'billing'];
+  const TABS = ['general', 'appearance', 'scheduling', 'charge-types', 'blockout-types', 'aircraft-types', 'billing', 'roles'];
 
   window.activateTab = function activateTab(id) {
     TABS.forEach(t => {

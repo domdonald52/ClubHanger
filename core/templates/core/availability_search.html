@@ -11,19 +11,20 @@
         <form method="get" id="avail-form">
             <input type="hidden" name="s" value="1">
 
+            <!-- Flight type toggle — sits above the grid so it never disturbs column widths -->
+            <div style="margin-bottom:1rem;">
+                <label style="display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.4rem;">Flight type</label>
+                <input type="hidden" name="booking_kind" id="booking_kind_val" value="{{ filters_applied.booking_kind|default:'dual' }}">
+                <div class="seg-ctrl">
+                    <button type="button" id="btn-dual" class="seg-btn" onclick="setKind('dual')">Dual</button>
+                    <button type="button" id="btn-solo" class="seg-btn" onclick="setKind('solo')">Solo</button>
+                </div>
+            </div>
+
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem; align-items: start;">
 
                 <div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Flight</label>
-                    <div style="display:inline-flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;">
-                        <input type="hidden" name="booking_kind" id="booking_kind_val" value="{{ filters_applied.booking_kind|default:'dual' }}">
-                        <button type="button" id="btn-dual" onclick="setKind('dual')" style="width:52px;height:32px;border:none;border-right:1px solid #ddd;cursor:pointer;font-size:.85rem;padding:0;">Dual</button>
-                        <button type="button" id="btn-solo" onclick="setKind('solo')" style="width:52px;height:32px;border:none;cursor:pointer;font-size:.85rem;padding:0;">Solo</button>
-                    </div>
-                </div>
-
-                <div>
-                    <label for="range_type" style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Date Range</label>
+                    <label for="range_type" style="display: block; font-size:.82rem; font-weight: 600; margin-bottom: 0.5rem;">Date Range</label>
                     <select name="range_type" id="range_type" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;" onchange="avSubmit()">
                         <option value="today" {% if filters_applied.range_type == 'today' %}selected{% endif %}>Today</option>
                         <option value="tomorrow" {% if filters_applied.range_type == 'tomorrow' %}selected{% endif %}>Tomorrow</option>
@@ -136,13 +137,6 @@
     {% endif %}
 </div>
 
-<style>
-    table tbody tr:hover { background: #f8f9fa; }
-    .container form select,
-    .container form input[type="text"],
-    .container form input[type="number"] { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
-    .container form label { font-size: 0.85rem; }
-</style>
 <script>
 const _availForm = document.getElementById('avail-form');
 function avSubmit() { if (_availForm) _availForm.submit(); }
@@ -151,28 +145,28 @@ function avSubmit() { if (_availForm) _availForm.submit(); }
   const instrField = document.getElementById('instructor-field');
   const typeSel = document.getElementById('aircraft_type');
   const acSel = document.getElementById('aircraft');
-  const PRIMARY = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim() || '#2f7dd1';
 
-  function setKind(k) {
+  // Update UI only — does NOT submit the form
+  function applyKindUI(k) {
     document.getElementById('booking_kind_val').value = k;
-    const dual = document.getElementById('btn-dual');
-    const solo = document.getElementById('btn-solo');
-    dual.style.background = k === 'dual' ? PRIMARY : '#fff';
-    dual.style.color = k === 'dual' ? '#fff' : '#333';
-    solo.style.background = k === 'solo' ? PRIMARY : '#fff';
-    solo.style.color = k === 'solo' ? '#fff' : '#333';
+    document.getElementById('btn-dual').classList.toggle('active', k === 'dual');
+    document.getElementById('btn-solo').classList.toggle('active', k === 'solo');
     instrField.style.display = k === 'solo' ? 'none' : '';
-    avSubmit();
   }
-  // Init on load
-  setKind(document.getElementById('booking_kind_val').value || 'dual');
+  // seg-btn uses .active for the selected state (defined in base.html)
+
+  // Called by onclick — updates UI then submits
+  window.setKind = function(k) {
+    applyKindUI(k);
+    avSubmit();
+  };
 
   // Filter the specific-aircraft list to the chosen type; reset if invalid.
   function applyTypeFilter(){
     const t = typeSel.value;
     let resetNeeded = false;
     Array.from(acSel.options).forEach(opt => {
-      if (!opt.value) return; // keep "Any Aircraft"
+      if (!opt.value) return;
       const match = !t || opt.dataset.type === t;
       opt.hidden = !match;
       opt.disabled = !match;
@@ -180,7 +174,6 @@ function avSubmit() { if (_availForm) _availForm.submit(); }
     });
     if (resetNeeded) acSel.value = '';
   }
-  // Picking a specific aircraft syncs the type filter, then submits.
   function syncTypeFromAircraft(){
     const opt = acSel.options[acSel.selectedIndex];
     if (opt && opt.value && opt.dataset.type) {
@@ -189,12 +182,11 @@ function avSubmit() { if (_availForm) _availForm.submit(); }
     }
     avSubmit();
   }
-  // aircraft_type select has onchange="avSubmit()" in HTML; we only need the UI-sync here.
   typeSel.addEventListener('change', applyTypeFilter);
   acSel.addEventListener('change', syncTypeFromAircraft);
 
-  // init
-  syncKind();
+  // Init: apply UI state from server-rendered value — no submit
+  applyKindUI(document.getElementById('booking_kind_val').value || 'dual');
   applyTypeFilter();
 })();
 </script>

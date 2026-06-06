@@ -7,4 +7,5 @@
   <a href="{% url 'core:manage_aerodromes' club.slug %}" class="mnav-link {% if active_section == 'aerodromes' %}active{% endif %}">Aerodromes</a>
   {% if club_member.is_admin %}<a href="{% url 'core:manage_charges' club.slug %}" class="mnav-link {% if active_section == 'charges' %}active{% endif %}">Payments</a>{% endif %}
   {% if club_member.is_admin %}<a href="{% url 'core:manage_invoices' club.slug %}" class="mnav-link {% if active_section == 'invoices' %}active{% endif %}">Invoices</a>{% endif %}
+  {% if club_member.is_admin %}<a href="{% url 'core:manage_vouchers' club.slug %}" class="mnav-link {% if active_section == 'vouchers' %}active{% endif %}">Vouchers</a>{% endif %}
 </div>

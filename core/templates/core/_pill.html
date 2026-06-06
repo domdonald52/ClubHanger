@@ -6,6 +6,7 @@
      data-start="{{ p.start_iso }}"
      data-duration="{{ p.duration_min }}"
      data-aircraft-id="{{ p.aircraft_id }}"
+     data-registration="{{ p.aircraft_reg }}"
      data-instructor-id="{{ p.instructor_id }}"
      data-member="{{ p.member_name }}"
      data-member-user-id="{{ p.member_user_id }}"
@@ -26,5 +27,6 @@
   <div class="nm">{% if p.conflict %}⚠ {% endif %}{% if p.status == 'departed' %}✈ {% elif p.status == 'completed' %}{% if p.paid %}✓ {% else %}⏱ {% endif %}{% endif %}{{ p.member_name }}</div>
   <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · departed{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
   {% if p.member_not_current %}<span class="pill-dot" title="Member {{ p.member_standing }}"></span>{% endif %}
+  {% if p.decl_pending %}<span class="pill-dot pill-dot-decl" title="Declaration required — not yet submitted"></span>{% endif %}
   <div class="rs" data-resize></div>
 </div>

@@ -7,12 +7,13 @@
 
   {% include "core/_manage_nav.html" with active_section="instructors" %}
 
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
-    <h2 class="sh2" style="margin:0;">Instructors <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ instructors|length }})</span></h2>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.4rem;flex-wrap:wrap;">
+    <h2 class="sh2" style="margin:0;">Instructor roster <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ instructors|length }})</span></h2>
     {% if club_member.is_admin %}
-    <button type="button" class="cbtn-add" onclick="document.getElementById('add-instr-create-modal').hidden=false">+ Add instructor</button>
+    <button type="button" class="cbtn-add" onclick="document.getElementById('add-instr-modal').hidden=false">+ Add to roster</button>
     {% endif %}
   </div>
+  <p style="font-size:.78rem;color:#8a93a0;margin:0 0 1rem;">Members assigned the Instructor role. Contact details and credentials are managed on the <a href="{% url 'core:manage_members' club.slug %}" style="color:inherit;">member profile</a>.</p>
 
   {% if instructors %}
   <table class="ac-table">
@@ -22,14 +23,24 @@
     <tbody>
       {% for instr in instructors %}
       <tr>
-        <td><strong>{{ instr.user.get_full_name }}</strong></td>
+        <td><strong>{{ instr.user.get_full_name }}</strong>{% if instr.role %} <span style="font-size:.75rem;color:#8a93a0;">({{ instr.role.name }})</span>{% endif %}</td>
         <td style="color:#5b6573;">{{ instr.instructor_grade.name|default:"—" }}</td>
         <td style="color:#8a93a0;font-size:.85rem;">{% if instr.instructor_grade %}${{ instr.instructor_grade.hourly_rate }}/hr{% else %}—{% endif %}</td>
         <td style="color:#8a93a0;font-size:.82rem;">
           {% if instr.av_count %}{{ instr.av_count }} window{{ instr.av_count|pluralize }}{% else %}<span style="color:#2a7a3b;font-size:.78rem;font-weight:600;">all hours</span>{% endif %}
         </td>
         <td style="text-align:right;">
-          <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}" class="row-action-btn" data-overlay>Manage →</a>
+          <div style="display:inline-flex;gap:.3rem;">
+            <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}" class="row-action-btn" data-overlay>Manage →</a>
+            {% if club_member.is_admin %}
+            <form method="post" style="display:inline;" onsubmit="return confirm('Remove {{ instr.user.get_full_name|escapejs }} from the roster?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="remove_instructor">
+              <input type="hidden" name="member_id" value="{{ instr.id }}">
+              <button type="submit" class="cbtn-sm cbtn-danger">Remove</button>
+            </form>
+            {% endif %}
+          </div>
         </td>
       </tr>
       {% endfor %}
@@ -41,10 +52,6 @@
 </div>
 
 <style>
-  .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;}
-  .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-block;}
-  .mnav-link:hover,.mnav-link.active{color:var(--banner);}
-  .mnav-link.active{border-bottom-color:var(--primary);font-weight:650;}
   .conflict-badge{background:#e03131;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:10px;line-height:1.2;}
 
   .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
@@ -70,37 +77,42 @@
   .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
 </style>
 
-<!-- Add instructor modal -->
-<div id="add-instr-create-modal" class="modal-back" hidden>
+<!-- Add to roster modal -->
+<div id="add-instr-modal" class="modal-back" hidden>
   <div class="modal">
-    <h2>Add instructor</h2>
+    <h2>Add to instructor roster</h2>
+    {% if eligible_members %}
+    <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">Only active members with an instructor-type role are shown.</p>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_instructor">
-      <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-        <label class="flabel" style="flex:1;min-width:160px;">First name
-          <input type="text" name="first_name" required class="finput" autocomplete="off">
-        </label>
-        <label class="flabel" style="flex:1;min-width:160px;">Last name
-          <input type="text" name="last_name" required class="finput" autocomplete="off">
-        </label>
-      </div>
-      <label class="flabel" style="margin-top:.1rem;">Email address
-        <input type="email" name="email" required class="finput" autocomplete="off">
-      </label>
-      <label class="flabel" style="margin-top:.1rem;">Initial password <span style="font-weight:400;color:#9aa3af;">(leave blank to auto-generate)</span>
-        <input type="password" name="password" class="finput" autocomplete="new-password">
+      <label class="flabel">Member
+        <select name="member_id" class="finput" required>
+          <option value="">— select —</option>
+          {% for m in eligible_members %}
+          <option value="{{ m.id }}">{{ m.user.get_full_name }} — {{ m.role.name }}</option>
+          {% endfor %}
+        </select>
       </label>
       <div class="modal-actions">
-        <button type="button" class="cbtn" onclick="document.getElementById('add-instr-create-modal').hidden=true">Cancel</button>
+        <button type="button" class="cbtn" onclick="document.getElementById('add-instr-modal').hidden=true">Cancel</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Create instructor</button>
+        <button type="submit" class="cbtn primary">Add to roster</button>
       </div>
     </form>
+    {% else %}
+    <p style="font-size:.85rem;color:#8a93a0;margin:.1rem 0 .9rem;">
+      No eligible members found. To add someone to the roster, first assign them an instructor-type role on their
+      <a href="{% url 'core:manage_members' club.slug %}">member profile</a>.
+    </p>
+    <div class="modal-actions">
+      <button type="button" class="cbtn" onclick="document.getElementById('add-instr-modal').hidden=true">Close</button>
+    </div>
+    {% endif %}
   </div>
 </div>
 <script>
-document.getElementById('add-instr-create-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
-document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('add-instr-create-modal').hidden=true; });
+document.getElementById('add-instr-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('add-instr-modal').hidden=true; });
 </script>
 {% endblock %}

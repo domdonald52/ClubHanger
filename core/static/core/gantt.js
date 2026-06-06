@@ -11,10 +11,10 @@
     const scroll = document.querySelector(".grid-scroll");
     if (!scroll) return;
     const cfg0 = JSON.parse(document.getElementById("cal-data").textContent);
-    const available = scroll.clientWidth - 132; // 130px label + 2px border
+    const available = scroll.clientWidth - (cfg0.serverLabelW || 160) - 2; // label + 2px borders
     if (available <= 0 || !cfg0.totalMins) return;
     const ideal = available / cfg0.totalMins;
-    if (Math.abs(ideal - cfg0.pxPerMin) / cfg0.pxPerMin > 0.03) {
+    if (Math.abs(ideal - cfg0.pxPerMin) / cfg0.pxPerMin > 0.02) {
       params.set("zoom", ideal.toFixed(3));
       location.replace(location.pathname + "?" + params.toString());
     }
@@ -1133,6 +1133,15 @@
     detailBody.innerHTML = '<p style="color:#8a93a0;padding:2.5rem;text-align:center;">Loading…</p>';
     loadDetailOverlay(detailUrl);
   }
+  window.openDetailOverlay = openDetailOverlay;
+
+  // ---- row-label click → open detail overlay (instructors & aircraft) -----
+  document.querySelectorAll(".row-label[data-detail-url]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openDetailOverlay(el.dataset.detailUrl);
+    });
+  });
 
   async function loadDetailOverlay(url) {
     const inlineUrl = url + (url.includes("?") ? "&" : "?") + "inline=1";

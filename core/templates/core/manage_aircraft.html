@@ -8,17 +8,17 @@
   {% include "core/_manage_nav.html" with active_section="aircraft" %}
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-    <h2 class="sh2" style="margin:0;">Fleet <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ aircraft_list|length }})</span></h2>
+    <h2 class="sh2" style="margin:0;">Fleet <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ online_aircraft|length }} online{% if retired_aircraft %}, {{ retired_aircraft|length }} retired{% endif %})</span></h2>
     {% if club_member.is_admin %}<button type="button" class="cbtn-add" id="add-ac-btn">+ Add aircraft</button>{% endif %}
   </div>
 
-  {% if aircraft_list %}
+  {% if online_aircraft or retired_aircraft %}
   <table class="ac-table">
     <thead><tr>
       <th>Registration</th><th>Type</th><th>Seats</th><th>Time method</th><th>Status</th><th></th>
     </tr></thead>
     <tbody>
-      {% for ac in aircraft_list %}
+      {% for ac in online_aircraft %}
       <tr>
         <td><strong>{{ ac.registration }}</strong></td>
         <td style="color:#5b6573;">{{ ac.aircraft_type }}</td>
@@ -30,14 +30,14 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="set_status">
             <input type="hidden" name="ac_id" value="{{ ac.id }}">
-            <select name="status" class="inline-sel status-sel" onchange="this.form.submit()" data-val="{{ ac.status }}">
+            <select name="status" class="inline-sel" onchange="this.form.submit()" data-val="{{ ac.status }}">
               {% for val, label in status_choices %}
               <option value="{{ val }}" {% if ac.status == val %}selected{% endif %}>{{ label }}</option>
               {% endfor %}
             </select>
           </form>
           {% else %}
-          <span class="status-badge status-{{ ac.status }}">{{ ac.get_status_display }}</span>
+          <span class="status-badge status-online">Online</span>
           {% endif %}
         </td>
         <td style="text-align:right;">
@@ -45,6 +45,39 @@
         </td>
       </tr>
       {% endfor %}
+
+      {% if retired_aircraft %}
+      <tr class="ac-section-divider">
+        <td colspan="6">Retired</td>
+      </tr>
+      {% for ac in retired_aircraft %}
+      <tr class="ac-row-retired">
+        <td><strong>{{ ac.registration }}</strong></td>
+        <td style="color:#5b6573;">{{ ac.aircraft_type }}</td>
+        <td style="color:#8a93a0;">{{ ac.seats }}</td>
+        <td style="color:#8a93a0;font-size:.82rem;">{{ ac.get_total_time_method_display }}</td>
+        <td>
+          {% if club_member.is_admin %}
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="set_status">
+            <input type="hidden" name="ac_id" value="{{ ac.id }}">
+            <select name="status" class="inline-sel" onchange="this.form.submit()" data-val="{{ ac.status }}">
+              {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if ac.status == val %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </form>
+          {% else %}
+          <span class="status-badge status-retired">Retired</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right;">
+          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}" class="row-action-btn" data-overlay>Manage →</a>
+        </td>
+      </tr>
+      {% endfor %}
+      {% endif %}
     </tbody>
   </table>
   {% else %}
@@ -106,10 +139,6 @@
 </div>
 
 <style>
-  .mnav{display:flex;gap:2px;margin-bottom:1.6rem;border-bottom:2px solid #e3e6ea;}
-  .mnav-link{padding:.55rem 1.1rem;font-size:.9rem;font-weight:500;color:#5b6573;text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;display:inline-block;}
-  .mnav-link:hover,.mnav-link.active{color:var(--banner);}
-  .mnav-link.active{border-bottom-color:var(--primary);font-weight:650;}
   .conflict-badge{background:#e03131;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:10px;line-height:1.2;}
 
   .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
@@ -124,10 +153,9 @@
   .status-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
   .status-badge.status-online{background:#e6f4ea;color:#2a7a3b;}
   .status-badge.status-retired{background:#f5f5f5;color:#8a93a0;}
-  .inline-sel{padding:.28rem .4rem;border:1px solid #d6dae0;border-radius:5px;font-size:.82rem;background:#fff;cursor:pointer;color:#333;}
-  .status-sel[data-val="online"]{color:#2f9e44;border-color:#b2dfb7;}
-  .status-sel[data-val="retired"]{color:#8a93a0;border-color:#d6dae0;}
-
+  .ac-section-divider td{padding:.4rem .7rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#adb5bd;background:#f8f9fb;border-top:2px solid #e3e6ea;border-bottom:1px solid #e3e6ea;}
+  .ac-row-retired{opacity:.6;}
+  .ac-row-retired:hover{opacity:1;}
   .row-action-btn{font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;}
   .row-action-btn:hover{background:#f3f5f7;color:#1f2933;}
 </style>

@@ -260,7 +260,7 @@
     {% if fc.actual_flight_hours %}
     <div style="font-size:.85rem;color:#5b6573;margin-bottom:.8rem;">
       Actual hours: <strong>{{ fc.actual_flight_hours }}h</strong>
-      ({{ booking.aircraft.get_total_time_method_display }})
+      ({% if booking.aircraft.total_time_method == 'tacho_less_5' %}Tacho{% else %}{{ booking.aircraft.get_total_time_method_display }}{% endif %} — billing uses full meter hours)
     </div>
     {% endif %}
 
@@ -438,12 +438,12 @@
       {% if acct and acct.balance < 0 %}
         {% if acct.is_over_limit %}
         <div class="notice err" style="margin-bottom:.7rem;font-size:.82rem;">
-          <strong>&#9888; Account over credit limit</strong> — balance ${{ acct.balance }}, limit ${{ acct.credit_limit }}. Account credit payment will be blocked.
+          <strong>&#9888; Member owes more than the allowed maximum</strong> — balance ${{ acct.balance }}, maximum arrears ${{ acct.credit_limit }}. Payment by account credit is blocked.
         </div>
         {% else %}
         <div class="notice warn" style="margin-bottom:.7rem;font-size:.82rem;">
-          Account in debit: <strong>${{ acct.balance }}</strong>
-          {% if acct.credit_limit is not None %} (limit ${{ acct.credit_limit }}){% else %} — no credit limit set{% endif %}
+          Member currently owes <strong>${{ acct.balance|cut:"-" }}</strong> to the club
+          {% if acct.credit_limit is not None %} (maximum arrears allowed: ${{ acct.credit_limit }}){% endif %}.
         </div>
         {% endif %}
       {% endif %}
@@ -456,7 +456,8 @@
           <label class="flabel" style="margin:0;">Payment method
             <select name="payment_method" class="finput" style="width:auto;margin-top:.25rem;">
               <option value="eftpos">EFTPOS</option>
-              <option value="credit">Account credit</option>
+              <option value="cash">Cash</option>
+              <option value="credit">Account balance (prepaid credit)</option>
               <option value="invoice">Invoice / bank transfer</option>
             </select>
           </label>
@@ -468,7 +469,7 @@
                      class="finput money-input" style="width:90px;" required>
             </div>
           </label>
-          <div style="font-size:.78rem;color:#8a93a0;padding-bottom:.5rem;">of ${{ balance_owing }} owing</div>
+          <div style="font-size:.78rem;color:#8a93a0;padding-bottom:.5rem;">of ${{ balance_owing }} owing on this flight{% if other_total %} · ${{ other_total }} across other flights (not included){% endif %}</div>
           <button type="submit" class="btn" style="margin-bottom:.1rem;"
                   onclick="return confirm('Record this payment — this cannot be undone.')">
             Record payment
@@ -484,11 +485,11 @@
           </span>
           {% if acct.credit_limit is not None %}
           <span style="color:{% if acct.is_over_limit %}#c0392b{% else %}#8a93a0{% endif %};">
-            Credit limit: <strong>${{ acct.credit_limit }}</strong>
+            Max arrears: <strong>${{ acct.credit_limit }}</strong>
             {% if acct.is_over_limit %} &#9888; EXCEEDED{% endif %}
           </span>
           {% else %}
-          <span style="color:#2a7a3b;font-style:italic;">No credit limit</span>
+          <span style="color:#8a93a0;font-style:italic;">No arrears limit set</span>
           {% endif %}
         </div>
         {% endif %}

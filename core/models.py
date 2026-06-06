@@ -150,6 +150,16 @@ class ClubConfig(models.Model):
     fy_start_month = models.PositiveSmallIntegerField(
         default=4, help_text="Month the financial year starts (1=Jan … 12=Dec). NZ default: April (4)")
 
+    # ── Maintenance alert thresholds (defaults; can be overridden per item) ────
+    maint_warn_hours  = models.DecimalField(max_digits=6, decimal_places=1, default=20,
+        help_text="Default: go amber when this many maintenance hours remain")
+    maint_alert_hours = models.DecimalField(max_digits=6, decimal_places=1, default=5,
+        help_text="Default: go red when this many maintenance hours remain")
+    maint_warn_days   = models.PositiveIntegerField(default=30,
+        help_text="Default: go amber when this many days remain until a date-based item is due")
+    maint_alert_days  = models.PositiveIntegerField(default=14,
+        help_text="Default: go red when this many days remain until a date-based item is due")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -158,15 +168,46 @@ class ClubConfig(models.Model):
 
 
 class Role(models.Model):
-    """Extensible system roles per club."""
+    """Extensible club roles with a configurable permission matrix."""
+    BOOKINGS_NONE       = 'none'
+    BOOKINGS_VIEW_OWN   = 'view_own'
+    BOOKINGS_MANAGE_OWN = 'manage_own'
+    BOOKINGS_MANAGE_ALL = 'manage_all'
+    BOOKINGS_CHOICES = [
+        (BOOKINGS_NONE,       'No booking access'),
+        (BOOKINGS_VIEW_OWN,   'View own bookings only'),
+        (BOOKINGS_MANAGE_OWN, 'Manage own bookings'),
+        (BOOKINGS_MANAGE_ALL, 'Manage all bookings'),
+    ]
+
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='roles')
-    name = models.CharField(max_length=50)  # 'instructor', 'admin', 'member'
-    
+    name = models.CharField(max_length=50)
+
+    # Permission matrix
+    bookings_access    = models.CharField(max_length=20, choices=BOOKINGS_CHOICES, default=BOOKINGS_VIEW_OWN)
+    can_access_manage  = models.BooleanField(default=False, help_text="Access to Manage menu (members, aircraft, bookings, charges)")
+    can_access_settings = models.BooleanField(default=False, help_text="Access to Settings and club configuration")
+    can_access_reports  = models.BooleanField(default=False, help_text="Access to Reports and Analytics")
+    is_superadmin       = models.BooleanField(default=False, help_text="Grants full access to everything in the club")
+
+    # Membership renewal
+    renewal_required    = models.BooleanField(default=True, help_text="Members with this role are included in the annual renewal cycle")
+    annual_renewal_fee  = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True,
+                                              help_text="Annual fee for this role. Leave blank if not applicable.")
+
     class Meta:
         unique_together = ('club', 'name')
-    
+
     def __str__(self):
-        return f"{self.club.name} - {self.name}"
+        return self.name
+
+    @property
+    def effective_is_admin(self):
+        return self.is_superadmin or self.can_access_settings
+
+    @property
+    def effective_is_instructor(self):
+        return self.bookings_access == self.BOOKINGS_MANAGE_ALL and self.can_access_manage
 
 
 class MembershipCategory(models.Model):
@@ -248,6 +289,11 @@ class ClubMember(models.Model):
         InstructorGrade, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='members', help_text="Instructor qualification grade — determines hourly rate"
     )
+    is_on_instructor_roster = models.BooleanField(
+        default=False,
+        help_text="Appears as an instructor row in the calendar and is selectable on bookings. "
+                  "Requires the member to have an instructor-type role."
+    )
 
     avatar               = models.ImageField(upload_to='avatars/', null=True, blank=True)
     join_date            = models.DateField(auto_now_add=True, help_text="Date first admitted")
@@ -277,15 +323,29 @@ class ClubMember(models.Model):
 
     @property
     def is_instructor(self):
-        return self.role and self.role.name.lower() == 'instructor'
+        return bool(self.role and self.role.effective_is_instructor)
 
     @property
     def is_admin(self):
-        return self.has_admin_access or (self.role and self.role.name.lower() == 'admin')
+        return self.has_admin_access or bool(self.role and self.role.effective_is_admin)
 
     @property
     def is_staff(self):
-        return self.is_instructor or self.is_admin or (self.role and self.role.name.lower() == 'staff')
+        return self.is_instructor or self.is_admin
+
+    @property
+    def can_access_manage(self):
+        return self.is_admin or bool(self.role and (self.role.can_access_manage or self.role.is_superadmin))
+
+    @property
+    def can_access_reports(self):
+        return self.is_admin or bool(self.role and (self.role.can_access_reports or self.role.is_superadmin))
+
+    @property
+    def bookings_access(self):
+        if self.is_admin or (self.role and self.role.is_superadmin):
+            return Role.BOOKINGS_MANAGE_ALL
+        return self.role.bookings_access if self.role else Role.BOOKINGS_NONE
 
 
 # ============================================================================
@@ -436,10 +496,10 @@ class Aircraft(models.Model):
     
     # Time calculation
     TOTAL_TIME_METHOD_CHOICES = [
-        ('hobbs',      'Hobbs Meter'),
-        ('tacho',      'Tachometer'),
-        ('tacho_less_5', 'Tacho - 5%'),
-        ('airswitch',  'Air Switch'),
+        ('hobbs',        'Hobbs Meter'),
+        ('tacho',        'Tachometer'),
+        ('tacho_less_5', 'Tachometer (legacy — now treated as plain Tacho for billing)'),
+        ('airswitch',    'Air Switch'),
     ]
     total_time_method = models.CharField(max_length=20, choices=TOTAL_TIME_METHOD_CHOICES, default='hobbs')
     
@@ -464,6 +524,25 @@ class Aircraft(models.Model):
     surcharges = models.ManyToManyField(
         'AircraftSurchargeType', blank=True, related_name='aircraft',
         help_text="Surcharges automatically added to every flight on this aircraft"
+    )
+
+    # Maintenance time calculation (can differ from billing total_time_method)
+    MAINT_SOURCE_CHOICES = [
+        ('hobbs',     'Hobbs Meter'),
+        ('tacho',     'Tachometer'),
+        ('airswitch', 'Air Switch'),
+    ]
+    maint_time_source = models.CharField(
+        max_length=10, choices=MAINT_SOURCE_CHOICES, default='hobbs',
+        help_text="Which instrument to use when accumulating maintenance hours"
+    )
+    maint_time_fraction = models.DecimalField(
+        max_digits=4, decimal_places=2, default='1.00',
+        help_text="Fraction of raw reading counted as maintenance hours (e.g. 0.95 = 95% of tacho)"
+    )
+    maint_hours_initial = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Maintenance hours already accumulated when aircraft was entered into this system"
     )
 
     # Status
@@ -508,29 +587,174 @@ class AircraftMaintenanceItem(models.Model):
     
     # Scheduling: calendar-based
     due_date = models.DateField(null=True, blank=True)
-    
-    # Scheduling: flight-hour based
-    due_hours = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    
+    interval_days = models.IntegerField(
+        null=True, blank=True,
+        help_text="Recurring calendar interval in days (e.g. 365 for annual)"
+    )
+
+    # Scheduling: maintenance-hour-based
+    due_hours = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Cumulative maintenance hours at which this item is next due"
+    )
+    interval_hours = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Recurring interval in maintenance hours (e.g. 100 for a 100-hour check)"
+    )
+
+    # Warning thresholds — hours-based
+    warn_hours  = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True,
+        help_text="Amber warning when this many maintenance hours remain (default from ClubConfig)")
+    alert_hours = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True,
+        help_text="Red alert when this many maintenance hours remain")
+
+    # Warning thresholds — calendar-based
+    warn_days  = models.IntegerField(null=True, blank=True,
+        help_text="Amber warning when this many days remain until due date")
+    alert_days = models.IntegerField(null=True, blank=True,
+        help_text="Red alert when this many days remain until due date")
+
     # When it was last done
     last_completed_date = models.DateField(null=True, blank=True)
     last_completed_hours = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    
-    # Urgency (calculated, for UI display)
+    notes = models.TextField(blank=True)
+
+    # Urgency (stored for fast filtering, recalculated after each check-in)
     urgency = models.CharField(max_length=10, choices=MaintenanceUrgency.choices, default=MaintenanceUrgency.GREEN)
-    
+
     class Meta:
-        ordering = ['due_date', 'due_hours']
-    
+        ordering = ['urgency', 'due_date', 'due_hours']
+
     def __str__(self):
         return f"{self.aircraft.registration} - {self.name}"
-    
+
     @property
     def days_until_due(self):
         if self.due_date:
-            delta = self.due_date - date.today()
-            return delta.days
+            return (self.due_date - date.today()).days
         return None
+
+    @property
+    def current_maint_hours(self):
+        """Latest cumulative maintenance hours for this aircraft."""
+        entry = self.aircraft.maint_log.order_by('-date', '-id').first()
+        if entry:
+            return float(entry.maint_hours_total)
+        return float(self.aircraft.maint_hours_initial or 0)
+
+    @property
+    def hours_remaining(self):
+        if self.due_hours is None:
+            return None
+        return round(float(self.due_hours) - self.current_maint_hours, 2)
+
+    def recalc_urgency(self, config=None):
+        urgency = MaintenanceUrgency.GREEN
+        hr = self.hours_remaining
+        dr = self.days_until_due
+        if hr is not None:
+            alert_h = float(self.alert_hours or (config.maint_alert_hours if config else 5))
+            warn_h  = float(self.warn_hours  or (config.maint_warn_hours  if config else 20))
+            if hr <= 0:        urgency = MaintenanceUrgency.RED
+            elif hr <= alert_h: urgency = MaintenanceUrgency.RED
+            elif hr <= warn_h:  urgency = MaintenanceUrgency.AMBER
+        if dr is not None:
+            alert_d = self.alert_days or (config.maint_alert_days if config else 7)
+            warn_d  = self.warn_days  or (config.maint_warn_days  if config else 14)
+            if dr <= 0:
+                urgency = MaintenanceUrgency.RED
+            elif dr <= alert_d and urgency != MaintenanceUrgency.RED:
+                urgency = MaintenanceUrgency.RED
+            elif dr <= warn_d and urgency == MaintenanceUrgency.GREEN:
+                urgency = MaintenanceUrgency.AMBER
+        return urgency
+
+
+class MaintenanceLogEntry(models.Model):
+    """
+    One entry per flight (or manual entry) recording raw meter readings and
+    the resulting cumulative maintenance hours. Mirrors the paper tech log.
+
+    Auto-created when a FlightCompletion is saved. Manual entries are allowed
+    for correcting meter gaps or seeding historical data.
+    """
+    aircraft          = models.ForeignKey(Aircraft, on_delete=models.CASCADE, related_name='maint_log')
+    flight_completion = models.OneToOneField(
+        'FlightCompletion', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='maint_log_entry',
+        help_text="Set when auto-created from a flight check-in"
+    )
+    date              = models.DateField()
+
+    # Raw instrument end-of-flight readings (mirrors paper tech log)
+    hobbs_reading     = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    tacho_reading     = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    airswitch_reading = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+
+    # Computed maintenance hours
+    maint_hours_flight = models.DecimalField(
+        max_digits=7, decimal_places=2, default=0,
+        help_text="Maintenance hours accrued this flight (source × fraction)"
+    )
+    maint_hours_total  = models.DecimalField(
+        max_digits=8, decimal_places=2, default=0,
+        help_text="Cumulative maintenance hours for this aircraft after this entry"
+    )
+
+    notes      = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['date', 'id']
+
+    def __str__(self):
+        return f"{self.aircraft.registration} {self.date} — {self.maint_hours_total}h total"
+
+
+def create_maint_log_entry(flight_completion):
+    """
+    Called after a FlightCompletion is saved (check-in). Computes maintenance
+    hours for this flight and appends a MaintenanceLogEntry.
+    Idempotent — skips if an entry already exists for this completion.
+    """
+    if MaintenanceLogEntry.objects.filter(flight_completion=flight_completion).exists():
+        return
+    ac = flight_completion.booking.aircraft
+    src = ac.maint_time_source
+    frac = float(ac.maint_time_fraction or 1)
+
+    start_map = {'hobbs': flight_completion.hobbs_start,
+                 'tacho': flight_completion.tacho_start,
+                 'airswitch': flight_completion.airswitch_start}
+    end_map   = {'hobbs': flight_completion.hobbs_end,
+                 'tacho': flight_completion.tacho_end,
+                 'airswitch': flight_completion.airswitch_end}
+    raw_start = start_map.get(src)
+    raw_end   = end_map.get(src)
+
+    flight_hours = 0.0
+    if raw_start is not None and raw_end is not None:
+        try:
+            start_f = float(raw_start)
+            end_f   = float(raw_end)
+            if end_f >= start_f:
+                flight_hours = round((end_f - start_f) * frac, 2)
+        except (ValueError, TypeError):
+            pass
+
+    prev = ac.maint_log.order_by('-date', '-id').first()
+    prev_total = float(prev.maint_hours_total) if prev else float(ac.maint_hours_initial or 0)
+
+    MaintenanceLogEntry.objects.create(
+        aircraft=ac,
+        flight_completion=flight_completion,
+        date=flight_completion.booking.scheduled_start.date(),
+        hobbs_reading=flight_completion.hobbs_end,
+        tacho_reading=flight_completion.tacho_end,
+        airswitch_reading=flight_completion.airswitch_end,
+        maint_hours_flight=flight_hours,
+        maint_hours_total=round(prev_total + flight_hours, 2),
+    )
 
 
 # ============================================================================
@@ -730,6 +954,34 @@ class AccountTransaction(models.Model):
     def __str__(self):
         sign = '+' if self.direction == 'credit' else '-'
         return f"{self.account.club_member} {sign}${self.amount} — {self.description}"
+
+
+class Voucher(models.Model):
+    """
+    Credit voucher. Purchased externally (website, front desk); bookkeeper
+    redeems it by crediting the member's account. Once redeemed it cannot
+    be reused.
+    """
+    club        = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='vouchers')
+    code        = models.CharField(max_length=30, help_text="Unique code printed on voucher")
+    description = models.CharField(max_length=200, blank=True,
+                                    help_text="E.g. 'Harbour Circuit Trial Flight'")
+    value       = models.DecimalField(max_digits=8, decimal_places=2,
+                                      help_text="Credit amount in club currency")
+    is_redeemed  = models.BooleanField(default=False)
+    redeemed_by  = models.ForeignKey(ClubMember, on_delete=models.SET_NULL,
+                                     null=True, blank=True, related_name='redeemed_vouchers')
+    redeemed_at  = models.DateTimeField(null=True, blank=True)
+    notes        = models.TextField(blank=True)
+    created_by   = models.ForeignKey(User, on_delete=models.PROTECT, related_name='created_vouchers')
+    created_at   = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('club', 'code')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} (${self.value}{'  redeemed' if self.is_redeemed else ''})"
 
 
 # ============================================================================
@@ -1618,6 +1870,10 @@ class DepartureDeclaration(models.Model):
     estimated_return = models.DateTimeField(
         null=True, blank=True,
         help_text="Estimated return time — used to flag overdue aircraft"
+    )
+    sar_time = models.DateTimeField(
+        null=True, blank=True,
+        help_text="SARTIME — the date/time at which SAR should be notified if the aircraft has not returned"
     )
     is_cross_country = models.BooleanField(default=False)
 
