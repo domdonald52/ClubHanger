@@ -159,6 +159,12 @@
             {% if club_member.is_admin %}
             <a href="{% url 'core:manage_charges' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_charges' %}active{% endif %}">Payments</a>
             <a href="{% url 'core:manage_invoices' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_invoices' %}active{% endif %}">Invoices</a>
+            {% endif %}
+            {% if club_member.is_admin or club_member.is_instructor %}
+            <div class="sidenav-section-label" style="margin-top:.6rem;">Analytics</div>
+            <a href="{% url 'core:reports' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">Reports</a>
+            {% endif %}
+            {% if club_member.is_admin %}
             <div class="sidenav-section-label" style="margin-top:.6rem;">Admin</div>
             <a href="{% url 'core:club_settings' club.slug %}" class="sidenav-link {% if 'settings' in request.resolver_match.url_name %}active{% endif %}">Settings</a>
             {% endif %}

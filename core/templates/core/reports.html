@@ -1,0 +1,42 @@
+{% extends "core/base.html" %}
+{% block title %}Reports · {{ club.name }}{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto;padding:2rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.5rem;">
+    <div>
+      <h1 style="font-size:1.3rem;font-weight:700;margin:0;">Reports</h1>
+      <div style="font-size:.82rem;color:#8a93a0;margin-top:.2rem;">Financial year {{ fy_label }}</div>
+    </div>
+    <div style="display:flex;gap:.3rem;background:#f3f5f7;border-radius:7px;padding:2px;">
+      {% for val, lbl in '[["all","All"],["owned","Owned"],["leased","Leased"]]'|safe %}{% endfor %}
+      <a href="?leased=all" style="padding:.3rem .8rem;border-radius:5px;font-size:.82rem;font-weight:500;text-decoration:none;{% if leased_filter == 'all' %}background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1);{% else %}color:#5b6573;{% endif %}">All</a>
+      <a href="?leased=owned" style="padding:.3rem .8rem;border-radius:5px;font-size:.82rem;font-weight:500;text-decoration:none;{% if leased_filter == 'owned' %}background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1);{% else %}color:#5b6573;{% endif %}">Owned</a>
+      <a href="?leased=leased" style="padding:.3rem .8rem;border-radius:5px;font-size:.82rem;font-weight:500;text-decoration:none;{% if leased_filter == 'leased' %}background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.1);{% else %}color:#5b6573;{% endif %}">Leased</a>
+    </div>
+  </div>
+
+  <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+    <h2 style="font-size:.95rem;font-weight:650;margin:0 0 1rem;">Flight hours by aircraft</h2>
+    <canvas id="hours-chart" height="320"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('hours-chart'), {
+  type: 'bar',
+  data: {
+    labels: {{ month_labels|safe }},
+    datasets: {{ datasets|safe }},
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'bottom' } },
+    scales: {
+      x: { stacked: true, grid: { display: false } },
+      y: { stacked: true, title: { display: true, text: 'Hours' }, beginAtZero: true },
+    },
+  },
+});
+</script>
+{% endblock %}

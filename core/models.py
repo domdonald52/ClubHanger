@@ -147,6 +147,9 @@ class ClubConfig(models.Model):
     invoice_number_prefix = models.CharField(max_length=10, blank=True,
                                               help_text="Optional prefix, e.g. 'INV-'")
 
+    fy_start_month = models.PositiveSmallIntegerField(
+        default=4, help_text="Month the financial year starts (1=Jan … 12=Dec). NZ default: April (4)")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

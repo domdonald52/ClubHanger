@@ -148,7 +148,8 @@
     .container form input[type="text"],
     .container form input[type="number"] { padding: 0.35rem 0.5rem; font-size: 0.85rem; }
     .container form label { font-size: 0.85rem; }
-    #lbl-dual, #lbl-solo { padding: .35rem; font-size: .85rem; }
+    #lbl-dual, #lbl-solo { padding:0 .5rem; font-size:.85rem; height:32px; display:flex; align-items:center; justify-content:center; box-sizing:border-box; }
+    #lbl-dual, #lbl-solo, .container form select { height:32px; }
 </style>
 <script>
 const _availForm = document.getElementById('avail-form');

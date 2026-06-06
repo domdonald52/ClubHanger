@@ -610,7 +610,17 @@
       </div>
 
       <div style="display:flex;align-items:center;gap:.8rem;">
-        <button type="submit" class="btn">Save</button>
+        <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Financial year</h3>
+      <label class="flabel" style="max-width:200px;margin-bottom:1.2rem;">FY start month
+        <select name="fy_start_month" class="finput">
+          {% for m in "123456789101112"|make_list %}{% endfor %}
+          {% for val, lbl in fy_month_choices %}
+          <option value="{{ val }}" {% if config.fy_start_month == val %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <button type="submit" class="btn">Save</button>
         <span class="saved-badge" id="billing-saved">✓ Saved</span>
       </div>
     </form>

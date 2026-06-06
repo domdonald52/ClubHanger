@@ -1394,6 +1394,12 @@ def club_settings(request, club_slug):
                     config.invoice_number_next = next_num
             except (ValueError, TypeError):
                 pass
+            try:
+                fy = int(request.POST.get('fy_start_month', config.fy_start_month))
+                if 1 <= fy <= 12:
+                    config.fy_start_month = fy
+            except (ValueError, TypeError):
+                pass
             config.save()
             return redirect(f"{redirect('core:club_settings', club_slug=club_slug).url}?tab=billing&saved=1")
 
@@ -1468,6 +1474,7 @@ def club_settings(request, club_slug):
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'saved': saved,
         'ft_error': ft_error,
+        'fy_month_choices': [(i, date(2000, i, 1).strftime('%B')) for i in range(1, 13)],
     })
 
 
@@ -3363,6 +3370,87 @@ def invoice_print(request, club_slug, invoice_id):
     return render(request, 'core/invoice_print.html', {
         'club': club, 'invoice': invoice,
         'line_items': invoice.line_items.all(), 'config': config,
+    })
+
+
+@login_required
+def reports(request, club_slug):
+    from django.db.models import Sum
+    from django.db.models.functions import TruncMonth
+    import json as _json
+
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if not (actor.is_admin or actor.is_instructor):
+        return render(request, 'core/no_access.html', {'club': club}, status=403)
+
+    config, _ = ClubConfig.objects.get_or_create(club=club)
+    fy_start = config.fy_start_month
+
+    today = date.today()
+    # Determine current FY start date
+    fy_year = today.year if today.month >= fy_start else today.year - 1
+    fy_start_date = date(fy_year, fy_start, 1)
+    import calendar as _cal
+    fy_end_month = ((fy_start - 2) % 12) + 1
+    fy_end_year = fy_year + 1 if fy_end_month < fy_start else fy_year
+    fy_end_date = date(fy_end_year, fy_end_month, _cal.monthrange(fy_end_year, fy_end_month)[1])
+
+    leased_filter = request.GET.get('leased', 'all')  # 'all' | 'owned' | 'leased'
+
+    qs = (FlightCompletion.objects
+          .filter(booking__club=club,
+                  booking__arrived_at__date__gte=fy_start_date,
+                  booking__arrived_at__date__lte=fy_end_date,
+                  actual_flight_hours__isnull=False)
+          .select_related('booking__aircraft'))
+    if leased_filter == 'owned':
+        qs = qs.filter(booking__aircraft__is_leased=False)
+    elif leased_filter == 'leased':
+        qs = qs.filter(booking__aircraft__is_leased=True)
+
+    # Build months list for the FY
+    months = []
+    m, y = fy_start, fy_year
+    for _ in range(12):
+        months.append(date(y, m, 1))
+        m += 1
+        if m > 12:
+            m = 1; y += 1
+    month_labels = [d.strftime('%b %y') for d in months]
+
+    aircraft_list = (Aircraft.objects.filter(club=club)
+                     .exclude(status='retired')
+                     .order_by('registration'))
+
+    # hours[aircraft_id][month_index] = hours
+    data = {ac.id: [0.0] * 12 for ac in aircraft_list}
+    for fc in qs:
+        ac_id = fc.booking.aircraft_id
+        if ac_id not in data:
+            continue
+        idx = next((i for i, d in enumerate(months)
+                    if d.year == fc.booking.arrived_at.year and d.month == fc.booking.arrived_at.month), None)
+        if idx is not None:
+            data[ac_id][idx] += float(fc.actual_flight_hours)
+
+    datasets = []
+    COLORS = ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2','#c2410c','#4f46e5','#0f766e','#b45309']
+    for i, ac in enumerate(aircraft_list):
+        hours = [round(h, 1) for h in data[ac.id]]
+        if any(h > 0 for h in hours):
+            datasets.append({'label': ac.registration, 'data': hours,
+                             'backgroundColor': COLORS[i % len(COLORS)]})
+
+    return render(request, 'core/reports.html', {
+        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'month_labels': _json.dumps(month_labels),
+        'datasets': _json.dumps(datasets),
+        'leased_filter': leased_filter,
+        'fy_label': f"{fy_start_date.strftime('%b %Y')} – {fy_end_date.strftime('%b %Y')}",
     })
 
 
