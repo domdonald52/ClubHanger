@@ -30,6 +30,14 @@
         .sidenav.open { left: 0; }
         .sidenav-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 399; opacity: 0; pointer-events: none; transition: opacity .22s; }
         .sidenav-overlay.open { opacity: 1; pointer-events: auto; }
+        /* Desktop: sidebar always open, content shifted right */
+        @media (min-width: 900px) {
+          .sidenav { left: 0; top: 52px; height: calc(100% - 52px); box-shadow: none; border-right: 1px solid #e3e6ea; transition: none; }
+          .sidenav-head { display: none; }
+          .sidenav-overlay { display: none !important; }
+          .hamburger { display: none; }
+          main { margin-left: 270px; }
+        }
         .sidenav-head { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem .9rem 1.1rem; background: var(--banner); color: #fff; flex-shrink: 0; min-height: 52px; }
         .sidenav-club { font-size: .92rem; font-weight: 650; opacity: .95; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sidenav-close { background: none; border: none; color: rgba(255,255,255,.75); cursor: pointer; padding: .3rem; border-radius: 5px; transition: background .12s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
