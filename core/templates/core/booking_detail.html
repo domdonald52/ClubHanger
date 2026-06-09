@@ -82,12 +82,12 @@
       <form method="post" style="display:inline;">
         {% csrf_token %}
         <input type="hidden" name="action" value="confirm">
-        <button type="submit" class="btn">Confirm booking</button>
+        <button type="submit" class="cbtn primary">Confirm booking</button>
       </form>
       <form method="post" style="display:inline;" onsubmit="return confirm('Cancel this booking?')">
         {% csrf_token %}
         <input type="hidden" name="action" value="cancel_booking">
-        <button type="submit" class="btn secondary">Cancel booking</button>
+        <button type="submit" class="cbtn" style="color:#c0392b;border-color:#fca5a5;">Cancel booking</button>
       </form>
     </div>
   </div>
@@ -179,7 +179,7 @@
                placeholder="e.g. Flying with instructor, emergency crew duty…">
       </label>
       {% endif %}
-      <button type="submit" class="btn"
+      <button type="submit" class="cbtn primary"
               onclick="return confirm('Check out {{ booking.aircraft.registration }} for {{ booking.member.user.get_full_name }}?\n\nThis marks the flight as departed.')">Check out</button>
     </form>
     {% if club_member.is_admin %}
@@ -196,6 +196,11 @@
               onclick="document.getElementById('edit-details-panel').hidden=!document.getElementById('edit-details-panel').hidden">
         Edit details
       </button>
+      <form method="post" style="display:inline;" onsubmit="return confirm('Cancel this confirmed booking?')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cancel_booking">
+        <button type="submit" class="cbtn" style="font-size:.78rem;color:#c0392b;border-color:#fca5a5;">Cancel booking</button>
+      </form>
     </div>
     <div id="edit-details-panel" hidden style="margin-top:.8rem;padding:.9rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
       <form method="post">

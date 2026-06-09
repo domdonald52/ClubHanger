@@ -314,42 +314,71 @@
   <!-- ── ANALYTICS tab (drag-and-drop concept demo) ── -->
   <div id="tab-analytics" class="stab-panel">
     <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1.2rem;">Drag fields to build a custom pivot table. This is a concept preview — not yet connected to live data.</p>
 
-      <div style="display:grid;grid-template-columns:180px 1fr;gap:1.2rem;align-items:start;">
+      <!-- Filter row -->
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.8rem;margin-bottom:1.1rem;">
+        <p style="font-size:.82rem;color:#5b6573;margin:0;flex:1;min-width:180px;">Drag dimensions and metrics to build a pivot report against all completed flights.</p>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <label style="font-size:.78rem;color:#8a93a0;display:flex;align-items:center;gap:.3rem;">From
+            <input type="date" id="piv-from" class="finput" style="width:130px;padding:.3rem .5rem;font-size:.82rem;">
+          </label>
+          <label style="font-size:.78rem;color:#8a93a0;display:flex;align-items:center;gap:.3rem;">To
+            <input type="date" id="piv-to" class="finput" style="width:130px;padding:.3rem .5rem;font-size:.82rem;">
+          </label>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:190px 1fr;gap:1.2rem;align-items:start;">
+
         <!-- Field palette -->
         <div>
-          <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;margin-bottom:.5rem;">Fields</div>
-          <div id="field-palette" style="display:flex;flex-direction:column;gap:.3rem;">
-            {% for f in analytics_fields %}
-            <div class="analytics-field" draggable="true" data-field="{{ f.id }}"
-                 style="padding:.35rem .65rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.4rem;">
-              <span style="opacity:.4;">⠿</span> {{ f.label }}
-            </div>
-            {% endfor %}
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Dimensions</div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;margin-bottom:.8rem;">
+            <div class="analytics-field" draggable="true" data-field="aircraft"     data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Aircraft</div>
+            <div class="analytics-field" draggable="true" data-field="aircraft_type" data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> A/C type</div>
+            <div class="analytics-field" draggable="true" data-field="flight_type"  data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Flight type</div>
+            <div class="analytics-field" draggable="true" data-field="member"       data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Member</div>
+            <div class="analytics-field" draggable="true" data-field="instructor"   data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Instructor</div>
+            <div class="analytics-field" draggable="true" data-field="month"        data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Month</div>
+            <div class="analytics-field" draggable="true" data-field="quarter"      data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Quarter</div>
+            <div class="analytics-field" draggable="true" data-field="year"         data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Year</div>
+            <div class="analytics-field" draggable="true" data-field="outcome"      data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Outcome</div>
+          </div>
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Metrics</div>
+          <div style="display:flex;flex-direction:column;gap:.3rem;">
+            <div class="analytics-field" draggable="true" data-field="hours"       data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Hours</div>
+            <div class="analytics-field" draggable="true" data-field="charge"      data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Charge ($)</div>
+            <div class="analytics-field" draggable="true" data-field="paid"        data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Paid ($)</div>
+            <div class="analytics-field" draggable="true" data-field="outstanding" data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Outstanding ($)</div>
+            <div class="analytics-field" draggable="true" data-field="flights"     data-kind="metric" data-default-agg="count" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Flights</div>
           </div>
         </div>
 
-        <!-- Drop zones + result -->
+        <!-- Drop zones + controls + result -->
         <div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem;">
             <div>
-              <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;margin-bottom:.4rem;">Rows</div>
+              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Group by (rows)</div>
               <div class="drop-zone" id="drop-rows" data-zone="rows"
-                   style="min-height:60px;border:2px dashed #d6dae0;border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;"></div>
+                   style="min-height:64px;border:2px dashed #d6dae0;border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;" title="Drop dimension fields here"></div>
             </div>
             <div>
-              <div style="font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;margin-bottom:.4rem;">Values</div>
+              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Values</div>
               <div class="drop-zone" id="drop-values" data-zone="values"
-                   style="min-height:60px;border:2px dashed #d6dae0;border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;"></div>
+                   style="min-height:64px;border:2px dashed #d6dae0;border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;" title="Drop metric fields here"></div>
             </div>
           </div>
 
-          <button onclick="runAnalytics()" class="cbtn primary" style="margin-bottom:1rem;">Build report</button>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;">
+            <button onclick="runPivot()" class="cbtn primary">Build report</button>
+            <button onclick="clearPivot()" class="cbtn">Clear</button>
+            <button id="piv-export-btn" onclick="exportPivotCSV()" class="cbtn" hidden>Export CSV</button>
+            <span id="piv-loading" hidden style="font-size:.82rem;color:#8a93a0;">Loading…</span>
+            <span id="piv-count" style="font-size:.78rem;color:#8a93a0;"></span>
+          </div>
 
           <div id="analytics-result" style="display:none;">
             <div id="analytics-table-wrap" style="overflow-x:auto;"></div>
-            <p style="font-size:.78rem;color:#8a93a0;margin:.5rem 0 0;">Drag-and-drop analytics — concept preview. Live data queries coming soon.</p>
           </div>
         </div>
       </div>
@@ -551,59 +580,148 @@ new Chart(document.getElementById('instr-chart'), {
 })();
 {% endif %}
 
-// ── Analytics drag-and-drop demo ─────────────────────────────────────────────
-const DEMO_DATA = {{ analytics_demo|safe }};
+// ── Analytics pivot builder ──────────────────────────────────────────────────
+(function(){
+  const PIVOT_URL = '{% url "core:reports_pivot" club.slug %}';
+  let _pivotData = null;  // last result for CSV export
 
-document.querySelectorAll('.analytics-field').forEach(el => {
-  el.addEventListener('dragstart', e => e.dataTransfer.setData('text/plain', el.dataset.field));
-});
-document.querySelectorAll('.drop-zone').forEach(zone => {
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor='var(--primary)'; });
-  zone.addEventListener('dragleave', () => zone.style.borderColor='#d6dae0');
-  zone.addEventListener('drop', e => {
-    e.preventDefault();
-    zone.style.borderColor='#d6dae0';
-    const fid = e.dataTransfer.getData('text/plain');
-    const label = document.querySelector(`.analytics-field[data-field="${fid}"]`)?.textContent.trim();
-    if (!label) return;
-    if (zone.querySelector(`[data-field="${fid}"]`)) return;  // already here
-    const chip = document.createElement('div');
-    chip.dataset.field = fid;
-    chip.innerHTML = `<span>${label}</span> <button onclick="this.parentNode.remove()" style="border:none;background:none;cursor:pointer;color:#8a93a0;font-size:.85rem;padding:0 0 0 .2rem;">✕</button>`;
-    chip.style.cssText = 'display:inline-flex;align-items:center;gap:.2rem;padding:.25rem .5rem;background:color-mix(in srgb,var(--primary) 12%,#fff);border:1px solid var(--primary);border-radius:20px;font-size:.78rem;color:var(--primary);';
-    zone.appendChild(chip);
+  // Drag from palette
+  document.querySelectorAll('.analytics-field').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('text/plain', el.dataset.field + '|' + (el.dataset.kind||'dim') + '|' + (el.dataset.defaultAgg||'sum'));
+    });
   });
-});
 
-function runAnalytics() {
-  const rowFields  = [...document.querySelectorAll('#drop-rows [data-field]')].map(e=>e.dataset.field);
-  const valFields  = [...document.querySelectorAll('#drop-values [data-field]')].map(e=>e.dataset.field);
-  if (!rowFields.length || !valFields.length) {
-    alert('Add at least one Row field and one Value field.');
-    return;
+  // Drop zones
+  document.querySelectorAll('.drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor='var(--primary)'; });
+    zone.addEventListener('dragleave', () => zone.style.borderColor='#d6dae0');
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.style.borderColor='#d6dae0';
+      const [fid, kind, defaultAgg] = e.dataTransfer.getData('text/plain').split('|');
+      if (!fid) return;
+      if (zone.querySelector(`[data-field="${fid}"]`)) return;
+      // Enforce: dims → rows, metrics → values
+      const zoneId = zone.id;
+      if (zoneId === 'drop-rows' && kind === 'metric') return;
+      if (zoneId === 'drop-values' && kind === 'dim') return;
+
+      const srcEl = document.querySelector(`.analytics-field[data-field="${fid}"]`);
+      const label = srcEl ? srcEl.textContent.trim() : fid;
+      const isMetric = kind === 'metric';
+
+      const chip = document.createElement('div');
+      chip.dataset.field = fid;
+      chip.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .5rem;background:' + (isMetric ? 'color-mix(in srgb,#2c4bad 10%,#fff);border:1px solid #c7d8ff;color:#2c4bad;' : 'color-mix(in srgb,var(--primary) 10%,#fff);border:1px solid color-mix(in srgb,var(--primary) 40%,#d6dae0);color:var(--primary);') + 'border-radius:20px;font-size:.78rem;';
+
+      if (isMetric && defaultAgg !== 'count') {
+        chip.innerHTML = `<span>${label}</span><select data-agg style="border:none;background:transparent;font-size:.75rem;color:inherit;cursor:pointer;padding:0;outline:none;"><option value="sum">sum</option><option value="avg">avg</option></select><button type="button" onclick="this.parentNode.remove()" style="border:none;background:none;cursor:pointer;opacity:.5;font-size:.82rem;padding:0;line-height:1;">✕</button>`;
+        chip.querySelector('[data-agg]').value = defaultAgg;
+      } else {
+        chip.innerHTML = `<span>${label}</span><button type="button" onclick="this.parentNode.remove()" style="border:none;background:none;cursor:pointer;opacity:.5;font-size:.82rem;padding:0;line-height:1;">✕</button>`;
+      }
+      zone.appendChild(chip);
+    });
+  });
+
+  window.runPivot = function() {
+    const rows = [...document.querySelectorAll('#drop-rows [data-field]')].map(e=>e.dataset.field);
+    const valChips = [...document.querySelectorAll('#drop-values [data-field]')];
+    const vals = valChips.map(e=>e.dataset.field);
+    const aggs = valChips.map(e=>(e.querySelector('[data-agg]')?.value || 'sum'));
+
+    if (!rows.length || !vals.length) {
+      alert('Drop at least one dimension into "Group by" and one metric into "Values".');
+      return;
+    }
+    document.getElementById('piv-loading').hidden = false;
+    document.getElementById('piv-count').textContent = '';
+    document.getElementById('piv-export-btn').hidden = true;
+    document.getElementById('analytics-result').style.display = 'none';
+
+    const params = new URLSearchParams();
+    rows.forEach(r => params.append('rows', r));
+    vals.forEach(v => params.append('values', v));
+    aggs.forEach(a => params.append('aggs', a));
+    const from = document.getElementById('piv-from').value;
+    const to   = document.getElementById('piv-to').value;
+    if (from) params.set('date_from', from);
+    if (to)   params.set('date_to', to);
+
+    fetch(PIVOT_URL + '?' + params)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('piv-loading').hidden = true;
+        if (data.error) { alert(data.error); return; }
+        _pivotData = data;
+        renderPivot(data);
+        document.getElementById('piv-count').textContent = data.count + ' row' + (data.count===1?'':'s');
+        document.getElementById('piv-export-btn').hidden = false;
+      })
+      .catch(err => {
+        document.getElementById('piv-loading').hidden = true;
+        alert('Error: ' + err);
+      });
+  };
+
+  function renderPivot(data) {
+    const nDims = data.rows.length > 0 ? data.totals.filter(v=>v==='').length + 1 : 1;
+    const isNum = (v, col) => col >= nDims;
+    const fmt = (v, col) => {
+      if (col < nDims) return v;
+      if (v === '' || v === null || v === undefined) return '';
+      const n = parseFloat(v);
+      return isNaN(n) ? v : (Number.isInteger(n) ? n.toLocaleString() : n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}));
+    };
+
+    let html = `<table style="width:100%;border-collapse:collapse;font-size:.84rem;">`;
+    html += `<thead><tr style="border-bottom:2px solid #e3e6ea;">`;
+    data.headers.forEach((h,i) => {
+      html += `<th style="padding:.4rem .6rem;text-align:${i >= nDims ? 'right':'left'};font-weight:600;white-space:nowrap;">${h}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+    data.rows.forEach(row => {
+      html += `<tr style="border-bottom:1px solid #f0f2f4;">`;
+      row.forEach((v, i) => {
+        html += `<td style="padding:.45rem .6rem;${i >= nDims ? 'text-align:right;font-variant-numeric:tabular-nums;' : ''}">${fmt(v,i)}</td>`;
+      });
+      html += `</tr>`;
+    });
+    // Totals row
+    html += `<tr style="border-top:2px solid #e3e6ea;font-weight:600;background:#f8f9fb;">`;
+    data.totals.forEach((v,i) => {
+      html += `<td style="padding:.45rem .6rem;${i >= nDims ? 'text-align:right;font-variant-numeric:tabular-nums;' : ''}">${fmt(v,i)}</td>`;
+    });
+    html += `</tr></tbody></table>`;
+
+    document.getElementById('analytics-table-wrap').innerHTML = html;
+    document.getElementById('analytics-result').style.display = 'block';
   }
-  // Demo: group DEMO_DATA by first row field, sum value fields
-  const rf = rowFields[0], vf = valFields[0];
-  const groups = {};
-  DEMO_DATA.forEach(row => {
-    const key = row[rf] || '—';
-    if (!groups[key]) groups[key] = {};
-    valFields.forEach(v => { groups[key][v] = (groups[key][v]||0) + (parseFloat(row[v])||0); });
-  });
-  const fieldLabel = f => document.querySelector(`.analytics-field[data-field="${f}"]`)?.textContent.trim() || f;
-  let html = `<table style="width:100%;border-collapse:collapse;font-size:.84rem;"><thead><tr style="border-bottom:2px solid #e3e6ea;">`;
-  html += `<th style="padding:.4rem .6rem;text-align:left;font-weight:600;">${fieldLabel(rf)}</th>`;
-  valFields.forEach(v => html += `<th style="padding:.4rem .6rem;text-align:right;font-weight:600;">${fieldLabel(v)}</th>`);
-  html += `</tr></thead><tbody>`;
-  Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([key, vals]) => {
-    html += `<tr style="border-bottom:1px solid #f0f2f4;"><td style="padding:.45rem .6rem;">${key}</td>`;
-    valFields.forEach(v => html += `<td style="padding:.45rem .6rem;text-align:right;">${(vals[v]||0).toFixed(2)}</td>`);
-    html += `</tr>`;
-  });
-  html += `</tbody></table>`;
-  document.getElementById('analytics-table-wrap').innerHTML = html;
-  document.getElementById('analytics-result').style.display = 'block';
-}
+
+  window.clearPivot = function() {
+    document.getElementById('drop-rows').innerHTML = '';
+    document.getElementById('drop-values').innerHTML = '';
+    document.getElementById('analytics-result').style.display = 'none';
+    document.getElementById('piv-count').textContent = '';
+    document.getElementById('piv-export-btn').hidden = true;
+    _pivotData = null;
+  };
+
+  window.exportPivotCSV = function() {
+    if (!_pivotData) return;
+    const rows = [_pivotData.headers, ..._pivotData.rows, _pivotData.totals];
+    const csv = rows.map(r => r.map(v => {
+      const s = String(v ?? '');
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }).join(',')).join('\r\n');
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'pivot_report.csv';
+    a.click();
+  };
+})();
 
 // ── Ask AI ───────────────────────────────────────────────────────────────────
 function askAI() {

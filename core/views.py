@@ -4805,25 +4805,6 @@ def reports(request, club_slug):
     occ_ac_labels = _json.dumps([r['aircraft__registration'] for r in by_aircraft])
     occ_ac_data   = _json.dumps([r['count'] for r in by_aircraft])
 
-    # ── Analytics demo data ───────────────────────────────────────────────────
-    analytics_fields = [
-        {'id': 'aircraft',     'label': 'Aircraft'},
-        {'id': 'flight_type',  'label': 'Flight type'},
-        {'id': 'member',       'label': 'Member'},
-        {'id': 'month',        'label': 'Month'},
-        {'id': 'hours',        'label': 'Hours'},
-        {'id': 'charge',       'label': 'Charge ($)'},
-    ]
-    analytics_demo = [
-        {'aircraft': fc.booking.aircraft.registration,
-         'flight_type': str(fc.booking.flight_type),
-         'member': fc.booking.member.user.get_full_name(),
-         'month': fc.booking.arrived_at.strftime('%b %y'),
-         'hours': float(fc.actual_flight_hours),
-         'charge': float(fc.total_charge)}
-        for fc in all_qs[:200]
-    ]
-
     return render(request, 'core/reports.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'month_labels': _json.dumps(month_labels),
@@ -4836,8 +4817,6 @@ def reports(request, club_slug):
         'payment_total_count': pay_total_count,
         'payment_total_charged': round(pay_total_charged, 2),
         'payment_total_collected': round(pay_total_collected, 2),
-        'analytics_fields': analytics_fields,
-        'analytics_demo': _json.dumps(analytics_demo),
         'occ_total': occ_total,
         'occ_stats': [
             ('Total', occ_total, '#1a1f2e'),
@@ -4872,6 +4851,167 @@ def reports(request, club_slug):
             'How many active members do we have?',
         ],
     })
+
+
+@login_required
+def reports_pivot(request, club_slug):
+    """AJAX pivot-table builder — returns aggregated flight data as JSON."""
+    import json as _json
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    if not (actor.is_admin or actor.is_instructor):
+        return JsonResponse({'error': 'Access denied'}, status=403)
+
+    rows   = request.GET.getlist('rows')
+    values = request.GET.getlist('values')
+    aggs   = request.GET.getlist('aggs')
+    date_from_str = request.GET.get('date_from', '').strip()
+    date_to_str   = request.GET.get('date_to', '').strip()
+
+    VALID_DIMS    = {'aircraft', 'aircraft_type', 'flight_type', 'member',
+                     'instructor', 'month', 'quarter', 'year', 'outcome'}
+    VALID_METRICS = {'hours', 'charge', 'paid', 'flights', 'outstanding'}
+
+    if not rows or not values:
+        return JsonResponse({'error': 'rows and values required'}, status=400)
+    for r in rows:
+        if r not in VALID_DIMS:
+            return JsonResponse({'error': f'Unknown dimension: {r}'}, status=400)
+    for v in values:
+        if v not in VALID_METRICS:
+            return JsonResponse({'error': f'Unknown metric: {v}'}, status=400)
+
+    qs = (FlightCompletion.objects
+          .filter(booking__club=club, actual_flight_hours__isnull=False)
+          .select_related('booking__aircraft__aircraft_type',
+                          'booking__member__user',
+                          'booking__instructor',
+                          'booking__flight_type'))
+    if date_from_str:
+        try:
+            qs = qs.filter(booking__arrived_at__date__gte=date_from_str)
+        except Exception:
+            pass
+    if date_to_str:
+        try:
+            qs = qs.filter(booking__arrived_at__date__lte=date_to_str)
+        except Exception:
+            pass
+
+    def get_dim(fc, dim):
+        b = fc.booking
+        if dim == 'aircraft':
+            return b.aircraft.registration if b.aircraft_id else '—'
+        if dim == 'aircraft_type':
+            ac = b.aircraft
+            return ac.aircraft_type.name if (ac and ac.aircraft_type_id) else '—'
+        if dim == 'flight_type':
+            return b.flight_type.name if b.flight_type_id else '—'
+        if dim == 'member':
+            m = b.member
+            return m.user.get_full_name() if m else '—'
+        if dim == 'instructor':
+            i = b.instructor
+            return i.get_full_name() if i else '(solo)'
+        if dim == 'month':
+            return b.arrived_at.strftime('%b %Y') if b.arrived_at else '—'
+        if dim == 'quarter':
+            if not b.arrived_at:
+                return '—'
+            q = ((b.arrived_at.month - 1) // 3) + 1
+            return f'Q{q} {b.arrived_at.year}'
+        if dim == 'year':
+            return str(b.arrived_at.year) if b.arrived_at else '—'
+        if dim == 'outcome':
+            return fc.get_outcome_display()
+        return '—'
+
+    def get_metric(fc, metric):
+        if metric == 'hours':
+            return float(fc.actual_flight_hours or 0)
+        if metric == 'charge':
+            return float(fc.total_charge or 0)
+        if metric == 'paid':
+            return float(fc.amount_paid or 0)
+        if metric == 'flights':
+            return 1
+        if metric == 'outstanding':
+            return float(max(0, (fc.total_charge or 0) - (fc.amount_paid or 0)))
+        return 0
+
+    buckets = {}
+    for fc in qs.iterator():
+        key = tuple(get_dim(fc, d) for d in rows)
+        if key not in buckets:
+            buckets[key] = {v: [] for v in values}
+        for v in values:
+            buckets[key][v].append(get_metric(fc, v))
+
+    agg_map = {}
+    for i, v in enumerate(values):
+        if v == 'flights':
+            agg_map[v] = 'count'
+        else:
+            agg_map[v] = aggs[i] if i < len(aggs) and aggs[i] in ('sum', 'avg', 'count') else 'sum'
+
+    def do_agg(vals, agg):
+        if not vals:
+            return 0
+        if agg == 'avg':
+            return round(sum(vals) / len(vals), 2)
+        if agg == 'count':
+            return int(sum(vals))
+        return round(sum(vals), 2)
+
+    def sort_key(item):
+        key = item[0]
+        from datetime import datetime as _dt
+        try:
+            parts = key[0].split()
+            if len(parts) == 2:
+                mn = _dt.strptime(parts[0], '%b').month
+                return (int(parts[1]), mn, '')
+        except Exception:
+            pass
+        try:
+            parts = key[0].split()
+            if len(parts) == 2 and parts[0].startswith('Q'):
+                return (int(parts[1]), int(parts[0][1]), '')
+        except Exception:
+            pass
+        return (0, 0, key[0])
+
+    result_rows = []
+    for key, mdata in sorted(buckets.items(), key=sort_key):
+        row = list(key) + [do_agg(mdata[v], agg_map[v]) for v in values]
+        result_rows.append(row)
+
+    n_dims = len(rows)
+    totals = ['Total'] + [''] * (n_dims - 1)
+    for i, v in enumerate(values):
+        col_vals = [r[n_dims + i] for r in result_rows]
+        agg = agg_map[v]
+        if agg == 'avg':
+            totals.append(round(sum(col_vals) / len(col_vals), 2) if col_vals else 0)
+        elif agg == 'count':
+            totals.append(int(sum(col_vals)))
+        else:
+            totals.append(round(sum(col_vals), 2))
+
+    LABELS = {
+        'aircraft': 'Aircraft', 'aircraft_type': 'A/C type', 'flight_type': 'Flight type',
+        'member': 'Member', 'instructor': 'Instructor',
+        'month': 'Month', 'quarter': 'Quarter', 'year': 'Year', 'outcome': 'Outcome',
+        'hours': 'Hours', 'charge': 'Charge ($)', 'paid': 'Paid ($)',
+        'flights': 'Flights', 'outstanding': 'Outstanding ($)',
+    }
+    headers = [LABELS.get(f, f) for f in rows + values]
+
+    return JsonResponse({'headers': headers, 'rows': result_rows,
+                         'totals': totals, 'count': len(result_rows)})
 
 
 @login_required

@@ -343,12 +343,7 @@
   .cal-date{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
   .cal-date h1{margin:0;font-size:1.35rem;font-weight:650;letter-spacing:-.01em;color:var(--banner);min-width:11ch}
   .cal-nav{display:flex;gap:.4rem;align-items:center}
-  .cbtn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 .6rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#1f2933;font-size:.82rem;cursor:pointer;text-decoration:none;line-height:1}
-  .cbtn:hover{background:#f3f5f7}
-  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
-  .cbtn.primary:hover{filter:brightness(1.05)}
-  .cbtn.danger{background:#d64545;color:#fff;border-color:#d64545}
-  .cbtn.danger:hover{filter:brightness(1.05)}
+  .cal-nav .cbtn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 .6rem;line-height:1;}
   .cdate{height:38px;padding:0 .6rem;border:1px solid #d6dae0;border-radius:8px;font-size:.9rem;color:#1f2933;background:#fff;cursor:pointer}
   .legend{display:flex;gap:1.2rem;align-items:center;font-size:.8rem;color:#5b6573;margin:.25rem 0 .75rem}
   .legend .hint{margin-left:auto;color:#8a93a0}
@@ -430,13 +425,13 @@
   .modal input,.modal select{width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box}
   .modal .two{display:flex;gap:.7rem}.modal .two label{flex:1}
   .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:.4rem}
-  .toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;z-index:200;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;z-index:900;box-shadow:0 6px 20px rgba(0,0,0,.25)}
   /* Detail overlay */
   .detail-overlay-modal{width:min(1100px,96vw);max-height:92vh;overflow-y:auto;padding:0;border-radius:10px;}
 </style>
 
 <!-- Pre-confirmation credential check modal -->
-<div id="cred-check-modal" class="modal-back" hidden style="z-index:120;">
+<div id="cred-check-modal" class="modal-back" hidden style="z-index:600;">
   <div class="modal" style="width:min(520px,96vw);max-height:80vh;display:flex;flex-direction:column;">
     <h2 id="cred-check-title" style="margin:0 0 .7rem;">Confirm booking</h2>
     <div id="cred-check-body" style="flex:1;overflow-y:auto;min-height:0;margin-bottom:.8rem;"></div>
@@ -449,7 +444,7 @@
 </div>
 
 <!-- Booking detail overlay (loaded inline via fetch) -->
-<div id="detail-overlay" class="modal-back" hidden style="z-index:110;">
+<div id="detail-overlay" class="modal-back" hidden style="z-index:510;">
   <div class="modal detail-overlay-modal" id="detail-overlay-modal">
     <div id="detail-overlay-body">
       <p style="color:#8a93a0;padding:2rem;text-align:center;">Loading…</p>
