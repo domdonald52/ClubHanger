@@ -5,7 +5,7 @@
 {% block content %}
 <div style="max-width:860px;margin:0 auto;padding:2rem;">
 
-  <a href="{% url 'core:manage_bookings' club.slug %}" class="back-link">← Bookings</a>
+  <a href="{{ request.GET.back|default:'' }}{% if not request.GET.back %}{% url 'core:manage_bookings' club.slug %}{% endif %}" class="back-link">← Back</a>
 
   {% if error %}<div class="notice err">{{ error }}</div>{% endif %}
   {% if success %}<div class="notice ok">{{ success }}</div>{% endif %}
@@ -15,6 +15,7 @@
     <div class="bcard-head">
       <div>
         <strong>{{ booking.member.user.get_full_name }}</strong>
+        {% if booking.client %}<span class="sep">·</span><span style="color:var(--primary);font-weight:500;">{{ booking.client.name }}</span> <span style="font-size:.75rem;color:#8a93a0;">({{ booking.client.contact_type.name }})</span>{% endif %}
         <span class="sep">·</span>{{ booking.aircraft.registration }}
         <span class="sep">·</span>{{ booking.flight_type.name }}
         {% if booking.instructor %}<span class="sep">·</span>{{ booking.instructor.get_full_name }}{% endif %}
@@ -34,8 +35,44 @@
       {% endif %}
       {% if booking.arrived_at %}<div class="bcard-row"><span class="bl">Arrived</span>{{ booking.arrived_at|date:"H:i" }}</div>{% endif %}
       {% if booking.description %}<div class="bcard-row"><span class="bl">Notes</span>{{ booking.description }}</div>{% endif %}
+      {% if booking.client %}
+      <div class="bcard-row">
+        <span class="bl">Client</span>
+        <a href="{% url 'core:contact_detail' club.slug booking.client_id %}" data-overlay>{{ booking.client.name }}</a>
+        <span style="color:#8a93a0;font-size:.82rem;">· {{ booking.client.contact_type.name }}{% if booking.billed_to %} · billed to {{ booking.get_billed_to_display }}{% endif %}</span>
+      </div>
+      {% endif %}
     </div>
   </div>
+
+  {% if actor.can_access_manage and booking.status not in 'completed' %}
+  <details style="margin-bottom:.8rem;">
+    <summary class="cbtn-sm" style="cursor:pointer;list-style:none;display:inline-block;">{% if booking.client %}Change client{% else %}+ Assign non-member client{% endif %}</summary>
+    <div style="margin-top:.5rem;padding:.75rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;max-width:480px;">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="set_client">
+        <label class="flabel">Client (non-member)
+          <select name="client_id" class="finput">
+            <option value="">— none —</option>
+            {% for c in contacts %}
+            <option value="{{ c.id }}" {% if booking.client_id == c.id %}selected{% endif %}>{{ c.name }} ({{ c.contact_type.name }})</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel" style="margin-top:.5rem;">Billed to
+          <select name="billed_to" class="finput">
+            <option value="">— select —</option>
+            <option value="contact" {% if booking.billed_to == 'contact' %}selected{% endif %}>Client pays</option>
+            <option value="organisation" {% if booking.billed_to == 'organisation' %}selected{% endif %}>Organisation invoiced</option>
+            <option value="club" {% if booking.billed_to == 'club' %}selected{% endif %}>Club absorbs</option>
+          </select>
+        </label>
+        <button type="submit" class="cbtn-sm" style="margin-top:.5rem;">Save</button>
+      </form>
+    </div>
+  </details>
+  {% endif %}
 
   <!-- ── PENDING: Confirm ── -->
   {% if booking.status == 'pending' %}
@@ -142,104 +179,240 @@
                placeholder="e.g. Flying with instructor, emergency crew duty…">
       </label>
       {% endif %}
-      <button type="submit" class="btn">Check out</button>
+      <button type="submit" class="btn"
+              onclick="return confirm('Check out {{ booking.aircraft.registration }} for {{ booking.member.user.get_full_name }}?\n\nThis marks the flight as departed.')">Check out</button>
     </form>
+    {% if club_member.is_admin %}
+    <div style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid #f0f2f4;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+      <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="undo_confirm">
+        <button type="submit" class="cbtn" style="font-size:.78rem;"
+                onclick="return confirm('Undo confirmation? Flight will return to pending.')">
+          Undo confirmation
+        </button>
+      </form>
+      <button type="button" class="cbtn" style="font-size:.78rem;"
+              onclick="document.getElementById('edit-details-panel').hidden=!document.getElementById('edit-details-panel').hidden">
+        Edit details
+      </button>
+    </div>
+    <div id="edit-details-panel" hidden style="margin-top:.8rem;padding:.9rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="change_details">
+        <div class="fgrid">
+          <label class="flabel">Instructor
+            <select name="instructor_id" class="finput">
+              <option value="">— keep {{ booking.instructor.get_full_name|default:"none" }} —</option>
+              <option value="__none__">— remove instructor —</option>
+              {% for instr in rostered_instructors %}
+              <option value="{{ instr.user.id }}" {% if instr.user == booking.instructor %}selected{% endif %}>{{ instr.user.get_full_name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="flabel">Aircraft
+            <select name="aircraft_id" class="finput">
+              <option value="">— keep {{ booking.aircraft.registration }} —</option>
+              {% for ac in online_aircraft %}
+              <option value="{{ ac.id }}" {% if ac == booking.aircraft %}selected{% endif %}>{{ ac.registration }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.5rem;">Description
+          <input type="text" name="description" class="finput" value="{{ booking.description|default:'' }}" placeholder="Optional notes for this flight">
+        </label>
+        <div style="margin-top:.7rem;display:flex;gap:.5rem;">
+          <button type="submit" class="btn" style="font-size:.82rem;">Save changes</button>
+          <button type="button" class="cbtn" style="font-size:.82rem;"
+                  onclick="document.getElementById('edit-details-panel').hidden=true">Cancel</button>
+        </div>
+      </form>
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 
   <!-- ── CHECKED OUT: Check in ── -->
   {% if booking.status == 'departed' %}
+  <script>var _ciRates = {{ checkin_rates_json|safe }};</script>
   <div class="section">
     <h2 class="sh2">Check in</h2>
     <form method="post" id="checkin-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="checkin">
 
-      <label class="flabel" style="max-width:300px;">Outcome
-        <select name="outcome" class="finput" onchange="toggleOutcomeNotes(this)">
-          <option value="completed">Completed normally</option>
-          <option value="aborted_ground">Aborted on ground</option>
-          <option value="early_return_tech">Early return — technical</option>
-          <option value="early_return_wx">Early return — weather</option>
-          <option value="diverted">Diverted / landed away</option>
-        </select>
-      </label>
-      <div id="outcome-notes-wrap" style="display:none;max-width:480px;">
-        <label class="flabel">Outcome notes (required)
-          <textarea name="outcome_notes" class="finput" rows="2" placeholder="Describe what happened"></textarea>
-        </label>
+      <div class="ci-grid">
+        <!-- LEFT: form fields -->
+        <div>
+          <label class="flabel" style="max-width:300px;">Outcome
+            <select name="outcome" class="finput" onchange="toggleOutcomeNotes(this)">
+              <option value="completed">Completed normally</option>
+              <option value="aborted_ground">Aborted on ground</option>
+              <option value="early_return_tech">Early return — technical</option>
+              <option value="early_return_wx">Early return — weather</option>
+              <option value="diverted">Diverted / landed away</option>
+            </select>
+          </label>
+          <div id="outcome-notes-wrap" style="display:none;">
+            <label class="flabel">Outcome notes (required)
+              <textarea name="outcome_notes" class="finput" rows="2" placeholder="Describe what happened"></textarea>
+            </label>
+          </div>
+
+          <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.7rem;">
+            {% if booking.aircraft.records_hobbs %}
+            <label class="flabel">Hobbs start <span class="req">*</span>
+              <input type="number" name="hobbs_start" id="ci-hobbs-start" step="0.1" required class="finput" style="width:105px;"
+                     data-prev-end="{{ prev_hobbs_end|default:'' }}" data-meter="hobbs"
+                     value="{% if fc and fc.hobbs_start %}{{ fc.hobbs_start }}{% elif prev_hobbs_end %}{{ prev_hobbs_end }}{% endif %}"
+                     oninput="checkMeterGap(this);updateCheckinPreview();">
+            </label>
+            <label class="flabel">Hobbs end <span class="req">*</span>
+              <input type="number" name="hobbs_end" id="ci-hobbs-end" step="0.1" required class="finput" style="width:105px;"
+                     oninput="updateCheckinPreview();">
+            </label>
+            {% endif %}
+            {% if booking.aircraft.records_tacho %}
+            <label class="flabel">Tacho start <span class="req">*</span>
+              <input type="number" name="tacho_start" id="ci-tacho-start" step="0.01" required class="finput" style="width:105px;"
+                     data-prev-end="{{ prev_tacho_end|default:'' }}" data-meter="tacho"
+                     value="{% if fc and fc.tacho_start %}{{ fc.tacho_start }}{% elif prev_tacho_end %}{{ prev_tacho_end }}{% endif %}"
+                     oninput="checkMeterGap(this);updateCheckinPreview();">
+            </label>
+            <label class="flabel">Tacho end <span class="req">*</span>
+              <input type="number" name="tacho_end" id="ci-tacho-end" step="0.01" required class="finput" style="width:105px;"
+                     oninput="updateCheckinPreview();">
+            </label>
+            {% endif %}
+            {% if booking.aircraft.records_airswitch %}
+            <label class="flabel">Air switch start <span class="req">*</span>
+              <input type="number" name="airswitch_start" id="ci-airswitch-start" step="0.1" required class="finput" style="width:105px;"
+                     data-prev-end="{{ prev_airswitch_end|default:'' }}" data-meter="airswitch"
+                     value="{% if fc and fc.airswitch_start %}{{ fc.airswitch_start }}{% elif prev_airswitch_end %}{{ prev_airswitch_end }}{% endif %}"
+                     oninput="checkMeterGap(this);updateCheckinPreview();">
+            </label>
+            <label class="flabel">Air switch end <span class="req">*</span>
+              <input type="number" name="airswitch_end" id="ci-airswitch-end" step="0.1" required class="finput" style="width:105px;"
+                     oninput="updateCheckinPreview();">
+            </label>
+            {% endif %}
+            {% if not booking.aircraft.records_hobbs and not booking.aircraft.records_tacho and not booking.aircraft.records_airswitch %}
+            <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0;">No meter readings configured for this aircraft.</p>
+            {% endif %}
+          </div>
+
+          <!-- Meter gap warning -->
+          <div id="meter-gap-wrap" style="display:none;margin-top:.7rem;">
+            <div class="notice warn" id="meter-gap-msg" style="margin-bottom:.5rem;"></div>
+            <label class="flabel">Explanation for meter gap <span class="req">*</span>
+              <textarea name="gap_explanation" id="gap-explanation" class="finput" rows="2"
+                        placeholder="e.g. Ground run by engineer, meter replaced, tow flight not booked in system…"></textarea>
+            </label>
+          </div>
+          {% if error and 'gap' in error|lower %}
+          <script>
+            document.addEventListener('DOMContentLoaded', function() {
+              var w = document.getElementById('meter-gap-wrap');
+              var m = document.getElementById('meter-gap-msg');
+              if (w && m) { w.style.display = 'block'; m.textContent = '{{ error|escapejs }}'; }
+            });
+          </script>
+          {% endif %}
+
+          <details style="margin-top:.7rem;">
+            <summary class="cbtn" style="font-size:.82rem;cursor:pointer;list-style:none;display:inline-block;">Change flight type</summary>
+            <label class="flabel" style="max-width:280px;margin-top:.5rem;">Flight type
+              <select name="flight_type_id" class="finput">
+                <option value="">— keep {{ booking.flight_type.name }} —</option>
+                {% for ft in flight_types %}{% if ft != booking.flight_type %}<option value="{{ ft.id }}">{{ ft.name }}</option>{% endif %}{% endfor %}
+              </select>
+            </label>
+          </details>
+
+          <!-- ── Split flight (hidden by default) ── -->
+          <div style="margin-top:.75rem;">
+            <button type="button" class="cbtn-sm" id="split-toggle-btn" onclick="toggleSplit()">+ Split between members</button>
+          </div>
+          <div id="split-section" hidden style="margin-top:.6rem;padding:.75rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
+            <input type="hidden" name="has_split" value="1">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.55rem;">
+              <span style="font-size:.82rem;font-weight:600;color:#1f2933;">Split flight between members</span>
+              <button type="button" class="cbtn-sm cbtn-danger" onclick="toggleSplit()">✕ Cancel split</button>
+            </div>
+            <p style="font-size:.76rem;color:#8a93a0;margin:0 0 .6rem;">
+              Enter the instrument reading at the handover point. Segment 1 runs from start to handover; segment 2 from handover to end.
+            </p>
+
+            <div style="font-size:.79rem;font-weight:600;color:#5b6573;margin-bottom:.3rem;">1. {{ booking.member.user.get_full_name }} — from start to handover</div>
+            <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.55rem;">
+              {% if booking.aircraft.records_hobbs %}
+              <label class="flabel">Hobbs at handover
+                <input type="number" name="seg_hobbs_h1" id="seg-hobbs-h1" step="0.1" class="finput" style="width:105px;" oninput="updateSplitHours()">
+              </label>
+              {% endif %}
+              {% if booking.aircraft.records_tacho %}
+              <label class="flabel">Tacho at handover
+                <input type="number" name="seg_tacho_h1" id="seg-tacho-h1" step="0.01" class="finput" style="width:105px;" oninput="updateSplitHours()">
+              </label>
+              {% endif %}
+              {% if booking.aircraft.records_airswitch %}
+              <label class="flabel">Air switch at handover
+                <input type="number" name="seg_airswitch_h1" id="seg-airswitch-h1" step="0.1" class="finput" style="width:105px;" oninput="updateSplitHours()">
+              </label>
+              {% endif %}
+            </div>
+
+            <div id="split-hours-preview" style="font-size:.78rem;color:#2a7a3b;font-weight:600;margin-bottom:.5rem;display:none;"></div>
+
+            <label class="flabel">2. Second member
+              <select name="seg_member_2" class="finput" style="max-width:260px;">
+                <option value="">— select —</option>
+                {% for m in club_members %}{% if m.id != booking.member_id %}
+                <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
+                {% endif %}{% endfor %}
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- RIGHT: charge preview only — payment recorded on the charges screen after check-in -->
+        <div>
+          <div id="ci-preview-wrap" style="padding:.7rem 1rem;background:#f0f4ff;border:1px solid #c7d4f5;border-radius:8px;display:none;margin-bottom:.8rem;">
+            <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5b6573;margin-bottom:.4rem;">Estimated charges</div>
+            <div id="ci-preview-rows" style="font-size:.88rem;"></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid #c7d4f5;margin-top:.4rem;padding-top:.4rem;">
+              <span style="font-weight:600;">Total</span>
+              <span id="ci-preview-total" style="font-weight:700;font-size:1.05rem;"></span>
+            </div>
+            <p style="font-size:.74rem;color:#8a93a0;margin:.35rem 0 0;">Landing fees &amp; one-off charges can be added after check-in.</p>
+          </div>
+          <div id="ci-no-rates" style="padding:.6rem .8rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;display:none;font-size:.82rem;color:#8a93a0;">
+            No charge rates configured — charges can be added manually after check-in.
+          </div>
+          <div style="padding:.7rem 1rem;background:#f8f9fb;border:1px dashed #d0d5dd;border-radius:8px;font-size:.82rem;color:#8a93a0;margin-top:.6rem;">
+            Payment is recorded on the charges screen after check-in.
+          </div>
+        </div>
+      </div><!-- /ci-grid -->
+
+      <div style="display:flex;align-items:center;gap:.8rem;margin-top:1rem;flex-wrap:wrap;">
+        <button type="submit" class="btn">Check in</button>
       </div>
-
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.8rem;">
-        {% if booking.aircraft.records_hobbs %}
-        <label class="flabel">Hobbs start <span class="req">*</span>
-          <input type="number" name="hobbs_start" id="ci-hobbs-start" step="0.1" required class="finput" style="width:110px;"
-                 data-prev-end="{{ prev_hobbs_end|default:'' }}" data-meter="hobbs"
-                 value="{% if fc and fc.hobbs_start %}{{ fc.hobbs_start }}{% elif prev_hobbs_end %}{{ prev_hobbs_end }}{% endif %}"
-                 oninput="checkMeterGap(this)">
-        </label>
-        <label class="flabel">Hobbs end <span class="req">*</span>
-          <input type="number" name="hobbs_end" step="0.1" required class="finput" style="width:110px;">
-        </label>
-        {% endif %}
-        {% if booking.aircraft.records_tacho %}
-        <label class="flabel">Tacho start <span class="req">*</span>
-          <input type="number" name="tacho_start" id="ci-tacho-start" step="0.01" required class="finput" style="width:110px;"
-                 data-prev-end="{{ prev_tacho_end|default:'' }}" data-meter="tacho"
-                 value="{% if fc and fc.tacho_start %}{{ fc.tacho_start }}{% elif prev_tacho_end %}{{ prev_tacho_end }}{% endif %}"
-                 oninput="checkMeterGap(this)">
-        </label>
-        <label class="flabel">Tacho end <span class="req">*</span>
-          <input type="number" name="tacho_end" step="0.01" required class="finput" style="width:110px;">
-        </label>
-        {% endif %}
-        {% if booking.aircraft.records_airswitch %}
-        <label class="flabel">Air switch start <span class="req">*</span>
-          <input type="number" name="airswitch_start" id="ci-airswitch-start" step="0.1" required class="finput" style="width:110px;"
-                 data-prev-end="{{ prev_airswitch_end|default:'' }}" data-meter="airswitch"
-                 value="{% if fc and fc.airswitch_start %}{{ fc.airswitch_start }}{% elif prev_airswitch_end %}{{ prev_airswitch_end }}{% endif %}"
-                 oninput="checkMeterGap(this)">
-        </label>
-        <label class="flabel">Air switch end <span class="req">*</span>
-          <input type="number" name="airswitch_end" step="0.1" required class="finput" style="width:110px;">
-        </label>
-        {% endif %}
-        {% if not booking.aircraft.records_hobbs and not booking.aircraft.records_tacho and not booking.aircraft.records_airswitch %}
-        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0;">No meter readings configured for this aircraft.</p>
-        {% endif %}
-      </div>
-
-      <!-- Meter gap warning + explanation — shown by JS when a gap is detected, or by server on re-render -->
-      <div id="meter-gap-wrap" style="display:none;margin-top:.8rem;">
-        <div class="notice warn" id="meter-gap-msg" style="margin-bottom:.5rem;"></div>
-        <label class="flabel" style="max-width:520px;">
-          Explanation for meter gap <span class="req">*</span>
-          <textarea name="gap_explanation" id="gap-explanation" class="finput" rows="2"
-                    placeholder="e.g. Ground run by engineer, meter replaced, tow flight not booked in system…"></textarea>
-        </label>
-      </div>
-      {% if error and 'gap' in error|lower %}
-      <script>
-        document.addEventListener('DOMContentLoaded', function() {
-          var w = document.getElementById('meter-gap-wrap');
-          var m = document.getElementById('meter-gap-msg');
-          if (w && m) { w.style.display = 'block'; m.textContent = '{{ error|escapejs }}'; }
-        });
-      </script>
-      {% endif %}
-
-      <details style="margin-top:.8rem;">
-        <summary style="font-size:.82rem;color:var(--primary);cursor:pointer;list-style:none;">Change flight type</summary>
-        <label class="flabel" style="max-width:280px;margin-top:.5rem;">Flight type
-          <select name="flight_type_id" class="finput">
-            <option value="">— keep {{ booking.flight_type.name }} —</option>
-            {% for ft in flight_types %}{% if ft != booking.flight_type %}<option value="{{ ft.id }}">{{ ft.name }}</option>{% endif %}{% endfor %}
-          </select>
-        </label>
-      </details>
-
-      <button type="submit" class="btn" style="margin-top:.8rem;">Check in</button>
     </form>
+    {% if club_member.is_admin %}
+    <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f0f2f4;">
+      <form method="post" style="display:inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="undo_depart">
+        <button type="submit" class="cbtn" style="font-size:.78rem;"
+                onclick="return confirm('Undo departure? The flight completion stub will be deleted and the flight will return to confirmed.')">
+          Undo departure (return to confirmed)
+        </button>
+      </form>
+    </div>
+    {% endif %}
   </div>
   {% endif %}
 
@@ -251,274 +424,502 @@
       {% if fc.is_paid %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>{% endif %}
     </h2>
 
+    <!-- Meter summary row -->
+    {% if fc.actual_flight_hours %}
+    <div style="font-size:.83rem;color:#5b6573;margin-bottom:.8rem;display:flex;gap:1.2rem;flex-wrap:wrap;">
+      <span>{{ fc.actual_flight_hours }}h billed
+        ({% if booking.aircraft.total_time_method == 'tacho_less_5' %}Tacho{% else %}{{ booking.aircraft.get_total_time_method_display }}{% endif %})</span>
+      {% if fc.hobbs_start and fc.hobbs_end %}<span style="color:#8a93a0;">Hobbs {{ fc.hobbs_start }} → {{ fc.hobbs_end }}</span>{% endif %}
+      {% if fc.tacho_start and fc.tacho_end %}<span style="color:#8a93a0;">Tacho {{ fc.tacho_start }} → {{ fc.tacho_end }}</span>{% endif %}
+      {% if fc.airswitch_start and fc.airswitch_end %}<span style="color:#8a93a0;">Air switch {{ fc.airswitch_start }} → {{ fc.airswitch_end }}</span>{% endif %}
+    </div>
+    {% endif %}
+    {% if fc.departed_with_aircraft and fc.departed_with_aircraft != booking.aircraft %}
+    <div class="notice warn" style="margin-bottom:.6rem;font-size:.82rem;">
+      ✈ Departed in <strong>{{ fc.departed_with_aircraft.registration }}</strong> — aircraft changed to {{ booking.aircraft.registration }} mid-flight. Maintenance hours logged against {{ fc.departed_with_aircraft.registration }}.
+    </div>
+    {% endif %}
+    {% if fc.departed_with_instructor and fc.departed_with_instructor != booking.instructor %}
+    <div class="notice" style="margin-bottom:.6rem;font-size:.82rem;background:#f0f4ff;border-color:#c7d4f5;color:#2b333d;">
+      Departed with instructor <strong>{{ fc.departed_with_instructor.get_full_name }}</strong> — instructor changed to {{ booking.instructor.get_full_name|default:"none" }} mid-flight.
+    </div>
+    {% endif %}
+
     {% if fc.outcome != 'completed' %}
     <div class="notice warn" style="margin-bottom:.8rem;">
       Outcome: <strong>{{ fc.get_outcome_display }}</strong>{% if fc.outcome_notes %} — {{ fc.outcome_notes }}{% endif %}
     </div>
     {% endif %}
 
-    {% if fc.actual_flight_hours %}
-    <div style="font-size:.85rem;color:#5b6573;margin-bottom:.8rem;">
-      Actual hours: <strong>{{ fc.actual_flight_hours }}h</strong>
-      ({% if booking.aircraft.total_time_method == 'tacho_less_5' %}Tacho{% else %}{{ booking.aircraft.get_total_time_method_display }}{% endif %} — billing uses full meter hours)
-    </div>
-    {% endif %}
-
-    <table class="ch-table">
-      <thead><tr><th>Type</th><th>Description</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
-      <tbody>
-        {% for item in charge_items %}
-        <tr>
-          <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
-          <td>{{ item.description }}</td>
-          <td style="text-align:right;font-weight:600;">${{ item.amount }}</td>
-          <td style="width:32px;">
-            {% if not fc.is_paid %}
-            <form method="post" style="display:inline;" onsubmit="return confirm('Remove this charge?')">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="delete_charge">
-              <input type="hidden" name="item_id" value="{{ item.id }}">
-              <button type="submit" class="del-btn">×</button>
-            </form>
-            {% endif %}
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="4" style="color:#8a93a0;font-size:.85rem;padding:.6rem;">No charges added yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-
-    {% if not fc.is_paid %}
-    <!-- Add charges — appear BEFORE the total -->
-    <details class="add-wrap" style="margin-bottom:.5rem;">
-      <summary class="add-toggle">+ Add landing fee</summary>
-      <form method="post" class="lf-form" style="padding:.2rem .7rem .8rem;">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="add_charge">
-        <input type="hidden" name="item_type" value="landing">
-        <input type="hidden" name="quantity" value="1">
-        <input type="hidden" name="unit_amount" id="lf-unit">
-        <input type="hidden" name="description" id="lf-desc" value="Landing fee">
-        {% if aerodromes %}
-        <div class="lf-row">
-          <label class="flabel" style="flex:2;min-width:170px;">Aerodrome
-            <select name="aerodrome_id" class="finput" id="lf-aerodrome"
-                    onchange="lfAerodromeChange(this)">
-              <option value="">— select aerodrome —</option>
-              {% for ae in aerodromes %}
-              <option value="{{ ae.id }}"
-                data-fees='[{% for f in ae.fee_types.all %}{"id":{{ f.id }},"name":"{{ f.name }}","amount":"{{ f.default_amount }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
-                {{ ae.icao_code }} — {{ ae.name }}
-              </option>
-              {% endfor %}
-            </select>
-          </label>
-          <label class="flabel" id="lf-feetype-wrap" style="flex:2;min-width:150px;">Fee type
-            <select name="fee_type_id" id="lf-fee-type" class="finput"
-                    onchange="lfFeeTypeChange(this)">
-              <option value="">— select aerodrome first —</option>
-            </select>
-          </label>
-          <label class="flabel lf-amount-wrap" style="width:110px;">Amount
-            <div class="money-wrap">
-              <span class="money-sym">$</span>
-              <input type="number" name="amount" id="lf-amount" step="0.01" min="0"
-                     class="finput money-input" placeholder="0.00" required
-                     onblur="fmtMoney(this)">
+    <div class="ch-grid">
+      <!-- LEFT: charges + add-charge forms -->
+      <div>
+        {% if club_member.is_admin %}
+        <details style="margin-bottom:.8rem;">
+          <summary class="cbtn" style="font-size:.82rem;cursor:pointer;display:inline-block;">Edit check-in details</summary>
+          <div style="margin-top:.6rem;padding:.7rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit_checkin">
+            <p style="font-size:.8rem;color:#8a93a0;margin:0 0 .6rem;">Correcting meter readings will delete and regenerate hire/fuel/instructor/surcharge items. Manual and landing-fee charges are kept.</p>
+            <label class="flabel" style="max-width:300px;margin-bottom:.6rem;">Outcome
+              <select name="outcome" class="finput">
+                <option value="completed" {% if fc.outcome == 'completed' %}selected{% endif %}>Completed normally</option>
+                <option value="aborted_ground" {% if fc.outcome == 'aborted_ground' %}selected{% endif %}>Aborted on ground</option>
+                <option value="early_return_tech" {% if fc.outcome == 'early_return_tech' %}selected{% endif %}>Early return — technical</option>
+                <option value="early_return_wx" {% if fc.outcome == 'early_return_wx' %}selected{% endif %}>Early return — weather</option>
+                <option value="diverted" {% if fc.outcome == 'diverted' %}selected{% endif %}>Diverted / landed away</option>
+              </select>
+            </label>
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem;">
+              {% if booking.aircraft.records_hobbs %}
+              <label class="flabel">Hobbs start<input type="number" name="hobbs_start" step="0.1" class="finput" style="width:110px;" value="{{ fc.hobbs_start|default:'' }}"></label>
+              <label class="flabel">Hobbs end<input type="number" name="hobbs_end" step="0.1" class="finput" style="width:110px;" value="{{ fc.hobbs_end|default:'' }}"></label>
+              {% endif %}
+              {% if booking.aircraft.records_tacho %}
+              <label class="flabel">Tacho start<input type="number" name="tacho_start" step="0.01" class="finput" style="width:110px;" value="{{ fc.tacho_start|default:'' }}"></label>
+              <label class="flabel">Tacho end<input type="number" name="tacho_end" step="0.01" class="finput" style="width:110px;" value="{{ fc.tacho_end|default:'' }}"></label>
+              {% endif %}
+              {% if booking.aircraft.records_airswitch %}
+              <label class="flabel">Air switch start<input type="number" name="airswitch_start" step="0.1" class="finput" style="width:110px;" value="{{ fc.airswitch_start|default:'' }}"></label>
+              <label class="flabel">Air switch end<input type="number" name="airswitch_end" step="0.1" class="finput" style="width:110px;" value="{{ fc.airswitch_end|default:'' }}"></label>
+              {% endif %}
             </div>
-          </label>
-          <button type="submit" class="btn lf-add-btn">Add</button>
-        </div>
-        <div id="lf-nofees-msg" class="lf-hint" hidden>No fee types configured for this aerodrome — enter amount manually.</div>
-        <div id="lf-custom" class="lf-row" style="display:none;margin-top:.4rem;">
-          <label class="flabel" style="width:70px;">ICAO
-            <input type="text" name="custom_icao" maxlength="4" class="finput"
-                   style="text-transform:uppercase;" placeholder="NZMS">
-          </label>
-          <label class="flabel" style="flex:1;min-width:140px;">Aerodrome name
-            <input type="text" name="custom_name" class="finput" placeholder="e.g. Masterton">
-          </label>
-          <label class="flabel" style="flex:2;min-width:170px;">Fee description
-            <input type="text" id="lf-custom-desc" name="description" class="finput"
-                   placeholder="e.g. Full stop landing" required>
-          </label>
-        </div>
-        {% else %}
-        <p style="font-size:.85rem;color:#8a93a0;padding:.4rem 0 .2rem;">No aerodromes configured yet.
-          <a href="{% url 'core:manage_aerodromes' club.slug %}" data-overlay>Configure →</a></p>
-        {% endif %}
-      </form>
-    </details>
-
-    <details class="add-wrap" style="margin-bottom:.5rem;">
-      <summary class="add-toggle">+ Add sundry / one-off charge</summary>
-      <form method="post" style="padding:.2rem .7rem .8rem;">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="add_charge">
-        <input type="hidden" name="item_type" value="one_off">
-        <div class="lf-row">
-          <label class="flabel" style="flex:3;min-width:220px;">Description
-            <input type="text" name="description" class="finput" required placeholder="e.g. WAC chart, headset hire">
-          </label>
-          <label class="flabel" style="width:110px;">Amount
-            <div class="money-wrap"><span class="money-sym">$</span>
-              <input type="number" name="amount" step="0.01" min="0" class="finput money-input"
-                     placeholder="0.00" required onblur="fmtMoney(this)">
-            </div>
-          </label>
-          <button type="submit" class="btn lf-add-btn">Add</button>
-        </div>
-      </form>
-    </details>
-
-    <details class="add-wrap" style="margin-bottom:1rem;">
-      <summary class="add-toggle" style="color:#8a93a0;font-size:.8rem;">± Adjust auto-calculated charge</summary>
-      <form method="post" style="margin-top:.6rem;padding:0 .7rem .7rem;">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="add_charge">
-        <p style="font-size:.8rem;color:#8a93a0;margin:0 0 .6rem;">Correct a hire, fuel, instructor or surcharge item.</p>
-        <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
-          <label class="flabel">Type
-            <select name="item_type" class="finput">
-              <option value="hire">Hire adjustment</option>
-              <option value="fuel">Fuel adjustment</option>
-              <option value="instructor">Instructor adjustment</option>
-              <option value="surcharge">Surcharge adjustment</option>
-            </select>
-          </label>
-          <label class="flabel" style="flex:2;min-width:200px;">Description
-            <input type="text" name="description" class="finput" required placeholder="Describe the correction">
-          </label>
-          <label class="flabel" style="width:120px;">Amount
-            <div class="money-wrap"><span class="money-sym">$</span>
-              <input type="number" name="amount" step="0.01" class="finput money-input"
-                     required placeholder="−5.00 for credit" onblur="fmtMoney(this)">
-            </div>
-          </label>
-          <button type="submit" class="btn secondary lf-add-btn">Add</button>
-        </div>
-      </form>
-    </details>
-    {% endif %}
-
-    <!-- Total — always visible, below the add-charge accordions -->
-    <div class="ch-total-row">
-      <span class="ch-total-label">Total</span>
-      <span class="ch-total-amount">${{ total }}</span>
-    </div>
-
-    {% if not fc.is_paid %}
-    <!-- Payment -->
-    <div class="ch-payment-wrap">
-      {% if fc.is_partially_paid %}
-      <div class="notice warn" style="margin-bottom:.7rem;">
-        Partial payment recorded. Amount paid so far: <strong>${{ fc.amount_paid }}</strong> — balance owing: <strong>${{ fc.balance_owing }}</strong>
-      </div>
-      {% endif %}
-
-      {% if other_unpaid_list or other_outstanding_list %}
-      <div class="notice warn" style="margin-bottom:.7rem;font-size:.82rem;">
-        <strong>&#9888; Other amounts outstanding for this member:</strong>
-        <ul style="margin:.35rem 0 0 1rem;padding:0;">
-          {% for item in other_unpaid_list %}
-          <li>{{ item.booking.scheduled_start|date:"j M Y" }} · {{ item.booking.aircraft.registration }} — <strong>${{ item.total_charge }}</strong> unpaid</li>
-          {% endfor %}
-          {% for item in other_outstanding_list %}
-          <li>{{ item.booking.scheduled_start|date:"j M Y" }} · {{ item.booking.aircraft.registration }} — <strong>${{ item.balance_owing }}</strong> remaining (partial)</li>
-          {% endfor %}
-        </ul>
-        {% if other_total_count > 1 %}
-        <div style="margin-top:.3rem;">Total outstanding across other flights: <strong>${{ other_total }}</strong></div>
-        {% endif %}
-      </div>
-      {% endif %}
-
-      {% with acct=booking.member.account %}
-      {% if acct and acct.balance < 0 %}
-        {% if acct.is_over_limit %}
-        <div class="notice err" style="margin-bottom:.7rem;font-size:.82rem;">
-          <strong>&#9888; Member owes more than the allowed maximum</strong> — balance ${{ acct.balance }}, maximum arrears ${{ acct.credit_limit }}. Payment by account credit is blocked.
-        </div>
-        {% else %}
-        <div class="notice warn" style="margin-bottom:.7rem;font-size:.82rem;">
-          Member currently owes <strong>${{ acct.balance|cut:"-" }}</strong> to the club
-          {% if acct.credit_limit is not None %} (maximum arrears allowed: ${{ acct.credit_limit }}){% endif %}.
-        </div>
-        {% endif %}
-      {% endif %}
-      {% endwith %}
-
-      <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="confirm_payment">
-        <div style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
-          <label class="flabel" style="margin:0;">Payment method
-            <select name="payment_method" class="finput" style="width:auto;margin-top:.25rem;">
-              <option value="eftpos">EFTPOS</option>
-              <option value="cash">Cash</option>
-              <option value="credit">Account balance (prepaid credit)</option>
-              <option value="invoice">Invoice / bank transfer</option>
-            </select>
-          </label>
-          <label class="flabel" style="margin:0;">Amount received
-            <div class="money-wrap" style="margin-top:.25rem;">
-              <span class="money-sym">$</span>
-              <input type="number" name="payment_amount" step="0.01" min="0.01"
-                     max="{{ balance_owing }}" value="{{ balance_owing }}"
-                     class="finput money-input" style="width:90px;" required>
-            </div>
-          </label>
-          <div style="font-size:.78rem;color:#8a93a0;padding-bottom:.5rem;">of ${{ balance_owing }} owing on this flight{% if other_total %} · ${{ other_total }} across other flights (not included){% endif %}</div>
-          <button type="submit" class="btn" style="margin-bottom:.1rem;"
-                  onclick="return confirm('Record this payment — this cannot be undone.')">
-            Record payment
-          </button>
-        </div>
-        {% with acct=booking.member.account %}
-        {% if acct %}
-        <div style="font-size:.8rem;color:#8a93a0;margin-top:.5rem;display:flex;gap:1.2rem;flex-wrap:wrap;align-items:center;">
-          <span>Account balance:
-            <strong style="color:{% if acct.is_over_limit %}#c0392b{% elif acct.balance < 0 %}#b06800{% else %}#2a7a3b{% endif %};">
-              ${{ acct.balance }}
-            </strong>
-          </span>
-          {% if acct.credit_limit is not None %}
-          <span style="color:{% if acct.is_over_limit %}#c0392b{% else %}#8a93a0{% endif %};">
-            Max arrears: <strong>${{ acct.credit_limit }}</strong>
-            {% if acct.is_over_limit %} &#9888; EXCEEDED{% endif %}
-          </span>
+            <button type="submit" class="btn secondary" style="font-size:.85rem;">Save &amp; recalculate charges</button>
+          </form>
+          {% if not fc.amount_paid or fc.amount_paid == 0 %}
+          <form method="post" style="margin-top:.5rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="void_checkin">
+            <button type="submit" class="cbtn" style="font-size:.8rem;color:#c0392b;border-color:#c0392b;"
+                    onclick="return confirm('Void this check-in? All charge items will be deleted and the flight will return to departed.')">
+              Void check-in (return to departed)
+            </button>
+          </form>
           {% else %}
-          <span style="color:#8a93a0;font-style:italic;">No arrears limit set</span>
+          <p style="font-size:.78rem;color:#c0392b;margin:.4rem 0 0;">Void is blocked — ${{ fc.amount_paid|currency }} recorded. Reverse payment first.</p>
+          {% endif %}
+          </div>
+        </details>
+        {% endif %}
+        <table class="ch-table">
+          <thead><tr><th>Type</th><th>Description</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
+          <tbody>
+            {% if fc_segments %}
+              {% for seg in fc_segments %}
+              <tr>
+                <td colspan="4" style="background:#f4f6f8;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;padding:.3rem .8rem;border-bottom:1px solid #e8eaed;">
+                  {{ seg.member.user.get_full_name }} — {{ seg.hours }}h
+                </td>
+              </tr>
+              {% for item in seg.segment_charges %}
+              <tr>
+                <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
+                <td>{{ item.description }}</td>
+                <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
+                <td style="width:32px;">
+                  {% if not fc.is_paid %}
+                  <form method="post" style="display:inline;" onsubmit="return confirm('Remove this charge?')">
+                    {% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}">
+                    <button type="submit" class="del-btn">×</button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" style="color:#bbb;font-size:.8rem;padding:.25rem .8rem;">No charges for this segment.</td></tr>
+              {% endfor %}
+              {% endfor %}
+              {% for item in charge_items %}
+              <tr>
+                <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
+                <td>{{ item.description }}</td>
+                <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
+                <td style="width:32px;">
+                  {% if not fc.is_paid %}
+                  <form method="post" style="display:inline;" onsubmit="return confirm('Remove this charge?')">
+                    {% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}">
+                    <button type="submit" class="del-btn">×</button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+            {% for item in charge_items %}
+            <tr>
+              <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
+              <td>{{ item.description }}</td>
+              <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
+              <td style="width:32px;">
+                {% if not fc.is_paid %}
+                <form method="post" style="display:inline;" onsubmit="return confirm('Remove this charge?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete_charge">
+                  <input type="hidden" name="item_id" value="{{ item.id }}">
+                  <button type="submit" class="del-btn">×</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" style="color:#8a93a0;font-size:.85rem;padding:.6rem;">No charges added yet.</td></tr>
+            {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+
+        {% if not fc.is_paid %}
+        <details class="add-wrap" style="margin-bottom:.4rem;">
+          <summary class="add-toggle">+ Add landing fee</summary>
+          <form method="post" class="lf-form" style="padding:.2rem .7rem .8rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_charge">
+            <input type="hidden" name="item_type" value="landing">
+            <input type="hidden" name="quantity" value="1">
+            <input type="hidden" name="unit_amount" id="lf-unit">
+            <input type="hidden" name="description" id="lf-desc" value="Landing fee">
+            {% if aerodromes %}
+            <div class="lf-row">
+              <label class="flabel" style="flex:2;min-width:140px;">Aerodrome
+                <select name="aerodrome_id" class="finput" id="lf-aerodrome" onchange="lfAerodromeChange(this)">
+                  <option value="">— select —</option>
+                  {% for ae in aerodromes %}
+                  <option value="{{ ae.id }}" data-fees='[{% for f in ae.fee_types.all %}{"id":{{ f.id }},"name":"{{ f.name }}","amount":"{{ f.default_amount }}"}{% if not forloop.last %},{% endif %}{% endfor %}]'>
+                    {{ ae.icao_code }} — {{ ae.name }}
+                  </option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="flabel" id="lf-feetype-wrap" style="flex:2;min-width:130px;">Fee type
+                <select name="fee_type_id" id="lf-fee-type" class="finput" onchange="lfFeeTypeChange(this)">
+                  <option value="">— select aerodrome first —</option>
+                </select>
+              </label>
+              <label class="flabel" style="width:100px;">Amount
+                <div class="money-wrap"><span class="money-sym">$</span>
+                  <input type="number" name="amount" id="lf-amount" step="0.01" min="0" class="finput money-input" placeholder="0.00" required onblur="fmtMoney(this)">
+                </div>
+              </label>
+              <button type="submit" class="btn lf-add-btn">Add</button>
+            </div>
+            <div id="lf-nofees-msg" class="lf-hint" hidden>No fee types configured — enter amount manually.</div>
+            <div id="lf-custom" class="lf-row" style="display:none;margin-top:.4rem;">
+              <label class="flabel" style="width:65px;">ICAO<input type="text" name="custom_icao" maxlength="4" class="finput" style="text-transform:uppercase;" placeholder="NZMS"></label>
+              <label class="flabel" style="flex:1;min-width:120px;">Name<input type="text" name="custom_name" class="finput" placeholder="e.g. Masterton"></label>
+              <label class="flabel" style="flex:2;min-width:150px;">Description<input type="text" id="lf-custom-desc" name="description" class="finput" placeholder="e.g. Full stop landing" required></label>
+            </div>
+            {% else %}
+            <p style="font-size:.85rem;color:#8a93a0;padding:.4rem 0 .2rem;">No aerodromes configured. <a href="{% url 'core:manage_aerodromes' club.slug %}" data-overlay>Configure →</a></p>
+            {% endif %}
+          </form>
+        </details>
+
+        <details class="add-wrap" style="margin-bottom:.4rem;">
+          <summary class="add-toggle">+ Add sundry / one-off charge</summary>
+          <form method="post" style="padding:.2rem .7rem .8rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_charge">
+            <input type="hidden" name="item_type" value="one_off">
+            <div class="lf-row">
+              <label class="flabel" style="flex:3;min-width:180px;">Description
+                <input type="text" name="description" class="finput" required placeholder="e.g. WAC chart, headset hire">
+              </label>
+              <label class="flabel" style="width:100px;">Amount
+                <div class="money-wrap"><span class="money-sym">$</span>
+                  <input type="number" name="amount" step="0.01" min="0" class="finput money-input" placeholder="0.00" required onblur="fmtMoney(this)">
+                </div>
+              </label>
+              <button type="submit" class="btn lf-add-btn">Add</button>
+            </div>
+          </form>
+        </details>
+
+        <details class="add-wrap" style="margin-bottom:.6rem;">
+          <summary class="add-toggle" style="color:#8a93a0;font-size:.8rem;">± Adjust auto-calculated charge</summary>
+          <form method="post" style="margin-top:.4rem;padding:0 .7rem .7rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_charge">
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;">
+              <label class="flabel">Type<select name="item_type" class="finput"><option value="hire">Hire adj.</option><option value="fuel">Fuel adj.</option><option value="instructor">Instructor adj.</option><option value="surcharge">Surcharge adj.</option></select></label>
+              <label class="flabel" style="flex:2;min-width:160px;">Description<input type="text" name="description" class="finput" required placeholder="Describe the correction"></label>
+              <label class="flabel" style="width:110px;">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" step="0.01" class="finput money-input" required placeholder="−5.00" onblur="fmtMoney(this)"></div></label>
+              <button type="submit" class="btn secondary lf-add-btn">Add</button>
+            </div>
+          </form>
+        </details>
+        {% endif %}
+
+        <div class="ch-total-row">
+          <span class="ch-total-label">Total</span>
+          <span class="ch-total-amount">${{ total|currency }}</span>
+        </div>
+      </div><!-- /left -->
+
+      <!-- RIGHT: payment panel -->
+      <div>
+        <div class="ch-payment-wrap" style="margin-top:0;">
+
+          <!-- PAYMENT STATUS HEADER -->
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem;">
+            <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5b6573;">Payments</span>
+            <span style="font-size:.82rem;color:#8a93a0;">${{ total|currency }} this flight</span>
+          </div>
+
+          {% if fc_payments %}
+          <!-- Existing payee rows (split payment already set up) -->
+          <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;">
+            {% for fp in fc_payments %}
+            <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:{% if fp.is_paid %}#f6fdf7{% else %}#fafbfc{% endif %};">
+              <div>
+                <div style="font-size:.88rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
+                <div style="font-size:.77rem;color:#8a93a0;">${{ fp.amount|currency }} · {{ fp.get_method_display }}</div>
+              </div>
+              <div style="text-align:right;">
+                {% if fp.is_paid %}
+                  <div style="font-size:.78rem;color:#2a7a3b;font-weight:600;">✓ Paid {{ fp.paid_at|date:"j M H:i" }}</div>
+                  {% if actor.is_admin %}
+                  <form method="post" style="margin-top:.2rem;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reverse_payment">
+                    <input type="hidden" name="payment_id" value="{{ fp.id }}">
+                    <button type="submit" class="cbtn" style="font-size:.72rem;"
+                            onclick="return confirm('Reverse ${{ fp.amount|currency }} payment from {{ fp.member.user.get_full_name }}?')">Reverse</button>
+                  </form>
+                  {% endif %}
+                {% else %}
+                  <form method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="record_payee">
+                    <input type="hidden" name="payment_id" value="{{ fp.id }}">
+                    <button type="submit" class="btn" style="font-size:.78rem;padding:.25rem .6rem;">Record payment</button>
+                  </form>
+                  {% if actor.is_admin %}
+                  <form method="post" style="display:inline;margin-left:.25rem;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_payee">
+                    <input type="hidden" name="payment_id" value="{{ fp.id }}">
+                    <button type="submit" class="cbtn" style="font-size:.72rem;"
+                            onclick="return confirm('Remove this payee allocation?')">✕</button>
+                  </form>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% if not fc.is_paid %}
+          <p style="font-size:.77rem;color:#8a93a0;margin:.2rem 0 .6rem;">${{ balance_owing|currency }} remaining on this flight</p>
+          {% endif %}
+
+          {% elif not fc.is_paid %}
+          <!-- Multi-payment form — current flight + selectable outstanding others -->
+          <form method="post" id="multi-pay-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="record_multi_payment">
+
+            <label class="flabel" style="margin-bottom:.6rem;">Method
+              <select name="payment_method" class="finput" id="mp-method">
+                <option value="eftpos">EFTPOS</option>
+                <option value="cash">Cash</option>
+                <option value="credit">Account balance</option>
+                <option value="invoice">Invoice / bank transfer</option>
+              </select>
+            </label>
+
+            {% if member_account %}
+            <div id="mp-acct-balance" style="font-size:.78rem;color:#8a93a0;margin:-.2rem 0 .5rem;">
+              Account balance: <strong style="color:{% if member_account.has_warning %}#c0392b{% elif member_account.balance < 0 %}#b06800{% else %}#2a7a3b{% endif %};">${{ member_account.balance|currency }}</strong>
+              {% if member_account.credit_limit is not None %} · credit limit ${{ member_account.credit_limit|currency }}{% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Payment rows -->
+            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
+              <!-- Section header: this flight -->
+              <div style="padding:.3rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">This flight</div>
+              <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;background:#f0f4ff;{% if other_unpaid_list or other_outstanding_list %}border-bottom:1px solid #e3e6ea;{% endif %}">
+                <span style="width:15px;"></span>
+                <span style="font-size:.82rem;color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
+                <div class="money-wrap"><span class="money-sym">$</span><input type="number" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ balance_owing }}" style="width:80px;" readonly></div>
+              </div>
+              {% if other_unpaid_list or other_outstanding_list %}
+              <!-- Section header: other outstanding -->
+              <div style="padding:.35rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;border-top:1px solid #e3e6ea;">
+                <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Other outstanding charges</div>
+                <div style="font-size:.72rem;color:#adb5bd;margin-top:.1rem;">{{ booking.member.user.get_full_name }} · tick to include in this payment session</div>
+              </div>
+              {% for item in other_unpaid_list %}
+              <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if not forloop.last or other_outstanding_list %}border-bottom:1px solid #f0f2f4;{% endif %}">
+                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" checked style="accent-color:var(--primary);width:15px;height:15px;">
+                <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }}</span>
+                <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.total_charge }}" style="width:80px;"></div>
+              </div>
+              {% endfor %}
+              {% for item in other_outstanding_list %}
+              <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
+                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" checked style="accent-color:var(--primary);width:15px;height:15px;">
+                <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }} <span style="color:#b06800;font-size:.74rem;">(partial)</span></span>
+                <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.balance_owing }}" style="width:80px;"></div>
+              </div>
+              {% endfor %}
+              {% endif %}
+            </div>
+
+            {% if arrears_clearable %}
+            <div id="mp-arrears-row" style="display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;background:#fff8e1;border:1px solid #fcd34d;border-radius:7px;margin-bottom:.5rem;">
+              <input type="checkbox" name="include_arrears" id="mp-arrears-chk" value="1"
+                     style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;">
+              <input type="hidden" name="arrears_amount" id="mp-arrears-amt" value="{{ member_account.balance|floatformat:2|slice:'1:' }}">
+              <label for="mp-arrears-chk" style="font-size:.82rem;color:#92400e;cursor:pointer;flex:1;">
+                Collect arrears <strong>${{ member_account.balance|currency|slice:'1:' }}</strong>
+                — account is ${{ member_account.balance|currency|slice:'1:' }} over credit limit of ${{ member_account.credit_limit|currency }}
+              </label>
+            </div>
+            {% endif %}
+
+            <div style="display:flex;justify-content:space-between;font-size:.8rem;color:#5b6573;margin-bottom:.3rem;">
+              <span>Total entered</span><span id="mp-total-entered" style="font-weight:600;">${{ balance_owing|add:other_total|currency }}</span>
+            </div>
+            <label class="flabel" style="margin-bottom:.5rem;">Amount received
+              <div class="money-wrap" style="margin-top:.25rem;">
+                <span class="money-sym">$</span>
+                <input type="number" name="amount_received" id="mp-received" step="0.01" min="0.01"
+                       class="finput money-input" style="width:110px;"
+                       value="{{ balance_owing|add:other_total }}" required>
+              </div>
+            </label>
+            <p style="font-size:.75rem;color:#8a93a0;margin:.1rem 0 .6rem;">Each amount is recorded separately against its own flight. If the amount received is less than the total, it goes to this flight first.</p>
+            <button type="submit" class="btn">Record payment{% if other_unpaid_list or other_outstanding_list %}s{% endif %}</button>
+          </form>
+
+          <script>
+          (function(){
+            var rows = document.querySelectorAll('#multi-pay-form .mp-row');
+            var totalEl = document.getElementById('mp-total-entered');
+            var receivedEl = document.getElementById('mp-received');
+            var arrearsChk = document.getElementById('mp-arrears-chk');
+            var arrearsAmt = document.getElementById('mp-arrears-amt');
+            function recalc() {
+              var t = 0;
+              rows.forEach(function(row) {
+                var chk = row.querySelector('.mp-check');
+                var amt = row.querySelector('.mp-amount');
+                if (!chk || chk.checked) t += parseFloat(amt.value) || 0;
+                if (chk) amt.disabled = !chk.checked;
+              });
+              if (arrearsChk && arrearsChk.checked && arrearsAmt)
+                t += parseFloat(arrearsAmt.value) || 0;
+              var fmt = t.toFixed(2);
+              totalEl.textContent = '$' + fmt;
+              receivedEl.value = fmt;
+            }
+            document.querySelectorAll('#multi-pay-form .mp-check, #multi-pay-form .mp-amount').forEach(function(el){
+              el.addEventListener('change', recalc);
+              el.addEventListener('input', recalc);
+            });
+            if (arrearsChk) arrearsChk.addEventListener('change', recalc);
+            recalc();
+          })();
+          </script>
+          {% endif %}
+
+          <!-- Fully paid confirmation -->
+          {% if fc.is_paid %}
+          <div class="notice" style="background:#edfdf3;border-color:#a3e6bb;color:#1a6335;margin-bottom:.5rem;">
+            <strong>Fully paid</strong> — ${{ fc.amount_paid|currency }} received · {{ fc.paid_at|date:"j M Y H:i" }}
+          </div>
+          {% endif %}
+
+          {% if overpayment and overpayment > 0 and actor.is_admin %}
+          <div class="notice warn" style="margin-top:.4rem;">
+            <strong>Overpayment ${{ overpayment|currency }}</strong> — ${{ fc.amount_paid|currency }} collected, ${{ total|currency }} charged.
+          </div>
+          <details style="margin-top:.4rem;">
+            <summary style="font-size:.82rem;cursor:pointer;color:#5b6573;">Issue refund</summary>
+            <form method="post" style="margin-top:.5rem;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="record_refund">
+              <label class="flabel">Refund method
+                <select name="refund_method" class="finput">
+                  <option value="eftpos">EFTPOS (physical)</option>
+                  <option value="cash">Cash (physical)</option>
+                  <option value="credit">Credit to member account</option>
+                </select>
+              </label>
+              <label class="flabel">Amount
+                <div class="money-wrap" style="margin-top:.25rem;"><span class="money-sym">$</span>
+                  <input type="number" name="refund_amount" step="0.01" min="0.01" max="{{ overpayment }}" value="{{ overpayment }}" class="finput money-input" style="width:100px;" required>
+                </div>
+              </label>
+              <button type="submit" class="btn" style="margin-top:.3rem;">Issue refund</button>
+            </form>
+          </details>
+          {% endif %}
+
+          <!-- Add payee (for split payment) -->
+          {% if not fc.is_paid and actor.is_admin %}
+          <details style="margin-top:.7rem;">
+            <summary style="font-size:.82rem;color:#5b6573;cursor:pointer;">+ Split / add payee</summary>
+            <form method="post" style="margin-top:.6rem;padding:.7rem;background:#f8f9fb;border-radius:6px;border:1px solid #e3e6ea;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_payee">
+              <label class="flabel" style="margin-bottom:.4rem;">Member
+                <select name="member_id" class="finput" required>
+                  <option value="">— select member —</option>
+                  {% for m in club_members %}
+                  <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="flabel" style="margin-bottom:.4rem;">Amount
+                <div class="money-wrap" style="margin-top:.25rem;">
+                  <span class="money-sym">$</span>
+                  <input type="number" name="payment_amount" step="0.01" min="0.01"
+                         class="finput money-input" style="width:100px;" placeholder="0.00" required>
+                </div>
+              </label>
+              <label class="flabel" style="margin-bottom:.5rem;">Method
+                <select name="payment_method" class="finput">
+                  <option value="eftpos">EFTPOS</option>
+                  <option value="cash">Cash</option>
+                  <option value="credit">Account balance</option>
+                  <option value="invoice">Invoice / bank transfer</option>
+                </select>
+              </label>
+              <button type="submit" class="btn" style="font-size:.85rem;">Add payee</button>
+            </form>
+          </details>
           {% endif %}
         </div>
-        {% endif %}
-        {% endwith %}
-      </form>
-    </div>
-    {% endif %}
 
-    {% if booking.status == 'completed' and fc %}
-    <!-- Invoice section -->
-    <div class="ch-payment-wrap" style="border-top:1px solid #eef1f4;padding-top:1rem;margin-top:.5rem;">
-      {% if fc.invoice %}
-      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
-        <span style="font-size:.85rem;color:#5b6573;">Invoice
-          <strong>{{ fc.invoice.display_number }}</strong> —
-          <span class="status-badge status-{{ fc.invoice.status }}">{{ fc.invoice.get_status_display }}</span>
-          {% if fc.invoice.is_overdue %}<span style="color:#c0392b;font-size:.78rem;margin-left:.3rem;">⚠ {{ fc.invoice.days_overdue }} days overdue</span>{% endif %}
-        </span>
-        <a href="{% url 'core:invoice_detail' club.slug fc.invoice.id %}" class="btn" style="font-size:.82rem;padding:.3rem .75rem;">View invoice</a>
-        <a href="{% url 'core:invoice_print' club.slug fc.invoice.id %}" target="_blank" class="cbtn" style="font-size:.82rem;">Print / PDF</a>
-      </div>
-      {% else %}
-      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
-        <span style="font-size:.85rem;color:#8a93a0;">No invoice generated yet.</span>
-        <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="btn" style="font-size:.82rem;padding:.3rem .75rem;">Generate invoice</a>
-      </div>
-      {% endif %}
-    </div>
-    {% endif %}
+        <!-- Invoice — secondary -->
+        <div style="margin-top:.7rem;padding:.7rem 1rem;border:1px solid #e3e6ea;border-radius:8px;background:#fafbfc;">
+          {% if fc.invoice %}
+          <div style="font-size:.85rem;font-weight:600;color:#5b6573;margin-bottom:.4rem;">
+            Invoice {{ fc.invoice.display_number }}
+            <span class="status-badge status-{{ fc.invoice.status }}" style="margin-left:.4rem;">{{ fc.invoice.get_status_display }}</span>
+            {% if fc.invoice.is_overdue %}<span style="color:#c0392b;font-size:.75rem;margin-left:.3rem;">⚠ {{ fc.invoice.days_overdue }}d overdue</span>{% endif %}
+          </div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <a href="{% url 'core:invoice_detail' club.slug fc.invoice.id %}" class="btn" style="font-size:.8rem;padding:.3rem .65rem;">View</a>
+            <a href="{% url 'core:invoice_print' club.slug fc.invoice.id %}" target="_blank" class="cbtn" style="font-size:.8rem;">Print / PDF</a>
+          </div>
+          {% else %}
+          <details>
+            <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Need a formal invoice?</summary>
+            <div style="margin-top:.4rem;">
+              {% if total %}
+              <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="cbtn" style="font-size:.8rem;">Generate invoice</a>
+              {% else %}
+              <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Generate invoice</span>
+              {% endif %}
+            </div>
+          </details>
+          {% endif %}
+        </div>
+      </div><!-- /right -->
+    </div><!-- /ch-grid -->
 
   </div>
   {% endif %}
@@ -558,8 +959,6 @@
   .elig-info{background:#f8f9fa;}.elig-info .elig-icon{color:#8a93a0;}.elig-info .elig-msg{color:#6b7280;}
   .sh2{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 .9rem;}
 
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .req{color:#c0392b;font-size:.8rem;}
   .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
 
   .ch-table{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1rem;}
@@ -577,10 +976,6 @@
   .add-wrap[open] .add-toggle{border-bottom:1px solid #e3e6ea;margin-bottom:.2rem;}
   .lf-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;}
   .lf-add-btn{flex-shrink:0;padding:.42rem .75rem;margin-bottom:0;}
-  .money-wrap{display:flex;align-items:center;gap:0;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff;}
-  .money-sym{padding:0 .4rem;font-size:.88rem;color:#8a93a0;background:#f8f9fb;border-right:1px solid #ddd;line-height:2.2;}
-  .money-input{border:none!important;border-radius:0!important;flex:1;min-width:0;margin-top:0!important;text-align:right;}
-  .money-input:focus{outline:2px solid var(--primary);outline-offset:-1px;border-radius:0 5px 5px 0!important;}
   .lf-hint{font-size:.8rem;color:#8a93a0;margin:.3rem .7rem .1rem;font-style:italic;}
 
   .ch-total-row{display:flex;align-items:center;justify-content:space-between;padding:.7rem .5rem;border-top:2px solid #e3e6ea;margin-top:.6rem;}
@@ -588,10 +983,11 @@
   .ch-total-amount{font-size:1.15rem;font-weight:700;color:#1f2933;}
   .ch-payment-wrap{margin-top:.9rem;padding:.9rem 1rem;background:#f8f9fb;border-radius:8px;border:1px solid #e3e6ea;}
 
-  .btn{padding:.42rem .85rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;font-weight:500;}
-  .btn:hover{filter:brightness(1.07);}
-  .btn.secondary{background:#f3f5f7;color:#1f2933;border:1px solid #d6dae0;}
-  .btn.secondary:hover{background:#e8eaed;}
+  /* Two-column grid layouts */
+  .ci-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
+  .ch-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;align-items:start;margin-top:.4rem;}
+  @media(max-width:700px){.ci-grid,.ch-grid{grid-template-columns:1fr;}}
+
   .decl-overlay{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:150;}
   .decl-overlay[hidden]{display:none;}
   .decl-modal{background:#fff;border-radius:12px;width:min(740px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(16,24,40,.25);}
@@ -608,6 +1004,79 @@
 function toggleOutcomeNotes(sel) {
   const wrap = document.getElementById('outcome-notes-wrap');
   if (wrap) wrap.style.display = sel.value === 'completed' ? 'none' : 'block';
+}
+
+function ciPayMethodChange(sel) {
+  const amtWrap = document.getElementById('ci-pay-amount-wrap');
+  if (!amtWrap) return;
+  amtWrap.style.display = sel.value ? '' : 'none';
+}
+
+function updateCheckinPreview() {
+  const rates = (typeof _ciRates !== 'undefined') ? _ciRates : null;
+  const previewWrap = document.getElementById('ci-preview-wrap');
+  const previewRows = document.getElementById('ci-preview-rows');
+  const previewTotal = document.getElementById('ci-preview-total');
+  const payAmount = document.getElementById('ci-pay-amount');
+  if (!rates || !previewWrap || !previewRows) return;
+
+  // Calculate hours from the billing meter
+  var hours = 0;
+  var startEl, endEl;
+  if (rates.time_method === 'hobbs') {
+    startEl = document.getElementById('ci-hobbs-start');
+    endEl   = document.getElementById('ci-hobbs-end');
+  } else if (rates.time_method === 'tacho' || rates.time_method === 'tacho_less_5') {
+    startEl = document.getElementById('ci-tacho-start');
+    endEl   = document.getElementById('ci-tacho-end');
+  } else if (rates.time_method === 'airswitch') {
+    startEl = document.getElementById('ci-airswitch-start');
+    endEl   = document.getElementById('ci-airswitch-end');
+  }
+  if (startEl && endEl) {
+    var s = parseFloat(startEl.value), e = parseFloat(endEl.value);
+    if (!isNaN(s) && !isNaN(e) && e > s) hours = Math.round((e - s) * 1000) / 1000;
+  }
+
+  var noRatesEl = document.getElementById('ci-no-rates');
+  if (hours <= 0) { previewWrap.style.display = 'none'; if(noRatesEl) noRatesEl.style.display='none'; return; }
+  if (!rates.hire_rate && !rates.fuel_rate && !rates.instructor_rate && !(rates.surcharges||[]).length) {
+    previewWrap.style.display = 'none';
+    if (noRatesEl) noRatesEl.style.display = '';
+    return;
+  }
+  if (noRatesEl) noRatesEl.style.display = 'none';
+  previewWrap.style.display = '';
+
+  var rows = [], total = 0;
+  if (rates.hire_rate) {
+    var hire = Math.round(rates.hire_rate * hours * 100) / 100;
+    rows.push(['Aircraft hire', hire]);
+    total += hire;
+  }
+  if (rates.fuel_rate && !rates.includes_fuel) {
+    var fuel = Math.round(rates.fuel_rate * hours * 100) / 100;
+    rows.push(['Fuel levy', fuel]);
+    total += fuel;
+  }
+  if (rates.instructor_rate) {
+    var instr = Math.round(rates.instructor_rate * hours * 100) / 100;
+    rows.push(['Instructor fee', instr]);
+    total += instr;
+  }
+  (rates.surcharges || []).forEach(function(sc) {
+    rows.push([sc.name, sc.amount]);
+    total += sc.amount;
+  });
+
+  previewRows.innerHTML = rows.map(function(r) {
+    return '<div style="display:flex;justify-content:space-between;padding:.15rem 0;">' +
+      '<span style="color:#5b6573;">' + r[0] + '</span>' +
+      '<span style="font-weight:500;">$' + r[1].toFixed(2) + '</span></div>';
+  }).join('');
+  total = Math.round(total * 100) / 100;
+  previewTotal.textContent = '$' + total.toFixed(2);
+  if (payAmount) payAmount.value = total.toFixed(2);
 }
 
 function checkMeterGap(inp) {
@@ -632,6 +1101,52 @@ function checkMeterGap(inp) {
   } else {
     wrap.style.display = 'none';
     expl.required = false;
+  }
+}
+
+// Split flight
+function toggleSplit() {
+  var sec = document.getElementById('split-section');
+  var btn = document.getElementById('split-toggle-btn');
+  if (!sec) return;
+  if (sec.hidden) {
+    sec.hidden = false;
+    btn.style.display = 'none';
+  } else {
+    sec.hidden = true;
+    btn.style.display = '';
+    ['seg-hobbs-h1','seg-tacho-h1','seg-airswitch-h1'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('split-hours-preview').style.display = 'none';
+  }
+}
+
+function updateSplitHours() {
+  var method = '{{ booking.aircraft.total_time_method|default:"hobbs" }}';
+  var s, e, h1;
+  if (method === 'hobbs') {
+    s  = parseFloat(document.getElementById('ci-hobbs-start')?.value);
+    e  = parseFloat(document.getElementById('ci-hobbs-end')?.value);
+    h1 = parseFloat(document.getElementById('seg-hobbs-h1')?.value);
+  } else if (method === 'tacho' || method === 'tacho_less_5') {
+    s  = parseFloat(document.getElementById('ci-tacho-start')?.value);
+    e  = parseFloat(document.getElementById('ci-tacho-end')?.value);
+    h1 = parseFloat(document.getElementById('seg-tacho-h1')?.value);
+  } else {
+    s  = parseFloat(document.getElementById('ci-airswitch-start')?.value);
+    e  = parseFloat(document.getElementById('ci-airswitch-end')?.value);
+    h1 = parseFloat(document.getElementById('seg-airswitch-h1')?.value);
+  }
+  var preview = document.getElementById('split-hours-preview');
+  if (!isNaN(s) && !isNaN(e) && !isNaN(h1) && h1 > s && h1 < e) {
+    var mult = (method === 'tacho_less_5') ? 0.95 : 1.0;
+    var h1r = ((h1 - s) * mult).toFixed(1);
+    var h2r = ((e - h1) * mult).toFixed(1);
+    preview.textContent = '{{ booking.member.user.get_full_name|escapejs }}: ' + h1r + 'h  ·  Member 2: ' + h2r + 'h';
+    preview.style.display = '';
+  } else {
+    preview.style.display = 'none';
   }
 }
 
@@ -707,14 +1222,6 @@ function lfFeeTypeChange(sel) {
   }
 })();
 
-// Format money inputs to 2dp on blur — applied globally to any .money-input
-function fmtMoney(el) {
-  const v = parseFloat(el.value);
-  if (!isNaN(v)) el.value = v.toFixed(2);
-}
-document.querySelectorAll('.money-input').forEach(el => {
-  el.addEventListener('blur', () => fmtMoney(el));
-});
 
 // Declaration overlay
 (function() {
@@ -778,5 +1285,11 @@ document.querySelectorAll('.money-input').forEach(el => {
   overlay.addEventListener('click', e => { if (e.target === overlay) closeDeclOverlay(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) closeDeclOverlay(); });
 })();
+
+// Auto-expand edit panel when arriving from conflict list
+if (new URLSearchParams(location.search).get('edit') === '1') {
+  var ep = document.getElementById('edit-details-panel');
+  if (ep) ep.hidden = false;
+}
 </script>
 {% endblock %}

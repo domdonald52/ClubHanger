@@ -1,21 +1,140 @@
 {% extends "core/base.html" %}
 {% block title %}Reports · {{ club.name }}{% endblock %}
 {% block content %}
-<div style="max-width:1040px;margin:0 auto;padding:2rem;">
+<div class="container" style="padding:2rem;max-width:1100px;">
   <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
     <h1 style="font-size:1.3rem;font-weight:700;margin:0;">Reports</h1>
     <span style="font-size:.82rem;color:#8a93a0;">{{ fy_label }}</span>
   </div>
 
   <!-- Report tabs -->
-  <div class="stab-bar">
+  <div class="stab-bar" data-managed="1">
+    <button class="stab-btn" id="tabBtn-dashboard"   data-tab="dashboard">Dashboard</button>
     <button class="stab-btn" id="tabBtn-aircraft"    data-tab="aircraft">Aircraft hours</button>
     <button class="stab-btn" id="tabBtn-instructors" data-tab="instructors">Instructor hours</button>
     <button class="stab-btn" id="tabBtn-members"     data-tab="members">Members</button>
     <button class="stab-btn" id="tabBtn-payments"    data-tab="payments">Payments</button>
+    <button class="stab-btn" id="tabBtn-occurrences" data-tab="occurrences">Events</button>
     <button class="stab-btn" id="tabBtn-analytics"   data-tab="analytics">Analytics ✦</button>
     <button class="stab-btn" id="tabBtn-ask"         data-tab="ask">Ask AI ✦</button>
   </div>
+
+  <!-- ── DASHBOARD tab ── -->
+  <div id="tab-dashboard" class="stab-panel">
+
+    <!-- KPI cards -->
+    <div class="dash-grid-3" style="margin-bottom:1.2rem;">
+      <div class="dash-kpi">
+        <div class="dash-kpi-lbl">Flight hours</div>
+        <div class="dash-kpi-val">{{ dash_total_hours }}<span class="dash-kpi-unit">hr</span></div>
+        <div class="dash-kpi-sub">{{ fy_label }}</div>
+      </div>
+      <div class="dash-kpi">
+        <div class="dash-kpi-lbl">Revenue collected</div>
+        <div class="dash-kpi-val">${{ dash_revenue_collected|currency }}</div>
+        <div class="dash-kpi-sub">{{ fy_label }}{% if dash_revenue_billed > dash_revenue_collected %} · <span style="color:#c0392b;">${{ dash_revenue_billed|currency }} billed</span>{% endif %}</div>
+      </div>
+      <div class="dash-kpi">
+        <div class="dash-kpi-lbl">Flights completed</div>
+        <div class="dash-kpi-val">{{ dash_flights_count }}</div>
+        <div class="dash-kpi-sub">{{ fy_label }}{% if dash_instr_hours %} · {{ dash_instr_hours }} hr dual{% endif %}</div>
+      </div>
+    </div>
+    <div class="dash-grid-3" style="margin-bottom:1.5rem;">
+      <div class="dash-kpi">
+        <div class="dash-kpi-lbl">Active members</div>
+        <div class="dash-kpi-val">{{ active_members_count }}</div>
+        <div class="dash-kpi-sub">Currently</div>
+      </div>
+      <div class="dash-kpi {% if dash_debtor_count %}dash-kpi-warn{% endif %}">
+        <div class="dash-kpi-lbl">Outstanding debt</div>
+        <div class="dash-kpi-val">${{ dash_outstanding_debt|currency }}</div>
+        <div class="dash-kpi-sub">{{ dash_debtor_count }} member{{ dash_debtor_count|pluralize }} with negative balance</div>
+      </div>
+      <div class="dash-kpi {% if occ_fy_open %}dash-kpi-warn{% endif %}">
+        <div class="dash-kpi-lbl">Safety events</div>
+        <div class="dash-kpi-val">{{ occ_fy_total }}</div>
+        <div class="dash-kpi-sub">{{ fy_label }} · {{ occ_fy_open }} open</div>
+      </div>
+    </div>
+
+    <!-- Owned/leased toggle (reuses same filter as Aircraft tab) -->
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;">
+      <span style="font-size:.8rem;color:#8a93a0;">Hours filter:</span>
+      <div class="seg-ctrl">
+        <a href="?leased=all#dashboard"    class="seg-btn {% if leased_filter == 'all' %}active{% endif %}">All</a>
+        <a href="?leased=owned#dashboard"  class="seg-btn {% if leased_filter == 'owned' %}active{% endif %}">Owned</a>
+        <a href="?leased=leased#dashboard" class="seg-btn {% if leased_filter == 'leased' %}active{% endif %}">Leased</a>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="dash-grid-2" style="margin-bottom:1.5rem;">
+      <div class="dash-card">
+        <h2 class="dash-card-h">Monthly flight hours — {{ fy_label }}</h2>
+        {% if datasets != "[]" %}
+        <canvas id="dash-hours-chart" height="220"></canvas>
+        {% else %}
+        <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
+        {% endif %}
+      </div>
+      <div class="dash-card">
+        <h2 class="dash-card-h">Monthly revenue — {{ fy_label }}</h2>
+        <canvas id="dash-revenue-chart" height="220"></canvas>
+      </div>
+    </div>
+
+    <!-- Tables row -->
+    <div class="dash-grid-2">
+      <div class="dash-card">
+        <h2 class="dash-card-h">Top aircraft by hours</h2>
+        {% if top_aircraft_dash %}
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+          <thead><tr style="border-bottom:1px solid #e3e6ea;">
+            <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Aircraft</th>
+            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
+            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Hours</th>
+          </tr></thead>
+          <tbody>
+            {% for row in top_aircraft_dash %}
+            <tr style="border-bottom:1px solid #f4f6f8;">
+              <td style="padding:.4rem .5rem;font-weight:600;">{{ row.reg }}</td>
+              <td style="padding:.4rem .5rem;text-align:right;color:#5b6573;">{{ row.count }}</td>
+              <td style="padding:.4rem .5rem;text-align:right;">{{ row.hours }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p style="font-size:.85rem;color:#8a93a0;margin:0;">No data.</p>
+        {% endif %}
+      </div>
+      <div class="dash-card">
+        <h2 class="dash-card-h">Top members by hours</h2>
+        {% if top_members_dash %}
+        <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+          <thead><tr style="border-bottom:1px solid #e3e6ea;">
+            <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Member</th>
+            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
+            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Hours</th>
+          </tr></thead>
+          <tbody>
+            {% for row in top_members_dash %}
+            <tr style="border-bottom:1px solid #f4f6f8;">
+              <td style="padding:.4rem .5rem;">{{ row.name }}</td>
+              <td style="padding:.4rem .5rem;text-align:right;color:#5b6573;">{{ row.flight_count }}</td>
+              <td style="padding:.4rem .5rem;text-align:right;font-weight:600;">{{ row.total_hours }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p style="font-size:.85rem;color:#8a93a0;margin:0;">No data.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div><!-- /tab-dashboard -->
 
   <!-- ── AIRCRAFT tab ── -->
   <div id="tab-aircraft" class="stab-panel">
@@ -99,8 +218,8 @@
           <tr style="border-bottom:1px solid #f0f2f4;">
             <td style="padding:.5rem .6rem;">{{ row.label }}</td>
             <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ row.count }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;">${{ row.charged }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;font-weight:600;">${{ row.collected }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;">${{ row.charged|currency }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;font-weight:600;">${{ row.collected|currency }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -108,8 +227,8 @@
           <tr style="border-top:2px solid #e3e6ea;background:#f8f9fa;">
             <td style="padding:.5rem .6rem;font-weight:650;">Total</td>
             <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ payment_total_count }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;">${{ payment_total_charged }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;font-weight:650;">${{ payment_total_collected }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;">${{ payment_total_charged|currency }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;font-weight:650;">${{ payment_total_collected|currency }}</td>
           </tr>
         </tfoot>
       </table>
@@ -122,7 +241,6 @@
   <!-- ── ASK AI tab ── -->
   <div id="tab-ask" class="stab-panel">
     <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .3rem;">Ask about your club data</h2>
       <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1.2rem;">Ask questions in plain English — e.g. "Which aircraft flew the most hours this year?" or "How much revenue did we collect last month?"</p>
 
       <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
@@ -146,10 +264,56 @@
     </div>
   </div>
 
+  <!-- ── OCCURRENCES tab ── -->
+  <div id="tab-occurrences" class="stab-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1.2rem;">
+      <h2 style="font-size:1rem;font-weight:700;margin:0;">Occurrence reports</h2>
+      <a href="{% url 'core:occurrence_export' club.slug %}" class="cbtn">Export CSV</a>
+    </div>
+
+    <!-- Summary stats -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.4rem;">
+      {% for stat in occ_stats %}
+      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.9rem 1rem;">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.3rem;">{{ stat.0 }}</div>
+        <div style="font-size:1.7rem;font-weight:750;color:{{ stat.2 }};">{{ stat.1 }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if occ_total %}
+    <!-- By month (last 12 months) -->
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:.82rem;font-weight:600;margin-bottom:.8rem;">Reports per month (last 12 months)</div>
+      <canvas id="occ-month-chart" height="180"></canvas>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr{% if occ_ac_labels != '[]' %} 1fr{% endif %};gap:1rem;margin-bottom:1rem;">
+      <!-- By type -->
+      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem;">
+        <div style="font-size:.82rem;font-weight:600;margin-bottom:.8rem;">By occurrence type</div>
+        <canvas id="occ-type-chart" height="220"></canvas>
+      </div>
+      {% if occ_ac_labels != '[]' %}
+      <!-- By aircraft -->
+      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem;">
+        <div style="font-size:.82rem;font-weight:600;margin-bottom:.8rem;">By aircraft</div>
+        <canvas id="occ-ac-chart" height="220"></canvas>
+      </div>
+      {% endif %}
+    </div>
+    {% else %}
+    <div style="padding:3rem;text-align:center;color:#8a93a0;font-size:.88rem;">No occurrence reports on file.</div>
+    {% endif %}
+
+    <div style="font-size:.82rem;margin-top:.5rem;">
+      <a href="{% url 'core:occurrence_list' club.slug %}" class="cbtn-sm">View all reports →</a>
+    </div>
+  </div>
+
   <!-- ── ANALYTICS tab (drag-and-drop concept demo) ── -->
   <div id="tab-analytics" class="stab-panel">
     <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .3rem;">Analytics builder</h2>
       <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1.2rem;">Drag fields to build a custom pivot table. This is a concept preview — not yet connected to live data.</p>
 
       <div style="display:grid;grid-template-columns:180px 1fr;gap:1.2rem;align-items:start;">
@@ -193,11 +357,24 @@
   </div>
 </div>
 
+<style>
+.dash-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
+.dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+@media(max-width:700px){.dash-grid-3,.dash-grid-2{grid-template-columns:1fr;}}
+.dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.1rem 1.3rem;}
+.dash-kpi-warn{border-color:#fca5a5;background:#fff8f8;}
+.dash-kpi-lbl{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;}
+.dash-kpi-val{font-size:1.75rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.3rem;}
+.dash-kpi-unit{font-size:1rem;font-weight:400;color:#5b6573;margin-left:.2rem;}
+.dash-kpi-sub{font-size:.75rem;color:#8a93a0;}
+.dash-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.2rem 1.3rem;}
+.dash-card-h{font-size:.9rem;font-weight:650;margin:0 0 .9rem;color:#1f2933;}
+</style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 // ── Report tabs ──────────────────────────────────────────────────────────────
 (function(){
-  const TABS = ['aircraft','instructors','members','payments','analytics','ask'];
+  const TABS = ['dashboard','aircraft','instructors','members','payments','occurrences','analytics','ask'];
   function activate(id) {
     TABS.forEach(t => {
       document.getElementById('tab-'+t).classList.toggle('active', t===id);
@@ -206,9 +383,8 @@
     try { localStorage.setItem('reportTab', id); } catch(e){}
   }
   TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
-  let init = 'aircraft';
-  try { init = localStorage.getItem('reportTab') || 'aircraft'; } catch(e){}
-  // preserve tab when returning from leased filter link
+  let init = 'dashboard';
+  try { init = localStorage.getItem('reportTab') || 'dashboard'; } catch(e){}
   const hash = location.hash.replace('#','');
   activate(TABS.includes(hash) ? hash : init);
 })();
@@ -242,6 +418,53 @@ function _applyColors(datasets) {
   return datasets.map((ds,i) => ({...ds, backgroundColor: colors[i]}));
 }
 
+// ── Dashboard charts ─────────────────────────────────────────────────────────
+{% if datasets != "[]" %}
+(function(){
+  const dashHoursEl = document.getElementById('dash-hours-chart');
+  if (dashHoursEl) {
+    new Chart(dashHoursEl, {
+      type: 'bar',
+      data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ datasets|safe }}) },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          x: { stacked: true, grid: { display: false } },
+          y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Hours' } },
+        },
+      },
+    });
+  }
+})();
+{% endif %}
+(function(){
+  const revEl = document.getElementById('dash-revenue-chart');
+  if (!revEl) return;
+  const billed    = {{ dash_monthly_billed|safe }};
+  const collected = {{ dash_monthly_collected|safe }};
+  const hasData   = billed.some(v => v > 0) || collected.some(v => v > 0);
+  if (!hasData) { revEl.parentElement.querySelector('canvas')?.remove(); return; }
+  new Chart(revEl, {
+    type: 'bar',
+    data: {
+      labels: {{ month_labels|safe }},
+      datasets: [
+        { label: 'Billed',    data: billed,    backgroundColor: 'rgba(47,125,209,.35)', borderColor: 'rgba(47,125,209,.8)', borderWidth: 1, borderRadius: 3 },
+        { label: 'Collected', data: collected, backgroundColor: 'rgba(42,122,59,.45)',  borderColor: 'rgba(42,122,59,.8)',  borderWidth: 1, borderRadius: 3 },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { position: 'bottom' } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, title: { display: true, text: '$' } },
+      },
+    },
+  });
+})();
+
 // ── Charts ───────────────────────────────────────────────────────────────────
 const _chartOpts = {
   responsive: true,
@@ -266,6 +489,66 @@ new Chart(document.getElementById('instr-chart'), {
     y: { title: { display: true, text: 'Instructor hours' }, beginAtZero: true }
   }},
 });
+{% endif %}
+
+// ── Occurrence charts ─────────────────────────────────────────────────────────
+{% if occ_total %}
+(function(){
+  const PAL = _themeColors(8);
+
+  const _occOpts = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true, grid: { display: false } }, y: { grid: { display: false } } },
+  };
+  const _occOptsH = { ...JSON.parse(JSON.stringify(_occOpts)), indexAxis: 'y' };
+
+  // By month — bar chart
+  const monthEl = document.getElementById('occ-month-chart');
+  if (monthEl) {
+    new Chart(monthEl, {
+      type: 'bar',
+      data: {
+        labels: {{ occ_month_labels|safe }},
+        datasets: [{ label: 'Occurrences', data: {{ occ_month_data|safe }},
+          backgroundColor: PAL[0], borderRadius: 4 }]
+      },
+      options: _occOpts,
+    });
+  }
+
+  // By type — horizontal bar
+  const typeEl = document.getElementById('occ-type-chart');
+  if (typeEl) {
+    const typeLabels = {{ occ_type_labels|safe }};
+    new Chart(typeEl, {
+      type: 'bar',
+      data: {
+        labels: typeLabels,
+        datasets: [{ label: 'Reports', data: {{ occ_type_data|safe }},
+          backgroundColor: typeLabels.map((_,i) => PAL[i % PAL.length]),
+          borderRadius: 4 }]
+      },
+      options: _occOptsH,
+    });
+  }
+
+  // By aircraft — horizontal bar
+  const acEl = document.getElementById('occ-ac-chart');
+  if (acEl) {
+    const acLabels = {{ occ_ac_labels|safe }};
+    new Chart(acEl, {
+      type: 'bar',
+      data: {
+        labels: acLabels,
+        datasets: [{ label: 'Reports', data: {{ occ_ac_data|safe }},
+          backgroundColor: acLabels.map((_,i) => PAL[i % PAL.length]),
+          borderRadius: 4 }]
+      },
+      options: _occOptsH,
+    });
+  }
+})();
 {% endif %}
 
 // ── Analytics drag-and-drop demo ─────────────────────────────────────────────

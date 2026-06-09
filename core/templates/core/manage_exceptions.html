@@ -1,0 +1,257 @@
+{% extends "core/base.html" %}
+{% block title %}Attention · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:2rem;max-width:1100px;">
+
+  <h1 style="margin-bottom:.25rem;">Attention</h1>
+  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.2rem;">
+    Items that need attention across operations.
+    {% if total_issues == 0 %}<strong style="color:#2a7a3b;">All clear.</strong>{% endif %}
+  </p>
+
+  {% if messages %}
+    {% for msg in messages %}<div class="notice {% if msg.tags %}{{ msg.tags }}{% else %}ok{% endif %}">{{ msg }}</div>{% endfor %}
+  {% endif %}
+
+  {% if overdue_departures %}
+  <div class="notice err" style="margin-bottom:1.4rem;">
+    <strong>⚠ Overdue returns — {{ overdue_departures|length }} flight{{ overdue_departures|length|pluralize }} departed over 24 hours ago without checking in.</strong>
+    <p style="margin:.4rem 0 .5rem;font-size:.83rem;">Contact the member immediately. If unreachable, consider notifying the relevant authority. Once accounted for, check the flight in normally.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
+      {% for b in overdue_departures %}
+      <tr>
+        <td style="padding:.3rem .5rem 0 0;font-weight:600;">{{ b.aircraft.registration|default:"?" }}</td>
+        <td style="padding:.3rem .5rem 0 0;">{{ b.member.user.get_full_name|default:"?" }}</td>
+        <td style="padding:.3rem .5rem 0 0;color:#c0392b;font-weight:600;">departed {{ b.departed_at|timesince }} ago ({{ b.departed_at|date:"j M H:i" }})</td>
+        <td style="padding:.3rem 0 0 0;"><a href="{% url 'core:booking_detail' club.slug b.id %}" class="cbtn-sm cbtn-danger" data-overlay>View →</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  <div class="stab-bar" data-managed="1">
+    <button class="stab-btn" id="tabBtn-flights"     data-tab="flights">
+      Unpaid flights
+      <span class="attn-pill {% if unpaid_flights %}attn-red{% else %}attn-ok{% endif %}">{{ unpaid_flights|length }}</span>
+    </button>
+    <button class="stab-btn" id="tabBtn-conflicts"   data-tab="conflicts">
+      Booking Conflicts
+      <span class="attn-pill {% if conflicts_data %}attn-red{% else %}attn-ok{% endif %}">{{ conflicts_data|length }}</span>
+    </button>
+    <button class="stab-btn" id="tabBtn-invoices"    data-tab="invoices">
+      Unpaid invoices
+      <span class="attn-pill {% if unpaid_invoices %}attn-red{% else %}attn-ok{% endif %}">{{ unpaid_invoices|length }}</span>
+    </button>
+    <button class="stab-btn" id="tabBtn-credentials" data-tab="credentials">
+      Credentials
+      <span class="attn-pill {% if lapsed_creds_data %}attn-amber{% else %}attn-ok{% endif %}">{{ lapsed_creds_data|length }}</span>
+    </button>
+    <button class="stab-btn" id="tabBtn-maintenance" data-tab="maintenance">
+      Maintenance
+      <span class="attn-pill {% if maint_items %}attn-amber{% else %}attn-ok{% endif %}">{{ maint_items|length }}</span>
+    </button>
+  </div>
+
+  <!-- ── Unpaid flights ─────────────────────────────────────────────────── -->
+  <div id="tab-flights" class="stab-panel">
+    <p style="font-size:.83rem;color:#5b6573;margin-bottom:1rem;">
+      Completed flights with an outstanding balance and no invoice raised.
+      Collect payment directly via the member's account, or open the booking to generate a formal invoice — once an invoice is created the flight moves to the <strong>Unpaid invoices</strong> tab.
+    </p>
+    {% if unpaid_flights %}
+    <table class="exc-table">
+      <thead><tr>
+        <th>Member</th><th>Aircraft</th><th>Flight type</th>
+        <th>Date</th><th style="text-align:right;">Total</th><th style="text-align:right;">Paid</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for b in unpaid_flights %}
+        {% with fc=b.flight_completion %}
+        <tr>
+          <td><a href="{% url 'core:manage_member_detail' club.slug b.member_id %}">{{ b.member.user.get_full_name }}</a></td>
+          <td>{{ b.aircraft.registration }}</td>
+          <td>{{ b.flight_type.name }}</td>
+          <td>{{ b.arrived_at|date:"j M Y"|default:b.scheduled_start|date:"j M Y" }}</td>
+          <td style="text-align:right;font-weight:600;">${{ fc.total_charge|currency }}</td>
+          <td style="text-align:right;color:#8a93a0;">${{ fc.amount_paid|currency }}</td>
+          <td><a href="{% url 'core:booking_detail' club.slug b.id %}" class="cbtn-sm" data-overlay>View →</a></td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="exc-empty">No unpaid flights.</p>
+    {% endif %}
+  </div>
+
+  <!-- ── Booking conflicts ─────────────────────────────────────────────── -->
+  <div id="tab-conflicts" class="stab-panel">
+    <p style="font-size:.83rem;color:#5b6573;margin-bottom:1rem;">
+      Upcoming bookings with a compliance issue that may prevent the flight from proceeding.
+      The <strong>Issue</strong> column shows the reason — resolve it before the departure time.
+      Common issues: member standing suspended or lapsed, subscription expired, block-out conflict, instructor off roster, aircraft retired.
+    </p>
+    {% if conflicts_data %}
+    <table class="exc-table">
+      <thead><tr>
+        <th>Member</th><th>Aircraft</th><th>Scheduled</th><th>Status</th><th>Issue</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for row in conflicts_data %}
+        <tr>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.b.member_id %}">{{ row.b.member.user.get_full_name }}</a></td>
+          <td>{{ row.b.aircraft.registration }}</td>
+          <td>{{ row.b.scheduled_start|date:"j M Y H:i" }}</td>
+          <td><span class="status-chip status-{{ row.b.display_status_key }}">{{ row.b.display_status }}</span></td>
+          <td>{% for label in row.labels %}<span class="exc-issue-tag">{{ label }}</span>{% endfor %}</td>
+          <td><a href="{% url 'core:booking_detail' club.slug row.b.id %}?edit=1" class="cbtn-sm" data-overlay>View →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="exc-empty">No booking conflicts — all upcoming bookings are clear.</p>
+    {% endif %}
+  </div>
+
+  <!-- ── Unpaid invoices ────────────────────────────────────────────────── -->
+  <div id="tab-invoices" class="stab-panel">
+    <p style="font-size:.83rem;color:#5b6573;margin-bottom:1rem;">
+      Invoices that have been generated but not yet paid.
+      <strong>Draft</strong> — not yet sent to the member; open the invoice to review and send.
+      <strong>Sent</strong> — awaiting payment from the member; mark as paid once received.
+      Overdue due dates are highlighted in red.
+    </p>
+    {% if unpaid_invoices %}
+    <table class="exc-table">
+      <thead><tr>
+        <th>Invoice #</th><th>Member</th><th>Description</th>
+        <th>Status</th><th>Issued</th><th>Due</th><th style="text-align:right;">Total</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for inv in unpaid_invoices %}
+        <tr>
+          <td style="font-weight:600;white-space:nowrap;">{{ inv.display_number }}</td>
+          <td>{% if inv.member %}<a href="{% url 'core:manage_member_detail' club.slug inv.member_id %}">{{ inv.member.user.get_full_name }}</a>{% else %}—{% endif %}</td>
+          <td style="font-size:.83rem;color:#5b6573;">{{ inv.description|default:"Flight invoice" }}</td>
+          <td><span class="status-chip status-{{ inv.status }}">{{ inv.get_status_display }}</span></td>
+          <td style="font-size:.83rem;white-space:nowrap;">{{ inv.issue_date|date:"j M Y" }}</td>
+          <td style="font-size:.83rem;white-space:nowrap;{% if inv.due_date < today %}color:#c0392b;font-weight:600;{% endif %}">{{ inv.due_date|date:"j M Y" }}</td>
+          <td style="text-align:right;font-weight:600;">${{ inv.total|currency }}</td>
+          <td><a href="{% url 'core:invoice_detail' club.slug inv.id %}" class="cbtn-sm" data-overlay>View →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="exc-empty">No unpaid invoices.</p>
+    {% endif %}
+  </div>
+
+  <!-- ── Lapsed credentials ────────────────────────────────────────────── -->
+  <div id="tab-credentials" class="stab-panel">
+    <p style="font-size:.83rem;color:#5b6573;margin-bottom:1rem;">
+      Members with at least one expired credential who have an upcoming booking.
+      Contact the member to discuss renewal before their next flight.
+      Note: not all credentials affect flight legality — confirm with your CFI which ones are required for the planned flight.
+    </p>
+    {% if lapsed_creds_data %}
+    <table class="exc-table">
+      <thead><tr>
+        <th>Member</th><th>Expired credentials</th><th>Next booking</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for row in lapsed_creds_data %}
+        <tr>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}" data-overlay>{{ row.cm.user.get_full_name }}</a></td>
+          <td>
+            {% for c in row.expired %}
+              <span class="exc-issue-tag exc-issue-red">
+                {{ c.get_credential_type_display }}{% if c.expiry_date %} · <span style="font-weight:400;">exp {{ c.expiry_date|date:"j M Y" }}</span>{% endif %}
+              </span>
+            {% endfor %}
+          </td>
+          <td>
+            {% if row.next_booking %}
+              <a href="{% url 'core:booking_detail' club.slug row.next_booking.id %}" data-overlay>
+                {{ row.next_booking.scheduled_start|date:"j M Y H:i" }} · {{ row.next_booking.aircraft.registration }}
+              </a>
+            {% endif %}
+          </td>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}" class="cbtn-sm" data-overlay>Member →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="exc-empty">No members with lapsed credentials have upcoming bookings.</p>
+    {% endif %}
+  </div>
+
+  <!-- ── Maintenance ───────────────────────────────────────────────────── -->
+  <div id="tab-maintenance" class="stab-panel">
+    <p style="font-size:.83rem;color:#5b6573;margin-bottom:1rem;">
+      Aircraft with maintenance items approaching or past their due date.
+      <strong>Red</strong> — overdue or past warning threshold; consider grounding the aircraft if the item affects airworthiness.
+      <strong>Amber</strong> — due soon; schedule the work before it becomes overdue.
+      Open the aircraft record to mark items complete or update their schedule.
+    </p>
+    {% if maint_items %}
+    <table class="exc-table">
+      <thead><tr>
+        <th>Aircraft</th><th>Item</th><th>Urgency</th><th>Due hours</th><th>Due date</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for item in maint_items %}
+        <tr>
+          <td><strong>{{ item.aircraft.registration }}</strong></td>
+          <td>{{ item.name }}</td>
+          <td><span class="urg-badge urg-{{ item.urgency }}">{{ item.get_urgency_display }}</span></td>
+          <td style="color:#5b6573;">{% if item.due_hours %}{{ item.due_hours }} hr{% else %}—{% endif %}</td>
+          <td style="color:#5b6573;">{% if item.due_date %}{{ item.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
+          <td><a href="{% url 'core:manage_aircraft_detail' club.slug item.aircraft_id %}" class="cbtn-sm" data-overlay>Aircraft →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="exc-empty">No amber or red maintenance items.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+(function(){
+  var tabs = ['flights','conflicts','invoices','credentials','maintenance'];
+  var counts = {
+    flights:     {{ unpaid_flights|length }},
+    conflicts:   {{ conflicts_data|length }},
+    invoices:    {{ unpaid_invoices|length }},
+    credentials: {{ lapsed_creds_data|length }},
+    maintenance: {{ maint_items|length }},
+  };
+
+  function showTab(name) {
+    tabs.forEach(function(t){
+      document.getElementById('tab-' + t).classList.toggle('active', t === name);
+      document.getElementById('tabBtn-' + t).classList.toggle('active', t === name);
+    });
+    try { sessionStorage.setItem('attn-tab', name); } catch(e){}
+  }
+
+  tabs.forEach(function(t){
+    document.getElementById('tabBtn-' + t).addEventListener('click', function(){ showTab(t); });
+  });
+
+  var stored = '';
+  try { stored = sessionStorage.getItem('attn-tab') || ''; } catch(e){}
+  var defaultTab = (stored && tabs.indexOf(stored) >= 0) ? stored
+    : (tabs.find(function(t){ return counts[t] > 0; }) || tabs[0]);
+  showTab(defaultTab);
+})();
+</script>
+{% endblock %}

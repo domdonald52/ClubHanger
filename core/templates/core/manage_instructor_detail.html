@@ -13,14 +13,14 @@
   <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1.4rem;flex-wrap:wrap;">
     <h1 style="margin:0;font-size:1.4rem;">{{ instr.user.get_full_name }}</h1>
     {% if instr.instructor_grade %}
-    <span class="grade-badge">{{ instr.instructor_grade.name }} · ${{ instr.instructor_grade.hourly_rate }}/hr</span>
+    <span class="grade-badge">{{ instr.instructor_grade.name }} · ${{ instr.instructor_grade.hourly_rate|currency }}/hr</span>
     {% else %}
     <span class="grade-badge no-grade">No grade assigned</span>
     {% endif %}
   </div>
 
   <!-- Tab bar -->
-  <div class="stab-bar">
+  <div class="stab-bar" data-managed="1">
     <button class="stab-btn" id="tabBtn-contact"      data-tab="contact">Contact</button>
     <button class="stab-btn" id="tabBtn-availability" data-tab="availability">Availability</button>
     <button class="stab-btn" id="tabBtn-bookings"     data-tab="bookings">Upcoming bookings</button>
@@ -57,11 +57,11 @@
             <select name="grade_id" class="finput">
               <option value="">— none —</option>
               {% for g in instructor_grades %}
-              <option value="{{ g.id }}" {% if instr.instructor_grade_id == g.id %}selected{% endif %}>{{ g.name }} (${{ g.hourly_rate }}/hr)</option>
+              <option value="{{ g.id }}" {% if instr.instructor_grade_id == g.id %}selected{% endif %}>{{ g.name }} (${{ g.hourly_rate|currency }}/hr)</option>
               {% endfor %}
             </select>
           </label>
-          <button type="submit" class="btn" style="margin-top:.4rem;">Save grade</button>
+          <button type="submit" class="cbtn primary" style="margin-top:.4rem;">Save grade</button>
         </form>
       </div>
       {% endif %}
@@ -282,25 +282,8 @@
 <style>
   .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
   .back-link:hover{color:var(--banner);}
-
   .grade-badge{font-size:.78rem;font-weight:600;padding:.25rem .65rem;border-radius:10px;background:#e8f0fb;color:var(--primary);}
   .grade-badge.no-grade{background:#f3f5f7;color:#8a93a0;}
-
-
-
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
-  .modal-back[hidden]{display:none!important;}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
-  .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
-  .modal-actions{display:flex;align-items:center;gap:.5rem;}
-  .cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;}
-  .cbtn:hover{background:#f3f5f7;}
-  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
-  .sh2{font-size:1rem;font-weight:650;color:#1f2933;margin:.4rem 0 .6rem;}
-  .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
-
   .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem;}
   .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
   .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
@@ -328,9 +311,10 @@
     try { localStorage.setItem('instrDetailTab', id); } catch(e){}
   }
   TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
-  let init = 'details';
-  try { init = localStorage.getItem('instrDetailTab') || 'details'; } catch(e){}
-  activate(init);
+  const _qs = new URLSearchParams(location.search).get('tab');
+  let init = (_qs && TABS.includes(_qs)) ? _qs : null;
+  if (!init) { try { init = localStorage.getItem('instrDetailTab'); } catch(e){} }
+  activate(TABS.includes(init) ? init : 'availability');
 })();
 
 const instrBoModal = document.getElementById('add-instr-bo-modal');

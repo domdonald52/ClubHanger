@@ -60,6 +60,22 @@
   .status-pill.sp-off{background:#f3f5f7;color:#8a93a0;}
   .status-pill.sp-off:hover{background:#eef1f4;}
   [hidden]{display:none!important;}
+  /* ── Currency inputs (shared) ── */
+  .money-wrap{display:flex;align-items:center;gap:0;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff;}
+  .money-sym{padding:0 .4rem;font-size:.88rem;color:#8a93a0;background:#f8f9fb;border-right:1px solid #ddd;line-height:2.2;}
+  .money-input{border:none!important;border-radius:0!important;flex:1;min-width:0;margin-top:0!important;text-align:right;}
+  .money-input:focus{outline:2px solid var(--primary);outline-offset:-1px;border-radius:0 5px 5px 0!important;}
 </style>
+<script>
+function fmtMoney(el) {
+  const v = parseFloat(el.value);
+  if (!isNaN(v)) el.value = v.toFixed(2);
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.money-input').forEach(function(el) {
+    el.addEventListener('blur', function() { fmtMoney(el); });
+  });
+});
+</script>
 {% if request.GET.saved %}<script>if(window.showSavedToast)window.showSavedToast();</script>{% endif %}
 {% if request.GET.err %}<div class="notice err" style="margin:.6rem 1.2rem 0;">{{ request.GET.err }}</div>{% endif %}

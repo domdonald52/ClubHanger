@@ -73,10 +73,10 @@
         main { max-width: 1600px; margin: 0 auto; padding: 1rem; }
         .container { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         h1 { color: var(--banner); font-size: 1.8rem; }
-        .btn { padding: 0.4rem 0.8rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500; text-decoration: none; display: inline-block; background: var(--primary); color: white; transition: filter 0.2s; }
+        .btn { padding: .42rem .85rem; border: none; border-radius: 6px; cursor: pointer; font-size: .85rem; font-weight: 500; text-decoration: none; display: inline-block; background: var(--primary); color: #fff; transition: filter .2s; }
         .btn:hover { filter: brightness(1.08); }
-        .btn.secondary { background: #95a5a6; }
-        .btn.secondary:hover { background: #7f8c8d; }
+        .btn.secondary { background: #f3f5f7; color: #1f2933; border: 1px solid #d6dae0; }
+        .btn.secondary:hover { background: #e8eaed; filter: none; }
     </style>
 </head>
 <body>
@@ -106,10 +106,40 @@
 
             <div class="user-info" style="display:flex;align-items:center;gap:.5rem;">
                 {% if user.is_authenticated and club %}
-                <a href="{% url 'core:notifications' club.slug %}" class="notif-bell" title="Notifications" aria-label="Notifications">
+                <div class="notif-wrap" id="notif-menu">
+                  <button id="notif-btn" class="notif-bell" aria-label="Notifications" aria-haspopup="true" aria-expanded="false">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 2a5 5 0 0 1 5 5c0 3 1 4 1.5 4.5H2.5C3 11 4 10 4 7a5 5 0 0 1 5-5z"/><path d="M7.5 14.5a1.5 1.5 0 0 0 3 0"/></svg>
-                    {% if unread_notifications_count %}<span class="notif-badge">{{ unread_notifications_count }}</span>{% endif %}
-                </a>
+                    {% if unread_notifications_count %}<span class="notif-badge" id="notif-badge">{{ unread_notifications_count }}</span>{% endif %}
+                  </button>
+                  <div id="notif-drop" class="notif-drop" hidden>
+                    <div class="notif-drop-head">
+                      <span>Notifications</span>
+                      {% if unread_notifications_count %}<button id="notif-mark-all" class="cbtn-sm" style="font-size:.75rem;padding:.15rem .4rem;">Mark all read</button>{% endif %}
+                    </div>
+                    <div id="notif-list">
+                    {% if recent_notifications %}
+                    {% for n in recent_notifications %}
+                    <div class="notif-drop-item{% if not n.is_read %} unread{% endif %}" data-notif-id="{{ n.id }}">
+                      {% if not n.is_read %}<span class="notif-unread-dot" aria-label="Unread"></span>{% endif %}
+                      <div class="notif-drop-item-body">
+                        {% if n.action_url %}<a class="notif-subject" href="{{ n.action_url }}">{{ n.subject }}</a>
+                        {% else %}<div class="notif-subject">{{ n.subject }}</div>{% endif %}
+                        {% if n.body %}<div class="notif-body">{{ n.body|truncatechars:80 }}</div>{% endif %}
+                        <div class="notif-time">{{ n.created_at|timesince }} ago</div>
+                      </div>
+                      <button class="notif-dismiss" data-id="{{ n.id }}" title="Dismiss" aria-label="Dismiss notification">✓</button>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="notif-drop-empty" id="notif-empty">
+                      <svg width="26" height="26" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto .5rem;opacity:.35;" aria-hidden="true"><path d="M9 2a5 5 0 0 1 5 5c0 3 1 4 1.5 4.5H2.5C3 11 4 10 4 7a5 5 0 0 1 5-5z"/><path d="M7.5 14.5a1.5 1.5 0 0 0 3 0"/></svg>
+                      All caught up!
+                    </div>
+                    {% endif %}
+                    </div>
+                    <div class="notif-drop-foot"><a href="{% url 'core:notifications' club.slug %}">View all →</a></div>
+                  </div>
+                </div>
                 {% endif %}
                 {% if user.is_authenticated %}
                 <div class="user-menu" id="user-menu">
@@ -164,39 +194,56 @@
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
                 Find Slots
             </a>
+
             {% if club_member.is_admin or club_member.is_instructor %}
-            <div class="sidenav-section-label" style="margin-top:.6rem;">Manage</div>
+            <div class="sidenav-section-label" style="margin-top:.6rem;">Operations</div>
             <a href="{% url 'core:manage_bookings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_bookings' %}active{% endif %}">Bookings</a>
             <a href="{% url 'core:manage_blockouts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_blockouts' %}active{% endif %}">Block-outs</a>
-            {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_members' %}active{% endif %}">Members</a>{% endif %}
-            <a href="{% url 'core:manage_aircraft' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aircraft' or request.resolver_match.url_name == 'manage_aircraft_detail' %}active{% endif %}">Aircraft</a>
-            <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_instructors' or request.resolver_match.url_name == 'manage_instructor_detail' %}active{% endif %}">Instructors</a>
-            <a href="{% url 'core:manage_aerodromes' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aerodromes' %}active{% endif %}">Aerodromes</a>
+            <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_instructors manage_instructor_detail' %}active{% endif %}">Staff roster</a>
             {% if club_member.is_admin %}
-            <a href="{% url 'core:manage_charges' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_charges' %}active{% endif %}">Payments</a>
-            <a href="{% url 'core:manage_invoices' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_invoices' %}active{% endif %}">Invoices</a>
-            <a href="{% url 'core:manage_vouchers' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_vouchers' %}active{% endif %}">Vouchers</a>
+            <a href="{% url 'core:manage_charges' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_charges manage_invoices manage_vouchers manage_sundry' %}active{% endif %}">Sales</a>
             {% endif %}
-            {% if club_member.is_admin or club_member.is_instructor %}
+            <a href="{% url 'core:manage_exceptions' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_exceptions' %}active{% endif %}">
+              Attention{% if exceptions_count %}<span class="conflict-badge" style="margin-left:auto;">{{ exceptions_count }}</span>{% endif %}
+            </a>
+
+            <div class="sidenav-section-label" style="margin-top:.6rem;">People</div>
+            {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_members' %}active{% endif %}">Members</a>{% endif %}
+            {% if club_member.is_admin %}<a href="{% url 'core:manage_contacts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_contacts contact_detail' %}active{% endif %}">Contacts</a>{% endif %}
+
+            <div class="sidenav-section-label" style="margin-top:.6rem;">Fleet</div>
+            <a href="{% url 'core:manage_aircraft' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_aircraft manage_aircraft_detail' %}active{% endif %}">Aircraft</a>
+
+            <div class="sidenav-section-label" style="margin-top:.6rem;">Safety</div>
+            <a href="{% url 'core:occurrence_list' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'occurrence_list occurrence_detail' %}active{% endif %}">
+              Events{% if open_occurrences_count %}<span class="conflict-badge" style="margin-left:auto;">{{ open_occurrences_count }}</span>{% endif %}
+            </a>
+            <a href="{% url 'core:occurrence_actions' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'occurrence_actions' %}active{% endif %}">
+              Action items{% if open_actions_count %}<span class="conflict-badge" style="margin-left:auto;">{{ open_actions_count }}</span>{% endif %}
+            </a>
+
             <div class="sidenav-section-label" style="margin-top:.6rem;">Analytics</div>
             <a href="{% url 'core:reports' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">Reports</a>
             {% if club_member.is_admin %}<a href="{% url 'core:data_page' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'data_page' %}active{% endif %}">Data</a>{% endif %}
-            {% endif %}
+            {% if club_member.is_admin %}<a href="{% url 'core:health_check' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'health_check' %}active{% endif %}">Health check</a>{% endif %}
+
             {% if club_member.is_admin %}
-            <div class="sidenav-section-label" style="margin-top:.6rem;">Admin</div>
-            <a href="{% url 'core:club_settings' club.slug %}" class="sidenav-link {% if 'settings' in request.resolver_match.url_name %}active{% endif %}">Settings</a>
+            <div class="sidenav-section-label" style="margin-top:.6rem;">Configuration</div>
+            <a href="{% url 'core:club_settings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'club_settings' %}active{% endif %}">Settings</a>
+            <a href="{% url 'core:club_types' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'club_types' %}active{% endif %}">Types</a>
+            <a href="{% url 'core:manage_aerodromes' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aerodromes' %}active{% endif %}">Aerodromes</a>
             {% endif %}
             {% endif %}
 
             <hr class="sidenav-divider" style="margin-top:.8rem;">
             <div class="sidenav-section-label">Account</div>
-            <a href="{% url 'core:my_profile' club.slug %}" class="sidenav-link">
+            <a href="{% url 'core:my_profile' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'my_profile' %}active{% endif %}">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="5" r="3"/><path d="M1.5 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
                 My profile
             </a>
-            <a href="{% url 'core:my_profile' club.slug %}#bookings" class="sidenav-link">
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="2" width="13" height="12" rx="1.5"/><path d="M1 6h13M5 1v2.5M10 1v2.5"/></svg>
-                My bookings
+            <a href="{% url 'core:occurrence_submit' club.slug %}" class="sidenav-link" data-overlay>
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 1v6M7.5 10v.5M3 7.5A4.5 4.5 0 1 0 12 7.5 4.5 4.5 0 0 0 3 7.5z"/></svg>
+                Log an event{% if open_actions_count %}<span class="conflict-badge" style="margin-left:auto;">{{ open_actions_count }}</span>{% endif %}
             </a>
             <a href="/admin/logout/" class="sidenav-link danger">
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M10 10l3-3-3-3M13 7H6"/></svg>
@@ -214,6 +261,11 @@
 .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
 textarea.finput{resize:vertical;}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
+.req{color:#c0392b;font-size:.8rem;}
+.info-table{width:100%;font-size:.85rem;border-collapse:collapse;}
+.info-table th{text-align:left;padding:.4rem .6rem .4rem 0;font-size:.78rem;font-weight:600;color:#8a93a0;width:35%;vertical-align:top;border-bottom:1px solid #f0f2f4;}
+.info-table td{padding:.4rem 0;color:#1f2933;vertical-align:top;border-bottom:1px solid #f0f2f4;}
+.info-table tr:last-child th,.info-table tr:last-child td{border-bottom:none;}
 /* ── Modal ── */
 .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
 .modal-back[hidden]{display:none!important;}
@@ -221,22 +273,69 @@ textarea.finput{resize:vertical;}
 .modal h2{margin:0 0 1rem;font-size:1rem;font-weight:650;font-family:inherit;}
 .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:1rem;}
 /* ── Shared action buttons ── */
-.cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;font-family:inherit;}
+.cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;font-family:inherit;text-decoration:none;display:inline-block;}
 .cbtn:hover{background:#f3f5f7;}
 .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
-.cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:500;cursor:pointer;}
+.cbtn.primary:hover{filter:brightness(1.08);background:var(--primary);}
+.cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-block;}
 .cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);}
-.cbtn-sm{padding:.22rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;}
+.cbtn-sm{padding:.22rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;}
 .cbtn-sm:hover{background:#f3f5f7;}
 .cbtn-danger{border-color:#fca5a5;color:#c0392b;}
-.notif-bell{position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:7px;color:rgba(255,255,255,.8);text-decoration:none;transition:background .15s;}
+.cbtn.danger{background:#d64545;color:#fff;border-color:#d64545;}
+.cbtn.danger:hover{filter:brightness(1.08);background:#d64545;}
+.slot-btn{text-decoration:none;padding:.35rem .6rem;border-radius:6px;font-size:.82rem;border:1px solid #bfdcc4;background:#eaf6ec;color:#216c2a;display:inline-block;}
+.slot-btn:hover{background:#d4edda;}
+.notif-wrap{position:relative;}
+.notif-bell{position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:7px;color:rgba(255,255,255,.8);background:none;border:none;cursor:pointer;transition:background .15s;}
 .notif-bell:hover{background:rgba(255,255,255,.12);color:#fff;}
 .notif-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;padding:0 3px;background:#e53e3e;color:#fff;border-radius:8px;font-size:.65rem;font-weight:700;line-height:16px;text-align:center;}
+.notif-drop{position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #e3e6ea;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);width:320px;z-index:200;overflow:hidden;}
+.notif-drop-head{padding:.5rem .75rem;border-bottom:1px solid #f0f2f4;display:flex;align-items:center;justify-content:space-between;font-size:.82rem;font-weight:650;color:#1f2933;}
+.notif-drop-item{padding:.55rem .75rem;border-bottom:1px solid #f4f5f7;display:flex;gap:.5rem;align-items:flex-start;transition:background .1s;}
+.notif-drop-item:last-of-type{border-bottom:0;}
+.notif-drop-item.unread{border-left:3px solid var(--primary);padding-left:.55rem;background:#fafbff;}
+.notif-drop-item.dismissing{opacity:0;transform:translateX(8px);transition:opacity .2s,transform .2s;}
+.notif-drop-item-body{flex:1;min-width:0;}
+.notif-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:.4rem;}
+.notif-subject{font-size:.84rem;font-weight:600;color:#1f2933;line-height:1.3;text-decoration:none;display:block;}
+.notif-subject:hover{text-decoration:underline;color:var(--primary);}
+.notif-drop-item:not(.unread) .notif-subject{font-weight:500;color:#5b6573;}
+.notif-body{font-size:.77rem;color:#8a93a0;margin-top:.1rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.notif-time{font-size:.72rem;color:#adb5bd;margin-top:.15rem;}
+.notif-dismiss{background:none;border:1px solid transparent;cursor:pointer;color:#c5ccd5;font-size:.85rem;line-height:1;padding:.2rem .3rem;border-radius:4px;flex-shrink:0;margin-top:-.05rem;transition:background .12s,color .12s,border-color .12s;}
+.notif-dismiss:hover{background:#eaf6ec;color:#216c2a;border-color:#b7dfc0;}
+.notif-drop-empty{padding:1.8rem 1rem;text-align:center;color:#adb5bd;font-size:.83rem;}
+.notif-drop-foot{padding:.4rem .75rem;border-top:1px solid #f0f2f4;text-align:right;}
+.notif-drop-foot a{font-size:.78rem;color:var(--primary);text-decoration:none;}
+.notif-drop-foot a:hover{text-decoration:underline;}
 .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;}
 .notice.ok{background:#eaf6ec;color:#216c2a;}
 .notice.err{background:#fff0f0;color:#c0392b;border:1px solid #fca5a5;}
 .notice.warn{background:#fffbeb;color:#92400e;border:1px solid #fcd34d;}
 .cbtn-danger:hover{background:#fff0f0;}
+/* ── Shared table classes (manage/attention pages) ── */
+.exc-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+.exc-table th{padding:.4rem .8rem;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;border-bottom:1px solid #f0f2f4;}
+.exc-table td{padding:.5rem .8rem;border-bottom:1px solid #f4f6f8;vertical-align:middle;}
+.exc-table tr:last-child td{border-bottom:none;}
+.exc-table a{color:#1f2933;text-decoration:none;}
+.exc-table a:hover{text-decoration:underline;}
+.exc-table a.cbtn:hover,.exc-table a.cbtn-sm:hover{text-decoration:none;}
+.exc-empty{padding:1.2rem .4rem;color:#8a93a0;font-size:.88rem;margin:0;}
+.exc-issue-tag{display:inline-block;font-size:.75rem;padding:.18rem .5rem;border-radius:6px;background:#fff8e1;color:#92400e;border:1px solid #fcd34d;margin:.1rem .2rem .1rem 0;}
+.exc-issue-tag.exc-issue-red{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
+.urg-badge{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:8px;}
+.urg-badge.urg-green{background:#e6f4ea;color:#2a7a3b;}
+.urg-badge.urg-amber{background:#fff3e0;color:#c76c00;}
+.urg-badge.urg-red{background:#fee2e2;color:#991b1b;}
+.row-conflict td:first-child{border-left:3px solid #e03131;}
+.reason-chip{display:inline-block;font-size:.72rem;background:#fee2e2;color:#c0392b;padding:.1rem .4rem;border-radius:4px;margin:.1rem .1rem 0 0;}
+/* ── Table row action links (manage pages) ── */
+.row-action-btn{display:inline-flex;align-items:center;font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;transition:background .15s,color .15s;}
+.row-action-btn:hover{background:#f3f5f7;color:#1f2933;}
+.row-action-returned{background:var(--returned);color:#fff;border-color:var(--returned);}
+.row-action-returned:hover{background:color-mix(in srgb,var(--returned) 85%,#000);color:#fff;filter:none;}
 /* ── Tab bar (shared style for both top-nav tabs and in-page sub-tabs) ── */
 /* .mnav = manage page top nav;  .stab-bar = in-page sub-tabs (detail views, settings) */
 /* Both use the same font, size, and active indicator so they look identical. */
@@ -266,11 +365,15 @@ textarea.finput{resize:vertical;}
 .status-pill.sp-warn:hover{background:#ffeece;}
 /* In-page sub-tab bar (settings, aircraft detail, instructor detail, profile) */
 .stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;flex-wrap:wrap;}
-.stab-btn{padding:.55rem 1.1rem;border:none;background:none;cursor:pointer;font-size:.9rem;font-weight:500;font-family:inherit;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s;}
+.stab-btn{display:inline-block;padding:.55rem 1.1rem;border:none;background:none;cursor:pointer;font-size:.9rem;font-weight:500;font-family:inherit;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s;text-decoration:none;}
 .stab-btn:hover{color:var(--banner);}
 .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
 .stab-panel{display:none;}
 .stab-panel.active{display:block;}
+.attn-pill{display:inline-block;font-size:.68rem;font-weight:700;padding:.1rem .42rem;border-radius:9px;line-height:1.3;margin-left:.35rem;vertical-align:middle;}
+.attn-pill.attn-red{background:#fee2e2;color:#991b1b;}
+.attn-pill.attn-amber{background:#fff3e0;color:#c76c00;}
+.attn-pill.attn-ok{background:#eaf6ec;color:#216c2a;}
 /* ── Inline toggle pills (table rows: solo/dual, hard/soft, on/off) ── */
 .ft-pill{padding:.28rem .65rem;border-radius:20px;border:1px solid #d6dae0;background:#f5f6f8;color:#5b6573;font-size:.78rem;cursor:pointer;font-weight:500;line-height:1;}
 .ft-pill:hover{background:#eef1f4;}
@@ -293,6 +396,16 @@ textarea.finput{resize:vertical;}
 .status-chip.returned,.status-chip.status-returned{background:color-mix(in srgb,var(--returned) 15%,#fff);color:var(--returned);}
 .status-chip.completed,.status-chip.status-completed{background:color-mix(in srgb,var(--completed-paid) 15%,#fff);color:var(--completed-paid);}
 .status-chip.cancelled,.status-chip.status-cancelled{background:#f3f5f7;color:#8a93a0;}
+/* ── Modal validation ── */
+.modal-notice{padding:.5rem .8rem;border-radius:6px;font-size:.84rem;font-weight:500;margin-bottom:.85rem;display:none;}
+.modal-notice.err{display:block;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.modal-notice.ok{display:block;background:#eaf6ec;color:#216c2a;border:1px solid #a3d9a5;}
+.modal-submitted input:invalid,.modal-submitted select:invalid,.modal-submitted textarea:invalid{border-color:#e53e3e!important;outline:none;}
+/* ── Standard data table — used across manage pages ── */
+.ct{width:100%;border-collapse:collapse;font-size:.86rem;}
+.ct th{padding:.4rem .7rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
+.ct td{padding:.55rem .7rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+.ct tr:last-child td{border-bottom:none;}
 </style>
 <style>
   .toast-rack{position:fixed;bottom:1.4rem;right:1.4rem;z-index:600;display:flex;flex-direction:column;gap:.5rem;pointer-events:none;max-width:420px;}
@@ -350,6 +463,83 @@ textarea.finput{resize:vertical;}
     document.addEventListener('click', () => { drop.hidden = true; btn.setAttribute('aria-expanded','false'); });
     document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { drop.hidden = true; } });
   }
+
+  // Notification dropdown
+  (function(){
+    const nbtn = document.getElementById('notif-btn');
+    const ndrop = document.getElementById('notif-drop');
+    if (!nbtn || !ndrop) return;
+    const notifUrl = '{% if club %}{% url "core:notifications" club.slug %}{% endif %}';
+    const csrf = '{{ csrf_token }}';
+
+    function postNotif(body) {
+      if (!notifUrl) return;
+      fetch(notifUrl, {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+        body: new URLSearchParams({csrfmiddlewaretoken: csrf, ...body}),
+      });
+    }
+
+    nbtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const opening = ndrop.hidden;
+      ndrop.hidden = !opening;
+      nbtn.setAttribute('aria-expanded', String(opening));
+      // Do NOT auto-mark-as-read on open — let user see unread state
+    });
+
+    const markAllBtn = document.getElementById('notif-mark-all');
+    if (markAllBtn) markAllBtn.addEventListener('click', (e) => { e.stopPropagation(); markAllRead(); });
+
+    function dismissItem(item) {
+      const id = item.dataset.notifId;
+      item.classList.add('dismissing');
+      setTimeout(() => {
+        item.remove();
+        // If no items left, show empty state
+        const list = document.getElementById('notif-list');
+        if (list && !list.querySelector('.notif-drop-item')) {
+          const empty = document.createElement('div');
+          empty.className = 'notif-drop-empty';
+          empty.innerHTML = '<svg width="26" height="26" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto .5rem;opacity:.35;"><path d="M9 2a5 5 0 0 1 5 5c0 3 1 4 1.5 4.5H2.5C3 11 4 10 4 7a5 5 0 0 1 5-5z"/><path d="M7.5 14.5a1.5 1.5 0 0 0 3 0"/></svg>All caught up!';
+          list.appendChild(empty);
+        }
+        // Clear badge/mark-all if no unread remain
+        if (!ndrop.querySelector('.notif-drop-item.unread')) {
+          document.getElementById('notif-badge')?.remove();
+          document.getElementById('notif-mark-all')?.remove();
+        }
+      }, 200);
+      postNotif({action: 'delete', id});
+    }
+
+    function markAllRead() {
+      const badge = document.getElementById('notif-badge');
+      const markAllBtn = document.getElementById('notif-mark-all');
+      if (badge) badge.remove();
+      if (markAllBtn) markAllBtn.remove();
+      // Dismiss all items with stagger
+      ndrop.querySelectorAll('.notif-drop-item').forEach((item, i) => {
+        setTimeout(() => dismissItem(item), i * 40);
+      });
+      postNotif({action: 'mark_all_read'});
+    }
+
+    // Dismiss (✓) button — mark read + remove from list
+    ndrop.addEventListener('click', (e) => {
+      const btn = e.target.closest('.notif-dismiss');
+      if (!btn) return;
+      e.stopPropagation();
+      dismissItem(btn.closest('.notif-drop-item'));
+    });
+
+    // Subject link clicks — let browser navigate normally (mark read via server on next page load)
+    // Row clicks outside the link / dismiss button do nothing (no accidental navigation)
+
+    document.addEventListener('click', () => { ndrop.hidden = true; nbtn.setAttribute('aria-expanded','false'); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') ndrop.hidden = true; });
+  })();
 
   // Slide-out side nav
   const openBtn  = document.getElementById('sidenav-open');
@@ -410,10 +600,14 @@ textarea.finput{resize:vertical;}
 
   function runScripts(container) {
     container.querySelectorAll('script').forEach(old => {
-      const s = document.createElement('script');
-      Array.from(old.attributes).forEach(a => s.setAttribute(a.name, a.value));
-      s.textContent = old.textContent;
-      old.parentNode.replaceChild(s, old);
+      if (old.getAttribute('src')) {
+        const s = document.createElement('script');
+        s.src = old.getAttribute('src');
+        document.head.appendChild(s);
+      } else if (old.textContent.trim()) {
+        // eslint-disable-next-line no-new-func
+        try { new Function(old.textContent)(); } catch(e) {}
+      }
     });
   }
 
@@ -433,6 +627,7 @@ textarea.finput{resize:vertical;}
       if (hash) history.replaceState({}, '', location.pathname + location.search + '#' + hash);
       runScripts(body);
       attachHandlers(urlWithoutHash);
+      if (window._setupModalForms) window._setupModalForms(body);
     } catch(e) {
       body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load page.</p>';
     }
@@ -456,9 +651,17 @@ textarea.finput{resize:vertical;}
             body.innerHTML = `<p style="color:#c0392b;padding:2rem;text-align:center;">Save failed (HTTP ${resp.status}). Close and try again.</p>`;
             return;
           }
-          const wasSaved = new URL(resp.url, location.href).searchParams.has('saved');
-          await loadOverlay(baseUrl);
-          if (wasSaved && window.showSavedToast) window.showSavedToast();
+          const finalUrl = new URL(resp.url, location.href);
+          const wasSaved = finalUrl.searchParams.has('saved');
+          if (finalUrl.searchParams.has('inline')) {
+            await loadOverlay(baseUrl);
+            if (wasSaved && window.showSavedToast) window.showSavedToast();
+          } else {
+            // Server redirected out of inline context — close overlay and toast
+            if (wasSaved && window.toast) window.toast('Saved', 'ok');
+            didChange = false;
+            closeOverlay();
+          }
         } catch(err) {
           body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Network error — check your connection and try again.</p>';
         }
@@ -486,11 +689,140 @@ textarea.finput{resize:vertical;}
   window.closePageOverlay = closeOverlay;
 })();
 </script>
+<script>
+// ── Server-side modal error handler ──────────────────────────────────────────
+// Views pass modal_error + modal_error_id; this opens the right modal and
+// injects the message into its .modal-notice banner — no per-template code needed.
+{% if modal_error and modal_error_id %}
+document.addEventListener('DOMContentLoaded', function(){
+  var modal = document.getElementById('{{ modal_error_id }}');
+  if (!modal) return;
+  modal.hidden = false;
+  if (modal.style !== undefined) modal.style.display = '';
+  setTimeout(function(){
+    var form = modal.querySelector('form');
+    if (!form) return;
+    var notice = form.querySelector('.modal-notice');
+    if (!notice){
+      notice = document.createElement('div');
+      notice.className = 'modal-notice';
+      form.insertBefore(notice, form.firstChild);
+    }
+    notice.className = 'modal-notice err';
+    notice.textContent = '{{ modal_error|escapejs }}';
+    // Pre-fill fields with submitted values where present
+    {% for key, val in modal_error_values.items %}
+    var el = form.querySelector('[name="{{ key|escapejs }}"]');
+    if (el) el.value = '{{ val|escapejs }}';
+    {% endfor %}
+  }, 0);
+});
+{% endif %}
+
+// ── Global modal form validation ─────────────────────────────────────────────
+// Automatically applied to every .modal-back form and <dialog> form —
+// no per-template setup needed.
+(function(){
+  function setupModalForms(root) {
+    (root || document).querySelectorAll('.modal-back form, dialog form').forEach(function(form) {
+      if (form.dataset.mvSetup) return;
+      form.dataset.mvSetup = '1';
+      form.setAttribute('novalidate', '');
+
+      form.addEventListener('submit', function(e) {
+        form.classList.add('modal-submitted');
+        if (!form.checkValidity()) {
+          e.preventDefault();
+          e.stopPropagation();
+          // Find or create the notice banner (always first child of form)
+          var notice = form.querySelector('.modal-notice');
+          if (!notice) {
+            notice = document.createElement('div');
+            notice.className = 'modal-notice';
+            form.insertBefore(notice, form.firstChild);
+          }
+          notice.className = 'modal-notice err';
+          // Collect names of missing required fields for a helpful message
+          var missing = Array.from(form.elements).filter(function(el){
+            return el.willValidate && !el.validity.valid && el.hasAttribute('required');
+          });
+          notice.textContent = missing.length === 1
+            ? 'Please complete the required field.'
+            : 'Please complete all required fields (' + missing.length + ' missing).';
+          var first = form.querySelector(':invalid');
+          if (first) { first.focus(); }
+          return false;
+        }
+        // Clear any previous notice on a valid submit
+        var notice = form.querySelector('.modal-notice');
+        if (notice) notice.className = 'modal-notice';
+      });
+
+      // Clear error state on a field once the user starts correcting it
+      form.addEventListener('input', function(e) {
+        if (e.target.validity && e.target.validity.valid) {
+          e.target.classList.remove('field-error');
+        }
+      }, true);
+    });
+  }
+
+  // Apply to all modals already in the DOM
+  document.addEventListener('DOMContentLoaded', function(){ setupModalForms(); });
+  // Re-apply after overlay content loads
+  window._setupModalForms = setupModalForms;
+})();
+</script>
+<script>
+// ── Global stab-bar tab init ─────────────────────────────────────────────────
+// Applies to any .stab-bar whose buttons haven't been wired by per-page JS.
+// Per-page JS can opt out by setting data-managed="1" on the .stab-bar element.
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.stab-bar:not([data-managed])').forEach(function(bar){
+      var btns = Array.from(bar.querySelectorAll('.stab-btn[data-tab]'));
+      if (!btns.length) return;
+      var tabs = btns.map(function(b){ return b.dataset.tab; });
+      function showTab(name){
+        tabs.forEach(function(t){
+          var panel = document.getElementById('tab-' + t);
+          var btn   = document.getElementById('tabBtn-' + t);
+          if (panel) panel.classList.toggle('active', t === name);
+          if (btn)   btn.classList.toggle('active', t === name);
+        });
+      }
+      btns.forEach(function(b){
+        b.addEventListener('click', function(){ showTab(b.dataset.tab); });
+      });
+      // Open first tab with a red pill, otherwise first tab
+      var first = btns.find(function(b){ return b.querySelector('.attn-pill.attn-red'); });
+      showTab(first ? first.dataset.tab : tabs[0]);
+    });
+  });
+})();
+</script>
 
 <style>
   .save-toast{position:fixed;bottom:1.5rem;right:1.5rem;background:#2a7a3b;color:#fff;padding:.5rem 1.1rem;border-radius:8px;font-size:.87rem;font-weight:500;z-index:9999;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;pointer-events:none;box-shadow:0 4px 16px rgba(16,24,40,.18);}
   .save-toast.show{opacity:1;transform:translateY(0);}
+  /* ── Currency inputs (shared) ── */
+  .money-wrap{display:flex;align-items:center;gap:0;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff;}
+  .money-sym{padding:0 .4rem;font-size:.88rem;color:#8a93a0;background:#f8f9fb;border-right:1px solid #ddd;line-height:2.2;}
+  .money-input{border:none!important;border-radius:0!important;flex:1;min-width:0;margin-top:0!important;text-align:right;}
+  .money-input:focus{outline:2px solid var(--primary);outline-offset:-1px;border-radius:0 5px 5px 0!important;}
 </style>
+<script>
+// Format currency inputs to 2dp on blur — applied globally to any .money-input
+function fmtMoney(el) {
+  const v = parseFloat(el.value);
+  if (!isNaN(v)) el.value = v.toFixed(2);
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.money-input').forEach(function(el) {
+    el.addEventListener('blur', function() { fmtMoney(el); });
+  });
+});
+</script>
 <div id="save-toast" class="save-toast">Saved ✓</div>
 <script>
 (function(){
