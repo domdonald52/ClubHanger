@@ -1,23 +1,29 @@
 {% extends "core/base.html" %}
-{% block title %}Settings · {{ club.name }}{% endblock %}
+{% block title %}{% if is_types %}Types{% else %}Club settings{% endif %} · {{ club.name }}{% endblock %}
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:960px;">
-  <h1 style="margin-bottom:1.2rem;">Settings</h1>
+  <h1 style="margin-bottom:1.2rem;">{% if is_types %}Types{% else %}Settings{% endif %}</h1>
 
   {% if saved %}<div class="snotice ok">Settings saved.</div>{% endif %}
   {% if ft_error %}<div class="snotice err">{{ ft_error }}</div>{% endif %}
 
   <!-- Tab bar -->
-  <div class="stab-bar">
-    <button class="stab-btn" id="tabBtn-general"       data-tab="general">General</button>
-    <button class="stab-btn" id="tabBtn-appearance"    data-tab="appearance">Appearance</button>
-    <button class="stab-btn" id="tabBtn-scheduling"    data-tab="scheduling">Flight Types</button>
+  <div class="stab-bar" data-managed="1">
+    {% if not is_types %}
+    <button class="stab-btn" id="tabBtn-general"    data-tab="general">General</button>
+    <button class="stab-btn" id="tabBtn-appearance" data-tab="appearance">Appearance</button>
+    <button class="stab-btn" id="tabBtn-billing"    data-tab="billing">Billing</button>
+    <button class="stab-btn" id="tabBtn-roles"      data-tab="roles">Roles</button>
+    {% else %}
+    <button class="stab-btn" id="tabBtn-scheduling"    data-tab="scheduling">Flight types</button>
     <button class="stab-btn" id="tabBtn-charge-types"  data-tab="charge-types">Charge types</button>
     <button class="stab-btn" id="tabBtn-blockout-types" data-tab="blockout-types">Block-out types</button>
     <button class="stab-btn" id="tabBtn-aircraft-types" data-tab="aircraft-types">Aircraft types</button>
-    <button class="stab-btn" id="tabBtn-billing"        data-tab="billing">Billing</button>
-    <button class="stab-btn" id="tabBtn-roles"          data-tab="roles">Roles</button>
+    <button class="stab-btn" id="tabBtn-incident-types" data-tab="incident-types">Event types</button>
+    <button class="stab-btn" id="tabBtn-contact-types"  data-tab="contact-types">Contact types</button>
+    <button class="stab-btn" id="tabBtn-voucher-types"  data-tab="voucher-types">Voucher types</button>
+    {% endif %}
   </div>
 
   <!-- ── LOGO forms (outside settings-form to avoid nested-form breakage) ── -->
@@ -201,7 +207,6 @@
 
     <div class="s-section-hdr">
       <div>
-        <h2 class="sh2" style="margin:0 0 .2rem;">Flight types</h2>
         <p class="s-desc">Used to categorise bookings. Solo types hide the instructor field when booking.</p>
       </div>
       <button type="button" class="cbtn-add" onclick="sOpenModal('add-ft-modal')">+ Add flight type</button>
@@ -297,7 +302,7 @@
         {% for ig in instructor_grades %}
         <tr>
           <td><strong>{{ ig.name }}</strong></td>
-          <td>${{ ig.hourly_rate }}</td>
+          <td>${{ ig.hourly_rate|currency }}</td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ ig.display_order }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
@@ -337,7 +342,7 @@
         <tr>
           <td><strong>{{ st.name }}</strong></td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
-          <td>${{ st.amount }}</td>
+          <td>${{ st.amount|currency }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
               <button type="button" class="cbtn-sm" onclick="sOpenEditSc({{ st.id }},'{{ st.name|escapejs }}','{{ st.description|escapejs }}','{{ st.amount }}')">Edit</button>
@@ -513,7 +518,6 @@
 
   <!-- ── AIRCRAFT TYPES tab ── -->
   <div id="tab-aircraft-types" class="stab-panel">
-    <h2 style="font-size:1rem;margin-bottom:.9rem;">Aircraft types</h2>
     <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
       Define the aircraft types in your fleet. Aircraft and member type ratings both reference this list.
     </p>
@@ -558,6 +562,269 @@
       <button type="submit" class="btn" style="margin-bottom:1px;">Add type</button>
     </form>
   </div><!-- /tab-aircraft-types -->
+
+  <!-- ── INCIDENT TYPES tab ── -->
+  <div id="tab-incident-types" class="stab-panel">
+    <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
+      Define the categories members can select when submitting an occurrence report (snags, near-misses, hazards, observations, etc.).
+    </p>
+
+    {% if occurrence_types %}
+    <table class="ft-table" style="margin-bottom:1.5rem;">
+      <thead><tr><th>Name</th><th>Description</th><th>Order</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        {% for ot in occurrence_types %}
+        <tr>
+          <td><strong>{{ ot.name }}</strong></td>
+          <td style="color:#8a93a0;font-size:.83rem;">{{ ot.description|default:"—" }}</td>
+          <td style="color:#8a93a0;">{{ ot.sort_order }}</td>
+          <td>
+            <form method="post" style="display:inline;">
+              {% csrf_token %}<input type="hidden" name="action" value="toggle_occurrence_type">
+              <input type="hidden" name="ot_id" value="{{ ot.id }}">
+              <button type="submit" class="cbtn sm" style="{% if ot.is_active %}color:#216c2a;{% else %}color:#8a93a0;{% endif %}">
+                {% if ot.is_active %}Active{% else %}Inactive{% endif %}
+              </button>
+            </form>
+          </td>
+          <td style="text-align:right;white-space:nowrap;">
+            <button type="button" class="cbtn sm" onclick="openEditOccType({{ ot.id }},'{{ ot.name|escapejs }}','{{ ot.description|escapejs }}',{{ ot.sort_order }})">Edit</button>
+            {% if not ot.reports.exists %}
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ot.name|escapejs }}?')">
+              {% csrf_token %}<input type="hidden" name="action" value="delete_occurrence_type">
+              <input type="hidden" name="ot_id" value="{{ ot.id }}">
+              <button type="submit" class="cbtn sm danger">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No incident types defined yet.</p>
+    {% endif %}
+
+    <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_occurrence_type">
+      <label class="flabel" style="margin:0;flex:1;min-width:160px;">Name
+        <input type="text" name="ot_name" class="finput" placeholder="e.g. Near miss" required>
+      </label>
+      <label class="flabel" style="margin:0;flex:2;min-width:200px;">Description <span style="font-weight:400;">(optional)</span>
+        <input type="text" name="ot_desc" class="finput" placeholder="Brief description">
+      </label>
+      <button type="submit" class="btn" style="margin-bottom:1px;">Add type</button>
+    </form>
+
+    <!-- Edit occurrence type modal -->
+    <div id="edit-occ-type-modal" class="modal-back" hidden>
+      <div class="modal" style="min-width:340px;">
+        <h2>Edit occurrence type</h2>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="edit_occurrence_type">
+          <input type="hidden" name="ot_id" id="edit-ot-id">
+          <label class="flabel" style="margin-bottom:.7rem;">Name
+            <input type="text" name="ot_name" id="edit-ot-name" class="finput" required>
+          </label>
+          <label class="flabel" style="margin-bottom:.7rem;">Description
+            <input type="text" name="ot_desc" id="edit-ot-desc" class="finput">
+          </label>
+          <label class="flabel" style="margin-bottom:.9rem;">Sort order
+            <input type="number" name="ot_sort" id="edit-ot-sort" class="finput" style="width:80px;" min="0">
+          </label>
+          <div class="modal-actions">
+            <button type="submit" class="btn">Save</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script>
+    function openEditOccType(id, name, desc, sort) {
+      document.getElementById('edit-ot-id').value   = id;
+      document.getElementById('edit-ot-name').value = name;
+      document.getElementById('edit-ot-desc').value = desc;
+      document.getElementById('edit-ot-sort').value = sort;
+      document.getElementById('edit-occ-type-modal').hidden = false;
+    }
+    document.getElementById('edit-occ-type-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
+    </script>
+  </div><!-- /tab-incident-types -->
+
+  <!-- ── CONTACT TYPES tab ── -->
+  <div id="tab-contact-types" class="stab-panel">
+    <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
+      Categories for non-member contacts — trial flights, Young Eagles, Gateway Scheme, commercial clients, etc.
+    </p>
+
+    {% if contact_types_list %}
+    <table class="ft-table" style="margin-bottom:1.5rem;">
+      <thead><tr><th>Name</th><th>Order</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        {% for ctype in contact_types_list %}
+        <tr>
+          <td><strong>{{ ctype.name }}</strong></td>
+          <td style="color:#8a93a0;">{{ ctype.sort_order }}</td>
+          <td>
+            <form method="post" style="display:inline;">
+              {% csrf_token %}<input type="hidden" name="action" value="toggle_contact_type">
+              <input type="hidden" name="ct_id" value="{{ ctype.id }}">
+              <button type="submit" class="cbtn sm" style="{% if ctype.is_active %}color:#216c2a;{% else %}color:#8a93a0;{% endif %}">
+                {% if ctype.is_active %}Active{% else %}Inactive{% endif %}
+              </button>
+            </form>
+          </td>
+          <td style="text-align:right;white-space:nowrap;">
+            <button type="button" class="cbtn sm" onclick="openEditCType({{ ctype.id }},'{{ ctype.name|escapejs }}',{{ ctype.sort_order }})">Edit</button>
+            {% if not ctype.contacts.exists %}
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ctype.name|escapejs }}?')">
+              {% csrf_token %}<input type="hidden" name="action" value="delete_contact_type">
+              <input type="hidden" name="ct_id" value="{{ ctype.id }}">
+              <button type="submit" class="cbtn sm danger">Delete</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No contact types defined yet.</p>
+    {% endif %}
+
+    <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_contact_type">
+      <label class="flabel" style="margin:0;flex:1;min-width:180px;">Name
+        <input type="text" name="ct_name" class="finput" placeholder="e.g. Young Eagles" required>
+      </label>
+      <button type="submit" class="btn" style="margin-bottom:1px;">Add type</button>
+    </form>
+
+    <!-- Edit contact type modal -->
+    <div id="edit-ct-modal" class="modal-back" hidden>
+      <div class="modal" style="min-width:320px;">
+        <h2>Edit contact type</h2>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="edit_contact_type">
+          <input type="hidden" name="ct_id" id="edit-ct-id">
+          <label class="flabel" style="margin-bottom:.7rem;">Name
+            <input type="text" name="ct_name" id="edit-ct-name" class="finput" required>
+          </label>
+          <label class="flabel" style="margin-bottom:.9rem;">Sort order
+            <input type="number" name="ct_sort" id="edit-ct-sort" class="finput" style="width:80px;" min="0">
+          </label>
+          <div style="display:flex;gap:.5rem;justify-content:flex-end;">
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true">Cancel</button>
+            <button type="submit" class="btn">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script>
+    function openEditCType(id, name, sort) {
+      document.getElementById('edit-ct-id').value = id;
+      document.getElementById('edit-ct-name').value = name;
+      document.getElementById('edit-ct-sort').value = sort;
+      document.getElementById('edit-ct-modal').hidden = false;
+    }
+    document.getElementById('edit-ct-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
+    </script>
+  </div><!-- /tab-contact-types -->
+
+  <!-- ── VOUCHER TYPES tab ── -->
+  <div id="tab-voucher-types" class="stab-panel">
+    <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
+      Pre-defined voucher products — saved descriptions and prices that auto-fill the create-voucher form.
+    </p>
+
+    {% if voucher_types_list %}
+    <table class="ft-table" style="margin-bottom:1.5rem;">
+      <thead><tr><th>Name</th><th>Default value</th><th>Description</th><th>Order</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        {% for vt in voucher_types_list %}
+        <tr>
+          <td><strong>{{ vt.name }}</strong></td>
+          <td>${{ vt.default_value|currency }}</td>
+          <td style="color:#5b6573;font-size:.85rem;">{{ vt.description|default:"—" }}</td>
+          <td style="color:#8a93a0;">{{ vt.sort_order }}</td>
+          <td>
+            <form method="post" style="display:inline;">
+              {% csrf_token %}<input type="hidden" name="action" value="toggle_voucher_type">
+              <input type="hidden" name="vt_id" value="{{ vt.id }}">
+              <button type="submit" class="cbtn sm" style="{% if vt.is_active %}color:#216c2a;{% else %}color:#8a93a0;{% endif %}">
+                {% if vt.is_active %}Active{% else %}Inactive{% endif %}
+              </button>
+            </form>
+          </td>
+          <td style="text-align:right;white-space:nowrap;">
+            <button type="button" class="cbtn sm" onclick="openEditVType({{ vt.id }},'{{ vt.name|escapejs }}','{{ vt.default_value }}','{{ vt.description|escapejs }}',{{ vt.sort_order }})">Edit</button>
+            <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ vt.name|escapejs }}?')">
+              {% csrf_token %}<input type="hidden" name="action" value="delete_voucher_type">
+              <input type="hidden" name="vt_id" value="{{ vt.id }}">
+              <button type="submit" class="cbtn sm danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No voucher types defined yet.</p>
+    {% endif %}
+
+    <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_voucher_type">
+      <label class="flabel" style="margin:0;min-width:200px;">Name
+        <input type="text" name="vt_name" class="finput" placeholder="e.g. Harbour Circuit Trial Flight" required>
+      </label>
+      <label class="flabel" style="margin:0;width:110px;">Value ($)
+        <input type="number" name="vt_value" class="finput" min="0" step="0.01" placeholder="250.00" required>
+      </label>
+      <label class="flabel" style="margin:0;flex:1;min-width:180px;">Description <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+        <input type="text" name="vt_desc" class="finput" placeholder="e.g. 30-minute introductory flight">
+      </label>
+      <button type="submit" class="cbtn primary" style="margin-bottom:1px;">Add type</button>
+    </form>
+
+    <!-- Edit voucher type modal -->
+    <div id="edit-vt-modal" class="modal-back" hidden>
+      <div class="modal" style="width:min(460px,95vw);">
+        <h2>Edit voucher type</h2>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="edit_voucher_type">
+          <input type="hidden" name="vt_id" id="edit-vt-id">
+          <label class="flabel">Name<input type="text" name="vt_name" id="edit-vt-name" class="finput" required></label>
+          <div class="fgrid">
+            <label class="flabel">Value ($)<input type="number" name="vt_value" id="edit-vt-value" class="finput" min="0" step="0.01" required></label>
+            <label class="flabel">Order<input type="number" name="vt_sort" id="edit-vt-sort" class="finput" min="0"></label>
+          </div>
+          <label class="flabel">Description<input type="text" name="vt_desc" id="edit-vt-desc" class="finput" placeholder="Optional"></label>
+          <div class="modal-actions">
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-vt-modal').hidden=true">Cancel</button>
+            <span style="flex:1"></span>
+            <button type="submit" class="cbtn primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script>
+    function openEditVType(id, name, val, desc, sort) {
+      document.getElementById('edit-vt-id').value    = id;
+      document.getElementById('edit-vt-name').value  = name;
+      document.getElementById('edit-vt-value').value = val;
+      document.getElementById('edit-vt-desc').value  = desc;
+      document.getElementById('edit-vt-sort').value  = sort;
+      document.getElementById('edit-vt-modal').hidden = false;
+    }
+    document.getElementById('edit-vt-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
+    </script>
+  </div><!-- /tab-voucher-types -->
 
   <!-- ── BILLING tab ── -->
   <div id="tab-billing" class="stab-panel">
@@ -646,38 +913,60 @@
       </div>
     </div>
 
-    {% if roles %}
+    {% comment %}Shared table header macro{% endcomment %}
+    {% with show_table=roles %}{% if show_table %}
     <div style="overflow-x:auto;margin-bottom:1.5rem;">
-    <table class="ft-table" style="min-width:700px;">
+    <table class="ft-table" style="min-width:720px;">
       <thead>
         <tr>
-          <th style="min-width:120px;">Role</th>
+          <th style="min-width:130px;">Role</th>
           <th style="min-width:120px;">Bookings</th>
-          <th style="text-align:center;min-width:52px;" title="Access to Manage menu — members, aircraft, bookings, charges">Manage</th>
-          <th style="text-align:center;min-width:52px;" title="Access to Settings — club configuration">Settings</th>
-          <th style="text-align:center;min-width:52px;" title="Access to Reports and Analytics">Reports</th>
-          <th style="text-align:center;min-width:52px;" title="Full superadmin access to all clubs">Super­admin</th>
-          <th style="text-align:center;min-width:52px;" title="Included in the annual membership renewal cycle">Renewal</th>
-          <th style="min-width:90px;">Member fee</th>
+          <th style="text-align:center;min-width:52px;" title="Access to Operations (Bookings, Block-outs, Sales, Members)">Operations</th>
+          <th style="text-align:center;min-width:52px;" title="Access to Fleet section (Aircraft)">Fleet</th>
+          <th style="text-align:center;min-width:52px;" title="Access to Safety section (Events, Action items)">Safety</th>
+          <th style="text-align:center;min-width:52px;" title="Access to Configuration (Settings, Types)">Config</th>
+          <th style="text-align:center;min-width:52px;" title="Access to Analytics and Reports">Analytics</th>
+          <th style="text-align:center;min-width:52px;" title="Full access — implies all permissions above">All access</th>
+          <th style="text-align:center;min-width:52px;" title="Included in annual renewal">Renewal</th>
+          <th style="min-width:90px;">Annual fee</th>
           <th style="min-width:64px;"></th>
         </tr>
         <tr class="perm-desc-row">
           <td></td>
-          <td style="font-size:.72rem;color:#adb5bd;">Booking access level</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Members, a/c</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Club config</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Analytics</td>
+          <td style="font-size:.72rem;color:#adb5bd;">Access level</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Bookings etc.</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Aircraft</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Events</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Settings</td>
+          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Reports</td>
           <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Full access</td>
           <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Annual</td>
-          <td style="font-size:.72rem;color:#adb5bd;">$ per year</td>
+          <td style="font-size:.72rem;color:#adb5bd;">$ / year</td>
           <td></td>
         </tr>
       </thead>
       <tbody>
         {% for role in roles %}
-        <tr>
-          <td><strong>{{ role.name }}</strong>{% if role.is_superadmin %} <span class="status-tag st-warn">super</span>{% endif %}</td>
+        {% if role.is_system_role and not forloop.first %}
+          {% with prev=roles|slice:forloop.counter0 %}{% if not prev.0.is_system_role %}<tr><td colspan="9" style="padding:.3rem 0;"></td></tr>{% endif %}{% endwith %}
+        {% endif %}
+        {% if forloop.first and not role.is_system_role %}
+          {# no system roles at all #}
+        {% endif %}
+        <tr{% if role.is_system_role %} style="background:#fafbfc;"{% endif %}>
           <td>
+            {% if role.is_system_role %}
+            <strong>{{ role.name }}</strong>
+            <span style="font-size:.7rem;color:#adb5bd;margin-top:.1rem;display:block;">System</span>
+            {% else %}
+            <strong>{{ role.name }}</strong>
+            {% if role.is_superadmin %} <span class="status-tag st-warn">super</span>{% endif %}
+            {% endif %}
+          </td>
+          <td>
+            {% if role.system_role_type == 'admin' %}
+            <span style="font-size:.82rem;color:#8a93a0;opacity:.6;" title="Administrator always has full access">Manage all</span>
+            {% else %}
             <form method="post">{% csrf_token %}
               <input type="hidden" name="action" value="set_role_permission">
               <input type="hidden" name="role_id" value="{{ role.id }}">
@@ -689,10 +978,19 @@
                 <option value="manage_all" {% if role.bookings_access == 'manage_all' %}selected{% endif %}>Manage all</option>
               </select>
             </form>
+            {% endif %}
           </td>
           {% for perm, val in role.perm_items %}
+          {% with is_super=role.is_superadmin is_admin_role=role.system_role_type %}
           <td style="text-align:center;">
-            <form method="post" style="display:inline-flex;">{% csrf_token %}
+            {% if is_admin_role == 'admin' %}
+            {# Admin system role: always fully ON, locked #}
+            <span class="ft-pill ft-pill-active" style="min-width:32px;opacity:.55;cursor:default;" title="Administrator always has full access">✓</span>
+            {% elif is_super and perm != 'is_superadmin' and perm != 'renewal_required' %}
+            {# Superadmin-implied perm: display-only #}
+            <span class="ft-pill ft-pill-active" style="min-width:32px;opacity:.55;cursor:default;" title="Implied by All access">✓</span>
+            {% else %}
+            <form method="post" style="display:inline-flex;" class="perm-form" data-role="{{ role.id }}" data-perm="{{ perm }}">{% csrf_token %}
               <input type="hidden" name="action" value="set_role_permission">
               <input type="hidden" name="role_id" value="{{ role.id }}">
               <input type="hidden" name="perm" value="{{ perm }}">
@@ -701,7 +999,9 @@
                 {% if val %}✓{% else %}–{% endif %}
               </button>
             </form>
+            {% endif %}
           </td>
+          {% endwith %}
           {% endfor %}
           <td>
             <form method="post" style="display:flex;gap:.3rem;align-items:center;">{% csrf_token %}
@@ -713,24 +1013,27 @@
             </form>
           </td>
           <td style="text-align:right;">
+            {% if not role.is_system_role %}
             <form method="post" style="display:inline;"
                   onsubmit="return confirm('Delete role \'{{ role.name|escapejs }}\'?{% if role.member_count %} {{ role.member_count }} member{{ role.member_count|pluralize }} will lose this role and drop to no access.{% endif %}')">{% csrf_token %}
               <input type="hidden" name="action" value="delete_role">
               <input type="hidden" name="role_id" value="{{ role.id }}">
               <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
             </form>
+            {% endif %}
           </td>
         </tr>
+        {% empty %}
+        <tr><td colspan="9"><div class="s-empty"><p>No roles yet.</p></div></td></tr>
         {% endfor %}
       </tbody>
     </table>
     </div>
-    {% else %}
-    <div class="s-empty"><p>No roles defined yet.</p></div>
-    {% endif %}
+    {% endif %}{% endwith %}
 
     <div class="s-section-hdr" style="margin-top:.5rem;">
-      <h2 class="sh2" style="margin:0;">Add role</h2>
+      <h2 class="sh2" style="margin:0;">Add custom role</h2>
+      <p class="s-desc">Custom roles sit below the three system roles and have fully configurable permissions.</p>
     </div>
     <form method="post" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;">
       {% csrf_token %}
@@ -803,7 +1106,7 @@
       </label>
       <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
         <label class="flabel" style="flex:1;">Hourly rate
-          <input type="number" name="ig_rate" value="0" min="0" step="0.01" class="finput">
+          <input type="number" name="ig_rate" value="0" min="0" step="0.01" class="finput money-input">
         </label>
         <label class="flabel" style="width:90px;">Display order
           <input type="number" name="ig_order" value="0" min="0" class="finput">
@@ -830,7 +1133,7 @@
       </label>
       <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
         <label class="flabel" style="flex:1;">Hourly rate
-          <input type="number" name="ig_rate" id="eig-rate" min="0" step="0.01" class="finput">
+          <input type="number" name="ig_rate" id="eig-rate" min="0" step="0.01" class="finput money-input">
         </label>
         <label class="flabel" style="width:90px;">Display order
           <input type="number" name="ig_order" id="eig-order" min="0" class="finput">
@@ -858,7 +1161,7 @@
         <input type="text" name="st_desc" class="finput" placeholder="e.g. Additional insurance loading">
       </label>
       <label class="flabel" style="margin-top:.1rem;width:120px;">Amount/flight
-        <input type="number" name="st_amount" value="0" min="0" step="0.01" class="finput">
+        <input type="number" name="st_amount" value="0" min="0" step="0.01" class="finput money-input">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')">Cancel</button>
@@ -883,7 +1186,7 @@
         <input type="text" name="st_desc" id="esc-desc" class="finput">
       </label>
       <label class="flabel" style="margin-top:.1rem;width:120px;">Amount/flight
-        <input type="number" name="st_amount" id="esc-amount" min="0" step="0.01" class="finput">
+        <input type="number" name="st_amount" id="esc-amount" min="0" step="0.01" class="finput money-input">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')">Cancel</button>
@@ -1040,26 +1343,25 @@
 
 <script>
 (function(){
-  const TABS = ['general', 'appearance', 'scheduling', 'charge-types', 'blockout-types', 'aircraft-types', 'billing', 'roles'];
+  const TABS = {% if not is_types %}['general', 'appearance', 'billing', 'roles']{% else %}['scheduling', 'charge-types', 'blockout-types', 'aircraft-types', 'incident-types', 'contact-types', 'voucher-types']{% endif %};
 
   window.activateTab = function activateTab(id) {
     TABS.forEach(t => {
       document.getElementById('tab-' + t).classList.toggle('active', t === id);
       document.getElementById('tabBtn-' + t).classList.toggle('active', t === id);
     });
-    try { localStorage.setItem('settingsTab', id); } catch(e){}
+    try { localStorage.setItem('{% if is_types %}typesTab{% else %}settingsTab{% endif %}', id); } catch(e){}
   }
 
   TABS.forEach(t => {
     document.getElementById('tabBtn-' + t).addEventListener('click', () => activateTab(t));
   });
 
-  let initial = 'general';
-  try { initial = localStorage.getItem('settingsTab') || 'general'; } catch(e){}
+  let initial = TABS[0];
+  try { const stored = localStorage.getItem('{% if is_types %}typesTab{% else %}settingsTab{% endif %}'); if (stored && TABS.includes(stored)) initial = stored; } catch(e){}
   {% if ft_error %}initial = 'scheduling';{% endif %}
-  {% if saved %}initial = localStorage.getItem('settingsTab') || 'general';{% endif %}
   const _qs = new URLSearchParams(location.search);
-  if (_qs.get('tab')) initial = _qs.get('tab');
+  if (_qs.get('tab') && TABS.includes(_qs.get('tab'))) initial = _qs.get('tab');
   activateTab(initial);
 
 

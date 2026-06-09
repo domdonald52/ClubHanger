@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.utils.text import slugify
 from datetime import date, datetime, time, timedelta
@@ -101,16 +102,16 @@ class ClubConfig(models.Model):
                              help_text="Club logo — ideally white on transparent PNG, shown in the banner")
 
     # Theme colours (hex). Aviation palette.
-    theme_banner = models.CharField(max_length=7, default='#1b3a5c', help_text="Top banner background")
-    theme_primary = models.CharField(max_length=7, default='#3b82f6', help_text="Buttons, links, active controls")
-    theme_accent = models.CharField(max_length=7, default='#f59e0b', help_text="Accent / highlights")
+    theme_banner = models.CharField(max_length=7, default='#2b2b2b', help_text="Top banner background")
+    theme_primary = models.CharField(max_length=7, default='#c0481c', help_text="Buttons, links, active controls")
+    theme_accent = models.CharField(max_length=7, default='#d4732a', help_text="Accent / highlights")
     theme_confirmed = models.CharField(max_length=7, default='#16a34a', help_text="Confirmed booking pills")
-    theme_pending = models.CharField(max_length=7, default='#f97316', help_text="Pending booking pills")
+    theme_pending = models.CharField(max_length=7, default='#e8a800', help_text="Pending booking pills")
     theme_departed = models.CharField(max_length=7, default='#d97706', help_text="Departed booking pills")
     theme_returned = models.CharField(max_length=7, default='#2563eb', help_text="Returned (awaiting payment) booking pills")
     theme_completed_paid = models.CharField(max_length=7, default='#7c3aed', help_text="Completed & paid booking pills")
-    theme_weekend = models.CharField(max_length=7, default='#f0f9ff', help_text="Weekend shading in search")
-    theme_atypical = models.CharField(max_length=7, default='#f1f5f9', help_text="Outside-typical-hours shading")
+    theme_weekend = models.CharField(max_length=7, default='#fdf0e6', help_text="Weekend shading in search")
+    theme_atypical = models.CharField(max_length=7, default='#f0f0f0', help_text="Outside-typical-hours shading")
 
     # ── Compliance / eligibility ─────────────────────────────────────────────
     bfr_interval_months   = models.PositiveIntegerField(default=24,
@@ -180,15 +181,30 @@ class Role(models.Model):
         (BOOKINGS_MANAGE_ALL, 'Manage all bookings'),
     ]
 
+    SYSTEM_MEMBER     = 'member'
+    SYSTEM_INSTRUCTOR = 'instructor'
+    SYSTEM_ADMIN      = 'admin'
+    SYSTEM_ROLE_CHOICES = [
+        (SYSTEM_MEMBER,     'Member'),
+        (SYSTEM_INSTRUCTOR, 'Instructor'),
+        (SYSTEM_ADMIN,      'Admin'),
+    ]
+
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='roles')
     name = models.CharField(max_length=50)
+    system_role_type = models.CharField(
+        max_length=20, choices=SYSTEM_ROLE_CHOICES, blank=True, default='',
+        help_text="Set for the three built-in roles (member/instructor/admin). Permissions are locked."
+    )
 
     # Permission matrix
     bookings_access    = models.CharField(max_length=20, choices=BOOKINGS_CHOICES, default=BOOKINGS_VIEW_OWN)
-    can_access_manage  = models.BooleanField(default=False, help_text="Access to Manage menu (members, aircraft, bookings, charges)")
-    can_access_settings = models.BooleanField(default=False, help_text="Access to Settings and club configuration")
-    can_access_reports  = models.BooleanField(default=False, help_text="Access to Reports and Analytics")
-    is_superadmin       = models.BooleanField(default=False, help_text="Grants full access to everything in the club")
+    can_access_manage  = models.BooleanField(default=False, help_text="Access to Operations and People (bookings, members, block-outs, sales)")
+    can_access_fleet   = models.BooleanField(default=False, help_text="Access to Fleet section (aircraft management)")
+    can_access_safety  = models.BooleanField(default=False, help_text="Access to Safety section (events review, action items)")
+    can_access_settings = models.BooleanField(default=False, help_text="Access to Configuration (settings, types)")
+    can_access_reports  = models.BooleanField(default=False, help_text="Access to Analytics and Reports")
+    is_superadmin       = models.BooleanField(default=False, help_text="Full access to everything — all permissions implied")
 
     # Membership renewal
     renewal_required    = models.BooleanField(default=True, help_text="Members with this role are included in the annual renewal cycle")
@@ -202,11 +218,17 @@ class Role(models.Model):
         return self.name
 
     @property
+    def is_system_role(self):
+        return bool(self.system_role_type)
+
+    @property
     def effective_is_admin(self):
         return self.is_superadmin or self.can_access_settings
 
     @property
     def effective_is_instructor(self):
+        if self.system_role_type:
+            return self.system_role_type == self.SYSTEM_INSTRUCTOR
         return self.bookings_access == self.BOOKINGS_MANAGE_ALL and self.can_access_manage
 
 
@@ -271,6 +293,8 @@ class ClubMember(models.Model):
     suburb        = models.CharField(max_length=100, blank=True)
     postcode      = models.CharField(max_length=10, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
+    SEX_CHOICES = [('M', 'Male'), ('F', 'Female')]
+    sex           = models.CharField(max_length=1, choices=SEX_CHOICES, blank=True, default='')
 
     # ── Next of kin (pre-fills departure declarations) ────────────────────────
     next_of_kin_name  = models.CharField(max_length=200, blank=True)
@@ -299,6 +323,7 @@ class ClubMember(models.Model):
     join_date            = models.DateField(auto_now_add=True, help_text="Date first admitted")
     subscription_expires = models.DateField(null=True, blank=True, help_text="Current subscription valid until")
     last_renewed         = models.DateField(null=True, blank=True, help_text="Date of most recent subscription payment")
+    resigned_at          = models.DateField(null=True, blank=True, help_text="Date membership formally ceased (ISA 2022 s.26)")
 
     class Meta:
         unique_together = ('user', 'club')
@@ -338,6 +363,14 @@ class ClubMember(models.Model):
         return self.is_admin or bool(self.role and (self.role.can_access_manage or self.role.is_superadmin))
 
     @property
+    def can_access_fleet(self):
+        return self.is_admin or bool(self.role and (self.role.can_access_fleet or self.role.can_access_manage or self.role.is_superadmin))
+
+    @property
+    def can_access_safety(self):
+        return self.is_admin or bool(self.role and (self.role.can_access_safety or self.role.can_access_manage or self.role.is_superadmin))
+
+    @property
     def can_access_reports(self):
         return self.is_admin or bool(self.role and (self.role.can_access_reports or self.role.is_superadmin))
 
@@ -346,6 +379,31 @@ class ClubMember(models.Model):
         if self.is_admin or (self.role and self.role.is_superadmin):
             return Role.BOOKINGS_MANAGE_ALL
         return self.role.bookings_access if self.role else Role.BOOKINGS_NONE
+
+
+class MembershipHistoryEntry(models.Model):
+    """Append-only audit log of membership state changes — ISA 2022 s.26 cessation date and 7-year retention."""
+    EVENT_CHOICES = [
+        ('joined',               'Joined'),
+        ('standing_change',      'Standing changed'),
+        ('category_change',      'Membership category changed'),
+        ('role_change',          'Role changed'),
+        ('subscription_renewed', 'Subscription renewed'),
+        ('note',                 'Note'),
+    ]
+    club_member = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='membership_history')
+    event_type  = models.CharField(max_length=30, choices=EVENT_CHOICES)
+    changed_at  = models.DateTimeField(auto_now_add=True)
+    changed_by  = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    old_value   = models.CharField(max_length=200, blank=True)
+    new_value   = models.CharField(max_length=200, blank=True)
+    note        = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f"{self.club_member} — {self.get_event_type_display()} at {self.changed_at:%Y-%m-%d}"
 
 
 # ============================================================================
@@ -719,7 +777,10 @@ def create_maint_log_entry(flight_completion):
     """
     if MaintenanceLogEntry.objects.filter(flight_completion=flight_completion).exists():
         return
-    ac = flight_completion.booking.aircraft
+    # Use the aircraft that physically departed — may differ from booking.aircraft
+    # if an admin swapped the aircraft mid-flight. This ensures maintenance hours
+    # are logged against the aircraft that actually flew.
+    ac = flight_completion.departed_with_aircraft or flight_completion.booking.aircraft
     src = ac.maint_time_source
     frac = float(ac.maint_time_fraction or 1)
 
@@ -907,6 +968,7 @@ class AccountTransaction(models.Model):
         ('flight',       'Flight charge'),
         ('cancellation', 'Cancellation fee'),
         ('adjustment',   'Manual adjustment'),
+        ('sale',         'Sundry sale'),
     ]
     DIRECTION_CHOICES = [
         ('credit', 'Credit'),
@@ -956,6 +1018,27 @@ class AccountTransaction(models.Model):
         return f"{self.account.club_member} {sign}${self.amount} — {self.description}"
 
 
+class VoucherType(models.Model):
+    """
+    Pre-defined voucher product in the club's catalogue.
+    Used to pre-fill the create-voucher form for common products.
+    """
+    club          = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='voucher_types')
+    name          = models.CharField(max_length=200)
+    default_value = models.DecimalField(max_digits=8, decimal_places=2)
+    description   = models.CharField(max_length=200, blank=True,
+                                     help_text='Default description printed on the voucher')
+    is_active     = models.BooleanField(default=True)
+    sort_order    = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        unique_together = [('club', 'name')]
+
+    def __str__(self):
+        return f"{self.name} (${self.default_value})"
+
+
 class Voucher(models.Model):
     """
     Credit voucher. Purchased externally (website, front desk); bookkeeper
@@ -985,6 +1068,63 @@ class Voucher(models.Model):
 
 
 # ============================================================================
+# CONTACTS  (non-members: trial flights, Young Eagles, commercial clients)
+# ============================================================================
+
+class ContactType(models.Model):
+    """Club-configurable contact categories (Young Eagles, Trial flight, etc.)."""
+    club       = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='contact_types')
+    name       = models.CharField(max_length=100)
+    is_active  = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        unique_together = [('club', 'name')]
+
+    def __str__(self):
+        return self.name
+
+
+class Contact(models.Model):
+    club            = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='contacts')
+    name            = models.CharField(max_length=200)
+    email           = models.EmailField(blank=True)
+    phone           = models.CharField(max_length=50, blank=True)
+    is_organisation = models.BooleanField(
+        default=False,
+        help_text='Organisation account (school, company). Cannot be converted to a member.'
+    )
+    organisation    = models.CharField(
+        max_length=200, blank=True,
+        help_text='For individuals: sponsoring school or organisation.'
+    )
+    contact_type    = models.ForeignKey(
+        ContactType, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='contacts'
+    )
+    notes           = models.TextField(blank=True)
+    converted_to_member = models.ForeignKey(
+        'ClubMember', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='converted_from_contact'
+    )
+    created_by      = models.ForeignKey(
+        'User', on_delete=models.SET_NULL, null=True, blank=True, related_name='contacts_created'
+    )
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def can_convert(self):
+        return not self.is_organisation and self.converted_to_member_id is None
+
+
+# ============================================================================
 # BOOKINGS
 # ============================================================================
 
@@ -1005,7 +1145,24 @@ class Booking(models.Model):
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='bookings')
     
     # Participants
-    member = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='bookings')
+    member     = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='bookings')
+    client     = models.ForeignKey(
+        'Contact', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='bookings',
+        help_text='Non-member being flown (trial flight, Young Eagles, etc.)'
+    )
+    BILLED_CONTACT      = 'contact'
+    BILLED_ORGANISATION = 'organisation'
+    BILLED_CLUB         = 'club'
+    BILLED_TO_CHOICES = [
+        (BILLED_CONTACT,      'Client pays'),
+        (BILLED_ORGANISATION, 'Organisation invoiced'),
+        (BILLED_CLUB,         'Club absorbs'),
+    ]
+    billed_to  = models.CharField(
+        max_length=20, choices=BILLED_TO_CHOICES, blank=True, default='',
+        help_text='Only relevant when a non-member client is set.'
+    )
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='bookings_created')
     confirmed_by = models.ForeignKey(
         User, 
@@ -1019,9 +1176,9 @@ class Booking(models.Model):
     aircraft = models.ForeignKey(Aircraft, on_delete=models.PROTECT, related_name='bookings')
     flight_type = models.ForeignKey(FlightType, on_delete=models.PROTECT)
     instructor = models.ForeignKey(
-        User, 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        User,
+        on_delete=models.PROTECT,
+        null=True,
         blank=True,
         related_name='flights_instructed'
     )
@@ -1195,6 +1352,20 @@ class FlightCompletion(models.Model):
         help_text="Populated if flight type was changed from booking type at check-in"
     )
 
+    # Departure snapshots — capture which aircraft and instructor actually departed.
+    # Booking.aircraft / instructor can be changed mid-flight by admin; these fields
+    # preserve the original so maintenance hours are logged against the right aircraft.
+    departed_with_aircraft = models.ForeignKey(
+        'Aircraft', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='departed_completions',
+        help_text="Aircraft that physically departed — may differ from booking.aircraft if swapped mid-flight"
+    )
+    departed_with_instructor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='departed_completions',
+        help_text="Instructor at departure — may differ from booking.instructor if swapped mid-flight"
+    )
+
     # Actual flight time readings
     hobbs_start      = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     hobbs_end        = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
@@ -1220,9 +1391,10 @@ class FlightCompletion(models.Model):
     # Total charge (sum of FlightChargeItem rows — computed, stored for fast display)
     total_charge = models.DecimalField(max_digits=8, decimal_places=2, default=0)
 
-    # Payment — amount_paid accumulates across partial payments
+    # Payment cache — denormalised from FlightPayment rows via _sync_payment_cache()
     payment_method = models.CharField(
-        max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True, default=''
+        max_length=20, choices=PAYMENT_METHOD_CHOICES + [('split', 'Split'), ('cash', 'Cash')],
+        blank=True, default=''
     )
     amount_paid = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     paid_at = models.DateTimeField(null=True, blank=True)
@@ -1253,6 +1425,78 @@ class FlightCompletion(models.Model):
     @property
     def balance_owing(self):
         return max(0, self.total_charge - self.amount_paid)
+
+    def _sync_payment_cache(self):
+        """Recompute denormalised payment fields from FlightPayment rows."""
+        from decimal import Decimal as _D
+        from django.db.models import Sum as _Sum
+        paid_qs = self.payments.filter(paid_at__isnull=False)
+        paid_total = paid_qs.aggregate(t=_Sum('amount'))['t'] or _D('0')
+        methods = list(paid_qs.values_list('method', flat=True).distinct())
+        last_paid = paid_qs.order_by('paid_at').last()
+        self.amount_paid = paid_total
+        self.paid_at = last_paid.paid_at if (last_paid and paid_total >= self.total_charge) else None
+        self.payment_method = methods[0] if len(methods) == 1 else ('split' if methods else '')
+        self.save(update_fields=['amount_paid', 'paid_at', 'payment_method'])
+
+
+class FlightSegment(models.Model):
+    """
+    One pilot's portion of a split flight.  Meter readings are contiguous —
+    segment N end = segment N+1 start.  All configured instruments are recorded
+    even if only one drives payment calculation.
+    """
+    flight_completion = models.ForeignKey(
+        FlightCompletion, on_delete=models.CASCADE, related_name='segments'
+    )
+    member   = models.ForeignKey('ClubMember', on_delete=models.PROTECT, related_name='flight_segments')
+    sequence = models.PositiveSmallIntegerField()
+
+    hobbs_start     = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    hobbs_end       = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    tacho_start     = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    tacho_end       = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    airswitch_start = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    airswitch_end   = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+
+    hours = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+
+    class Meta:
+        ordering = ['sequence']
+        unique_together = [('flight_completion', 'sequence')]
+
+    def __str__(self):
+        return f"Seg {self.sequence} — {self.member} ({self.hours}h)"
+
+
+class FlightPayment(models.Model):
+    """
+    One payee row for a flight. A single flight may have multiple rows (split payment/flight).
+    paid_at=None means allocated but not yet collected. paid_at set means money received.
+    """
+    PAYMENT_METHOD_CHOICES = [
+        ('credit',  'Account credit'),
+        ('eftpos',  'EFTPOS'),
+        ('cash',    'Cash'),
+        ('invoice', 'Invoice (bank transfer)'),
+    ]
+    completion  = models.ForeignKey(FlightCompletion, on_delete=models.CASCADE, related_name='payments')
+    member      = models.ForeignKey('ClubMember', on_delete=models.PROTECT, related_name='flight_payments')
+    amount      = models.DecimalField(max_digits=8, decimal_places=2)
+    method      = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    paid_at     = models.DateTimeField(null=True, blank=True)
+    recorded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='+')
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_paid(self):
+        return self.paid_at is not None
+
+    def get_method_display(self):
+        return dict(self.PAYMENT_METHOD_CHOICES).get(self.method, self.method)
+
+    class Meta:
+        ordering = ['created_at']
 
 
 # ============================================================================
@@ -2044,6 +2288,10 @@ class FlightChargeItem(models.Model):
     flight_completion = models.ForeignKey(
         FlightCompletion, on_delete=models.CASCADE, related_name='charge_items'
     )
+    segment = models.ForeignKey(
+        'FlightSegment', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='charge_items'
+    )
     item_type = models.CharField(max_length=20, choices=ITEM_TYPE_CHOICES)
     description = models.CharField(
         max_length=300,
@@ -2228,3 +2476,116 @@ class InvoiceLineItem(models.Model):
 
     def __str__(self):
         return f"{self.description} — ${self.amount}"
+
+
+# ============================================================================
+# OCCURRENCE / SAFETY REPORTING
+# ============================================================================
+
+class OccurrenceType(models.Model):
+    """Configurable occurrence/incident categories per club."""
+    club        = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='occurrence_types')
+    name        = models.CharField(max_length=100)
+    description = models.CharField(max_length=255, blank=True)
+    is_active   = models.BooleanField(default=True)
+    sort_order  = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'name']
+        unique_together = ('club', 'name')
+
+    def __str__(self):
+        return self.name
+
+
+class OccurrenceReport(models.Model):
+    STATUS_DRAFT     = 'draft'
+    STATUS_SUBMITTED = 'submitted'
+    STATUS_REVIEWED  = 'reviewed'
+    STATUS_CLOSED    = 'closed'
+    STATUS_CHOICES = [
+        (STATUS_DRAFT,     'Draft'),
+        (STATUS_SUBMITTED, 'Submitted'),
+        (STATUS_REVIEWED,  'Reviewed'),
+        (STATUS_CLOSED,    'Closed'),
+    ]
+
+    club              = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='occurrence_reports')
+    occurrence_type   = models.ForeignKey(OccurrenceType, on_delete=models.PROTECT, related_name='reports')
+    reported_by       = models.ForeignKey(ClubMember, on_delete=models.PROTECT, related_name='occurrence_reports')
+    status            = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_SUBMITTED)
+
+    # When and where
+    date_of_occurrence  = models.DateField()
+    time_of_occurrence  = models.TimeField(null=True, blank=True)
+    location            = models.CharField(max_length=200, blank=True, help_text='Aerodrome ICAO, airspace, or description')
+
+    # Optional flight link
+    aircraft            = models.ForeignKey('Aircraft', on_delete=models.SET_NULL, null=True, blank=True, related_name='occurrence_reports')
+    related_booking     = models.ForeignKey('Booking', on_delete=models.SET_NULL, null=True, blank=True, related_name='occurrence_reports')
+
+    # Report content
+    description         = models.TextField(help_text='Describe what happened')
+    immediate_action    = models.TextField(blank=True, help_text='Any immediate action taken')
+
+    # Admin review
+    reviewed_by         = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_occurrences')
+    reviewed_at         = models.DateTimeField(null=True, blank=True)
+    review_notes        = models.TextField(blank=True)
+
+    is_safety_risk      = models.BooleanField(default=False, help_text='Reporter or reviewer flagged as potential safety risk')
+
+    reported_at         = models.DateTimeField(auto_now_add=True)
+    updated_at          = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-reported_at']
+
+    def __str__(self):
+        return f"{self.occurrence_type} — {self.date_of_occurrence} ({self.reported_by.user.get_full_name()})"
+
+    @property
+    def is_open(self):
+        return self.status in (self.STATUS_SUBMITTED, self.STATUS_DRAFT)
+
+    @property
+    def all_actions_resolved(self):
+        return not self.actions.filter(status='open').exists()
+
+
+class OccurrenceAction(models.Model):
+    STATUS_OPEN       = 'open'
+    STATUS_COMPLETE   = 'complete'
+    STATUS_OVERRIDDEN = 'overridden'
+    STATUS_CHOICES = [
+        (STATUS_OPEN,       'Open'),
+        (STATUS_COMPLETE,   'Complete'),
+        (STATUS_OVERRIDDEN, 'Overridden'),
+    ]
+    report        = models.ForeignKey(OccurrenceReport, on_delete=models.CASCADE, related_name='actions')
+    description   = models.TextField()
+    assigned_to   = models.ForeignKey('ClubMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_actions')
+    due_date      = models.DateField(null=True, blank=True)
+    status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    completed_by  = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_actions')
+    completed_at  = models.DateTimeField(null=True, blank=True)
+    override_note = models.TextField(blank=True)
+    created_by    = models.ForeignKey('ClubMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_actions')
+    created_at    = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return self.description[:60]
+
+
+class OccurrenceAuditEntry(models.Model):
+    report    = models.ForeignKey(OccurrenceReport, on_delete=models.CASCADE, related_name='audit_entries')
+    actor     = models.ForeignKey('ClubMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='occurrence_audit_entries')
+    verb      = models.CharField(max_length=80)
+    note      = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['timestamp']

@@ -2,14 +2,12 @@
 {% block title %}Vouchers · {{ club.name }}{% endblock %}
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1.2rem;">Manage</h1>
-  {% include "core/_manage_nav.html" with active_section="vouchers" %}
+  <h1 style="margin-bottom:1rem;">Sales</h1>
+  {% include "core/_sales_tabs.html" with active_tab="vouchers" %}
 
+  <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Redeeming a voucher credits the member's account. Vouchers can only be used once.</p>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
     <div>
-      <h2 style="font-size:1rem;font-weight:650;margin:0;">Vouchers</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 0;">Redeeming a voucher credits the member's account. Vouchers can only be used once.</p>
-    </div>
     <div style="display:flex;gap:.6rem;align-items:center;">
       <div class="seg-ctrl">
         <a href="?show=pending"  class="seg-btn {% if f_show == 'pending' %}active{% endif %}">Pending</a>
@@ -36,7 +34,7 @@
       <tr style="border-bottom:1px solid #f0f2f4;">
         <td style="padding:.55rem .6rem;font-family:monospace;font-size:.9rem;font-weight:600;">{{ v.code }}</td>
         <td style="padding:.55rem .6rem;color:#5b6573;font-size:.85rem;">{{ v.description|default:"—" }}</td>
-        <td style="padding:.55rem .6rem;text-align:right;font-weight:600;">${{ v.value }}</td>
+        <td style="padding:.55rem .6rem;text-align:right;font-weight:600;">${{ v.value|currency }}</td>
         <td style="padding:.55rem .6rem;">
           {% if v.is_redeemed %}
           <span class="status-pill sp-off">Redeemed</span>
@@ -67,14 +65,24 @@
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="create_voucher">
+      {% if voucher_types %}
+      <label class="flabel">Type <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(auto-fills value &amp; description)</span>
+        <select id="vtype-select" class="finput" onchange="applyVoucherType(this)">
+          <option value="">— custom / no type —</option>
+          {% for vt in voucher_types %}
+          <option value="{{ vt.id }}" data-value="{{ vt.default_value }}" data-desc="{{ vt.description|escapejs }}">{{ vt.name }} (${{ vt.default_value|currency }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
       <label class="flabel">Code <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(unique, will be uppercased)</span>
         <input type="text" name="code" class="finput" required placeholder="e.g. HARB24-001">
       </label>
       <label class="flabel">Value ($)
-        <input type="number" name="value" class="finput" min="0" step="0.01" required placeholder="e.g. 250.00">
+        <input type="number" name="value" id="voucher-value" class="finput" min="0" step="0.01" required placeholder="e.g. 250.00">
       </label>
       <label class="flabel">Description <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(optional)</span>
-        <input type="text" name="description" class="finput" placeholder="e.g. Harbour Circuit Trial Flight">
+        <input type="text" name="description" id="voucher-desc" class="finput" placeholder="e.g. Harbour Circuit Trial Flight">
       </label>
       <label class="flabel">Notes <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(internal)</span>
         <textarea name="notes" class="finput" rows="2"></textarea>
@@ -112,6 +120,12 @@
   </div>
 </div>
 <script>
+function applyVoucherType(sel) {
+  var opt = sel.options[sel.selectedIndex];
+  var val = opt.dataset.value, desc = opt.dataset.desc;
+  if (val) document.getElementById('voucher-value').value = val;
+  if (desc !== undefined) document.getElementById('voucher-desc').value = desc;
+}
 function openRedeem(id, code, value) {
   document.getElementById('redeem-voucher-id').value = id;
   document.getElementById('redeem-desc').textContent = 'Voucher ' + code + ' · $' + value + ' will be credited to the member\'s account.';

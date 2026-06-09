@@ -11,7 +11,7 @@ from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, Fl
                      FlightCompletion, AircraftMaintenanceItem, ChargeRate, FlightChargeItem,
                      FlightLandingEntry, AccountTransaction, ClubConfig,
                      OccurrenceReport, OccurrenceType, OccurrenceAction, OccurrenceAuditEntry,
-                     ContactType, MembershipHistoryEntry,
+                     ContactType, MembershipHistoryEntry, VoucherType,
                      create_maint_log_entry)
 from .availability import find_available_slots, get_date_range
 from .services import booking_service
@@ -1534,6 +1534,47 @@ def club_settings(request, club_slug, mode='settings'):
                 ct.save(update_fields=['is_active'])
             return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1")
 
+        elif action == 'add_voucher_type':
+            vt_name = request.POST.get('vt_name', '').strip()
+            vt_val  = request.POST.get('vt_value', '').strip()
+            if vt_name and vt_val:
+                try:
+                    VoucherType.objects.get_or_create(
+                        club=club, name=vt_name,
+                        defaults={
+                            'default_value': vt_val,
+                            'description': request.POST.get('vt_desc', '').strip(),
+                            'sort_order': VoucherType.objects.filter(club=club).count(),
+                        }
+                    )
+                except Exception:
+                    pass
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
+
+        elif action == 'edit_voucher_type':
+            vt = VoucherType.objects.filter(club=club, id=request.POST.get('vt_id')).first()
+            if vt:
+                vt.name        = request.POST.get('vt_name', vt.name).strip() or vt.name
+                try: vt.default_value = float(request.POST.get('vt_value', vt.default_value))
+                except (ValueError, TypeError): pass
+                vt.description = request.POST.get('vt_desc', '').strip()
+                vt.sort_order  = int(request.POST.get('vt_sort', vt.sort_order) or vt.sort_order)
+                vt.save()
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
+
+        elif action == 'delete_voucher_type':
+            vt = VoucherType.objects.filter(club=club, id=request.POST.get('vt_id')).first()
+            if vt:
+                vt.delete()
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
+
+        elif action == 'toggle_voucher_type':
+            vt = VoucherType.objects.filter(club=club, id=request.POST.get('vt_id')).first()
+            if vt:
+                vt.is_active = not vt.is_active
+                vt.save(update_fields=['is_active'])
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
+
         elif action == 'save_billing':
             for field in ['billing_name', 'billing_address', 'billing_phone', 'billing_email',
                           'gst_number', 'bank_name', 'bank_account', 'payment_terms_text',
@@ -1647,6 +1688,7 @@ def club_settings(request, club_slug, mode='settings'):
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'occurrence_types': OccurrenceType.objects.filter(club=club),
         'contact_types_list': ContactType.objects.filter(club=club).order_by('sort_order', 'name'),
+        'voucher_types_list': VoucherType.objects.filter(club=club),
         'roles': roles,
         'saved': saved,
         'ft_error': ft_error,
@@ -5298,6 +5340,7 @@ def manage_vouchers(request, club_slug):
     return render(request, 'core/manage_vouchers.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'vouchers': qs, 'f_show': f_show, 'members': members,
+        'voucher_types': VoucherType.objects.filter(club=club, is_active=True),
     })
 
 
