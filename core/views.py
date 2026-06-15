@@ -5552,6 +5552,11 @@ def reports(request, club_slug):
     dash_outstanding_debt = abs(round(float(_debt_agg['total'] or 0), 2))
     dash_debtor_count     = _debt_agg['cnt'] or 0
 
+    _inv_agg = (Invoice.objects.filter(club=club, status='sent')
+                .aggregate(total=_DSum('total'), cnt=_DCnt('id')))
+    dash_unpaid_invoices     = round(float(_inv_agg['total'] or 0), 2)
+    dash_overdue_invoice_count = _inv_agg['cnt'] or 0
+
     # Current-month hours KPI
     cm_start = date(today.year, today.month, 1)
     import calendar as _cal3
@@ -5834,6 +5839,8 @@ def reports(request, club_slug):
         'dash_outstanding_debt': dash_outstanding_debt,
         'dash_debtor_count':     dash_debtor_count,
         'dash_debtor_url': _mbr_url + '?debt=1',
+        'dash_unpaid_invoices':       dash_unpaid_invoices,
+        'dash_overdue_invoice_count': dash_overdue_invoice_count,
         'dash_monthly_charged':   _json.dumps([round(v, 0) for v in _dash_billed]),
         'dash_monthly_collected': dash_monthly_collected,
         'dash_solo_flights':  _json.dumps(_dash_solo_flights),
@@ -7769,7 +7776,16 @@ def _parse_avwx_taf(data):
         for cloud in (period.get('clouds') or []):
             if cloud.get('altitude') is not None:
                 cloud['altitude'] = cloud['altitude'] * 100
-        period['wx_human'] = _decode_wx_conditions(period.get('weather_conditions') or [])
+        wx_conds = period.get('weather_conditions') or []
+        if wx_conds:
+            period['wx_human'] = _decode_wx_conditions(wx_conds)
+        else:
+            # AVWX doesn't always populate weather_conditions for simple codes
+            period['wx_human'] = [
+                c.get('value') or c.get('repr', '')
+                for c in (period.get('wx_codes') or [])
+                if c.get('value') or c.get('repr')
+            ]
     return result
 
 

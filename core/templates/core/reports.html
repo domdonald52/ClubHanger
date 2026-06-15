@@ -44,9 +44,14 @@
         <div class="dash-kpi-sub">Currently</div>
       </div>
       <div class="dash-kpi {% if dash_debtor_count %}dash-kpi-warn{% endif %}">
-        <div class="dash-kpi-lbl">Outstanding debt</div>
+        <div class="dash-kpi-lbl">Negative balances</div>
         <div class="dash-kpi-val">${{ dash_outstanding_debt|currency }}</div>
-        <div class="dash-kpi-sub"><a href="{{ dash_debtor_url }}" style="color:inherit;text-decoration:underline dotted;">{{ dash_debtor_count }} member{{ dash_debtor_count|pluralize }} with negative balance</a></div>
+        <div class="dash-kpi-sub"><a href="{{ dash_debtor_url }}" style="color:inherit;text-decoration:underline dotted;">{{ dash_debtor_count }} member{{ dash_debtor_count|pluralize }}</a></div>
+      </div>
+      <div class="dash-kpi {% if dash_overdue_invoice_count %}dash-kpi-warn{% endif %}">
+        <div class="dash-kpi-lbl">Unpaid invoices</div>
+        <div class="dash-kpi-val">${{ dash_unpaid_invoices|currency }}</div>
+        <div class="dash-kpi-sub"><a href="{% url 'core:manage_invoices' club.slug %}?status=sent" style="color:inherit;text-decoration:underline dotted;">{{ dash_overdue_invoice_count }} overdue</a></div>
       </div>
       <div class="dash-kpi {% if occ_fy_open %}dash-kpi-warn{% endif %}">
         <div class="dash-kpi-lbl">Safety events</div>

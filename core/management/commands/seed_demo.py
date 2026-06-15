@@ -58,28 +58,16 @@ AIRCRAFT_FLEET = [
     dict(registration="ZK-TAW", type_name="Cessna 152",    seats=2,
          total_time_method="hobbs", records_tacho=False, records_hobbs=True,
          fuel_consumption_per_hour="19.0", hobbs_initial="6831.7"),
-    dict(registration="ZK-EAC", type_name="Cessna 152",    seats=2,
-         total_time_method="hobbs", records_tacho=False, records_hobbs=True,
-         fuel_consumption_per_hour="19.0", hobbs_initial="5102.4"),
-    dict(registration="ZK-LAN", type_name="Cessna 152",    seats=2,
-         total_time_method="hobbs", records_tacho=False, records_hobbs=True,
-         fuel_consumption_per_hour="19.0", hobbs_initial="3984.1"),
     dict(registration="ZK-BCX", type_name="Cessna 172S",   seats=4,
          total_time_method="hobbs", records_tacho=False, records_hobbs=True,
          fuel_consumption_per_hour="34.0", hobbs_initial="2941.6"),
-    dict(registration="ZK-FTW", type_name="Piper Warrior",  seats=4,
-         total_time_method="hobbs", records_tacho=False, records_hobbs=True,
-         fuel_consumption_per_hour="30.0", hobbs_initial="3510.2"),
 ]
 
 # Hire rate per aircraft (NZD/hr, applied to actual flight hours)
 HIRE_RATE = {
     "ZK-WAC": Decimal("190"),
     "ZK-TAW": Decimal("185"),
-    "ZK-EAC": Decimal("185"),
-    "ZK-LAN": Decimal("185"),
     "ZK-BCX": Decimal("290"),
-    "ZK-FTW": Decimal("270"),
 }
 INSTRUCTOR_RATE = Decimal("85")
 
@@ -190,7 +178,21 @@ class Command(BaseCommand):
         random.seed(42)
         reset = options['reset']
 
-        club        = self._setup_club()
+        club = self._setup_club()
+
+        if reset:
+            self.stdout.write("  Wiping existing demo data...")
+            BlockOut.objects.filter(club=club).delete()
+            BlockOutType.objects.filter(club=club).delete()
+            FlightCompletion.objects.filter(booking__club=club).delete()
+            Invoice.objects.filter(club=club).delete()
+            Booking.objects.filter(club=club).delete()
+            ChargeRate.objects.filter(aircraft__club=club).delete()
+            Aircraft.objects.filter(club=club).delete()
+            AircraftType.objects.filter(club=club).delete()
+            ClubMember.objects.filter(club=club).delete()
+            User.objects.filter(username__in=[p[0] for p in PEOPLE]).delete()
+
         roles, cats = self._setup_taxonomy(club)
         aircraft    = self._setup_fleet(club)
         ft          = self._setup_flight_types(club)
@@ -200,33 +202,23 @@ class Command(BaseCommand):
         self._setup_charge_rates(club, aircraft, ft)
 
         # ── Bookings ──────────────────────────────────────────────────────────
-        existing_bookings = Booking.objects.filter(club=club).count()
-        if existing_bookings and not reset:
-            self.stdout.write(f"  {existing_bookings} bookings exist — skipping "
-                              "(use --reset to regenerate)")
+        if Booking.objects.filter(club=club).exists():
+            self.stdout.write("  Bookings exist — skipping (use --reset to regenerate)")
         else:
-            if reset:
-                Booking.objects.filter(club=club).delete()
             self._generate_bookings(club, aircraft, members, ft, admin_user)
 
         # ── Analytics (completions, accounts, invoices) ────────────────────────
-        existing_completions = FlightCompletion.objects.filter(
-            booking__club=club).count()
-        if existing_completions and not reset:
-            self.stdout.write(f"  {existing_completions} completions exist — skipping analytics")
+        if FlightCompletion.objects.filter(booking__club=club).exists():
+            self.stdout.write("  Completions exist — skipping analytics")
         else:
-            if reset:
-                FlightCompletion.objects.filter(booking__club=club).delete()
-                Invoice.objects.filter(club=club).delete()
             self._setup_accounts(club, members, admin_user)
             self._setup_completions(club, aircraft, members, admin_user)
             self._setup_invoices(club, members, admin_user)
 
         # ── Block-outs ─────────────────────────────────────────────────────────
-        if not BlockOut.objects.filter(club=club).exists() or reset:
-            if reset:
-                BlockOut.objects.filter(club=club).delete()
-                BlockOutType.objects.filter(club=club).delete()
+        if BlockOut.objects.filter(club=club).exists():
+            self.stdout.write("  Block-outs exist — skipping")
+        else:
             self._setup_blockouts(club, aircraft, members, admin_user)
 
         self.stdout.write(self.style.SUCCESS(
@@ -265,6 +257,7 @@ class Command(BaseCommand):
     def _setup_fleet(self, club):
         objs = []
         for spec in AIRCRAFT_FLEET:
+            spec = dict(spec)  # don't mutate module-level constant
             type_name = spec.pop("type_name")
             ac_type, _ = AircraftType.objects.get_or_create(club=club, name=type_name)
             ac, created = Aircraft.objects.get_or_create(
@@ -433,6 +426,39 @@ class Command(BaseCommand):
             f"  Generated {len(created)} bookings "
             f"({date.today() - timedelta(days=14)} → {date.today() + timedelta(days=42)})"
         )
+
+        # ── Guaranteed tomorrow bookings for demo screenshots ────────────────
+        tomorrow = today + timedelta(days=1)
+        instr_jane  = next((m for m in instructors if m.user.username == 'jane'), None)
+        member_mike = next((m for m in flying_members if m.user.username == 'mike'), None)
+        member_rita = next((m for m in flying_members if m.user.username == 'rita'), None)
+        demo_2seat  = two_seaters[0] if two_seaters else None
+        demo_4seat  = four_seaters[0] if four_seaters else None
+
+        if instr_jane and member_mike and demo_2seat:
+            t = datetime(tomorrow.year, tomorrow.month, tomorrow.day, 9, 30, tzinfo=NZ)
+            if not Booking.objects.filter(club=club, aircraft=demo_2seat,
+                                           scheduled_start=t).exists():
+                Booking.objects.create(
+                    club=club, aircraft=demo_2seat, member=member_mike,
+                    flight_type=ft.get("DUAL"), instructor=instr_jane.user,
+                    scheduled_start=t, scheduled_end=t + timedelta(minutes=90),
+                    status=BookingStatus.CONFIRMED, created_by=admin_user,
+                    confirmed_by=admin_user,
+                    confirmed_at=t - timedelta(hours=18),
+                )
+        if member_rita and demo_4seat:
+            t = datetime(tomorrow.year, tomorrow.month, tomorrow.day, 11, 0, tzinfo=NZ)
+            if not Booking.objects.filter(club=club, aircraft=demo_4seat,
+                                           scheduled_start=t).exists():
+                Booking.objects.create(
+                    club=club, aircraft=demo_4seat, member=member_rita,
+                    flight_type=ft.get("XC"), instructor=None,
+                    scheduled_start=t, scheduled_end=t + timedelta(minutes=90),
+                    status=BookingStatus.CONFIRMED, created_by=admin_user,
+                    confirmed_by=admin_user,
+                    confirmed_at=t - timedelta(hours=10),
+                )
 
     def _pick_instructor(self, instructors, slot_start, slot_end, day_key, busy):
         available = [
