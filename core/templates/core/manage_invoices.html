@@ -45,13 +45,13 @@
     <tbody>
       {% for inv in invoices %}
       <tr class="{% if inv.is_overdue %}row-conflict{% endif %}">
-        <td><strong>{{ inv.display_number }}</strong></td>
+        <td style="white-space:nowrap;"><strong>{{ inv.display_number }}</strong></td>
         <td>{{ inv.member.user.get_full_name|default:"—" }}</td>
         <td style="color:#5b6573;font-size:.82rem;">{{ inv.description|default:"—" }}</td>
         <td style="white-space:nowrap;color:#8a93a0;">{{ inv.issue_date|date:"j M Y" }}</td>
         <td style="white-space:nowrap;{% if inv.is_overdue %}color:#c0392b;font-weight:600;{% else %}color:#8a93a0;{% endif %}">
           {{ inv.due_date|date:"j M Y" }}
-          {% if inv.is_overdue %}<br><span style="font-size:.75rem;">{{ inv.days_overdue }}d overdue</span>{% endif %}
+          {% if inv.is_overdue %}<span style="display:inline-block;margin-left:.35rem;font-size:.7rem;font-weight:700;background:#fdecea;color:#c0392b;border-radius:8px;padding:.1rem .4rem;vertical-align:middle;">{{ inv.days_overdue }}d</span>{% endif %}
         </td>
         <td style="text-align:right;">${{ inv.total|currency }}</td>
         <td style="text-align:right;{% if inv.balance_due %}font-weight:600;{% endif %}">
