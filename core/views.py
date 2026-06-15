@@ -6555,7 +6555,6 @@ def _instructor_cred_issues(club, on_date):
 
 @login_required
 def manage_exceptions(request, club_slug):
-    from datetime import date as _date
     from django.db.models import Q as _Q
     club = get_object_or_404(Club, slug=club_slug)
     try:
@@ -6564,7 +6563,7 @@ def manage_exceptions(request, club_slug):
         return redirect('login')
     if err := require_manage(actor, club, request): return err
 
-    today = _date.today()
+    today = timezone.localdate()
 
     # 1. Unpaid completed flights
     unpaid_flights = (
