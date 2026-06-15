@@ -33,7 +33,7 @@ from core.models import (
     AccountTransaction, Aircraft, AircraftType, ChargeRate, FlightType,
     Booking, BookingStatus, FlightCompletion, FlightChargeItem, FlightPayment,
     Invoice, InvoiceLineItem, BlockOutType, BlockOut, OccurrenceReport,
-    Aerodrome, AerodromeFeeType,
+    Aerodrome, AerodromeFeeType, MemberCredential,
 )
 
 User = get_user_model()
@@ -102,7 +102,7 @@ FLIGHT_TYPES = [
 
 PEOPLE = [
     # Admins
-    ("dominic","Dominic","Hales",     "Admin",      "Full Member",         "active", "2027-03-31",None, "credit",  Decimal("0")),
+    ("dominic","Dominic","Hales",     "Admin",      "Full Member",         "active", "2027-03-31",None, "credit",  Decimal("1500")),
     ("alex",   "Alex",   "Reed",      "Admin",      "Commercial Pilot",    "active", "2027-03-31",None, "credit",  Decimal("0")),
     # Instructors (always exempt from credit limit)
     ("sean",   "Sean",   "Kemp",      "Instructor", "Instructor",          "active", "2027-03-31",None, "credit",  Decimal("0")),
@@ -232,6 +232,9 @@ class Command(BaseCommand):
             self.stdout.write("  Block-outs exist — skipping")
         else:
             self._setup_blockouts(club, aircraft, members, admin_user)
+
+        # ── Dominic's personal demo data (always idempotent) ──────────────────
+        self._setup_dominic(club, aircraft, members, ft, admin_user)
 
         self.stdout.write(self.style.SUCCESS(
             f"\nDone. Login: dominic / {DEFAULT_PASSWORD}\n"
@@ -846,6 +849,90 @@ class Command(BaseCommand):
         self.stdout.write(f"  Invoices: {invoices_created} created")
 
     # ── Block-outs ────────────────────────────────────────────────────────────
+
+    def _setup_dominic(self, club, aircraft, members, ft, admin_user):
+        today = date.today()
+        dom = next((m for m in members if m.user.username == 'dominic'), None)
+        if not dom:
+            return
+
+        ac_map = {ac.registration: ac for ac in aircraft}
+
+        # ── Credentials ──────────────────────────────────────────────────────
+        # Type ratings for fleet aircraft
+        for reg, label in [("ZK-WAC", "PA38 Tomahawk"), ("ZK-TAW", "Cessna 152"),
+                            ("ZK-BCX", "Cessna 172S")]:
+            ac = ac_map.get(reg)
+            if ac:
+                MemberCredential.objects.get_or_create(
+                    club_member=dom, credential_type='type', aircraft_type=ac.aircraft_type,
+                    defaults={'name': label, 'issue_date': date(2021, 3, 15)},
+                )
+        # PA28 — not in current fleet, name-only
+        MemberCredential.objects.get_or_create(
+            club_member=dom, credential_type='type', name='Piper PA28 Warrior',
+            defaults={'issue_date': date(2019, 8, 20)},
+        )
+        # DLR9 medical — expires 11 months 15 days from today
+        med_m = today.month + 11
+        med_expiry = date(today.year + (med_m - 1) // 12, (med_m - 1) % 12 + 1, today.day) \
+                     + timedelta(days=15)
+        MemberCredential.objects.get_or_create(
+            club_member=dom, credential_type='dlr9',
+            defaults={
+                'issue_date': date(today.year - 2, today.month, today.day),
+                'expiry_date': med_expiry,
+                'certificate_number': 'NZ-DLR9-2024-04521',
+            },
+        )
+        # Tailwheel endorsement
+        MemberCredential.objects.get_or_create(
+            club_member=dom, credential_type='tailwheel',
+            defaults={'issue_date': date(2018, 5, 10)},
+        )
+
+        # ── Bookings ─────────────────────────────────────────────────────────
+        wac = ac_map.get("ZK-WAC")
+        bcx = ac_map.get("ZK-BCX")
+        for d_offset, ac, ftype_code, hour in [(3, wac, "SOLO", 14), (7, bcx, "XC", 9)]:
+            if not ac:
+                continue
+            d = today + timedelta(days=d_offset)
+            t = datetime(d.year, d.month, d.day, hour, 30, tzinfo=NZ)
+            if not Booking.objects.filter(club=club, aircraft=ac,
+                                          member=dom, scheduled_start=t).exists():
+                Booking.objects.create(
+                    club=club, aircraft=ac, member=dom,
+                    flight_type=ft.get(ftype_code), instructor=None,
+                    scheduled_start=t, scheduled_end=t + timedelta(minutes=90),
+                    status=BookingStatus.CONFIRMED, created_by=admin_user,
+                )
+
+        # ── Unpaid invoice ────────────────────────────────────────────────────
+        if not Invoice.objects.filter(club=club, member=dom).exists():
+            inv_num = Invoice.objects.filter(club=club).count() + 1
+            inv = Invoice.objects.create(
+                club=club, member=dom, invoice_number=inv_num,
+                issue_date=today - timedelta(days=18),
+                due_date=today + timedelta(days=12),
+                description=f"May/Jun 2026 flight hire — Dominic Hales",
+                status="sent", gst_rate=Decimal("15"), amount_paid=Decimal("0"),
+                sent_at=datetime(today.year, today.month, today.day,
+                                 9, 0, tzinfo=NZ) - timedelta(days=18),
+                created_by=admin_user,
+            )
+            InvoiceLineItem.objects.create(
+                invoice=inv, description="ZK-WAC hire — 3 Jun 2026",
+                quantity=Decimal("1.2"), unit="hrs",
+                rate=Decimal("190"), amount=Decimal("228.00"), sort_order=0,
+            )
+            InvoiceLineItem.objects.create(
+                invoice=inv, description="ZK-BCX hire — 9 Jun 2026",
+                quantity=Decimal("1.4"), unit="hrs",
+                rate=Decimal("290"), amount=Decimal("406.00"), sort_order=1,
+            )
+
+        self.stdout.write("  Dominic: credentials, bookings and invoice seeded")
 
     def _setup_blockouts(self, club, aircraft, members, admin_user):
         today = date.today()

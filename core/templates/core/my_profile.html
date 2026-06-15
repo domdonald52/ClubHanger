@@ -362,7 +362,7 @@
 
 <script>
 (function(){
-  const TABS = ['contact', 'account', 'bookings', 'notifications'{% if my_actions %},'actions'{% endif %}];
+  const TABS = ['contact', 'account', 'bookings', 'payments', 'notifications'{% if my_actions %},'actions'{% endif %}];
 
   function activateTab(id) {
     if (!TABS.includes(id)) id = 'contact';
