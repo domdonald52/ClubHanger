@@ -692,7 +692,7 @@ def credential_check_api(request, booking_id):
                  .values('hobbs_end', 'tacho_end').first())
     current_hobbs = float(latest_fc['hobbs_end']) if latest_fc and latest_fc['hobbs_end'] else None
 
-    _today = date.today()
+    _today = timezone.localdate()
     maint_data = []
     for m in maint_items:
         progress_pct = None
@@ -1361,7 +1361,7 @@ def update_booking(request, booking_id):
 
 def _budget_fy_year(config):
     """Return the integer year that the current FY starts."""
-    today = date.today()
+    today = timezone.localdate()
     return today.year if today.month >= config.fy_start_month else today.year - 1
 
 
@@ -1380,8 +1380,8 @@ def _budget_month_labels(config):
 
 def _lapse_preview(club, config):
     """Return list of members who would be lapsed if auto-lapse ran now."""
-    from datetime import date as _date, timedelta as _td
-    cutoff = _date.today() - _td(days=config.lapse_grace_days)
+    from datetime import timedelta as _td
+    cutoff = timezone.localdate() - _td(days=config.lapse_grace_days)
     return list(
         ClubMember.objects.filter(
             club=club, standing='active',
@@ -1393,8 +1393,7 @@ def _lapse_preview(club, config):
 def _next_fy_end(config):
     """Return the next financial year end date for the club."""
     import calendar as _cal
-    from datetime import date as _date
-    today = _date.today()
+    today = timezone.localdate()
     fy_start = config.fy_start_month
     fy_end_month = fy_start - 1 or 12
     fy_end_year = today.year if today.month < fy_start else today.year + 1
@@ -1818,19 +1817,20 @@ def club_settings(request, club_slug, mode='settings'):
             return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=budget&saved=1")
 
         elif action == 'run_auto_lapse':
-            from datetime import date as _date, timedelta as _td
+            from datetime import timedelta as _td
             from .models import MembershipHistoryEntry as _MHE
             grace = config.lapse_grace_days
-            cutoff = _date.today() - _td(days=grace)
+            _now = timezone.localdate()
+            cutoff = _now - _td(days=grace)
             candidates = ClubMember.objects.filter(
                 club=club, standing='active',
                 subscription_expires__lt=cutoff,
             ).select_related('user')
             lapsed_names = []
             for m in candidates:
-                days_over = (_date.today() - m.subscription_expires).days
+                days_over = (_now - m.subscription_expires).days
                 m.standing    = 'lapsed'
-                m.resigned_at = m.resigned_at or _date.today()
+                m.resigned_at = m.resigned_at or _now
                 m.save(update_fields=['standing', 'resigned_at'])
                 if m.user:
                     m.user.is_active = False
@@ -1850,13 +1850,13 @@ def club_settings(request, club_slug, mode='settings'):
             return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=membership&saved=1")
 
         elif action == 'run_bulk_renewal':
-            from datetime import date as _date, timedelta as _td
+            from datetime import timedelta as _td
             from django.db.models import F as _F
             from django.contrib import messages as _msgs
             fy_end = _next_fy_end(config)
             fy_label = f'FY{str(fy_end.year)[2:]}'
             candidates = _renewal_preview(club, config)
-            today = _date.today()
+            today = timezone.localdate()
             created = 0
             for m in candidates:
                 config.refresh_from_db()
@@ -2124,9 +2124,8 @@ def manage_bookings(request, club_slug):
         return redirect('login')
     if err := require_staff(actor, club, request): return err
 
-    from datetime import date as _date
     from django.db.models import Q
-    today = _date.today()
+    today = timezone.localdate()
 
     _conflict_q = (
         Q(blockout_conflict=True) |
@@ -3008,7 +3007,7 @@ def booking_detail(request, club_slug, booking_id):
                          .order_by('-booking__arrived_at', '-created_at')
                          .values('hobbs_end').first())
         _cur_hobbs = float(_latest_hobbs['hobbs_end']) if _latest_hobbs else None
-        _today_d = date.today()
+        _today_d = timezone.localdate()
         for _mi in _maint_qs:
             _detail = ''
             if _mi.last_completed_date and _mi.due_date:
@@ -3258,7 +3257,7 @@ def manage_member_detail(request, club_slug, member_id):
             if standing in dict(ClubMember.STANDING_CHOICES):
                 member.standing = standing
                 if standing in ('resigned', 'lapsed') and not member.resigned_at:
-                    member.resigned_at = date.today()
+                    member.resigned_at = timezone.localdate()
             sub_exp = request.POST.get('subscription_expires')
             member.subscription_expires = sub_exp or None
             role_id = request.POST.get('role_id')
@@ -3459,9 +3458,9 @@ def manage_member_detail(request, club_slug, member_id):
                 assert amount > 0
             except (InvalidOperation, AssertionError):
                 return _inline_redirect(request, 'core:manage_member_detail', club_slug=club_slug, member_id=member_id)
-            today = _date.today()
+            today = timezone.localdate()
             try:
-                expiry_date = _date.fromisoformat(raw_expiry)
+                expiry_date = date.fromisoformat(raw_expiry)
             except (ValueError, TypeError):
                 expiry_date = None
             due = today + _td(days=config.payment_terms_days)
@@ -3541,7 +3540,7 @@ def manage_member_detail(request, club_slug, member_id):
     import calendar as _cal
     _cfg = get_config(club)
     _fy_start = _cfg.fy_start_month
-    _today = date.today()
+    _today = timezone.localdate()
     _fy_end_month = (_fy_start - 2) % 12 + 1
     _fy_end_year  = _today.year if _today.month < _fy_start else _today.year + 1
     if _fy_end_month >= _fy_start:
@@ -3849,8 +3848,7 @@ def manage_blockouts(request, club_slug):
         return redirect('core:manage_blockouts', club_slug=club_slug)
 
     from django.db.models import Q
-    from datetime import date as _date
-    _today = _date.today()
+    _today = timezone.localdate()
     _active_q = (
         Q(recurrence='one_off', date__gte=_today) |
         Q(recurrence__in=['weekly', 'daily'], active_until__isnull=True) |
@@ -3927,7 +3925,7 @@ def manage_members(request, club_slug):
                         old_standing = cm.standing
                         cm.standing = standing
                         if standing in ('resigned', 'lapsed') and not cm.resigned_at:
-                            cm.resigned_at = date.today()
+                            cm.resigned_at = timezone.localdate()
                         cm.save(update_fields=['standing', 'resigned_at'])
                         MembershipHistoryEntry.objects.create(
                             club_member=cm, event_type='standing_change',
@@ -3992,7 +3990,7 @@ def manage_members(request, club_slug):
         try: members = members.filter(subscription_expires__lte=f_exp_to)
         except Exception: pass
 
-    _today        = date.today()
+    _today        = timezone.localdate()
     _config       = get_config(club)
     _grace_days   = getattr(_config, 'lapse_grace_days', 60)
     _lapse_cutoff = _today - timedelta(days=_grace_days)
@@ -4021,7 +4019,7 @@ def manage_members(request, club_slug):
         'modal_error': modal_error,
         'modal_error_id': modal_error_id,
         'modal_error_values': modal_error_values,
-        'today_iso': date.today().isoformat(),
+        'today_iso': timezone.localdate().isoformat(),
         'today': _today,
         'lapse_cutoff': _lapse_cutoff,
         'warn_cutoff': _warn_cutoff,
@@ -4053,7 +4051,7 @@ def registrar_export(request, club_slug):
         except ValueError:
             pass
     if as_of is None:
-        as_of = date.today()
+        as_of = timezone.localdate()
 
     # Members whose membership was active at as_of date:
     # joined on or before as_of AND (no resigned_at OR resigned_at > as_of)
@@ -4155,8 +4153,7 @@ def manage_aircraft(request, club_slug):
     # Attach aircraft-scoped block-outs to each aircraft (active/upcoming only)
     from .models import BlockOut
     from django.db.models import Q
-    from datetime import date as _date
-    _today = _date.today()
+    _today = timezone.localdate()
     _active_q = (
         Q(recurrence='one_off', date__gte=_today) |
         Q(recurrence__in=['weekly', 'daily'], active_until__isnull=True) |
@@ -4365,7 +4362,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         elif action == 'add_manual_log_entry' and actor.is_admin:
             from .models import MaintenanceLogEntry as _MLE
             from decimal import Decimal as _D
-            entry_date = request.POST.get('entry_date') or date.today().isoformat()
+            entry_date = request.POST.get('entry_date') or timezone.localdate().isoformat()
             notes = request.POST.get('notes', '').strip()
             hobbs = request.POST.get('hobbs_reading') or None
             tacho = request.POST.get('tacho_reading') or None
@@ -4400,8 +4397,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
 
     from .models import BlockOut
     from django.db.models import Q
-    from datetime import date as _date
-    _today = _date.today()
+    _today = timezone.localdate()
     _active_q = (
         Q(recurrence='one_off', date__gte=_today) |
         Q(recurrence__in=['weekly', 'daily'], active_until__isnull=True) |
@@ -4431,7 +4427,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                       .order_by('-booking__arrived_at', '-created_at')
                       .values('hobbs_end').first())
     _current_hobbs = float(_latest_meters['hobbs_end']) if _latest_meters else None
-    _today = date.today()
+    _today = timezone.localdate()
     for _m in maintenance_items:
         _m.progress_pct = None
         if _m.last_completed_date and _m.due_date:
@@ -4524,8 +4520,7 @@ def manage_instructors(request, club_slug):
 
     from .models import InstructorAvailability
     from django.db.models import Q
-    from datetime import date as _date
-    _today = _date.today()
+    _today = timezone.localdate()
     _active_q = (
         Q(recurrence='one_off', date__gte=_today) |
         Q(recurrence='weekly', active_until__isnull=True) |
@@ -4694,8 +4689,7 @@ def manage_instructor_detail(request, club_slug, member_id):
         return _inline_redirect(request, 'core:manage_instructor_detail', club_slug=club_slug, member_id=member_id, saved=_saved)
 
     from django.db.models import Q
-    from datetime import date as _date
-    _today = _date.today()
+    _today = timezone.localdate()
     _active_q = (
         Q(recurrence='one_off', date__gte=_today) |
         Q(recurrence='weekly', active_until__isnull=True) |
@@ -5223,7 +5217,7 @@ def generate_invoice(request, club_slug, booking_id):
     config.invoice_number_next = F('invoice_number_next') + 1
     config.save(update_fields=['invoice_number_next'])
 
-    today = _date.today()
+    today = timezone.localdate()
     due   = today + _td(days=config.payment_terms_days)
 
     # Derive description from flight type
@@ -5420,7 +5414,7 @@ def reports(request, club_slug):
     config, _ = ClubConfig.objects.get_or_create(club=club)
     fy_start = config.fy_start_month
 
-    today = date.today()
+    today = timezone.localdate()
     # Determine current FY start date
     fy_year = today.year if today.month >= fy_start else today.year - 1
     fy_start_date = date(fy_year, fy_start, 1)
@@ -5977,7 +5971,7 @@ def reports_members_xlsx(request, club_slug):
     if err := require_staff(actor, club, request): return err
 
     config = get_config(club)
-    today = date.today()
+    today = timezone.localdate()
     fy_start = config.fy_start_month
     fy_year = today.year if today.month >= fy_start else today.year - 1
     fy_start_date = date(fy_year, fy_start, 1)
@@ -6323,7 +6317,7 @@ def ai_ask(request, club_slug):
 
     # Budget vs actual (current FY)
     _ai_cfg = ClubConfig.objects.get(club=club)
-    _ai_today = date.today()
+    _ai_today = timezone.localdate()
     _ai_fy = _ai_today.year if _ai_today.month >= _ai_cfg.fy_start_month else _ai_today.year - 1
     _ai_budgets = list(FlyingBudget.objects.filter(club=club, fy_year=_ai_fy).select_related('aircraft'))
     budget_rows = [
@@ -6350,7 +6344,7 @@ def ai_ask(request, club_slug):
         client = Groq(api_key=api_key)
         system = (
             f"You are a helpful data assistant for {club.name}, an aviation club. "
-            f"Today is {date.today().strftime('%d %B %Y')}. "
+            f"Today is {timezone.localdate().strftime('%d %B %Y')}. "
             "The following JSON contains club data — members, completed flights, aircraft, "
             "account balances, and safety occurrences. "
             "Answer questions using only this data. Be concise. "
@@ -6431,8 +6425,7 @@ def manage_invoices(request, club_slug):
           .prefetch_related('line_items')
           .order_by('-invoice_number'))
 
-    from datetime import date as _date
-    today = _date.today()
+    today = timezone.localdate()
 
     if f_status == 'overdue':
         qs = qs.filter(status='sent', due_date__lt=today)
@@ -7082,7 +7075,7 @@ def health_check(request, club_slug):
 
 
     # ── 6. Active members with expired subscriptions ─────────────────────────
-    today = date.today()
+    today = timezone.localdate()
     lapsed_active = list(
         ClubMember.objects.filter(
             club=club, standing='active',
@@ -7434,7 +7427,7 @@ def export_data(request, club_slug, export_type):
 
     # ── Dispatch ──────────────────────────────────────────────────────────────
     slug = club.slug
-    ts = date.today().strftime('%Y%m%d')
+    ts = timezone.localdate().strftime('%Y%m%d')
     fmt = request.GET.get('fmt', 'csv')  # ?fmt=xlsx or default csv
 
     if export_type == 'all':
@@ -8154,7 +8147,7 @@ def live_positions(request, club_slug):
     except ClubMember.DoesNotExist:
         return JsonResponse({'error': 'Access denied'}, status=403)
 
-    today = date.today()
+    today = timezone.localdate()
     departed = (
         Booking.objects.filter(club=club, status='departed', scheduled_start__date=today)
         .select_related('aircraft', 'aircraft__aircraft_type', 'member', 'member__user')
@@ -8297,7 +8290,7 @@ def occurrence_submit(request, club_slug):
     from datetime import timedelta
     recent_bookings = (Booking.objects
                        .filter(club=club, member=actor,
-                               scheduled_start__date__gte=_date.today() - timedelta(days=30))
+                               scheduled_start__date__gte=timezone.localdate() - timedelta(days=30))
                        .exclude(status='cancelled')
                        .select_related('aircraft', 'flight_type')
                        .order_by('-scheduled_start')[:10])
@@ -8362,7 +8355,7 @@ def occurrence_submit(request, club_slug):
         'aircraft_list': aircraft_list,
         'recent_bookings': recent_bookings,
         'error': error,
-        'today': _date.today().isoformat(),
+        'today': timezone.localdate().isoformat(),
         'base_template': base_template,
         'is_inline': is_inline,
         'is_app': is_app,
@@ -8651,7 +8644,7 @@ def occurrence_actions(request, club_slug):
         'actions': qs,
         'f_assigned': f_assigned,
         'instructors': instructors,
-        'today': _date.today(),
+        'today': timezone.localdate(),
     })
 
 

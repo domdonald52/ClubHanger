@@ -1,6 +1,7 @@
-from datetime import date, timedelta
+from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.utils import timezone
 from core.models import Club, ClubMember, MembershipHistoryEntry
 
 
@@ -36,7 +37,7 @@ class Command(BaseCommand):
             clubs = clubs.filter(slug=club_slug)
 
         total = 0
-        today = date.today()
+        today = timezone.localdate()
 
         for club in clubs:
             grace = grace_override

@@ -13,8 +13,9 @@ Sends:
 --dry-run prints what would be sent without actually sending anything.
 """
 
-from datetime import date, timedelta
+from datetime import timedelta
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 
 class Command(BaseCommand):
@@ -39,7 +40,7 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(self.style.WARNING('DRY RUN — no emails will be sent'))
 
-        tomorrow = date.today() + timedelta(days=1)
+        tomorrow = timezone.localdate() + timedelta(days=1)
         sent = 0
 
         for club in Club.objects.all():
@@ -62,7 +63,7 @@ class Command(BaseCommand):
 
             # Credential expiry warnings — 30 days and 7 days out
             for days in (30, 7):
-                target = date.today() + timedelta(days=days)
+                target = timezone.localdate() + timedelta(days=days)
                 creds = (MemberCredential.objects
                          .filter(club_member__club=club, expiry_date=target)
                          .select_related('club_member__user', 'club_member__notification_prefs',
@@ -80,7 +81,7 @@ class Command(BaseCommand):
 
             # Subscription expiry warnings — 30 days and 7 days out
             for days in (30, 7):
-                target = date.today() + timedelta(days=days)
+                target = timezone.localdate() + timedelta(days=days)
                 members = (ClubMember.objects
                            .filter(club=club, standing='active',
                                    role__renewal_required=True,
