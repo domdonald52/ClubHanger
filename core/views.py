@@ -5554,9 +5554,10 @@ def reports(request, club_slug):
     dash_debtor_count     = _debt_agg['cnt'] or 0
 
     _inv_agg = (Invoice.objects.filter(club=club, status='sent')
-                .aggregate(total=_DSum('line_items__amount'), cnt=_DCnt('id')))
-    dash_unpaid_invoices     = round(float(_inv_agg['total'] or 0), 2)
-    dash_overdue_invoice_count = _inv_agg['cnt'] or 0
+                .aggregate(total=_DSum('line_items__amount'), cnt=_DCnt('id', distinct=True)))
+    dash_unpaid_invoices       = round(float(_inv_agg['total'] or 0), 2)
+    dash_overdue_invoice_count = (Invoice.objects.filter(
+        club=club, status='sent', due_date__lt=today).count())
 
     # Current-month hours KPI
     cm_start = date(today.year, today.month, 1)
