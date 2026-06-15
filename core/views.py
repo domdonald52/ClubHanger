@@ -342,6 +342,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
                 'label': f"{user.first_name} {user.last_name}".strip() or user.username,
                 'row_key': f"instructor:{user.id}",
                 'resource_id': user.id,
+                'detail_id': None,
                 'pills': [booking_geometry(b) for b in ex_bookings],
                 'bands': [],
                 'is_current_user': user == request.user,

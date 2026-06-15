@@ -82,7 +82,7 @@
       </div>
       {% for row in instructor_rows %}
         <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
-          <div class="row-label row-label-instructor {% if row.is_current_user %}me{% endif %}{% if row.ghost %} ghost{% endif %}"{% if is_instructor or can_manage %} data-detail-url="{% url 'core:manage_instructor_detail' club.slug row.detail_id %}"{% endif %}>
+          <div class="row-label row-label-instructor {% if row.is_current_user %}me{% endif %}{% if row.ghost %} ghost{% endif %}"{% if row.detail_id %}{% if is_instructor or can_manage %} data-detail-url="{% url 'core:manage_instructor_detail' club.slug row.detail_id %}"{% endif %}{% endif %}>
             <span class="row-name">{{ row.label }}</span>
             {% if row.ghost_reason == 'inactive' %}
               <span class="ghost-badge" title="Instructor inactive — bookings need reassignment">Inactive</span>
