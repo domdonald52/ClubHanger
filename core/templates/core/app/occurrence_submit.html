@@ -1,0 +1,117 @@
+{% extends "core/app/base.html" %}
+{% block title %}Report Issue · {{ club.name }}{% endblock %}
+{% block page_title %}Report a Safety Issue{% endblock %}
+
+{% block app_bar_brand %}{% endblock %}
+{% block app_bar %}
+<a href="{% url 'core:app_home' club.slug %}" class="app-bar-action" style="margin-left:-.2rem;">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</a>
+<span class="app-bar-title">Report Issue</span>
+{% endblock %}
+
+{% block extra_style %}
+<style>
+.occ-field { margin-bottom:1rem; }
+.occ-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#8a93a0; margin-bottom:.35rem; display:block; }
+.occ-input, .occ-select, .occ-textarea {
+  display:block; width:100%; padding:.75rem .9rem;
+  border:1.5px solid #d5d9e0; border-radius:10px;
+  font-size:.9rem; background:#fff; color:#1f2933;
+  -webkit-appearance:none;
+}
+.occ-input:focus, .occ-select:focus, .occ-textarea:focus { outline:none; border-color:var(--primary); }
+.occ-textarea { min-height:100px; resize:vertical; }
+.occ-check { display:flex; align-items:center; gap:.6rem; padding:.75rem .9rem; background:#fff; border:1.5px solid #d5d9e0; border-radius:10px; cursor:pointer; }
+.occ-check input { width:18px; height:18px; accent-color:var(--primary); flex-shrink:0; }
+.occ-check-label { font-size:.88rem; color:#374151; }
+.error-banner { background:#fee2e2; color:#b91c1c; border-radius:10px; padding:.75rem 1rem; margin:.75rem; font-size:.85rem; }
+.success-banner { background:#dcfce7; color:#166534; border-radius:10px; padding:.75rem 1rem; margin:.75rem; font-size:.85rem; font-weight:600; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if request.GET.saved %}
+<div class="success-banner" style="margin:.75rem;">Report submitted. Thank you — the safety officer has been notified.</div>
+{% endif %}
+{% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
+
+<p style="padding:.75rem .75rem 0;font-size:.82rem;color:#8a93a0;line-height:1.5;">
+  Use this form to report snags, near misses, hazards, or anything worth recording. All reports are confidential and reviewed by the safety officer.
+</p>
+
+<form method="post" action="{% url 'core:occurrence_submit' club.slug %}?app=1" style="padding:.75rem;">
+  {% csrf_token %}
+  <input type="hidden" name="_from_app" value="1">
+
+  <div class="occ-field">
+    <label class="occ-label" for="occ_type">Type of occurrence *</label>
+    <select name="occurrence_type" id="occ_type" class="occ-select" required>
+      <option value="">— select —</option>
+      {% for ot in occ_types %}
+      <option value="{{ ot.id }}">{{ ot.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="occ-field" style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+    <div>
+      <label class="occ-label" for="occ_date">Date *</label>
+      <input type="date" name="date_of_occurrence" id="occ_date" class="occ-input" value="{{ today }}" required>
+    </div>
+    <div>
+      <label class="occ-label" for="occ_time">Time</label>
+      <input type="time" name="time_of_occurrence" id="occ_time" class="occ-input">
+    </div>
+  </div>
+
+  <div class="occ-field">
+    <label class="occ-label" for="occ_aircraft">Aircraft (if applicable)</label>
+    <select name="aircraft" id="occ_aircraft" class="occ-select">
+      <option value="">— none —</option>
+      {% for ac in aircraft_list %}
+      <option value="{{ ac.id }}">{{ ac.registration }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  {% if recent_bookings %}
+  <div class="occ-field">
+    <label class="occ-label" for="occ_booking">Related booking (optional)</label>
+    <select name="related_booking" id="occ_booking" class="occ-select">
+      <option value="">— none —</option>
+      {% for bk in recent_bookings %}
+      <option value="{{ bk.id }}">{{ bk.scheduled_start|date:"j M" }} {{ bk.aircraft.registration }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <div class="occ-field">
+    <label class="occ-label" for="occ_location">Location</label>
+    <input type="text" name="location" id="occ_location" class="occ-input" placeholder="e.g. NZWN runway 16">
+  </div>
+
+  <div class="occ-field">
+    <label class="occ-label" for="occ_desc">Description *</label>
+    <textarea name="description" id="occ_desc" class="occ-textarea" required placeholder="Describe what happened, what you observed, or what the hazard is…"></textarea>
+  </div>
+
+  <div class="occ-field">
+    <label class="occ-label" for="occ_action">Immediate action taken</label>
+    <textarea name="immediate_action" id="occ_action" class="occ-textarea" style="min-height:60px;" placeholder="e.g. Reported to ATC, grounded aircraft, notified CFI…"></textarea>
+  </div>
+
+  <div class="occ-field">
+    <label class="occ-check">
+      <input type="checkbox" name="is_safety_risk" value="on">
+      <span class="occ-check-label">This represents an ongoing safety risk that needs urgent attention</span>
+    </label>
+  </div>
+
+  <button type="submit" class="app-btn">Submit report</button>
+  <div style="text-align:center;margin-top:.75rem;font-size:.72rem;color:#9ca3af;">
+    Submitted anonymously to the club safety officer
+  </div>
+</form>
+{% endblock %}

@@ -132,11 +132,18 @@ def find_free_spans_with_instructors(club, date_start, date_end, aircraft=None,
     instr_users = [m.user for m in instr_members]
     member_map = {m.user_id: m for m in instr_members}
 
+    _now = timezone.now()
+    _today = timezone.localdate()
     results = []
     day = date_start
     while day <= date_end:
         day_start = _aware(datetime.combine(day, op_start))
         day_end = _aware(datetime.combine(day, op_end))
+        if day == _today:
+            day_start = max(day_start, _now)
+        if day_start >= day_end:
+            day += timedelta(days=1)
+            continue
 
         # Precompute each instructor's free intervals (availability window minus busy)
         instr_free = {}
@@ -204,11 +211,18 @@ def find_free_spans(club, date_start, date_end, aircraft=None, aircraft_type=Non
     else:
         ac_list = list(Aircraft.objects.filter(club=club, status='online'))
 
+    _now = timezone.now()
+    _today = timezone.localdate()
     results = []
     day = date_start
     while day <= date_end:
         day_start = _aware(datetime.combine(day, op_start))
         day_end = _aware(datetime.combine(day, op_end))
+        if day == _today:
+            day_start = max(day_start, _now)
+        if day_start >= day_end:
+            day += timedelta(days=1)
+            continue
 
         for ac in ac_list:
             busy = []
@@ -283,15 +297,16 @@ def find_available_slots(club, date_start, date_end, aircraft=None, aircraft_typ
             # Get bookings for this aircraft on this day
             day_start = datetime.combine(current_date, time(7, 0))
             day_end = datetime.combine(current_date, time(21, 0))
-            
+
             bookings = Booking.objects.filter(
                 aircraft=ac,
                 scheduled_start__gte=day_start,
                 scheduled_start__lte=day_end + timedelta(days=1)
             )
-            
-            # Find free 30-min slots for the requested duration
-            current_time = day_start
+
+            # For today, start from now (not the opening time)
+            from datetime import date as _date
+            current_time = max(day_start, datetime.now()) if current_date == _date.today() else day_start
             
             while current_time + timedelta(minutes=duration_minutes) <= day_end:
                 slot_end = current_time + timedelta(minutes=duration_minutes)

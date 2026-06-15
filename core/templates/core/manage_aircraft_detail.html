@@ -5,9 +5,9 @@
 {% block content %}
 <div style="max-width:1140px;margin:0 auto;padding:2rem;">
 
-  <a href="{% url 'core:manage_aircraft' club.slug %}" class="back-link">
+  <a href="{% if request.GET.back %}{{ request.GET.back }}{% else %}{% url 'core:manage_aircraft' club.slug %}{% endif %}" class="back-link">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg>
-    Aircraft
+    Back
   </a>
 
   <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;">
@@ -19,7 +19,7 @@
   </div>
 
   <!-- Tab bar -->
-  <div class="stab-bar">
+  <div class="stab-bar" data-managed="1">
     <button class="stab-btn" id="tabBtn-details"     data-tab="details">Details</button>
     <button class="stab-btn" id="tabBtn-instruments" data-tab="instruments">Instruments</button>
     <button class="stab-btn" id="tabBtn-rates"       data-tab="rates">Rates</button>
@@ -72,12 +72,12 @@
           </label>
           <div>
             <div style="font-size:.88rem;font-weight:500;">Available for member bookings</div>
-            <div style="font-size:.78rem;color:#8a93a0;">Turn off if this aircraft should not appear in the booking calendar (e.g. temporarily suspended, or an owner's aircraft not available to general members). Separate from the Online/Retired status — use Retired only when the aircraft permanently leaves the fleet.</div>
+            <div style="font-size:.78rem;color:#8a93a0;">Hide from the booking calendar during maintenance or when otherwise unavailable. Note: use Retired only for permanent fleet removal.</div>
           </div>
         </div>
       </div>
       <div style="margin-top:1rem;">
-        <button type="submit" class="btn">Save details</button>
+        <button type="submit" class="btn">Save</button>
       </div>
     </form>
     {% else %}
@@ -110,11 +110,11 @@
         </label>
         {% endfor %}
       </div>
-      <label class="flabel" style="max-width:260px;">Time calculation method
-        <select name="total_time_method" class="finput">
-          {% for val, label in ac.TOTAL_TIME_METHOD_CHOICES %}
+      <label class="flabel" style="max-width:260px;">Billing measure
+        <select name="total_time_method" id="billing-method-select" class="finput">
+          {% for val, label in ac.TOTAL_TIME_METHOD_CHOICES %}{% if val != 'tacho_less_5' %}
           <option value="{{ val }}" {% if ac.total_time_method == val %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
+          {% endif %}{% endfor %}
         </select>
       </label>
 
@@ -125,34 +125,62 @@
       </label>
 
       <h2 class="sh2" style="margin-top:1.4rem;">Starting meter readings</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .5rem;">The readings when this aircraft was entered into the system — used to compute cumulative totals.</p>
-      {% if ac.hobbs_initial or ac.tacho_initial or ac.airswitch_initial %}
-      <div class="notice warn" style="margin-bottom:.7rem;font-size:.82rem;">
-        <strong>Warning:</strong> These values are already set. Changing them will affect all cumulative hour calculations and maintenance scheduling. Only correct a data entry error.
-      </div>
-      {% endif %}
-      <div class="fgrid" style="max-width:420px;margin-bottom:.8rem;">
-        <label class="flabel">Hobbs initial
-          <input type="number" name="hobbs_initial" value="{{ ac.hobbs_initial|default:'' }}"
-                 min="0" step="0.1" class="finput" placeholder="e.g. 2340.5">
-        </label>
-        <label class="flabel">Tacho initial
-          <input type="number" name="tacho_initial" value="{{ ac.tacho_initial|default:'' }}"
-                 min="0" step="0.01" class="finput" placeholder="e.g. 1987.2">
-        </label>
-        <label class="flabel">Air switch initial
-          <input type="number" name="airswitch_initial" value="{{ ac.airswitch_initial|default:'' }}"
-                 min="0" step="0.1" class="finput" placeholder="e.g. 1543.0">
-        </label>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .7rem;">The readings when this aircraft was entered into the system — used to compute cumulative totals. Set once; use Amend only to correct a data entry error.</p>
+      <div id="meter-readings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.6rem 1rem;max-width:520px;margin-bottom:.8rem;">
+        <div id="row-hobbs-initial" class="init-row">
+          <div class="flabel-lk">Hobbs initial</div>
+          <div class="init-field-wrap">
+            <input type="number" name="hobbs_initial" id="hobbs-initial-input"
+                   value="{{ ac.hobbs_initial|default:'' }}"
+                   min="0" step="0.1" class="finput"
+                   placeholder="e.g. 2340.5"
+                   {% if ac.hobbs_initial %}readonly{% endif %}>
+            {% if ac.hobbs_initial %}
+            <button type="button" class="cbtn-sm amend-btn" data-target="hobbs-initial-input">Amend</button>
+            {% else %}
+            <button type="button" class="cbtn-sm apply-btn" data-target="hobbs-initial-input">Apply</button>
+            {% endif %}
+          </div>
+        </div>
+        <div id="row-tacho-initial" class="init-row">
+          <div class="flabel-lk">Tacho initial</div>
+          <div class="init-field-wrap">
+            <input type="number" name="tacho_initial" id="tacho-initial-input"
+                   value="{{ ac.tacho_initial|default:'' }}"
+                   min="0" step="0.01" class="finput"
+                   placeholder="e.g. 1987.2"
+                   {% if ac.tacho_initial %}readonly{% endif %}>
+            {% if ac.tacho_initial %}
+            <button type="button" class="cbtn-sm amend-btn" data-target="tacho-initial-input">Amend</button>
+            {% else %}
+            <button type="button" class="cbtn-sm apply-btn" data-target="tacho-initial-input">Apply</button>
+            {% endif %}
+          </div>
+        </div>
+        <div id="row-airswitch-initial" class="init-row">
+          <div class="flabel-lk">Air switch initial</div>
+          <div class="init-field-wrap">
+            <input type="number" name="airswitch_initial" id="airswitch-initial-input"
+                   value="{{ ac.airswitch_initial|default:'' }}"
+                   min="0" step="0.1" class="finput"
+                   placeholder="e.g. 1543.0"
+                   {% if ac.airswitch_initial %}readonly{% endif %}>
+            {% if ac.airswitch_initial %}
+            <button type="button" class="cbtn-sm amend-btn" data-target="airswitch-initial-input">Amend</button>
+            {% else %}
+            <button type="button" class="cbtn-sm apply-btn" data-target="airswitch-initial-input">Apply</button>
+            {% endif %}
+          </div>
+        </div>
       </div>
 
       <h2 class="sh2" style="margin-top:1.4rem;">Maintenance hours</h2>
       <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .7rem;">
-        Choose which instrument to use and what fraction of each reading to count as "maintenance hours" (e.g. 95% of tacho = Tachometer at 0.95).
+        Which instrument to use and what fraction to count as maintenance hours (e.g. 0.95 of tacho).
       </p>
       <div class="fgrid" style="max-width:500px;margin-bottom:.8rem;">
         <label class="flabel">Source instrument
-          <select name="maint_time_source" class="finput">
+          <select name="maint_time_source" id="maint-source-select" class="finput">
             {% for val, label in ac.MAINT_SOURCE_CHOICES %}
             <option value="{{ val }}" {% if ac.maint_time_source == val %}selected{% endif %}>{{ label }}</option>
             {% endfor %}
@@ -163,15 +191,25 @@
                  min="0.5" max="1.0" step="0.01" class="finput" style="width:120px;" placeholder="e.g. 0.95">
           <span style="font-size:.78rem;color:#8a93a0;">0.50–1.00</span>
         </label>
-        <label class="flabel">Initial maintenance hours
-          <input type="number" name="maint_hours_initial" value="{{ ac.maint_hours_initial|default:'' }}"
-                 min="0" step="0.1" class="finput" placeholder="e.g. 1425.0">
+        <div class="flabel-lk" style="grid-column:1/-1;">Initial maintenance hours
+          <div class="init-field-wrap" style="margin-top:.25rem;">
+            <input type="number" name="maint_hours_initial" id="maint-hours-initial-input"
+                   value="{{ ac.maint_hours_initial|default:'' }}"
+                   min="0" step="0.1" class="finput" style="width:160px;"
+                   placeholder="e.g. 1425.0"
+                   {% if ac.maint_hours_initial %}readonly{% endif %}>
+            {% if ac.maint_hours_initial %}
+            <button type="button" class="cbtn-sm amend-btn" data-target="maint-hours-initial-input">Amend</button>
+            {% else %}
+            <button type="button" class="cbtn-sm apply-btn" data-target="maint-hours-initial-input">Apply</button>
+            {% endif %}
+          </div>
           <span style="font-size:.78rem;color:#8a93a0;">Accumulated hours when entered into this system</span>
-        </label>
+        </div>
       </div>
 
       <div style="margin-top:1rem;">
-        <button type="submit" class="btn">Save instruments</button>
+        <button type="submit" class="cbtn primary">Save</button>
       </div>
     </form>
     {% else %}
@@ -205,7 +243,7 @@
         <tr>
           <td>{{ r.flight_type.name }}</td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ r.get_time_method_display }}</td>
-          <td>${{ r.amount }}</td>
+          <td>${{ r.amount|currency }}</td>
           <td>
             <span class="hire-badge {% if r.includes_fuel %}wet{% else %}dry{% endif %}">
               {% if r.includes_fuel %}Wet (fuel incl.){% else %}Dry{% endif %}
@@ -251,7 +289,7 @@
     {% with current=fuel_rates.0 %}
     <div class="current-rate-card">
       <span class="current-rate-label">Current rate</span>
-      <span class="current-rate-amount" style="{% if not current.is_active %}text-decoration:line-through;color:#adb5bd;{% endif %}">${{ current.rate }}/hr</span>
+      <span class="current-rate-amount" style="{% if not current.is_active %}text-decoration:line-through;color:#adb5bd;{% endif %}">${{ current.rate|currency }}/hr</span>
       <span class="current-rate-since">from {{ current.effective_from }}</span>
       {% if current.notes %}<span class="current-rate-notes">{{ current.notes }}</span>{% endif %}
       {% if not current.is_active %}<span class="hire-badge dry" style="background:#fff0f0;color:#c0392b;">Paused</span>{% endif %}
@@ -278,7 +316,7 @@
           {% for r in fuel_rates %}{% if not forloop.first %}
           <tr>
             <td style="font-size:.85rem;">{{ r.effective_from }}</td>
-            <td>${{ r.rate }}</td>
+            <td>${{ r.rate|currency }}</td>
             <td style="color:#8a93a0;font-size:.82rem;">{{ r.notes|default:"—" }}</td>
             <td style="text-align:right;">
               {% if club_member.is_admin %}
@@ -326,7 +364,7 @@
         {% for st in all_surcharge_types %}
         <tr>
           <td><strong>{{ st.name }}</strong></td>
-          <td>${{ st.amount }}/flight</td>
+          <td>${{ st.amount|currency }}/flight</td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
           <td>
             {% if club_member.is_admin %}
@@ -388,7 +426,7 @@
             {% if club_member.is_admin %}
             <div style="display:inline-flex;gap:.3rem;">
               <button type="button" class="cbtn-sm"
-                      onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|default:'' }}','{{ m.last_completed_hours|default:'' }}')">Edit</button>
+                      onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|default:'' }}','{{ m.last_completed_hours|default:'' }}','{{ m.interval_days|default:'' }}','{{ m.interval_hours|default:'' }}','{{ m.warn_days|default:'' }}','{{ m.alert_days|default:'' }}','{{ m.warn_hours|default:'' }}','{{ m.alert_hours|default:'' }}')">Edit</button>
               <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ m.name|escapejs }}?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_maintenance">
@@ -410,8 +448,11 @@
 
     <hr style="border:none;border-top:1px solid #eef1f4;margin:2rem 0 1.4rem;">
 
-    <h2 class="sh2" style="margin:0 0 .6rem;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100 entries)</span></h2>
-    <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .8rem;">Auto-recorded at each check-in. Cross-check against the paper tech log.</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
+      <h2 class="sh2" style="margin:0;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100 entries)</span></h2>
+      {% if club_member.is_admin %}<button type="button" class="cbtn-add" onclick="document.getElementById('add-manual-log-modal').hidden=false">+ Log manual entry</button>{% endif %}
+    </div>
+    <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .8rem;">Auto-recorded at each check-in. Manual entries explain meter gaps (ground runs, tows, corrections, errors).</p>
     {% if maint_log %}
     <table class="ft-table" style="margin-bottom:1.5rem;">
       <thead><tr>
@@ -423,7 +464,9 @@
         <tr>
           <td style="font-size:.82rem;">{{ e.date }}</td>
           <td style="font-size:.82rem;color:#8a93a0;">
-            {% if e.flight_completion %}{{ e.flight_completion.booking.member.user.get_full_name }}{% else %}Manual{% endif %}
+            {% if e.flight_completion %}{{ e.flight_completion.booking.member.user.get_full_name }}
+            {% elif e.notes %}<span style="color:#92400e;">Manual — {{ e.notes|truncatechars:60 }}</span>
+            {% else %}<span>Manual</span>{% endif %}
           </td>
           <td style="font-size:.82rem;">{{ e.hobbs_reading|default:"—" }}</td>
           <td style="font-size:.82rem;">{{ e.tacho_reading|default:"—" }}</td>
@@ -498,14 +541,14 @@
             </select>
           </label>
           <label class="flabel" style="width:110px;">Rate/hr
-            <input type="number" name="amount" min="0" step="0.01" placeholder="0.00" class="finput" required>
+            <input type="number" name="amount" min="0" step="0.01" placeholder="0.00" class="finput money-input" required>
           </label>
         </div>
         <label class="flabel" style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem;">
           <input type="checkbox" name="includes_fuel"> Wet hire (fuel included in rate — no separate fuel charge)
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-rate-modal').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-rate-modal').hidden=true">✕ Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Add rate</button>
         </div>
@@ -522,15 +565,15 @@
         <input type="hidden" name="action" value="edit_hire_rate">
         <input type="hidden" name="rate_id" id="erm-id">
         <label class="flabel">Rate/hr
-          <input type="number" name="amount" id="erm-amount" min="0" step="0.01" class="finput" required>
+          <input type="number" name="amount" id="erm-amount" min="0" step="0.01" class="finput money-input" required>
         </label>
         <label class="flabel" style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem;">
           <input type="checkbox" name="includes_fuel" id="erm-wet"> Wet hire (fuel included)
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('edit-rate-modal').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('edit-rate-modal').hidden=true">✕ Close</button>
           <span style="flex:1"></span>
-          <button type="submit" class="cbtn primary">Save</button>
+          <button type="submit" class="cbtn" data-dirty-save>Save</button>
         </div>
       </form>
     </div>
@@ -548,14 +591,14 @@
             <input type="date" name="effective_from" class="finput" required>
           </label>
           <label class="flabel" style="width:110px;">Rate/hr
-            <input type="number" name="fuel_rate" min="0" step="0.01" placeholder="0.00" class="finput" required>
+            <input type="number" name="fuel_rate" min="0" step="0.01" placeholder="0.00" class="finput money-input" required>
           </label>
         </div>
         <label class="flabel" style="margin-top:.1rem;">Notes <span style="font-weight:400;">(optional)</span>
           <input type="text" name="notes" class="finput" placeholder="e.g. Committee approved 2026-06-01">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-fuel-modal').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-fuel-modal').hidden=true">✕ Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Add rate</button>
         </div>
@@ -590,8 +633,36 @@
             <input type="number" name="last_completed_hours" min="0" step="0.1" class="finput">
           </label>
         </div>
+        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid #eef1f4;">
+          <div style="font-size:.8rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Recurrence interval <span style="font-weight:400;color:#8a93a0;">(leave blank for one-off)</span></div>
+          <div class="fgrid">
+            <label class="flabel">Every (days)
+              <input type="number" name="interval_days" min="1" step="1" class="finput" placeholder="e.g. 365">
+            </label>
+            <label class="flabel">Every (hours)
+              <input type="number" name="interval_hours" min="0.1" step="0.1" class="finput" placeholder="e.g. 100">
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid #eef1f4;">
+          <div style="font-size:.8rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Warning thresholds <span style="font-weight:400;color:#8a93a0;">(blank = club defaults)</span></div>
+          <div class="fgrid">
+            <label class="flabel">Amber — days before
+              <input type="number" name="warn_days" min="1" step="1" class="finput">
+            </label>
+            <label class="flabel">Red — days before
+              <input type="number" name="alert_days" min="1" step="1" class="finput">
+            </label>
+            <label class="flabel">Amber — hours before
+              <input type="number" name="warn_hours" min="0.1" step="0.1" class="finput">
+            </label>
+            <label class="flabel">Red — hours before
+              <input type="number" name="alert_hours" min="0.1" step="0.1" class="finput">
+            </label>
+          </div>
+        </div>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-maint-modal').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-maint-modal').hidden=true">✕ Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Add item</button>
         </div>
@@ -627,10 +698,86 @@
             <input type="number" name="last_completed_hours" id="emm-last-hours" min="0" step="0.1" class="finput">
           </label>
         </div>
+        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid #eef1f4;">
+          <div style="font-size:.8rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Recurrence interval <span style="font-weight:400;color:#8a93a0;">(blank = one-off)</span></div>
+          <div class="fgrid">
+            <label class="flabel">Every (days)
+              <input type="number" name="interval_days" id="emm-interval-days" min="1" step="1" class="finput" placeholder="e.g. 365">
+            </label>
+            <label class="flabel">Every (hours)
+              <input type="number" name="interval_hours" id="emm-interval-hours" min="0.1" step="0.1" class="finput" placeholder="e.g. 100">
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid #eef1f4;">
+          <div style="font-size:.8rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Warning thresholds <span style="font-weight:400;color:#8a93a0;">(blank = club defaults)</span></div>
+          <div class="fgrid">
+            <label class="flabel">Amber — days before
+              <input type="number" name="warn_days" id="emm-warn-days" min="1" step="1" class="finput">
+            </label>
+            <label class="flabel">Red — days before
+              <input type="number" name="alert_days" id="emm-alert-days" min="1" step="1" class="finput">
+            </label>
+            <label class="flabel">Amber — hours before
+              <input type="number" name="warn_hours" id="emm-warn-hours" min="0.1" step="0.1" class="finput">
+            </label>
+            <label class="flabel">Red — hours before
+              <input type="number" name="alert_hours" id="emm-alert-hours" min="0.1" step="0.1" class="finput">
+            </label>
+          </div>
+        </div>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('edit-maint-modal').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('edit-maint-modal').hidden=true">✕ Close</button>
           <span style="flex:1"></span>
-          <button type="submit" class="cbtn primary">Save changes</button>
+          <button type="submit" class="cbtn" data-dirty-save>Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Manual maintenance log entry modal -->
+  <div id="add-manual-log-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(520px,95vw);">
+      <h2>Log manual entry</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:-.4rem 0 .9rem;">Use this to explain a meter gap — ground runs, towing, meter corrections, or errors. Entries without flight hours (0 hrs) are purely documentary.</p>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_manual_log_entry">
+        <div class="fgrid">
+          <label class="flabel">Date <span class="req">*</span>
+            <input type="date" name="entry_date" class="finput" value="{% now 'Y-m-d' %}" required>
+          </label>
+          <label class="flabel">Maintenance hours this entry
+            <input type="number" name="maint_hours" class="finput" min="0" step="0.1" value="0" placeholder="0.0">
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.5rem;">Entry type / reason <span class="req">*</span>
+          <select name="notes" class="finput" required id="ml-notes-select" onchange="document.getElementById('ml-notes-custom').style.display=this.value==='__custom__'?'block':'none';">
+            <option value="">— select —</option>
+            <option value="Ground run (non-booking)">Ground run (non-booking)</option>
+            <option value="Towing / handling">Towing / handling</option>
+            <option value="Meter replacement — new baseline set">Meter replacement — new baseline set</option>
+            <option value="Correction to previous entry — data entry error">Correction to previous entry — data entry error</option>
+            <option value="Historical gap — unable to identify source">Historical gap — unable to identify source</option>
+            <option value="__custom__">Other (enter below)</option>
+          </select>
+        </label>
+        <label class="flabel" id="ml-notes-custom" style="display:none;margin-top:.3rem;">Custom reason
+          <input type="text" class="finput" placeholder="Describe the reason for this entry" maxlength="500"
+                 oninput="document.querySelector('[name=notes]').value=this.value || '__custom__'">
+        </label>
+        <div style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid #eef1f4;">
+          <div style="font-size:.8rem;font-weight:600;color:#5b6573;margin-bottom:.4rem;">Meter readings at end of this entry <span style="font-weight:400;color:#8a93a0;">(optional — fill in to document actual values)</span></div>
+          <div class="fgrid">
+            <label class="flabel">Hobbs <input type="number" name="hobbs_reading" class="finput" min="0" step="0.01" placeholder="—"></label>
+            <label class="flabel">Tacho <input type="number" name="tacho_reading" class="finput" min="0" step="0.01" placeholder="—"></label>
+            <label class="flabel">Air switch <input type="number" name="airswitch_reading" class="finput" min="0" step="0.01" placeholder="—"></label>
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="cbtn" onclick="document.getElementById('add-manual-log-modal').hidden=true">✕ Close</button>
+          <span style="flex:1"></span>
+          <button type="submit" class="cbtn primary">Save entry</button>
         </div>
       </form>
     </div>
@@ -683,7 +830,7 @@
           <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
         </div>
         <div class="modal-actions" style="margin-top:.8rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-ac-bo-modal').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-ac-bo-modal').hidden=true">✕ Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Save block-out</button>
         </div>
@@ -708,7 +855,6 @@
 
   <!-- ── HISTORY tab ── -->
   <div id="tab-history" class="stab-panel">
-    <h2 class="sh2">Flight history <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100)</span></h2>
     {% if flight_history %}
     <table class="ft-table">
       <thead><tr>
@@ -727,7 +873,7 @@
             {% if b.flight_completion %}{{ b.flight_completion.actual_flight_hours|default:"—" }}h{% else %}—{% endif %}
           </td>
           <td style="font-size:.85rem;">
-            {% if b.flight_completion and b.flight_completion.total_charge %}${{ b.flight_completion.total_charge }}{% else %}—{% endif %}
+            {% if b.flight_completion and b.flight_completion.total_charge %}${{ b.flight_completion.total_charge|currency }}{% else %}—{% endif %}
           </td>
           <td style="text-align:right;">
             <a href="{% url 'core:booking_detail' club.slug b.id %}" class="row-action-link" data-overlay>View →</a>
@@ -774,14 +920,6 @@
   .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
   .ft-del:hover{text-decoration:underline;}
 
-  .info-table{font-size:.88rem;border-collapse:collapse;width:100%;}
-  .info-table th{text-align:left;padding:.45rem .7rem;font-weight:600;color:#5b6573;font-size:.82rem;width:180px;border-bottom:1px solid #f0f2f4;}
-  .info-table td{padding:.45rem .7rem;border-bottom:1px solid #f0f2f4;}
-
-  .urg-badge{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:8px;}
-  .urg-badge.urg-green{background:#e6f4ea;color:#2a7a3b;}
-  .urg-badge.urg-amber{background:#fff3e0;color:#c76c00;}
-  .urg-badge.urg-red{background:#fee2e2;color:#c0392b;}
   .maint-bar-wrap{height:8px;background:#eef1f4;border-radius:4px;overflow:hidden;margin-bottom:.15rem;}
   .maint-bar{height:100%;border-radius:4px;transition:width .3s;}
   .maint-bar-green{background:#4caf50;}
@@ -823,6 +961,14 @@
   .notice.warn{background:#fff8e6;color:#7a5800;border-left:3px solid #f59e0b;}
   @keyframes adsb-spin{to{transform:rotate(360deg)}}
   .adsb-spinner{display:inline-block;width:11px;height:11px;border:2px solid #d0d6de;border-top-color:#6b7785;border-radius:50%;animation:adsb-spin .7s linear infinite;vertical-align:middle;margin-right:.35rem;flex-shrink:0;}
+
+  .flabel-lk{font-size:.82rem;font-weight:600;color:#5b6573;}
+  .init-row{display:flex;flex-direction:column;gap:.25rem;}
+  .init-field-wrap{display:flex;align-items:center;gap:.4rem;}
+  .init-field-wrap .finput{flex:1;min-width:0;}
+  .init-field-wrap input[readonly]{background:#f5f6f8;color:#5b6573;cursor:default;}
+  .amend-btn{color:#c76c00;border-color:#c76c00;}
+  .apply-btn{color:#2a7a3b;border-color:#2a7a3b;}
 </style>
 
 <script>
@@ -853,14 +999,14 @@
 })();
 
 // Close all modals on backdrop click or Escape
-['add-rate-modal','edit-rate-modal','add-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal'].forEach(id => {
+['add-rate-modal','edit-rate-modal','add-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal','add-manual-log-modal'].forEach(id => {
   const m = document.getElementById(id);
   if (!m) return;
   m.addEventListener('click', e => { if (e.target === m) m.hidden = true; });
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['add-rate-modal','edit-rate-modal','add-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal'].forEach(id => {
+    ['add-rate-modal','edit-rate-modal','add-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal','add-manual-log-modal'].forEach(id => {
       const m = document.getElementById(id);
       if (m) m.hidden = true;
     });
@@ -876,7 +1022,7 @@ function openEditRate(id, amount, wet) {
 
 function openAddMaint() { document.getElementById('add-maint-modal').hidden = false; }
 
-function openEditMaint(id, name, desc, dueDate, dueHours, lastDate, lastHours) {
+function openEditMaint(id, name, desc, dueDate, dueHours, lastDate, lastHours, intervalDays, intervalHours, warnDays, alertDays, warnHours, alertHours) {
   document.getElementById('emm-id').value = id;
   document.getElementById('emm-name').value = name;
   document.getElementById('emm-desc').value = desc;
@@ -884,6 +1030,12 @@ function openEditMaint(id, name, desc, dueDate, dueHours, lastDate, lastHours) {
   document.getElementById('emm-due-hours').value = dueHours;
   document.getElementById('emm-last-date').value = lastDate;
   document.getElementById('emm-last-hours').value = lastHours;
+  document.getElementById('emm-interval-days').value = intervalDays;
+  document.getElementById('emm-interval-hours').value = intervalHours;
+  document.getElementById('emm-warn-days').value = warnDays;
+  document.getElementById('emm-alert-days').value = alertDays;
+  document.getElementById('emm-warn-hours').value = warnHours;
+  document.getElementById('emm-alert-hours').value = alertHours;
   document.getElementById('edit-maint-modal').hidden = false;
 }
 function toggleBoRecur(sel) {
@@ -997,6 +1149,80 @@ function toggleBoTime(cb) {
     window._adsbLivePending = false;
     window._adsbStartPolling();
   }
+})();
+
+// ── Instruments tab: dynamic filtering + amend/apply ──────────────────────
+(function(){
+  const BILLING_INSTRUMENT = { hobbs:'hobbs', tacho:'tacho', airswitch:'airswitch' };
+  const MAINT_INSTRUMENT   = { hobbs:'hobbs', tacho:'tacho', airswitch:'airswitch' };
+
+  function getAvailable() {
+    return {
+      hobbs:     !!(document.querySelector('[name=records_hobbs]')?.checked),
+      tacho:     !!(document.querySelector('[name=records_tacho]')?.checked),
+      airswitch: !!(document.querySelector('[name=records_airswitch]')?.checked),
+    };
+  }
+
+  function filterSelect(sel, instrumentMap, available) {
+    if (!sel) return;
+    let current = sel.value;
+    let fallback = null;
+    Array.from(sel.options).forEach(opt => {
+      const needed = instrumentMap[opt.value];
+      const ok = !needed || available[needed];
+      opt.hidden = !ok;
+      opt.disabled = !ok;
+      if (ok && !fallback) fallback = opt.value;
+    });
+    // If current selection is now unavailable, switch to first valid option
+    const currentOpt = sel.querySelector(`option[value="${current}"]`);
+    if (!currentOpt || currentOpt.hidden) sel.value = fallback || '';
+  }
+
+  function updateInstrumentUI() {
+    const av = getAvailable();
+    filterSelect(document.getElementById('billing-method-select'), BILLING_INSTRUMENT, av);
+    filterSelect(document.getElementById('maint-source-select'),   MAINT_INSTRUMENT,   av);
+    // Show/hide starting meter rows
+    const rows = { hobbs:'row-hobbs-initial', tacho:'row-tacho-initial', airswitch:'row-airswitch-initial' };
+    Object.entries(rows).forEach(([inst, rowId]) => {
+      const row = document.getElementById(rowId);
+      if (row) row.style.display = av[inst] ? '' : 'none';
+    });
+  }
+
+  // Wire up instrument toggles
+  ['records_hobbs','records_tacho','records_airswitch'].forEach(name => {
+    const cb = document.querySelector(`[name=${name}]`);
+    if (cb) cb.addEventListener('change', updateInstrumentUI);
+  });
+  updateInstrumentUI(); // run on load
+
+  // Amend/Apply buttons
+  document.querySelectorAll('.amend-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      if (confirm('Amend this value? Only correct a data entry error — changing it affects all cumulative calculations.')) {
+        input.removeAttribute('readonly');
+        input.focus();
+        input.select();
+        btn.textContent = 'Lock';
+        btn.classList.replace('amend-btn','apply-btn');
+      }
+    });
+  });
+  document.querySelectorAll('.apply-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById(btn.dataset.target);
+      if (!input) return;
+      if (!input.value.trim()) { input.focus(); return; }
+      input.setAttribute('readonly', '');
+      btn.textContent = 'Amend';
+      btn.classList.replace('apply-btn','amend-btn');
+    });
+  });
 })();
 </script>
 {% endblock %}

@@ -1,0 +1,174 @@
+{% extends "core/app/base.html" %}
+{% load tz humanize static %}
+{% block title %}{{ club.name }}{% endblock %}
+
+{% block app_bar_brand %}{% if theme.logo %}<img src="{{ theme.logo.url }}" alt="{{ club.name }}" style="flex-shrink:0;height:20px;width:auto;max-width:72px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.1rem;">{% endif %}{% endblock %}
+{% block app_bar %}
+<span class="app-bar-title">{{ club.name }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="gap-sm"></div>
+
+<!-- Greeting -->
+<div style="padding:0 .75rem .1rem;">
+  <div style="font-size:1.05rem;font-weight:700;color:#1f2933;">{{ greeting_word }}, {{ club_member.user.first_name }}.</div>
+</div>
+
+<!-- ── Hero banner ── -->
+<div style="margin:.5rem .75rem .1rem;border-radius:14px;overflow:hidden;height:165px;box-shadow:0 2px 8px rgba(0,0,0,.12);">
+  <img src="{% static 'core/img/C172.jpg' %}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+</div>
+
+<!-- ── Announcements ── -->
+{% for ann in announcements %}
+<div class="app-card" style="border-left:4px solid {{ ann.color }};background:{{ ann.bg }};margin-top:.55rem;">
+  <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.3rem;">
+    <span style="font-size:.65rem;font-weight:700;padding:.15rem .42rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
+    {% if ann.event_date %}<span style="font-size:.75rem;color:#6b7280;">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
+    {% if ann.is_pinned %}<svg width="12" height="12" viewBox="0 0 24 24" fill="{{ ann.color }}" stroke="none"><path d="M12 2L9 9H2l6 4.4L5.6 21 12 17l6.4 4L16 13.4 22 9h-7z"/></svg>{% endif %}
+  </div>
+  <div style="font-size:.88rem;font-weight:700;color:#1f2933;">{{ ann.title }}</div>
+  {% if ann.body %}<div style="font-size:.81rem;color:#4a5568;margin-top:.3rem;line-height:1.45;">{{ ann.body }}</div>{% endif %}
+</div>
+{% endfor %}
+
+<!-- ── Next flight ── -->
+{% if next_booking %}
+{% with b=next_booking %}
+<div class="app-card" style="border-left:4px solid {{ theme.confirmed|default:'#2563eb' }};margin-top:.65rem;">
+  <div class="app-card-title">Next flight</div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
+    <div>
+      <div style="font-size:1.05rem;font-weight:700;">{{ b.aircraft.registration }}</div>
+      <div style="font-size:.82rem;color:#8a93a0;margin-top:.15rem;">
+        {{ b.scheduled_start|localtime|date:"D j M" }} &middot;
+        {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
+      </div>
+      {% if b.instructor %}
+      <div style="font-size:.82rem;color:#4a5568;margin-top:.2rem;">with {{ b.instructor.get_full_name }}</div>
+      {% else %}
+      <div style="font-size:.82rem;color:#4a5568;margin-top:.2rem;">Solo</div>
+      {% endif %}
+    </div>
+    <span class="st-pill st-{{ b.status }}">{{ b.get_status_display }}</span>
+  </div>
+  {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}
+  <div class="gap-sm"></div>
+  {% if b.status == 'confirmed' %}
+  <a href="{% url 'core:app_bookings' club.slug %}#booking-{{ b.id }}" class="app-btn">Depart</a>
+  {% elif b.status == 'departed' %}
+  <a href="{% url 'core:app_bookings' club.slug %}#booking-{{ b.id }}" class="app-btn" style="background:#7c3aed;">Land</a>
+  {% endif %}
+  {% endif %}
+</div>
+{% endwith %}
+{% else %}
+<div class="app-card" style="text-align:center;padding:1.2rem 1rem;margin-top:.65rem;">
+  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto .5rem;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+  <div style="font-weight:600;color:#4a5568;margin-bottom:.2rem;">No upcoming flights</div>
+  <div style="font-size:.82rem;color:#8a93a0;">Tap below to find a slot</div>
+</div>
+{% endif %}
+
+<!-- ── Outstanding balance / debt ── -->
+{% if flight_count or invoice_count %}
+<a href="{% url 'core:app_account' club.slug %}" class="app-card" style="border-left:4px solid #e03131;background:color-mix(in srgb,#e03131 6%,#fff);display:block;text-decoration:none;color:inherit;">
+  <div style="display:flex;align-items:center;gap:.6rem;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div style="flex:1;">
+      <div style="font-size:.84rem;font-weight:700;color:#e03131;">
+        {% if flight_debt %}${{ flight_debt|floatformat:2|intcomma }} outstanding{% endif %}
+        {% if flight_count and invoice_count %}&nbsp;·&nbsp;{% endif %}
+        {% if invoice_count %}{{ invoice_count }} invoice{{ invoice_count|pluralize }}{% endif %}
+      </div>
+      <div style="font-size:.74rem;color:#6b7280;margin-top:.1rem;">Tap to view account</div>
+    </div>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+</a>
+{% elif balance is not None %}
+<a href="{% url 'core:app_account' club.slug %}" class="app-card" style="display:block;text-decoration:none;color:inherit;">
+  <div style="display:flex;align-items:center;justify-content:space-between;">
+    <span style="font-size:.82rem;color:#6b7280;">Account balance</span>
+    {% if balance < 0 %}
+    <span style="font-size:.95rem;font-weight:700;color:#e03131;">&minus;${{ balance|floatformat:2|slice:"1:"|intcomma }}</span>
+    {% else %}
+    <span style="font-size:.95rem;font-weight:700;color:#2a7a3b;">${{ balance|floatformat:2|intcomma }}</span>
+    {% endif %}
+  </div>
+</a>
+{% endif %}
+
+<!-- ── Instructor: pending confirmations ── -->
+{% if club_member.is_instructor and pending_count %}
+<a href="{% url 'core:app_bookings' club.slug %}?tab=pending" class="app-card" style="border-left:4px solid #e03131;display:block;text-decoration:none;color:inherit;">
+  <div style="display:flex;align-items:center;gap:.6rem;">
+    <div style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,#e03131 12%,#fff);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <div style="flex:1;">
+      <div style="font-size:.84rem;font-weight:700;">{{ pending_count }} booking{{ pending_count|pluralize }} pending confirmation</div>
+      <div style="font-size:.74rem;color:#6b7280;margin-top:.1rem;">Tap to review</div>
+    </div>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+</a>
+{% endif %}
+
+<!-- ── Expiring credentials ── -->
+{% if expiring_creds %}
+<div class="app-card" style="border-left:4px solid #d97706;background:color-mix(in srgb,#d97706 6%,#fff);">
+  <div style="font-size:.78rem;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;">Credentials expiring soon</div>
+  {% for c in expiring_creds %}
+  <div style="display:flex;align-items:center;justify-content:space-between;{% if not forloop.first %}margin-top:.4rem;{% endif %}">
+    <span style="font-size:.84rem;font-weight:600;">{{ c.get_credential_type_display }}</span>
+    {% if c.expiry_date %}
+    <span style="font-size:.78rem;{% if c.is_expired %}color:#e03131;font-weight:700;{% else %}color:#d97706;{% endif %}">
+      {% if c.is_expired %}Expired{% else %}{{ c.days_until_expiry }}d{% endif %} · {{ c.expiry_date|date:"j M Y" }}
+    </span>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <a href="{% url 'core:app_profile' club.slug %}" style="display:block;font-size:.78rem;color:#d97706;font-weight:600;text-decoration:none;margin-top:.6rem;">View credentials →</a>
+</div>
+{% endif %}
+
+<!-- ── Available slots ── -->
+{% if slots_available_today %}
+<a href="{% url 'core:app_schedule' club.slug %}" class="app-card" style="border-left:4px solid #16a34a;display:block;text-decoration:none;color:inherit;">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
+    <div>
+      <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#16a34a;margin-bottom:.3rem;">Available today</div>
+      <div style="font-size:.9rem;font-weight:700;color:#1f2933;">{{ available_ac_regs|join:", " }}</div>
+      <div style="font-size:.8rem;color:#6b7280;margin-top:.2rem;">
+        From {{ first_slot_time }} &middot; Solo{% if instr_on_roster %} &amp; Dual{% endif %}
+      </div>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:.25rem;"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+</a>
+{% endif %}
+
+<!-- ── Primary action ── -->
+<div style="padding:.75rem .75rem 0;">
+  <a href="{% url 'core:app_book' club.slug %}" class="app-btn" style="text-align:center;border-radius:12px;padding:.85rem;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;margin-right:.35rem;vertical-align:middle;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Find a slot
+  </a>
+</div>
+
+<!-- ── Secondary quick actions ── -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;padding:.5rem .75rem 0;">
+  <a href="{% url 'core:occurrence_submit' club.slug %}?app=1" class="app-btn secondary" style="border-radius:12px;padding:.7rem;text-align:center;font-size:.84rem;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;margin-right:.3rem;vertical-align:middle;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    Report snag
+  </a>
+  <a href="{% url 'core:app_bookings' club.slug %}" class="app-btn secondary" style="border-radius:12px;padding:.7rem;text-align:center;font-size:.84rem;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;margin-right:.3rem;vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    My bookings
+  </a>
+</div>
+
+<div class="gap-md"></div>
+{% endblock %}

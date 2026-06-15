@@ -1,21 +1,16 @@
 {% extends "core/base.html" %}
-{% block title %}Reports · {{ club.name }}{% endblock %}
+{% block title %}Analytics · {{ club.name }}{% endblock %}
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-    <h1 style="font-size:1.3rem;font-weight:700;margin:0;">Reports</h1>
-    <span style="font-size:.82rem;color:#8a93a0;">{{ fy_label }}</span>
-  </div>
+  <h1 style="font-size:1.3rem;font-weight:700;margin:0 0 1.5rem;">Analytics</h1>
 
   <!-- Report tabs -->
   <div class="stab-bar" data-managed="1">
     <button class="stab-btn" id="tabBtn-dashboard"   data-tab="dashboard">Dashboard</button>
-    <button class="stab-btn" id="tabBtn-aircraft"    data-tab="aircraft">Aircraft hours</button>
-    <button class="stab-btn" id="tabBtn-instructors" data-tab="instructors">Instructor hours</button>
+    <button class="stab-btn" id="tabBtn-historical"  data-tab="historical">Historical</button>
     <button class="stab-btn" id="tabBtn-members"     data-tab="members">Members</button>
-    <button class="stab-btn" id="tabBtn-payments"    data-tab="payments">Payments</button>
     <button class="stab-btn" id="tabBtn-occurrences" data-tab="occurrences">Events</button>
-    <button class="stab-btn" id="tabBtn-analytics"   data-tab="analytics">Analytics ✦</button>
+    <button class="stab-btn" id="tabBtn-analytics"   data-tab="analytics">Pivot Tables ✦</button>
     <button class="stab-btn" id="tabBtn-ask"         data-tab="ask">Ask AI ✦</button>
   </div>
 
@@ -23,24 +18,26 @@
   <div id="tab-dashboard" class="stab-panel">
 
     <!-- KPI cards -->
-    <div class="dash-grid-3" style="margin-bottom:1.2rem;">
+    <div class="dash-grid-3" style="margin-bottom:.8rem;">
       <div class="dash-kpi">
         <div class="dash-kpi-lbl">Flight hours</div>
-        <div class="dash-kpi-val">{{ dash_total_hours }}<span class="dash-kpi-unit">hr</span></div>
-        <div class="dash-kpi-sub">{{ fy_label }}</div>
+        <div class="dash-kpi-val">{{ dash_month_hours }}<span class="dash-kpi-unit">hr</span></div>
+        <div class="dash-kpi-sub">{{ dash_month_label }}{% if dash_month_budget %} · {{ dash_month_budget }} hr budgeted{% endif %}</div>
+        {% if dash_month_solo or dash_month_dual %}<div class="dash-kpi-sub">{{ dash_month_solo }} hr solo · {{ dash_month_dual }} hr dual</div>{% endif %}
       </div>
       <div class="dash-kpi">
         <div class="dash-kpi-lbl">Revenue collected</div>
         <div class="dash-kpi-val">${{ dash_revenue_collected|currency }}</div>
-        <div class="dash-kpi-sub">{{ fy_label }}{% if dash_revenue_billed > dash_revenue_collected %} · <span style="color:#c0392b;">${{ dash_revenue_billed|currency }} billed</span>{% endif %}</div>
+        <div class="dash-kpi-sub">{{ fy_label }}{% if dash_revenue_charged > dash_revenue_collected %} · <span style="color:#c0392b;">${{ dash_revenue_charged|currency }} charged</span>{% endif %}</div>
       </div>
       <div class="dash-kpi">
         <div class="dash-kpi-lbl">Flights completed</div>
         <div class="dash-kpi-val">{{ dash_flights_count }}</div>
-        <div class="dash-kpi-sub">{{ fy_label }}{% if dash_instr_hours %} · {{ dash_instr_hours }} hr dual{% endif %}</div>
+        <div class="dash-kpi-sub">{{ fy_label }}</div>
+        {% if dash_solo_count or dash_dual_count %}<div class="dash-kpi-sub">{{ dash_solo_count }} solo · {{ dash_dual_count }} dual</div>{% endif %}
       </div>
     </div>
-    <div class="dash-grid-3" style="margin-bottom:1.5rem;">
+    <div class="dash-grid-3" style="margin-bottom:1.2rem;">
       <div class="dash-kpi">
         <div class="dash-kpi-lbl">Active members</div>
         <div class="dash-kpi-val">{{ active_members_count }}</div>
@@ -49,12 +46,12 @@
       <div class="dash-kpi {% if dash_debtor_count %}dash-kpi-warn{% endif %}">
         <div class="dash-kpi-lbl">Outstanding debt</div>
         <div class="dash-kpi-val">${{ dash_outstanding_debt|currency }}</div>
-        <div class="dash-kpi-sub">{{ dash_debtor_count }} member{{ dash_debtor_count|pluralize }} with negative balance</div>
+        <div class="dash-kpi-sub"><a href="{{ dash_debtor_url }}" style="color:inherit;text-decoration:underline dotted;">{{ dash_debtor_count }} member{{ dash_debtor_count|pluralize }} with negative balance</a></div>
       </div>
       <div class="dash-kpi {% if occ_fy_open %}dash-kpi-warn{% endif %}">
         <div class="dash-kpi-lbl">Safety events</div>
         <div class="dash-kpi-val">{{ occ_fy_total }}</div>
-        <div class="dash-kpi-sub">{{ fy_label }} · {{ occ_fy_open }} open</div>
+        <div class="dash-kpi-sub">{{ fy_label }} · <a href="{{ occ_open_url }}" style="color:inherit;text-decoration:underline dotted;">{{ occ_fy_open }} open</a></div>
       </div>
     </div>
 
@@ -68,26 +65,42 @@
       </div>
     </div>
 
-    <!-- Charts row -->
-    <div class="dash-grid-2" style="margin-bottom:1.5rem;">
+    <!-- Charts row 1: hours + revenue -->
+    <div class="dash-grid-2" style="margin-bottom:1rem;">
       <div class="dash-card">
-        <h2 class="dash-card-h">Monthly flight hours — {{ fy_label }}</h2>
+        <h2 class="dash-card-h">Monthly flight hours <span class="dash-period">· {{ fy_label }}</span></h2>
         {% if datasets != "[]" %}
-        <canvas id="dash-hours-chart" height="220"></canvas>
+        <canvas id="dash-hours-chart" height="200"></canvas>
         {% else %}
         <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
         {% endif %}
       </div>
       <div class="dash-card">
-        <h2 class="dash-card-h">Monthly revenue — {{ fy_label }}</h2>
-        <canvas id="dash-revenue-chart" height="220"></canvas>
+        <h2 class="dash-card-h">Monthly revenue <span class="dash-period">· {{ fy_label }}</span></h2>
+        <canvas id="dash-revenue-chart" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- Charts row 2: instructor hours + flights -->
+    <div class="dash-grid-2" style="margin-bottom:1rem;">
+      <div class="dash-card">
+        <h2 class="dash-card-h">Instructor hours by month <span class="dash-period">· {{ fy_label }}</span></h2>
+        {% if instr_datasets != "[]" %}
+        <canvas id="dash-instr-chart" height="200"></canvas>
+        {% else %}
+        <p style="font-size:.85rem;color:#8a93a0;margin:0;">No dual flights recorded in this period.</p>
+        {% endif %}
+      </div>
+      <div class="dash-card">
+        <h2 class="dash-card-h">Flights per month <span class="dash-period">· {{ fy_label }}</span></h2>
+        <canvas id="dash-flights-chart" height="200"></canvas>
       </div>
     </div>
 
     <!-- Tables row -->
     <div class="dash-grid-2">
       <div class="dash-card">
-        <h2 class="dash-card-h">Top aircraft by hours</h2>
+        <h2 class="dash-card-h">Top aircraft by hours <span class="dash-period">· {{ fy_label }}</span></h2>
         {% if top_aircraft_dash %}
         <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
           <thead><tr style="border-bottom:1px solid #e3e6ea;">
@@ -109,6 +122,12 @@
         <p style="font-size:.85rem;color:#8a93a0;margin:0;">No data.</p>
         {% endif %}
       </div>
+      {% if dash_has_budget %}
+      <div class="dash-card">
+        <h2 class="dash-card-h">Budget vs actual <span class="dash-period">· {{ fy_label }}</span></h2>
+        <canvas id="dash-budget-chart" height="220"></canvas>
+      </div>
+      {% else %}
       <div class="dash-card">
         <h2 class="dash-card-h">Top members by hours</h2>
         {% if top_members_dash %}
@@ -132,47 +151,60 @@
         <p style="font-size:.85rem;color:#8a93a0;margin:0;">No data.</p>
         {% endif %}
       </div>
+      {% endif %}
     </div>
 
   </div><!-- /tab-dashboard -->
 
-  <!-- ── AIRCRAFT tab ── -->
-  <div id="tab-aircraft" class="stab-panel">
-    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1rem;flex-wrap:wrap;">
-      <span style="font-size:.82rem;color:#8a93a0;">Filter:</span>
-      <div class="seg-ctrl">
-        <a href="?leased=all"    class="seg-btn {% if leased_filter == 'all' %}active{% endif %}">All</a>
-        <a href="?leased=owned"  class="seg-btn {% if leased_filter == 'owned' %}active{% endif %}">Owned</a>
-        <a href="?leased=leased" class="seg-btn {% if leased_filter == 'leased' %}active{% endif %}">Leased</a>
-      </div>
-    </div>
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 1rem;">Flight hours by aircraft — {{ fy_label }}</h2>
-      {% if datasets != "[]" %}
-      <canvas id="hours-chart" height="280"></canvas>
-      {% else %}
-      <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
-      {% endif %}
-    </div>
-  </div>
+  <!-- ── HISTORICAL tab ── -->
+  <div id="tab-historical" class="stab-panel">
 
-  <!-- ── INSTRUCTORS tab ── -->
-  <div id="tab-instructors" class="stab-panel">
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 1rem;">Instructor hours — {{ fy_label }}</h2>
-      {% if instr_datasets != "[]" %}
-      <canvas id="instr-chart" height="260"></canvas>
-      {% else %}
-      <p style="font-size:.85rem;color:#8a93a0;margin:0;">No dual flights recorded in this period.</p>
-      {% endif %}
+    <!-- Monthly comparison — last 4 FYs -->
+    <div class="dash-card" style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1rem;">
+        <h2 class="dash-card-h" style="margin:0;">Monthly flight hours <span class="dash-period">· last 4 financial years</span></h2>
+        <div style="display:flex;gap:.4rem;">
+          <button type="button" class="cbtn-sm hist-toggle active" data-chart="hist" data-view="all">All</button>
+          <button type="button" class="cbtn-sm hist-toggle" data-chart="hist" data-view="owned">Owned</button>
+          <button type="button" class="cbtn-sm hist-toggle" data-chart="hist" data-view="leased">Leased</button>
+        </div>
+      </div>
+      <canvas id="hist-hours-chart" height="90"></canvas>
     </div>
-  </div>
+
+    <!-- Annual totals — all years -->
+    <div class="dash-card" style="margin-bottom:1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1rem;">
+        <h2 class="dash-card-h" style="margin:0;">Annual flight hours <span class="dash-period">· all years</span></h2>
+        <div style="display:flex;gap:.4rem;">
+          <button type="button" class="cbtn-sm hist-toggle active" data-chart="ann" data-view="all">All</button>
+          <button type="button" class="cbtn-sm hist-toggle" data-chart="ann" data-view="owned">Owned</button>
+          <button type="button" class="cbtn-sm hist-toggle" data-chart="ann" data-view="leased">Leased</button>
+        </div>
+      </div>
+      <canvas id="ann-hours-chart" height="80"></canvas>
+    </div>
+
+    <!-- Annual flights by type — stacked, multi-select -->
+    {% if ann_ft_datasets != "[]" %}
+    <div class="dash-card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1rem;">
+        <h2 class="dash-card-h" style="margin:0;">Annual flights by type <span class="dash-period">· all years</span></h2>
+        <div id="ann-ft-toggles" style="display:flex;gap:.3rem;flex-wrap:wrap;"></div>
+      </div>
+      <canvas id="ann-ft-chart" height="80"></canvas>
+    </div>
+    {% endif %}
+
+  </div><!-- /tab-historical -->
 
   <!-- ── MEMBERS tab ── -->
   <div id="tab-members" class="stab-panel">
     <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .4rem;">Member activity — {{ fy_label }}</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Member flight hours and booking counts for this financial year.</p>
+      <div style="margin-bottom:.4rem;">
+        <h2 style="font-size:.95rem;font-weight:650;margin:0;">Member activity <span class="dash-period">· {{ fy_label }}</span></h2>
+      </div>
+      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Flight hours and booking counts for this financial year.</p>
       {% if member_rows %}
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
         <thead>
@@ -194,46 +226,6 @@
       </table>
       {% else %}
       <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
-      {% endif %}
-    </div>
-  </div>
-
-  <!-- ── PAYMENTS tab ── -->
-  <div id="tab-payments" class="stab-panel">
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .4rem;">Payments — {{ fy_label }}</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Revenue collected from completed flights.</p>
-      {% if payment_rows %}
-      <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
-        <thead>
-          <tr style="border-bottom:2px solid #e3e6ea;">
-            <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Month</th>
-            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
-            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Charged</th>
-            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Collected</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in payment_rows %}
-          <tr style="border-bottom:1px solid #f0f2f4;">
-            <td style="padding:.5rem .6rem;">{{ row.label }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ row.count }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;">${{ row.charged|currency }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;font-weight:600;">${{ row.collected|currency }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-        <tfoot>
-          <tr style="border-top:2px solid #e3e6ea;background:#f8f9fa;">
-            <td style="padding:.5rem .6rem;font-weight:650;">Total</td>
-            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ payment_total_count }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;">${{ payment_total_charged|currency }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;font-weight:650;">${{ payment_total_collected|currency }}</td>
-          </tr>
-        </tfoot>
-      </table>
-      {% else %}
-      <p style="font-size:.85rem;color:#8a93a0;margin:0;">No payment data for this period.</p>
       {% endif %}
     </div>
   </div>
@@ -274,10 +266,12 @@
     <!-- Summary stats -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.4rem;">
       {% for stat in occ_stats %}
-      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.9rem 1rem;">
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.3rem;">{{ stat.0 }}</div>
-        <div style="font-size:1.7rem;font-weight:750;color:{{ stat.2 }};">{{ stat.1 }}</div>
-      </div>
+      <a href="{{ stat.3 }}" style="text-decoration:none;">
+        <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;" onmouseover="this.style.borderColor='#c0481c'" onmouseout="this.style.borderColor='#e3e6ea'">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">{{ stat.0 }}</div>
+          <div style="font-size:1.5rem;font-weight:750;color:{{ stat.2 }};">{{ stat.1 }}</div>
+        </div>
+      </a>
       {% endfor %}
     </div>
 
@@ -350,7 +344,8 @@
             <div class="analytics-field" draggable="true" data-field="charge"      data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Charge ($)</div>
             <div class="analytics-field" draggable="true" data-field="paid"        data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Paid ($)</div>
             <div class="analytics-field" draggable="true" data-field="outstanding" data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Outstanding ($)</div>
-            <div class="analytics-field" draggable="true" data-field="flights"     data-kind="metric" data-default-agg="count" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Flights</div>
+            <div class="analytics-field" draggable="true" data-field="flights"          data-kind="metric" data-default-agg="count" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Flights</div>
+            <div class="analytics-field" draggable="true" data-field="budgeted_hours"  data-kind="metric" data-default-agg="sum"   style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Budgeted hrs</div>
           </div>
         </div>
 
@@ -390,20 +385,22 @@
 .dash-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
 .dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
 @media(max-width:700px){.dash-grid-3,.dash-grid-2{grid-template-columns:1fr;}}
-.dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.1rem 1.3rem;}
+.dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.7rem 1rem;}
 .dash-kpi-warn{border-color:#fca5a5;background:#fff8f8;}
-.dash-kpi-lbl{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;}
-.dash-kpi-val{font-size:1.75rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.3rem;}
-.dash-kpi-unit{font-size:1rem;font-weight:400;color:#5b6573;margin-left:.2rem;}
-.dash-kpi-sub{font-size:.75rem;color:#8a93a0;}
-.dash-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.2rem 1.3rem;}
-.dash-card-h{font-size:.9rem;font-weight:650;margin:0 0 .9rem;color:#1f2933;}
+.dash-kpi-lbl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.15rem;}
+.dash-kpi-val{font-size:1.45rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.15rem;}
+.dash-kpi-unit{font-size:.9rem;font-weight:400;color:#5b6573;margin-left:.15rem;}
+.dash-kpi-sub{font-size:.72rem;color:#8a93a0;line-height:1.4;}
+.dash-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem 1.2rem;}
+.dash-card-h{font-size:.88rem;font-weight:650;margin:0 0 .8rem;color:#1f2933;}
+.dash-period{font-weight:400;color:#b8c0cc;font-size:.85em;}
+.hist-toggle.active{background:var(--primary);color:#fff;border-color:var(--primary);}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script>
 // ── Report tabs ──────────────────────────────────────────────────────────────
 (function(){
-  const TABS = ['dashboard','aircraft','instructors','members','payments','occurrences','analytics','ask'];
+  const TABS = ['dashboard','historical','members','occurrences','analytics','ask'];
   function activate(id) {
     TABS.forEach(t => {
       document.getElementById('tab-'+t).classList.toggle('active', t===id);
@@ -413,122 +410,291 @@
   }
   TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
   let init = 'dashboard';
-  try { init = localStorage.getItem('reportTab') || 'dashboard'; } catch(e){}
+  try { const _s = localStorage.getItem('reportTab'); if (_s && TABS.includes(_s)) init = _s; } catch(e){}
   const hash = location.hash.replace('#','');
   activate(TABS.includes(hash) ? hash : init);
 })();
 
-// ── Theme-aware chart palette ────────────────────────────────────────────────
-// Reads CSS custom properties so charts always match the club's theme.
+// CHART_PALETTE injected globally by base.html from ClubConfig.chart_colors
+function _applyColors(datasets) {
+  return datasets.map((ds,i) => ({
+    ...ds,
+    backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length],
+    borderRadius: 0,
+    borderSkipped: false,
+  }));
+}
+// Single-series helper (convenience, picks from palette by index)
 function _themeColors(n) {
-  const cs = getComputedStyle(document.documentElement);
-  const primary = cs.getPropertyValue('--primary').trim() || '#2f7dd1';
-  // Fixed offsets around primary hue for multi-series readability
-  const OFFSETS = [0, 120, 240, 60, 180, 300, 30, 210, 90, 150];
-  // Parse hex to HSL, rotate hue
-  function hexToHsl(hex) {
-    let r = parseInt(hex.slice(1,3),16)/255,
-        g = parseInt(hex.slice(3,5),16)/255,
-        b = parseInt(hex.slice(5,7),16)/255;
-    const max=Math.max(r,g,b), min=Math.min(r,g,b);
-    let h,s,l=(max+min)/2;
-    if(max===min){h=s=0;}else{
-      const d=max-min; s=l>.5?d/(2-max-min):d/(max+min);
-      h=max===r?((g-b)/d+(g<b?6:0)):max===g?((b-r)/d+2):((r-g)/d+4); h/=6;
-    }
-    return [Math.round(h*360), Math.round(s*100), Math.round(l*100)];
-  }
-  const [h,s,l] = hexToHsl(primary.length===7 ? primary : '#2f7dd1');
-  return Array.from({length:n}, (_,i) => `hsl(${(h+OFFSETS[i%OFFSETS.length])%360},${Math.max(40,s)}%,${Math.min(55,Math.max(38,l))}%)`);
+  return Array.from({length:n}, (_,i) => CHART_PALETTE[i % CHART_PALETTE.length]);
 }
 
-function _applyColors(datasets) {
-  const colors = _themeColors(datasets.length);
-  return datasets.map((ds,i) => ({...ds, backgroundColor: colors[i]}));
-}
+const _legendFont = { size: 11 };
 
 // ── Dashboard charts ─────────────────────────────────────────────────────────
+const _stackedOpts = {
+  responsive: true,
+  interaction: { mode: 'index', intersect: false },
+  plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: _legendFont } } },
+  scales: {
+    x: { stacked: true, grid: { display: false }, ticks: { font: _legendFont } },
+    y: { stacked: true, beginAtZero: true, ticks: { font: _legendFont } },
+  },
+};
 {% if datasets != "[]" %}
 (function(){
-  const dashHoursEl = document.getElementById('dash-hours-chart');
-  if (dashHoursEl) {
-    new Chart(dashHoursEl, {
-      type: 'bar',
-      data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ datasets|safe }}) },
-      options: {
-        responsive: true,
-        plugins: { legend: { position: 'bottom' } },
-        scales: {
-          x: { stacked: true, grid: { display: false } },
-          y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Hours' } },
-        },
-      },
-    });
-  }
+  const el = document.getElementById('dash-hours-chart');
+  if (el) new Chart(el, {
+    type: 'bar',
+    data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ datasets|safe }}) },
+    options: { ..._stackedOpts, scales: { ..._stackedOpts.scales,
+      y: { ..._stackedOpts.scales.y, title: { display: true, text: 'Hours' } } } },
+  });
 })();
 {% endif %}
 (function(){
   const revEl = document.getElementById('dash-revenue-chart');
   if (!revEl) return;
-  const billed    = {{ dash_monthly_billed|safe }};
+  const charged   = {{ dash_monthly_charged|safe }};
   const collected = {{ dash_monthly_collected|safe }};
-  const hasData   = billed.some(v => v > 0) || collected.some(v => v > 0);
+  const hasData   = charged.some(v => v > 0) || collected.some(v => v > 0);
   if (!hasData) { revEl.parentElement.querySelector('canvas')?.remove(); return; }
   new Chart(revEl, {
     type: 'bar',
     data: {
       labels: {{ month_labels|safe }},
       datasets: [
-        { label: 'Billed',    data: billed,    backgroundColor: 'rgba(47,125,209,.35)', borderColor: 'rgba(47,125,209,.8)', borderWidth: 1, borderRadius: 3 },
-        { label: 'Collected', data: collected, backgroundColor: 'rgba(42,122,59,.45)',  borderColor: 'rgba(42,122,59,.8)',  borderWidth: 1, borderRadius: 3 },
+        { label: 'Charged',   data: charged,   backgroundColor: CHART_PALETTE[0], borderRadius: 0, borderSkipped: false },
+        { label: 'Collected', data: collected, backgroundColor: CHART_PALETTE[1], borderRadius: 0, borderSkipped: false },
       ],
     },
     options: {
       responsive: true,
-      plugins: { legend: { position: 'bottom' } },
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: _legendFont } } },
       scales: {
-        x: { grid: { display: false } },
-        y: { beginAtZero: true, title: { display: true, text: '$' } },
+        x: { grid: { display: false }, ticks: { font: _legendFont } },
+        y: { beginAtZero: true, title: { display: true, text: '$' }, ticks: { font: _legendFont } },
       },
     },
   });
 })();
+{% if instr_datasets != "[]" %}
+(function(){
+  const el = document.getElementById('dash-instr-chart');
+  if (el) new Chart(el, {
+    type: 'bar',
+    data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ instr_datasets|safe }}) },
+    options: { ..._stackedOpts, scales: { ..._stackedOpts.scales,
+      y: { ..._stackedOpts.scales.y, title: { display: true, text: 'Hours' } } } },
+  });
+})();
+{% endif %}
+(function(){
+  const el = document.getElementById('dash-flights-chart');
+  if (!el) return;
+  const solo = {{ dash_solo_flights|safe }};
+  const dual = {{ dash_dual_flights|safe }};
+  new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: {{ month_labels|safe }},
+      datasets: [
+        { label: 'Solo',  data: solo, backgroundColor: CHART_PALETTE[0], borderRadius: 0, borderSkipped: false },
+        { label: 'Dual',  data: dual, backgroundColor: CHART_PALETTE[1], borderRadius: 0, borderSkipped: false },
+      ],
+    },
+    options: { ..._stackedOpts, scales: { ..._stackedOpts.scales,
+      y: { ..._stackedOpts.scales.y, title: { display: true, text: 'Flights' } } } },
+  });
+})();
+
+{% if dash_has_budget %}
+(function(){
+  const budgetEl = document.getElementById('dash-budget-chart');
+  if (!budgetEl) return;
+  const actual  = {{ dash_actual_monthly|safe }};
+  const budget  = {{ dash_budget_monthly|safe }};
+  const cumVar  = {{ dash_cum_variance|safe }};
+  const labels  = {{ month_labels|safe }};
+  const actualColor = _themeColors(1)[0];
+  new Chart(budgetEl, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Actual',
+          data: actual,
+          backgroundColor: actualColor,
+          borderRadius: 0,
+          order: 2,
+        },
+        {
+          type: 'bar',
+          label: 'Budget',
+          data: budget,
+          backgroundColor: 'rgba(148,163,184,.55)',
+          borderRadius: 0,
+          order: 3,
+        },
+        {
+          type: 'line',
+          label: 'Cumulative variance',
+          data: cumVar,
+          yAxisID: 'y2',
+          borderColor: 'rgba(239,68,68,.85)',
+          backgroundColor: 'rgba(239,68,68,.08)',
+          borderWidth: 1.5,
+          pointRadius: 3,
+          tension: 0.3,
+          fill: false,
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, title: { display: true, text: 'Hours' }, ticks: { font: { size: 11 } } },
+        y2: {
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          title: { display: true, text: 'Variance' },
+          ticks: { font: { size: 11 } },
+        },
+      },
+    },
+  });
+})();
+{% endif %}
+
+// ── Historical charts ─────────────────────────────────────────────────────────
+(function(){
+  const _barOpts = (yLabel) => ({
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: _legendFont } } },
+    scales: {
+      x: { grid: { display: false }, ticks: { font: _legendFont } },
+      y: { beginAtZero: true, title: { display: true, text: yLabel }, ticks: { font: _legendFont } },
+    },
+  });
+
+  function makeFyDatasets(labels, rows) {
+    return rows.map((d, i) => ({
+      label: labels[i], data: d,
+      backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length],
+      borderRadius: 0, borderSkipped: false, maxBarThickness: CHART_MAX_BAR,
+    }));
+  }
+
+  // ── Monthly (last 4 FYs) ────────────────────────────────────────────────
+  const histEl = document.getElementById('hist-hours-chart');
+  if (histEl) {
+    const fyLabels   = {{ hist_fy_labels|safe }};
+    const monthLbls  = {{ hist_month_labels|safe }};
+    const histAll    = {{ hist_all_data|safe }};
+    const histLeased = {{ hist_leased_data|safe }};
+    const histOwned  = {{ hist_owned_data|safe }};
+    const histChart  = new Chart(histEl, {
+      type: 'bar',
+      data: { labels: monthLbls, datasets: makeFyDatasets(fyLabels, histAll) },
+      options: _barOpts('Hours'),
+    });
+    document.querySelectorAll('.hist-toggle[data-chart="hist"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.hist-toggle[data-chart="hist"]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const v = btn.dataset.view;
+        histChart.data.datasets = makeFyDatasets(fyLabels, v==='leased'?histLeased:v==='owned'?histOwned:histAll);
+        histChart.update();
+      });
+    });
+  }
+
+  // ── Annual totals (all years) ───────────────────────────────────────────
+  const annEl = document.getElementById('ann-hours-chart');
+  if (annEl) {
+    const annLabels = {{ ann_labels|safe }};
+    const annAll    = {{ ann_all_hrs|safe }};
+    const annLeased = {{ ann_leased_hrs|safe }};
+    const annOwned  = {{ ann_owned_hrs|safe }};
+    const annChart  = new Chart(annEl, {
+      type: 'bar',
+      data: { labels: annLabels, datasets: [{ label: 'All', data: annAll, backgroundColor: CHART_PALETTE[0], borderRadius: 0, borderSkipped: false, maxBarThickness: CHART_MAX_BAR }] },
+      options: _barOpts('Hours'),
+    });
+    document.querySelectorAll('.hist-toggle[data-chart="ann"]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.hist-toggle[data-chart="ann"]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const v = btn.dataset.view;
+        const d = v==='leased'?annLeased : v==='owned'?annOwned : annAll;
+        const lbl = v==='leased'?'Leased' : v==='owned'?'Owned' : 'All';
+        annChart.data.datasets = [{ label: lbl, data: d, backgroundColor: CHART_PALETTE[0], borderRadius: 0, borderSkipped: false, maxBarThickness: CHART_MAX_BAR }];
+        annChart.update();
+      });
+    });
+  }
+
+  // ── Annual flights by type (stacked, multi-select) ──────────────────────
+  const ftEl = document.getElementById('ann-ft-chart');
+  const ftToggles = document.getElementById('ann-ft-toggles');
+  if (ftEl) {
+    const ftRaw    = {{ ann_ft_datasets|safe }};
+    const annLbls  = {{ ann_labels|safe }};
+    const ftDs = ftRaw.map((ds, i) => ({
+      ...ds,
+      backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length],
+      borderRadius: 0, borderSkipped: false,
+      maxBarThickness: CHART_MAX_BAR, stack: 'ft',
+    }));
+    const ftChart = new Chart(ftEl, {
+      type: 'bar',
+      data: { labels: annLbls, datasets: ftDs },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { stacked: true, grid: { display: false }, ticks: { font: _legendFont } },
+          y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Flights' }, ticks: { font: _legendFont } },
+        },
+      },
+    });
+    if (ftToggles) {
+      ftDs.forEach((ds, i) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cbtn-sm';
+        btn.textContent = ds.label;
+        btn.style.cssText = `background:${CHART_PALETTE[i%CHART_PALETTE.length]};color:#fff;border-color:transparent;opacity:1;`;
+        btn.addEventListener('click', () => {
+          const meta = ftChart.getDatasetMeta(i);
+          meta.hidden = !meta.hidden;
+          btn.style.opacity = meta.hidden ? '0.35' : '1';
+          ftChart.update();
+        });
+        ftToggles.appendChild(btn);
+      });
+    }
+  }
+})();
 
 // ── Charts ───────────────────────────────────────────────────────────────────
-const _chartOpts = {
-  responsive: true,
-  plugins: { legend: { position: 'bottom' } },
-  scales: {
-    x: { stacked: true, grid: { display: false } },
-    y: { stacked: true, title: { display: true, text: 'Hours' }, beginAtZero: true },
-  },
-};
-{% if datasets != "[]" %}
-new Chart(document.getElementById('hours-chart'), {
-  type: 'bar',
-  data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ datasets|safe }}) },
-  options: _chartOpts,
-});
-{% endif %}
-{% if instr_datasets != "[]" %}
-new Chart(document.getElementById('instr-chart'), {
-  type: 'bar',
-  data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ instr_datasets|safe }}) },
-  options: { ..._chartOpts, scales: { ..._chartOpts.scales,
-    y: { title: { display: true, text: 'Instructor hours' }, beginAtZero: true }
-  }},
-});
-{% endif %}
-
 // ── Occurrence charts ─────────────────────────────────────────────────────────
 {% if occ_total %}
 (function(){
-  const PAL = _themeColors(8);
-
   const _occOpts = {
     responsive: true,
+    interaction: { mode: 'index', intersect: false },
     plugins: { legend: { display: false } },
-    scales: { x: { beginAtZero: true, grid: { display: false } }, y: { grid: { display: false } } },
+    scales: { x: { beginAtZero: true, grid: { display: false }, ticks: { font: _legendFont } }, y: { grid: { display: false }, ticks: { font: _legendFont } } },
   };
   const _occOptsH = { ...JSON.parse(JSON.stringify(_occOpts)), indexAxis: 'y' };
 
@@ -540,7 +706,7 @@ new Chart(document.getElementById('instr-chart'), {
       data: {
         labels: {{ occ_month_labels|safe }},
         datasets: [{ label: 'Occurrences', data: {{ occ_month_data|safe }},
-          backgroundColor: PAL[0], borderRadius: 4 }]
+          backgroundColor: CHART_PALETTE[0], borderRadius: 0 }]
       },
       options: _occOpts,
     });
@@ -555,8 +721,8 @@ new Chart(document.getElementById('instr-chart'), {
       data: {
         labels: typeLabels,
         datasets: [{ label: 'Reports', data: {{ occ_type_data|safe }},
-          backgroundColor: typeLabels.map((_,i) => PAL[i % PAL.length]),
-          borderRadius: 4 }]
+          backgroundColor: typeLabels.map((_,i) => CHART_PALETTE[i % CHART_PALETTE.length]),
+          borderRadius: 0 }]
       },
       options: _occOptsH,
     });
@@ -571,8 +737,8 @@ new Chart(document.getElementById('instr-chart'), {
       data: {
         labels: acLabels,
         datasets: [{ label: 'Reports', data: {{ occ_ac_data|safe }},
-          backgroundColor: acLabels.map((_,i) => PAL[i % PAL.length]),
-          borderRadius: 4 }]
+          backgroundColor: acLabels.map((_,i) => CHART_PALETTE[i % CHART_PALETTE.length]),
+          borderRadius: 0 }]
       },
       options: _occOptsH,
     });

@@ -65,10 +65,6 @@
           <span style="font-size:.72rem;color:#8a93a0;margin-top:.2rem;display:block;">Time at which SAR should be notified if not returned</span>
         </label>
       </div>
-      <label style="display:flex;align-items:center;gap:.5rem;font-size:.88rem;margin-bottom:.8rem;">
-        <input type="checkbox" name="is_cross_country" {% if decl.is_cross_country %}checked{% endif %}>
-        Cross-country flight (pickets required)
-      </label>
     </div>
 
     <div class="section">
@@ -94,7 +90,7 @@
 
       {% if passengers %}
       <table class="cred-table" style="margin-bottom:.8rem;">
-        <thead><tr><th>Name</th><th>Phone</th><th>NOK name</th><th>NOK phone</th><th></th></tr></thead>
+        <thead><tr><th>Name</th><th>Phone</th><th>Next of kin name</th><th>Next of kin phone</th><th></th></tr></thead>
         <tbody>
           {% for pax in passengers %}
           <tr>
@@ -105,7 +101,7 @@
             <td style="text-align:right;">
               {% if not readonly %}
               {# Passenger remove — separate form, NOT nested inside #decl-form #}
-              <button type="button" class="btn-link-red"
+              <button type="button" class="cbtn-sm cbtn-danger"
                       onclick="removePax('{{ pax.id }}','{{ pax.name|escapejs }}')">Remove</button>
               {% endif %}
             </td>
@@ -132,54 +128,63 @@
       </div>
       {% endif %}
 
-      <details>
-        <summary style="cursor:pointer;font-size:.82rem;color:var(--primary);list-style:none;">+ Add new passenger</summary>
-        <div style="margin-top:.6rem;max-width:560px;">
-          <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-            <label class="flabel" style="flex:1;min-width:180px;">Name
-              <input type="text" id="pax-name" class="finput" placeholder="Full name">
-            </label>
-            <label class="flabel" style="flex:1;min-width:140px;">Phone
-              <input type="text" id="pax-phone" class="finput" placeholder="Mobile number">
-            </label>
-          </div>
-          <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-            <label class="flabel" style="flex:1;min-width:180px;">NOK name
-              <input type="text" id="pax-nok-name" class="finput" placeholder="Next of kin name">
-            </label>
-            <label class="flabel" style="flex:1;min-width:140px;">NOK phone
-              <input type="text" id="pax-nok-phone" class="finput" placeholder="NOK contact number">
-            </label>
-          </div>
-          <button type="button" class="btn secondary" style="margin-top:.2rem;" onclick="addNewPax()">Add passenger</button>
+      <button type="button" class="cbtn-add" onclick="document.getElementById('new-pax-panel').hidden=false;this.hidden=true;">+ Add passenger</button>
+      <div id="new-pax-panel" hidden style="margin-top:.6rem;max-width:560px;">
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+          <label class="flabel" style="flex:1;min-width:180px;">Name
+            <input type="text" id="pax-name" class="finput" placeholder="Full name">
+          </label>
+          <label class="flabel" style="flex:1;min-width:140px;">Phone
+            <input type="text" id="pax-phone" class="finput" placeholder="Mobile number">
+          </label>
         </div>
-      </details>
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+          <label class="flabel" style="flex:1;min-width:180px;">Next of kin name
+            <input type="text" id="pax-nok-name" class="finput" placeholder="Next of kin full name">
+          </label>
+          <label class="flabel" style="flex:1;min-width:140px;">Next of kin phone
+            <input type="text" id="pax-nok-phone" class="finput" placeholder="Next of kin number">
+          </label>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.4rem;">
+          <button type="button" class="cbtn primary" onclick="window.addNewPax()">Add</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('new-pax-panel').hidden=true;document.querySelector('.cbtn-add[onclick*=new-pax-panel]').hidden=false;">✕ Close</button>
+        </div>
+      </div>
       {% endif %}
     </div>
 
     <div class="section">
       <h2 class="sh2">Pre-departure checklist</h2>
       <div class="checklist">
-        <label class="check-item"><input type="checkbox" name="confirm_aip" {% if decl.confirm_aip %}checked{% endif %}> AIP / NOTAMs reviewed</label>
-        <label class="check-item"><input type="checkbox" name="confirm_weather" {% if decl.confirm_weather %}checked{% endif %}> Weather checked</label>
-        <label class="check-item"><input type="checkbox" name="confirm_fuel" {% if decl.confirm_fuel %}checked{% endif %}> Fuel requirements confirmed</label>
-        <label class="check-item"><input type="checkbox" name="confirm_fuel_card" {% if decl.confirm_fuel_card %}checked{% endif %}> Fuel card carried</label>
-        <label class="check-item"><input type="checkbox" name="confirm_maps" {% if decl.confirm_maps %}checked{% endif %}> Maps carried</label>
-        <label class="check-item"><input type="checkbox" name="confirm_afm" {% if decl.confirm_afm %}checked{% endif %}> AFM in aircraft</label>
-        <label class="check-item"><input type="checkbox" name="confirm_flight_plan" {% if decl.confirm_flight_plan %}checked{% endif %}> Flight plan filed (if required)</label>
-        <label class="check-item" id="pickets-item" {% if not decl.is_cross_country %}style="opacity:.45;"{% endif %}>
-          <input type="checkbox" name="confirm_pickets" {% if decl.confirm_pickets %}checked{% endif %}> Pickets carried (cross-country)
-        </label>
+        <label class="check-item"><span class="tog-sw"><input type="checkbox" name="confirm_aip" {% if decl.confirm_aip %}checked{% endif %}><span class="tog-track"></span></span> AIP / NOTAMs reviewed</label>
+        <label class="check-item"><span class="tog-sw"><input type="checkbox" name="confirm_weather" {% if decl.confirm_weather %}checked{% endif %}><span class="tog-track"></span></span> Weather checked</label>
+        <label class="check-item"><span class="tog-sw"><input type="checkbox" name="confirm_fuel" {% if decl.confirm_fuel %}checked{% endif %}><span class="tog-track"></span></span> Fuel requirements confirmed</label>
+        <label class="check-item"><span class="tog-sw"><input type="checkbox" name="confirm_fuel_card" {% if decl.confirm_fuel_card %}checked{% endif %}><span class="tog-track"></span></span> Fuel card carried</label>
+        <label class="check-item"><span class="tog-sw"><input type="checkbox" name="confirm_maps" {% if decl.confirm_maps %}checked{% endif %}><span class="tog-track"></span></span> Maps carried</label>
+        <label class="check-item"><span class="tog-sw"><input type="checkbox" name="confirm_afm" {% if decl.confirm_afm %}checked{% endif %}><span class="tog-track"></span></span> AFM in aircraft</label>
+        <label class="check-item"><span class="tog-sw"><input type="checkbox" name="confirm_flight_plan" {% if decl.confirm_flight_plan %}checked{% endif %}><span class="tog-track"></span></span> Flight plan filed (if required)</label>
       </div>
     </div>
 
     {% if not readonly %}
-    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.5rem;">
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.5rem;align-items:center;">
       {% if decl.is_draft %}
-      <button type="submit" name="action" value="save_draft" class="btn secondary">Save draft</button>
-      <button type="submit" name="action" value="submit" class="btn">Submit declaration</button>
+        {% if hours_to_departure > 6 %}
+        <button type="submit" name="action" value="save_draft" class="cbtn primary">Save draft</button>
+        <button type="submit" name="action" value="submit" class="cbtn">Submit declaration</button>
+        {% else %}
+        <button type="submit" name="action" value="save_draft" class="cbtn">Save draft</button>
+        <button type="submit" name="action" value="submit" class="cbtn primary">Submit declaration</button>
+        {% endif %}
+        {% if hours_to_departure > 6 %}
+        <span style="font-size:.78rem;color:#8a93a0;">
+          Your flight is in {{ hours_to_departure|floatformat:0 }} hours — save as draft and return closer to departure to submit.
+          Submitted declarations older than 6 hours are flagged stale.
+        </span>
+        {% endif %}
       {% else %}
-      <button type="submit" name="action" value="submit" class="btn">Update &amp; re-submit</button>
+      <button type="submit" name="action" value="submit" class="cbtn primary">Update &amp; re-submit</button>
       {% endif %}
     </div>
     {% endif %}
@@ -212,12 +217,7 @@
   .finput{display:block;width:100%;margin-top:.25rem;padding:.42rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
   .checklist{display:flex;flex-direction:column;gap:.55rem;}
   .check-item{display:flex;align-items:center;gap:.6rem;font-size:.88rem;color:#1f2933;cursor:pointer;}
-  .btn{padding:.42rem .85rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;font-weight:500;}
-  .btn:hover{filter:brightness(1.07);}
-  .btn.secondary{background:#f3f5f7;color:#1f2933;border:1px solid #d6dae0;}
-  .btn.secondary:hover{background:#e8eaed;}
-  .btn-link-red{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.85rem;padding:0;}
-  .btn-link-red:hover{text-decoration:underline;}
+
   .cred-table{width:100%;border-collapse:collapse;font-size:.85rem;}
   .cred-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
   .cred-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
@@ -227,28 +227,27 @@
 </style>
 
 <script>
-document.querySelector('[name=is_cross_country]').addEventListener('change', function(){
-  document.getElementById('pickets-item').style.opacity = this.checked ? '1' : '.45';
-});
+window._submitPaxForm = function() {
+  document.getElementById('pax-action-form').dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));
+};
 
-function removePax(paxId, name) {
+window.removePax = function(paxId, name) {
   if (!confirm('Remove ' + name + '?')) return;
-  var f = document.getElementById('pax-action-form');
   document.getElementById('pax-action-value').value = 'remove_passenger';
   document.getElementById('pax-action-id').value = paxId;
-  f.submit();
-}
+  window._submitPaxForm();
+};
 
-function quickAddPax(name, phone, nokName, nokPhone) {
+window.quickAddPax = function(name, phone, nokName, nokPhone) {
   document.getElementById('pax-action-value').value = 'add_passenger';
   document.getElementById('pax-action-name').value = name;
   document.getElementById('pax-action-phone').value = phone;
   document.getElementById('pax-action-nok-name').value = nokName;
   document.getElementById('pax-action-nok-phone').value = nokPhone;
-  document.getElementById('pax-action-form').submit();
-}
+  window._submitPaxForm();
+};
 
-function addNewPax() {
+window.addNewPax = function() {
   var name = document.getElementById('pax-name').value.trim();
   if (!name) { alert('Passenger name is required'); return; }
   document.getElementById('pax-action-value').value = 'add_passenger';
@@ -256,7 +255,7 @@ function addNewPax() {
   document.getElementById('pax-action-phone').value = document.getElementById('pax-phone').value.trim();
   document.getElementById('pax-action-nok-name').value = document.getElementById('pax-nok-name').value.trim();
   document.getElementById('pax-action-nok-phone').value = document.getElementById('pax-nok-phone').value.trim();
-  document.getElementById('pax-action-form').submit();
-}
+  window._submitPaxForm();
+};
 </script>
 {% endblock %}

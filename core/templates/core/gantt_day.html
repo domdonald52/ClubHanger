@@ -14,21 +14,54 @@
       </div>
       <h1 id="cal-title">{{ selected_date|date:"l, j F Y" }}</h1>
     </div>
-    {% if can_manage %}
-    <div style="display:flex;gap:.4rem;align-items:center;">
-      <button class="cbtn" id="btn-blockout" title="Add block-out for this day">+ Block-out</button>
-    </div>
-    {% endif %}
   </div>
+
+  {% if announcements_today %}
+  <div style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:.65rem;">
+    {% for ann in announcements_today %}
+    <div style="border-left:4px solid {{ ann.color }};background:{{ ann.bg }};border-radius:8px;padding:.6rem .9rem;display:flex;align-items:flex-start;gap:.75rem;">
+      {% if ann.type == 'safety' %}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ ann.color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:.1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      {% elif ann.type == 'event' or ann.type == 'flyaway' %}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ ann.color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:.1rem;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      {% else %}
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ ann.color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:.1rem;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {% endif %}
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem;">
+          <span style="font-size:.68rem;font-weight:700;padding:.15rem .42rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
+          {% if ann.event_date %}<span style="font-size:.75rem;color:#6b7280;">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
+          {% if ann.is_pinned %}<svg width="12" height="12" viewBox="0 0 24 24" fill="{{ ann.color }}" stroke="none" title="Pinned"><path d="M16 2a1 1 0 0 0-1 1v1H9V3a1 1 0 0 0-2 0v1a3 3 0 0 0-3 3v1l-1 1v2h7v7l1 2 1-2v-7h7v-2l-1-1V7a3 3 0 0 0-3-3V3a1 1 0 0 0-1-1z"/></svg>{% endif %}
+        </div>
+        <div style="font-size:.88rem;font-weight:650;color:#1f2933;">{{ ann.title }}</div>
+        {% if ann.body %}<div style="font-size:.8rem;color:#4a5568;margin-top:.2rem;line-height:1.45;">{{ ann.body|linebreaksbr }}</div>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   <div class="legend">
     <span><i class="dot confirmed"></i> Confirmed</span>
     <span><i class="dot pending"></i> Pending</span>
-    <span><i class="dot departed"></i> Checked out</span>
-    <span><i class="dot returned"></i> Checked in</span>
+    <span><i class="dot departed"></i> Departed</span>
+    <span><i class="dot returned"></i> Returned</span>
     <span><i class="dot completed-paid"></i> Completed</span>
+    <a href="{% url 'core:club_weather' club.slug %}" id="wx-pill" class="wx-pill" style="display:none;" title="Click for full weather page"></a>
     {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
   </div>
+  <div id="wx-taf" style="display:none;font-size:.75rem;background:color-mix(in srgb,var(--banner) 8%,#f7f9fb);border:1px solid color-mix(in srgb,var(--banner) 22%,#e3e6ea);border-radius:6px;padding:.35rem .75rem;margin-bottom:.6rem;line-height:1.5;color:color-mix(in srgb,var(--banner) 70%,#2b333d);"></div>
+
+  {% if instructor_cred_issues %}
+  <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.6rem .9rem;margin-bottom:.75rem;font-size:.82rem;color:#7f1d1d;">
+    <strong>⚠ Instructor credential {{ instructor_cred_issues|length|pluralize:"issue,issues" }} {% if selected_date == today %}today{% else %}on {{ selected_date|date:"j M" }}{% endif %}:</strong>
+    {% for row in instructor_cred_issues %}
+      <span style="margin-left:.5rem;font-weight:600;">{{ row.cm.user.get_full_name }}</span>
+      — {% for issue in row.lapsed %}{{ issue }}{% if not forloop.last %}; {% endif %}{% endfor %}{% if not forloop.last %} ·{% endif %}
+    {% endfor %}
+    {% if selected_date == today %}<a href="{% url 'core:manage_exceptions' club.slug %}?tab=credentials" style="margin-left:.75rem;color:#c0392b;font-weight:600;text-decoration:underline;">View in Attention →</a>{% endif %}
+  </div>
+  {% endif %}
 
   <div class="grid-scroll">
     <div class="grid" style="--track-width: {{ track_width }}px;">
@@ -89,7 +122,7 @@
           </div>
         </div>
       {% endfor %}
-      {% if now_px %}<div id="now-overlay" style="left:calc({{ label_w }}px + {{ now_px }}px)"></div>{% endif %}
+      {% if now_px is not None %}<div id="now-overlay" style="left:calc({{ label_w }}px + {{ now_px }}px)"></div>{% endif %}
     </div>
   </div>
 </div>
@@ -148,7 +181,7 @@
     </div>
     <label>Label (optional)<input type="text" id="bo-label" placeholder="e.g. 100-hr check ZK-TAW"></label>
     <div class="modal-actions">
-      <button class="cbtn" id="bo-cancel" type="button">Cancel</button>
+      <button class="cbtn" id="bo-cancel" type="button">✕ Close</button>
       <span style="flex:1"></span>
       <button class="cbtn primary" id="bo-save" type="button">Add block-out</button>
     </div>
@@ -158,7 +191,10 @@
 <!-- Booking / edit modal -->
 <div id="modal" class="modal-back" hidden>
   <div class="modal">
-    <h2 id="modal-title">New booking</h2>
+    <div class="modal-hdr">
+      <h2 id="modal-title">New booking</h2>
+      <button class="modal-x" id="m-cancel" type="button">✕ Close</button>
+    </div>
     <div id="m-conflict-notice" hidden style="margin-bottom:.8rem;border-radius:7px;overflow:hidden;border:1px solid #fca5a5;background:#fff5f5;font-size:.82rem;"></div>
 
     <!-- Status notice (shown for completed bookings) -->
@@ -170,7 +206,12 @@
     <!-- Standard edit fields (hidden for departed/completed) -->
     <div id="m-edit-fields">
       <input type="hidden" id="m-booking-id">
-      <label>Member<select id="m-member"></select></label>
+      <label>Member
+        <input type="text" id="m-member-search" placeholder="Search…"
+               style="display:block;width:100%;box-sizing:border-box;margin-bottom:.3rem;padding:.35rem .55rem;border:1.5px solid #d5d9e0;border-radius:6px;font-size:.84rem;"
+               autocomplete="off">
+        <select id="m-member"></select>
+      </label>
       <div id="m-member-notice" style="display:none;font-size:.78rem;background:#fff8e1;border-left:3px solid #f59e0b;padding:.4rem .6rem;border-radius:4px;margin:-.3rem 0 .4rem;color:#92400e;"></div>
       <label>Flight type<select id="m-flight-type"></select></label>
       <div class="two">
@@ -187,12 +228,29 @@
       <label>Description<input type="text" id="m-desc" placeholder="optional"></label>
     </div>
 
-    <!-- Depart override reason (shown when declaration required but not submitted) -->
-    <div id="m-decl-warn" hidden style="background:#fff8e6;border:1px solid #fcd34d;border-radius:6px;padding:.5rem .7rem;font-size:.82rem;margin-bottom:.6rem;color:#92400e;">
-      No departure declaration submitted.
-      <label style="display:block;margin-top:.4rem;font-weight:600;">Override reason (required)
-        <input type="text" id="m-decl-reason" style="display:block;width:100%;margin-top:.2rem;padding:.35rem .45rem;border:1px solid #fcd34d;border-radius:5px;font-size:.85rem;box-sizing:border-box;" placeholder="e.g. Short local circuit, verbally briefed">
-      </label>
+    <!-- Unified check-out view (replaces edit fields; opened by Check out button) -->
+    <div id="m-depart-view" hidden>
+      <div id="dv-decl-section" hidden style="background:#fff8e6;border:1px solid #fcd34d;border-radius:7px;padding:.55rem .75rem;margin-bottom:.65rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;">
+          <span style="font-size:.83rem;color:#92400e;font-weight:600;">⚑ Declaration not yet submitted</span>
+          <button id="dv-decl-open" type="button" class="cbtn-sm" style="color:var(--banner);border-color:var(--banner);white-space:nowrap;">Open declaration →</button>
+        </div>
+        <label style="display:block;margin-top:.5rem;font-size:.8rem;font-weight:600;color:#92400e;">Override reason
+          <input type="text" id="dv-decl-reason"
+                 style="display:block;width:100%;margin-top:.25rem;padding:.35rem .45rem;border:2px solid #f59e0b;border-radius:5px;font-size:.85rem;box-sizing:border-box;background:#fffbeb;"
+                 placeholder="e.g. Short local circuit, verbally briefed">
+        </label>
+      </div>
+      <div id="dv-cred-section" style="margin-bottom:.5rem;">
+        <p style="color:#8a93a0;font-size:.84rem;padding:.3rem 0;">Checking credentials…</p>
+      </div>
+      <div id="dv-override-section" hidden style="padding:.55rem .7rem;background:#fff8e6;border:1px solid #fcd34d;border-radius:7px;">
+        <label style="display:block;font-size:.8rem;font-weight:600;color:#92400e;">Credential override reason <span style="color:#c0392b;">*</span>
+          <input type="text" id="dv-override-reason"
+                 style="display:block;width:100%;margin-top:.25rem;padding:.35rem .45rem;border:2px solid #f59e0b;border-radius:5px;font-size:.85rem;box-sizing:border-box;background:#fffbeb;"
+                 placeholder="e.g. Flying with instructor, emergency crew duty…">
+        </label>
+      </div>
     </div>
 
     <!-- Return fields (shown when booking is departed) -->
@@ -213,32 +271,35 @@
         </label>
       </div>
       <div class="two">
-        <label id="m-hobbs-start-label">Hobbs start<input type="number" id="m-hobbs-start" step="0.1" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;" placeholder="e.g. 1234.5"></label>
+        <label id="m-hobbs-start-label">Hobbs start<a id="m-hobbs-start-amend" href="#" tabindex="-1" style="float:right;font-size:.72rem;color:var(--primary);text-decoration:none;margin-top:.05rem;">Amend</a><input type="number" id="m-hobbs-start" readonly step="0.1" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;background:#f3f5f7;cursor:default;" placeholder="e.g. 1234.5"></label>
         <label id="m-hobbs-end-label">Hobbs end<input type="number" id="m-hobbs-end" step="0.1" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;"></label>
       </div>
       <div class="two">
-        <label id="m-tacho-start-label">Tacho start<input type="number" id="m-tacho-start" step="0.01" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;"></label>
-        <label id="m-tacho-end-label">Tacho end<input type="number" id="m-tacho-end" step="0.01" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;"></label>
+        <label id="m-tacho-start-label">Tacho start<a id="m-tacho-start-amend" href="#" tabindex="-1" style="float:right;font-size:.72rem;color:var(--primary);text-decoration:none;margin-top:.05rem;">Amend</a><input type="number" id="m-tacho-start" readonly step="0.1" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;background:#f3f5f7;cursor:default;"></label>
+        <label id="m-tacho-end-label">Tacho end<input type="number" id="m-tacho-end" step="0.1" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;"></label>
       </div>
       <div class="two">
-        <label id="m-airswitch-start-label">Air switch start<input type="number" id="m-airswitch-start" step="0.1" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;"></label>
+        <label id="m-airswitch-start-label">Air switch start<a id="m-airswitch-start-amend" href="#" tabindex="-1" style="float:right;font-size:.72rem;color:var(--primary);text-decoration:none;margin-top:.05rem;">Amend</a><input type="number" id="m-airswitch-start" readonly step="0.1" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;background:#f3f5f7;cursor:default;"></label>
         <label id="m-airswitch-end-label">Air switch end<input type="number" id="m-airswitch-end" step="0.1" style="display:block;width:100%;margin-top:.2rem;padding:.4rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;"></label>
       </div>
+      <div id="m-checkin-warn"  hidden style="margin-top:.5rem;padding:.4rem .65rem;background:#fff8e6;border:1px solid #fcd34d;border-radius:6px;font-size:.8rem;color:#92400e;"></div>
+      <div id="m-checkin-error" hidden style="margin-top:.5rem;padding:.4rem .65rem;background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;font-size:.8rem;color:#7f1d1d;"></div>
     </div>
 
     <div class="modal-actions">
-      <button class="cbtn" id="m-cancel" type="button">Close</button>
       <button class="cbtn" id="m-watch" type="button" hidden
-              style="margin-left:.25rem;display:inline-flex;align-items:center;gap:.35rem;">
+              style="display:inline-flex;align-items:center;gap:.35rem;">
         <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 7.5S3.5 2 7.5 2s6.5 5.5 6.5 5.5S12.5 13 7.5 13 1 7.5 1 7.5z"/><circle cx="7.5" cy="7.5" r="2"/></svg>
         <span id="m-watch-label">Watch slot</span>
       </button>
-      <span style="flex:1"></span>
       <button class="cbtn danger" id="m-delete" type="button" hidden>Cancel booking</button>
       <button class="cbtn" id="m-confirm" type="button" hidden style="background:var(--confirmed);color:#fff;border-color:var(--confirmed);">Confirm booking</button>
+      <button class="cbtn" id="m-decl-btn" type="button" hidden style="background:var(--banner);color:#fff;border-color:var(--banner);white-space:nowrap;">Declaration →</button>
       <button class="cbtn" id="m-depart" type="button" hidden style="background:var(--departed);color:#fff;border-color:var(--departed);">Check out</button>
       <button class="cbtn" id="m-checkin-btn" type="button" hidden style="background:var(--primary);color:#fff;border-color:var(--primary);">Record return</button>
-      <a class="cbtn" id="m-charges-link" href="#" hidden style="background:#6b7280;color:#fff;border-color:#6b7280;text-decoration:none;">Charges →</a>
+      <a class="cbtn" id="m-charges-link" href="#" hidden style="background:#6b7280;color:#fff;border-color:#6b7280;text-decoration:none;">View details →</a>
+      <button class="cbtn" id="dv-back" type="button" hidden style="margin-right:auto;">← Back</button>
+      <button class="cbtn" id="dv-confirm" type="button" hidden style="background:var(--departed);color:#fff;border-color:var(--departed);">Confirm check out</button>
       <button class="cbtn primary" id="m-save" type="button">Save</button>
     </div>
   </div>
@@ -253,7 +314,7 @@
       Watch this slot to get an alert if it's released for others to take.
     </p>
     <div class="modal-actions">
-      <button class="cbtn" id="wm-close" type="button">Close</button>
+      <button class="cbtn" id="wm-close" type="button">✕ Close</button>
       <span style="flex:1"></span>
       <button class="cbtn primary" id="wm-watch" type="button"
               style="display:inline-flex;align-items:center;gap:.35rem;">
@@ -328,7 +389,8 @@
   "typicalEnd": "{{ typical_hours_end }}",
   "selectedDate": "{{ selected_date|date:'Y-m-d' }}",
   "watchedIds": {{ watched_ids|default:"[]" }},
-  "bookingDetailBase": "{% url 'core:booking_detail' club.slug 0 %}"
+  "bookingDetailBase": "{% url 'core:booking_detail' club.slug 0 %}",
+  "clubPhone": "{{ club_phone|escapejs }}"
 }
 </script>
 {{ members_json|json_script:"members-data" }}
@@ -406,7 +468,10 @@
   .pill .nm{font-size:.72rem;font-weight:650;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pill .sub{font-size:.62rem;opacity:.9;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize}
-  .pill.drag{opacity:.85;box-shadow:0 6px 16px rgba(16,24,40,.28);z-index:20}
+  .pill.drag{opacity:.9;box-shadow:0 8px 24px rgba(16,24,40,.35);z-index:100;cursor:grabbing}
+  @keyframes pill-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+  .pill.shake{animation:pill-shake .35s ease;cursor:not-allowed;}
+  .track.drag-over{outline:2px solid var(--primary);outline-offset:-2px}
   .pill.invalid{outline:2px solid #ffd43b;outline-offset:-2px}
   .pill.conflict::before{content:'';position:absolute;top:0;left:0;bottom:0;width:4px;background:#e03131;border-radius:5px 0 0 5px;z-index:1;}
   .pill.override{box-shadow:0 0 0 2px #fff,0 0 0 4px #845ef7}
@@ -418,16 +483,32 @@
   [hidden]{display:none!important}
   .modal-back[hidden]{display:none}
   .toast[hidden]{display:none}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;width:min(440px,92vw);box-shadow:0 12px 40px rgba(16,24,40,.25)}
+  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;width:min(460px,92vw);box-shadow:0 12px 40px rgba(16,24,40,.25)}
   .modal.small{width:min(360px,90vw)}
-  .modal h2{margin:0 0 .9rem;font-size:1.05rem}
+  .modal-hdr{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.9rem;}
+  .modal-hdr h2{margin:0;font-size:1.05rem;flex:1}
+  .modal-x{background:none;border:1px solid #d6dae0;border-radius:6px;padding:.25rem .6rem;cursor:pointer;font-size:.8rem;color:#5b6573;flex-shrink:0;line-height:1.5;}
+  .modal-x:hover{background:#f3f5f7;}
   .modal label{display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem}
   .modal input,.modal select{width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box}
   .modal .two{display:flex;gap:.7rem}.modal .two label{flex:1}
-  .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:.4rem}
+  .modal-actions{display:flex;align-items:center;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;justify-content:flex-end;}
+  .modal-actions .cbtn{white-space:nowrap;padding:.38rem .65rem;}
+  #m-watch{margin-right:auto;order:-1;}
   .toast{position:fixed;bottom:1.25rem;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;z-index:900;box-shadow:0 6px 20px rgba(0,0,0,.25)}
   /* Detail overlay */
   .detail-overlay-modal{width:min(1100px,96vw);max-height:92vh;overflow-y:auto;padding:0;border-radius:10px;}
+  /* Weather pill */
+  .wx-pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:500;padding:.2rem .65rem;border-radius:10px;text-decoration:none;margin-left:auto;white-space:nowrap;cursor:pointer;background:color-mix(in srgb,var(--banner) 12%,#fff);color:color-mix(in srgb,var(--banner) 80%,#1f2933);border:1px solid color-mix(in srgb,var(--banner) 28%,#e3e6ea);}
+  .wx-pill:hover{background:color-mix(in srgb,var(--banner) 18%,#fff);}
+  .wx-pill-lbl{font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;opacity:.65;}
+  .wx-fr-badge{font-size:.68rem;font-weight:700;padding:.1rem .32rem;border-radius:5px;}
+  .wx-fr-badge-vfr{background:#dcfce7;color:#166534;}
+  .wx-fr-badge-mvfr{background:#dbeafe;color:#1d4ed8;}
+  .wx-fr-badge-ifr{background:#fee2e2;color:#991b1b;}
+  .wx-fr-badge-lifr{background:#f3e8ff;color:#6b21a8;}
+  .wx-pill-stale{opacity:.7;}
+  .wx-pill-age{font-weight:400;opacity:.7;}
 </style>
 
 <!-- Pre-confirmation credential check modal -->
@@ -436,7 +517,7 @@
     <h2 id="cred-check-title" style="margin:0 0 .7rem;">Confirm booking</h2>
     <div id="cred-check-body" style="flex:1;overflow-y:auto;min-height:0;margin-bottom:.8rem;"></div>
     <div style="display:flex;align-items:center;gap:.5rem;border-top:1px solid #eef1f4;padding-top:.8rem;">
-      <button id="cred-check-cancel" class="cbtn">Cancel</button>
+      <button id="cred-check-cancel" class="cbtn">✕ Close</button>
       <span style="flex:1"></span>
       <button id="cred-check-confirm" class="cbtn primary">Confirm booking</button>
     </div>
@@ -490,16 +571,14 @@
     _fitTimer = setTimeout(fitTrack, 60);
   });
 
-  {% if now_px %}
+  {% if now_px is not None %}
   const overlay = document.getElementById('now-overlay');
   if (overlay) {
     const dayStart = new Date("{{ day_start_iso }}");
     const pxPerMin = {{ px_per_min }};
     const totalMins = {{ total_minutes }};
     function update() {
-      const diffMin = (new Date() - dayStart) / 60000;
-      if (diffMin < 0 || diffMin > totalMins) { overlay.style.visibility = 'hidden'; return; }
-      overlay.style.visibility = '';
+      const diffMin = Math.max(0, Math.min(totalMins, (new Date() - dayStart) / 60000));
       overlay.style.left = (labelW + Math.round(diffMin * pxPerMin)) + 'px';
     }
     update();
@@ -511,11 +590,11 @@
 
 <!-- ── ADS-B right-click context menu ── -->
 <div id="pill-ctx" style="display:none;position:fixed;z-index:800;background:#fff;border:1px solid #e3e6ea;border-radius:8px;box-shadow:0 4px 16px rgba(16,24,40,.18);min-width:160px;overflow:hidden;">
-  <div id="pill-ctx-track" style="padding:.5rem .9rem;font-size:.84rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
-    ✈ <span id="pill-ctx-label">Track aircraft</span>
+  <div id="pill-ctx-detail" style="padding:.5rem .9rem;font-size:.84rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
+    📋 View details
   </div>
-  <div id="pill-ctx-open" style="padding:.5rem .9rem;font-size:.84rem;cursor:pointer;border-top:1px solid #f0f2f4;display:flex;align-items:center;gap:.5rem;">
-    📋 Open booking
+  <div id="pill-ctx-track" style="padding:.5rem .9rem;font-size:.84rem;cursor:pointer;border-top:1px solid #f0f2f4;display:flex;align-items:center;gap:.5rem;">
+    ✈ <span id="pill-ctx-label">Track aircraft</span>
   </div>
 </div>
 
@@ -550,6 +629,7 @@
     activePill = pill;
     const reg = pill.dataset.registration || 'aircraft';
     document.getElementById('pill-ctx-label').textContent = `Track ${reg} live`;
+    document.getElementById('pill-ctx-track').style.display = pill.dataset.status === 'departed' ? '' : 'none';
     ctx.style.display = 'block';
     ctx.style.left = Math.min(e.clientX, window.innerWidth - 175) + 'px';
     ctx.style.top = Math.min(e.clientY, window.innerHeight - 95) + 'px';
@@ -557,9 +637,9 @@
   document.addEventListener('click', e => { if (!ctx.contains(e.target)) ctx.style.display = 'none'; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { ctx.style.display = 'none'; closeAdsbPanel(); }});
 
-  document.getElementById('pill-ctx-open').addEventListener('click', () => {
+  document.getElementById('pill-ctx-detail').addEventListener('click', () => {
     ctx.style.display = 'none';
-    if (activePill) activePill.dispatchEvent(new MouseEvent('click', {bubbles:true}));
+    if (activePill) window.openDetailOverlay(activePill.dataset.id);
   });
   document.getElementById('pill-ctx-track').addEventListener('click', () => {
     ctx.style.display = 'none';
@@ -632,7 +712,7 @@
     adsbTimer = setInterval(poll, 10000);  // 10s — OpenSky anonymous rate limit
   }
 
-  ['pill-ctx-track','pill-ctx-open'].forEach(id => {
+  ['pill-ctx-detail','pill-ctx-track'].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener('mouseenter', () => el.style.background = '#f0f4ff');
     el.addEventListener('mouseleave', () => el.style.background = '');
@@ -659,6 +739,50 @@
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   });
+})();
+</script>
+
+<script>
+(function(){
+  var pill = document.getElementById('wx-pill');
+  if (!pill) return;
+
+  function loadWx() {
+    fetch('{% url "core:avwx_metar_api" club.slug %}')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.error || !d.flight_rules) return;
+      var fr = (d.flight_rules || '').toLowerCase();
+      var age = d.age_minutes;
+      var ageStr = age == null ? '' :
+        age < 60 ? age + 'min' :
+        Math.floor(age/60) + 'h' + (age%60 ? (age%60)+'m' : '');
+      var wind = '';
+      if (d.wind_dir && d.wind_speed) wind = d.wind_dir + '/' + d.wind_speed + 'kt';
+      else if (d.wind_speed) wind = d.wind_speed + 'kt';
+      var qnh = d.qnh || '';
+      var parts = [d.icao, wind, qnh].filter(Boolean).join(' · ');
+      pill.className = 'wx-pill' + (age >= 60 ? ' wx-pill-stale' : '');
+      pill.innerHTML =
+        '<span class="wx-pill-lbl">METAR</span>' +
+        '<span class="wx-fr-badge wx-fr-badge-' + fr + '">' + d.flight_rules + '</span>' +
+        '<span>' + parts + '</span>' +
+        (ageStr ? '<span class="wx-pill-age">· ' + ageStr + (age >= 120 ? ' ⚠' : '') + '</span>' : '');
+      pill.title = d.raw + '\nClick for full weather page';
+      pill.style.display = 'inline-flex';
+      var tafDiv = document.getElementById('wx-taf');
+      if (tafDiv && d.taf_raw) {
+        tafDiv.innerHTML =
+          '<span style="font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;opacity:.65;font-family:inherit;margin-right:.5rem;">TAF</span>' +
+          '<span style="font-family:monospace;">' + d.taf_raw + '</span>';
+        tafDiv.style.display = 'block';
+      }
+    })
+    .catch(function(){});
+  }
+
+  loadWx();
+  setInterval(loadWx, 5 * 60 * 1000); // re-fetch every 5 minutes
 })();
 </script>
 {% endblock %}

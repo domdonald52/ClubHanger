@@ -1,0 +1,559 @@
+{% extends "core/app/base.html" %}
+{% load tz %}
+{% block title %}Schedule · {{ club.name }}{% endblock %}
+
+{% block app_bar_brand %}{% endblock %}
+{% block app_bar %}
+<a href="{{ prev_url }}" class="app-bar-action" aria-label="Previous day">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</a>
+<span class="app-bar-title" style="text-align:center;">
+  {% if selected == today %}Today{% else %}{{ selected|date:"D j M" }}{% endif %}
+</span>
+<a href="{{ next_url }}" class="app-bar-action" aria-label="Next day">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+</a>
+{% endblock %}
+
+{% block extra_style %}
+<style>
+  /* ── Override app-body for schedule (no padding, custom layout) ── */
+  .app-body { padding-top: 0; padding-bottom: 0; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; min-height: 0; }
+
+  /* ── Week strip ── */
+  .week-strip {
+    display: flex;
+    background: var(--banner);
+    padding: .4rem .5rem .5rem;
+    gap: .2rem;
+    flex-shrink: 0;
+    margin-top: calc(52px + env(safe-area-inset-top, 0px));
+  }
+  .day-chip {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: .4rem .2rem; border-radius: 10px;
+    text-decoration: none; color: rgba(255,255,255,.7);
+    font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+    cursor: pointer; transition: background .12s;
+  }
+  .day-chip .dn { font-size: .95rem; font-weight: 700; line-height: 1.2; margin-top: .1rem; }
+  .day-chip.today .dn { color: rgba(255,255,255,1); }
+  .day-chip.selected { background: rgba(255,255,255,.18); color: #fff; border-radius: 10px; }
+  .day-chip.today-dot::after {
+    content: ''; display: block; width: 5px; height: 5px;
+    background: #fff; border-radius: 50%; margin: .15rem auto 0;
+  }
+
+  /* ── Aircraft header strip ── */
+  .ac-header-wrap {
+    display: flex;
+    background: #fff;
+    border-bottom: 1px solid #e3e6ea;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+  .time-corner { width: 44px; flex-shrink: 0; border-right: 1px solid #e3e6ea; }
+  .ac-headers-scroll { display: flex; overflow: hidden; flex: 1; }
+  .ac-head-cell {
+    min-width: 110px; flex-shrink: 0;
+    padding: .4rem .3rem;
+    text-align: center;
+    font-size: .72rem; font-weight: 700;
+    color: #1f2933;
+    border-right: 1px solid #f0f2f4;
+  }
+  .ac-head-cell span { display: block; font-size: .6rem; font-weight: 400; color: #8a93a0; }
+
+  /* ── Instructor header cells ── */
+  .instr-head-strip {
+    display: flex;
+    flex-shrink: 0;
+    border-right: 2px solid #e3e6ea;
+    background: #fff;
+  }
+  .instr-head-cell {
+    width: 16px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: .25rem 0;
+    border-right: 1px solid #f0f2f4;
+  }
+  .instr-head-cell:last-child { border-right: none; }
+
+  /* ── Timeline area ── */
+  .timeline-outer {
+    flex: 1;
+    display: flex;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+  }
+
+  /* Time axis (sticky left:0) */
+  .time-axis {
+    width: 44px; flex-shrink: 0;
+    position: sticky; left: 0; z-index: 10;
+    background: #fff;
+    border-right: 1px solid #e3e6ea;
+  }
+  .time-axis-inner { position: relative; height: {{ tl_height }}px; }
+  .hour-lbl {
+    position: absolute; right: 6px;
+    font-size: .6rem; color: #9aa3ad;
+    transform: translateY(-50%);
+    white-space: nowrap;
+  }
+
+  /* ── Instructor availability columns (sticky after time axis) ── */
+  .instr-cols-wrap {
+    display: flex;
+    flex-shrink: 0;
+    position: sticky;
+    left: 44px;
+    z-index: 9;
+    background: #fafbfc;
+    border-right: 2px solid #e3e6ea;
+  }
+  .instr-col {
+    width: 16px; flex-shrink: 0;
+    position: relative;
+    height: {{ tl_height }}px;
+    border-right: 1px solid #f0f2f4;
+  }
+  .instr-col:last-child { border-right: none; }
+  .instr-bar {
+    position: absolute;
+    left: 2px; right: 2px;
+    border-radius: 2px;
+    opacity: .7;
+  }
+
+  /* Aircraft columns */
+  .ac-cols { display: flex; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+  .ac-col {
+    min-width: 110px; flex-shrink: 0;
+    position: relative;
+    border-right: 1px solid #e8eaed;
+    height: {{ tl_height }}px;
+    background-image:
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent {{ px_per_hr|add:"-1" }}px,
+        #d1d5db {{ px_per_hr|add:"-1" }}px,
+        #d1d5db {{ px_per_hr }}px
+      ),
+      repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent calc({{ px_per_hr }}px / 2 - 1px),
+        #e8eaed calc({{ px_per_hr }}px / 2 - 1px),
+        #e8eaed calc({{ px_per_hr }}px / 2)
+      );
+  }
+
+  /* Booking blocks */
+  .bk {
+    position: absolute; left: 3px; right: 3px;
+    border-radius: 7px;
+    padding: 3px 6px;
+    font-size: .68rem; line-height: 1.3;
+    color: #fff;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,.18);
+    transition: filter .1s;
+  }
+  .bk:active { filter: brightness(.88); }
+  .bk.mine { outline: 2px solid #fff; outline-offset: -3px; }
+  .bk-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bk-time { opacity: .85; font-size: .62rem; }
+  .bk-solo { opacity: .75; font-size: .6rem; }
+
+  /* ── Bottom nav override for schedule page ── */
+  .app-nav { z-index: 20; }
+
+  /* ── FABs ── */
+  .fab {
+    position: fixed;
+    bottom: calc(64px + var(--safe-bottom));
+    right: 1rem;
+    z-index: 30;
+    width: 52px; height: 52px;
+    background: var(--primary);
+    color: #fff;
+    border: none; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,.22);
+    cursor: pointer;
+    text-decoration: none;
+    transition: filter .15s, transform .15s;
+  }
+  .fab:active { filter: brightness(.9); transform: scale(.95); }
+  .fab-cal {
+    right: calc(1rem + 52px + .6rem);
+    background: #fff;
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0,0,0,.18);
+  }
+
+  /* ── No aircraft ── */
+  .no-ac { flex: 1; display: flex; align-items: center; justify-content: center; color: #8a93a0; font-size: .88rem; padding: 2rem; text-align: center; }
+
+  /* ── Full block-out ── */
+  .blockout-banner {
+    background: #f3f4f6; border-bottom: 1px solid #d1d5db;
+    padding: .55rem 1rem;
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .8rem; font-weight: 600; color: #6b7280;
+    flex-shrink: 0;
+  }
+  .schedule-greyed { opacity: .3; pointer-events: none; filter: grayscale(.7); }
+
+  /* ── Long-press ripple ── */
+  @keyframes lp-ripple {
+    from { transform: scale(.2); opacity: 1; }
+    to   { transform: scale(1);  opacity: 0; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Week strip -->
+<div class="week-strip">
+  {% for wd in week_days %}
+  <a href="{{ wd.url }}"
+     class="day-chip {% if wd.is_selected %}selected{% endif %} {% if wd.is_today %}today today-dot{% endif %}">
+    {{ wd.name }}
+    <span class="dn">{{ wd.num }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+{% if full_blockouts %}
+<div class="blockout-banner">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+  {% with bo=full_blockouts.0 %}{{ bo.blockout_type.name|default:bo.label|default:"Closed" }}{% endwith %}{% if full_blockouts|length > 1 %} + {{ full_blockouts|length|add:"-1" }} more{% endif %}
+</div>
+{% endif %}
+
+{% if aircraft_data %}
+
+<!-- Aircraft + instructor header strip -->
+<div class="ac-header-wrap {% if full_blockouts %}schedule-greyed{% endif %}">
+  <div class="time-corner"></div>
+  {% if instructor_bars %}
+  <div class="instr-head-strip">
+    {% for instr in instructor_bars %}
+    <div class="instr-head-cell" title="{{ instr.name }}">
+      <span style="width:12px;height:12px;border-radius:50%;background:{{ instr.color }};display:flex;align-items:center;justify-content:center;font-size:.42rem;font-weight:800;color:#fff;flex-shrink:0;">{{ instr.initials }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="ac-headers-scroll" id="ac-heads">
+    {% for ad in aircraft_data %}
+    <div class="ac-head-cell">
+      {{ ad.ac.registration }}
+      <span>{{ ad.ac.aircraft_type.name|default:"" }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Timeline -->
+<div class="timeline-outer {% if full_blockouts %}schedule-greyed{% endif %}" id="tl-outer">
+  <!-- Time axis (sticky left:0) -->
+  <div class="time-axis">
+    <div class="time-axis-inner">
+      {% for lbl in time_labels %}
+      <div class="hour-lbl" style="top:{{ lbl.top }}px;">{{ lbl.label }}</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Instructor availability columns (sticky, after time axis) -->
+  {% if instructor_bars %}
+  <div class="instr-cols-wrap" id="instr-cols">
+    {% for instr in instructor_bars %}
+    <div class="instr-col" title="{{ instr.name }}">
+      {% for bar in instr.bars %}
+      <div class="instr-bar" style="top:{{ bar.top }}px;height:{{ bar.height }}px;background:{{ instr.color }};"></div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Aircraft columns -->
+  <div class="ac-cols" id="ac-cols">
+    {% for ad in aircraft_data %}
+    <div class="ac-col"
+         data-ac-id="{{ ad.ac.id }}"
+         data-ac-reg="{{ ad.ac.registration }}">
+      {% for blk in ad.blocks %}
+      <div class="bk {% if blk.is_mine %}mine{% endif %}"
+           style="top:{{ blk.top }}px;height:{{ blk.height }}px;background:{{ blk.color }};"
+           data-booking-id="{{ blk.id }}"
+           onclick="window.location='{% url 'core:app_bookings' club.slug %}#booking-{{ blk.id }}'">
+        <div class="bk-name">{{ blk.name }}</div>
+        <div class="bk-time">{{ blk.time }}</div>
+        {% if blk.solo %}<div class="bk-solo">Solo</div>
+        {% elif blk.instructor %}<div class="bk-solo">{{ blk.instructor }}</div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% else %}
+<div class="no-ac">No aircraft available</div>
+{% endif %}
+
+<!-- FAB: jump to date (label activates the date input natively — works on iOS) -->
+<label for="sched-datepick" class="fab fab-cal" title="Jump to date">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+</label>
+<input type="date" id="sched-datepick" value="{{ selected|date:'Y-m-d' }}" style="position:fixed;bottom:calc(64px + var(--safe-bottom));right:calc(1rem + 52px + .6rem);opacity:0;width:52px;height:52px;z-index:29;">
+
+<!-- FAB: new booking -->
+{% if booking_blocked %}
+<button class="fab" title="Booking unavailable" onclick="document.getElementById('bb-sheet').style.display=''" style="background:#9ca3af;cursor:default;">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</button>
+<!-- Booking block notice sheet -->
+<div id="bb-sheet" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);" onclick="this.style.display='none'">
+  <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:18px 18px 0 0;padding:1.3rem 1.2rem calc(2rem + var(--safe-bottom));" onclick="event.stopPropagation()">
+    <div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto 1rem;"></div>
+    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span style="font-size:.95rem;font-weight:700;color:#1f2933;">Booking unavailable</span>
+    </div>
+    <p style="font-size:.87rem;color:#4b5563;line-height:1.55;margin:0;">{{ booking_block_msg }}</p>
+  </div>
+</div>
+{% else %}
+<a href="{% url 'core:app_book' club.slug %}" class="fab" title="Book a flight">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</a>
+{% endif %}
+
+<!-- Long-press booking sheet -->
+<div id="lp-sheet" style="display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.35);" onclick="document.getElementById('lp-sheet').style.display='none'">
+  <div id="lp-sheet-card" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:18px 18px 0 0;padding:1.1rem 1rem calc(1.5rem + var(--safe-bottom));touch-action:none;" onclick="event.stopPropagation()">
+    <div id="lp-handle" style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto .9rem;cursor:grab;"></div>
+    <div id="lp-title" style="font-size:.82rem;font-weight:600;color:#6b7280;text-align:center;margin-bottom:1rem;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
+      <a id="lp-solo" href="#" class="app-btn" style="text-align:center;">Solo</a>
+      <a id="lp-dual" href="#" class="app-btn" style="text-align:center;background:var(--banner);">Dual</a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const outer = document.getElementById('tl-outer');
+const heads = document.getElementById('ac-heads');
+if (outer && heads) {
+  outer.addEventListener('scroll', () => { heads.scrollLeft = outer.scrollLeft; }, {passive: true});
+}
+
+// iOS Safari: trigger toolbar collapse on first touch so nav bar matches other pages
+(function() {
+    if (window.navigator.standalone) return;
+    if (!/iPhone|iPad/.test(navigator.userAgent)) return;
+    document.addEventListener('touchstart', function() {
+        try { window.scrollTo({top: 1, behavior: 'instant'}); } catch(e) { window.scrollTo(0, 1); }
+    }, {once: true, passive: true});
+})();
+
+// Scroll to current time on load
+(function() {
+  const dayStart = {{ day_start }};
+  const pxPerHr  = {{ px_per_hr }};
+  {% if selected == today %}
+  const now = new Date();
+  const targetPx = Math.max(0, (now.getHours() + now.getMinutes() / 60 - dayStart - 1) * pxPerHr);
+  if (outer) outer.scrollTop = targetPx;
+  {% endif %}
+})();
+
+// Long-press on empty slot → preview block → drag to adjust → Solo/Dual sheet
+(function() {
+  const cols = document.getElementById('ac-cols');
+  if (!cols || !outer) return;
+
+  const CONFIRM_URL = '{% url "core:app_book_confirm" club.slug %}';
+  const SELECTED    = '{{ selected|date:"Y-m-d" }}';
+  const DAY_START   = {{ day_start }};
+  const PX_PER_HR   = {{ px_per_hr }};
+  const DEFAULT_DUR = 90;
+  const HOLD_MS     = 500;
+
+  // State: 'idle' | 'pressing' | 'dragging'
+  let _state = 'idle';
+  let _timer = null, _preview = null;
+  let _col = null, _startTime = '', _endTime = '';
+  let _startX = 0, _startY = 0;
+
+  function fmt(h, m) { return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0'); }
+
+  function calcSnap(clientY) {
+    const rect = outer.getBoundingClientRect();
+    const yInTl = clientY - rect.top + outer.scrollTop;
+    const rawMins = (DAY_START + yInTl / PX_PER_HR) * 60;
+    const snapMins = Math.floor(rawMins / 30) * 30;
+    const sh = Math.floor(snapMins / 60), sm = snapMins % 60;
+    const endMins = snapMins + DEFAULT_DUR;
+    return { sh, sm, eh: Math.floor(endMins/60), em: endMins%60,
+             topPx: (sh - DAY_START) * PX_PER_HR + (sm/60) * PX_PER_HR };
+  }
+
+  function buildPreview(col, clientY) {
+    if (_preview) { _preview.remove(); _preview = null; }
+    const { sh, sm, eh, em, topPx } = calcSnap(clientY);
+    _startTime = fmt(sh, sm); _endTime = fmt(eh, em);
+    const heightPx = (DEFAULT_DUR / 60) * PX_PER_HR;
+    _preview = document.createElement('div');
+    _preview.style.cssText =
+      'position:absolute;left:3px;right:3px;pointer-events:none;z-index:50;border-radius:7px;' +
+      'top:' + topPx + 'px;height:' + heightPx + 'px;' +
+      'background:rgba(37,99,235,.22);border:2px solid rgba(37,99,235,.75);' +
+      'display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;';
+    _preview.innerHTML =
+      '<span class="lp-ts" style="font-size:.65rem;font-weight:800;color:rgba(37,99,235,.9);">' + _startTime + '</span>' +
+      '<span class="lp-te" style="font-size:.58rem;font-weight:600;color:rgba(37,99,235,.65);">–' + _endTime + '</span>';
+    col.appendChild(_preview);
+  }
+
+  function movePreview(clientY) {
+    if (!_preview || !_col) return;
+    const { sh, sm, eh, em, topPx } = calcSnap(clientY);
+    _startTime = fmt(sh, sm); _endTime = fmt(eh, em);
+    _preview.style.top = topPx + 'px';
+    const ts = _preview.querySelector('.lp-ts'), te = _preview.querySelector('.lp-te');
+    if (ts) ts.textContent = _startTime;
+    if (te) te.textContent = '–' + _endTime;
+  }
+
+  function cancel() {
+    clearTimeout(_timer); _timer = null;
+    if (_preview) { _preview.remove(); _preview = null; }
+    _col = null; _state = 'idle';
+  }
+
+  function showSheet() {
+    if (_preview) { _preview.remove(); _preview = null; }
+    document.getElementById('lp-title').textContent = _col.dataset.acReg + ' · ' + _startTime + '–' + _endTime;
+    const base = CONFIRM_URL + '?date=' + SELECTED + '&ac=' + _col.dataset.acId
+               + '&start=' + _startTime + '&end=' + _endTime;
+    document.getElementById('lp-solo').href = base + '&mode=solo';
+    document.getElementById('lp-dual').href = base + '&mode=dual';
+    document.getElementById('lp-sheet').style.display = '';
+    _col = null; _state = 'idle';
+  }
+
+  cols.addEventListener('touchstart', function(e) {
+    if (e.target.closest('.bk')) return;
+    const col = e.target.closest('.ac-col');
+    if (!col || e.touches.length !== 1) { cancel(); return; }
+    _col = col; _state = 'pressing';
+    const t = e.touches[0];
+    _startX = t.clientX; _startY = t.clientY;
+    buildPreview(col, t.clientY);
+    _timer = setTimeout(function() {
+      _timer = null;
+      if (_state !== 'pressing') return;
+      _state = 'dragging';
+      if (navigator.vibrate) navigator.vibrate(30);
+      // Strengthen the preview border to signal drag mode
+      if (_preview) { _preview.style.border = '2px solid rgba(37,99,235,1)'; _preview.style.background = 'rgba(37,99,235,.3)'; }
+    }, HOLD_MS);
+  }, {passive: true});
+
+  cols.addEventListener('touchmove', function(e) {
+    if (_state === 'pressing') {
+      const t = e.changedTouches[0];
+      if (Math.abs(t.clientX - _startX) > 8 || Math.abs(t.clientY - _startY) > 8) cancel();
+    }
+  }, {passive: true});
+
+  // Non-passive document handler: prevents timeline scroll while dragging preview
+  document.addEventListener('touchmove', function(e) {
+    if (_state !== 'dragging') return;
+    e.preventDefault();
+    if (e.touches.length === 1) movePreview(e.touches[0].clientY);
+  }, {passive: false});
+
+  cols.addEventListener('touchend', function() {
+    if (_state === 'dragging') showSheet(); else cancel();
+  }, {passive: true});
+  cols.addEventListener('touchcancel', cancel, {passive: true});
+  cols.addEventListener('contextmenu', e => e.preventDefault());
+})();
+
+// Swipe-down to dismiss booking sheet
+(function() {
+  const sheet = document.getElementById('lp-sheet');
+  const card  = document.getElementById('lp-sheet-card');
+  if (!sheet || !card) return;
+
+  let _sy = 0, _dragging = false;
+
+  function snapBack() {
+    card.style.transition = 'transform .2s ease';
+    card.style.transform  = 'translateY(0)';
+    setTimeout(function() { card.style.transition = ''; }, 220);
+  }
+
+  function dismiss() {
+    card.style.transition = 'transform .25s ease';
+    card.style.transform  = 'translateY(110%)';
+    setTimeout(function() {
+      sheet.style.display  = 'none';
+      card.style.transition = '';
+      card.style.transform  = '';
+    }, 260);
+  }
+
+  card.addEventListener('touchstart', function(e) {
+    _sy = e.touches[0].clientY;
+    _dragging = true;
+    card.style.transition = 'none';
+  }, {passive: true});
+
+  card.addEventListener('touchmove', function(e) {
+    if (!_dragging) return;
+    const dy = Math.max(0, e.touches[0].clientY - _sy);
+    card.style.transform = 'translateY(' + dy + 'px)';
+  }, {passive: true});
+
+  card.addEventListener('touchend', function(e) {
+    if (!_dragging) return;
+    _dragging = false;
+    const dy = e.changedTouches[0].clientY - _sy;
+    if (dy > 80) dismiss(); else snapBack();
+  }, {passive: true});
+
+  card.addEventListener('touchcancel', function() {
+    _dragging = false;
+    snapBack();
+  }, {passive: true});
+})();
+
+// Date picker — navigate to selected date
+(function() {
+  var dp = document.getElementById('sched-datepick');
+  if (!dp) return;
+  var BASE = '{% url "core:app_schedule" club.slug %}';
+  dp.addEventListener('change', function() {
+    if (!dp.value) return;
+    var parts = dp.value.split('-');
+    window.location.href = BASE + parts[0] + '/' + parseInt(parts[1]) + '/' + parseInt(parts[2]) + '/';
+  });
+})();
+</script>
+{% endblock %}

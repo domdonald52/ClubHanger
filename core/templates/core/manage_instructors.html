@@ -1,19 +1,14 @@
 {% extends "core/base.html" %}
-{% block title %}Instructors · {{ club.name }}{% endblock %}
+{% block title %}Staff roster · {{ club.name }}{% endblock %}
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1.2rem;">Manage</h1>
-
-  {% include "core/_manage_nav.html" with active_section="instructors" %}
-
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.4rem;flex-wrap:wrap;">
-    <h2 class="sh2" style="margin:0;">Instructor roster <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ instructors|length }})</span></h2>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;">
+    <h1 style="margin:0;">Staff roster <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ instructors|length }})</span></h1>
     {% if club_member.is_admin %}
     <button type="button" class="cbtn-add" onclick="document.getElementById('add-instr-modal').hidden=false">+ Add to roster</button>
     {% endif %}
   </div>
-  <p style="font-size:.78rem;color:#8a93a0;margin:0 0 1rem;">Members assigned the Instructor role. Contact details and credentials are managed on the <a href="{% url 'core:manage_members' club.slug %}" style="color:inherit;">member profile</a>.</p>
 
   {% if instructors %}
   <table class="ac-table">
@@ -25,20 +20,16 @@
       <tr>
         <td><strong>{{ instr.user.get_full_name }}</strong>{% if instr.role %} <span style="font-size:.75rem;color:#8a93a0;">({{ instr.role.name }})</span>{% endif %}</td>
         <td style="color:#5b6573;">{{ instr.instructor_grade.name|default:"—" }}</td>
-        <td style="color:#8a93a0;font-size:.85rem;">{% if instr.instructor_grade %}${{ instr.instructor_grade.hourly_rate }}/hr{% else %}—{% endif %}</td>
+        <td style="color:#8a93a0;font-size:.85rem;">{% if instr.instructor_grade %}${{ instr.instructor_grade.hourly_rate|currency }}/hr{% else %}—{% endif %}</td>
         <td style="color:#8a93a0;font-size:.82rem;">
           {% if instr.av_count %}{{ instr.av_count }} window{{ instr.av_count|pluralize }}{% else %}<span style="color:#2a7a3b;font-size:.78rem;font-weight:600;">all hours</span>{% endif %}
         </td>
         <td style="text-align:right;">
           <div style="display:inline-flex;gap:.3rem;">
-            <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}" class="row-action-btn" data-overlay>Manage →</a>
+            <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}?tab=availability" class="row-action-btn" data-overlay>Manage →</a>
             {% if club_member.is_admin %}
-            <form method="post" style="display:inline;" onsubmit="return confirm('Remove {{ instr.user.get_full_name|escapejs }} from the roster?')">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="remove_instructor">
-              <input type="hidden" name="member_id" value="{{ instr.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Remove</button>
-            </form>
+            <button type="button" class="cbtn-sm cbtn-danger"
+              onclick="openRemove({{ instr.id }}, '{{ instr.user.get_full_name|escapejs }}', {{ instr.future_bookings|length }})">Remove</button>
             {% endif %}
           </div>
         </td>
@@ -49,6 +40,61 @@
   {% else %}
   <p style="color:#8a93a0;">No instructors found. Assign the Instructor role under <a href="{% url 'core:manage_members' club.slug %}">Members</a>.</p>
   {% endif %}
+
+
+{% if cal_weeks %}
+<!-- ── Rolling 5-week roster calendar ── -->
+<div style="margin-top:1.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:1.1rem 1.1rem .9rem;box-shadow:0 1px 4px rgba(0,0,0,.05);">
+    <h2 style="margin:0 0 .8rem;font-size:1rem;font-weight:650;color:#1f2933;">Roster — {{ cal_range }}</h2>
+
+    <!-- Legend -->
+    <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.9rem;align-items:center;">
+      {% for instr in instr_list %}
+      <span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:600;padding:.2rem .6rem;border-radius:20px;background:{{ instr.cal_color }}18;color:{{ instr.cal_color }};">
+        <span style="width:18px;height:18px;border-radius:50%;background:{{ instr.cal_color }};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;flex-shrink:0;">{{ instr.cal_initials }}</span>
+        {{ instr.user.get_short_name }}
+      </span>
+      {% endfor %}
+      {% if has_blockouts %}
+      <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;padding:.2rem .6rem;border-radius:20px;background:#fef3c7;color:#92400e;">
+        <span style="width:18px;height:4px;background:#f59e0b;border-radius:2px;flex-shrink:0;"></span>
+        Block-out
+      </span>
+      {% endif %}
+    </div>
+
+    <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;">
+      <!-- Day headers -->
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);background:#f8f9fb;border-bottom:1px solid #e3e6ea;">
+        {% for label in "1234567" %}
+        <div style="padding:.4rem 0;text-align:center;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:{% if forloop.counter >= 6 %}#9ca3af{% else %}#8a93a0{% endif %};">
+          {% if forloop.counter == 1 %}Mon{% elif forloop.counter == 2 %}Tue{% elif forloop.counter == 3 %}Wed{% elif forloop.counter == 4 %}Thu{% elif forloop.counter == 5 %}Fri{% elif forloop.counter == 6 %}Sat{% else %}Sun{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <!-- Weeks -->
+      {% for week in cal_weeks %}
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:{% if forloop.last %}none{% else %}1px solid #f0f2f4{% endif %};">
+        {% for cell in week %}
+        <div style="min-height:60px;padding:.3rem .4rem;border-right:{% if forloop.last %}none{% else %}1px solid #f0f2f4{% endif %};{% if cell.is_today %}background:#eff6ff;{% elif cell.has_blockout %}background:#fff8f5;{% elif cell.is_past %}background:#fafbfc;{% elif cell.is_weekend %}background:#fafbfc;{% endif %}">
+          <div style="font-size:.72rem;font-weight:{% if cell.is_today %}800{% else %}500{% endif %};color:{% if cell.is_today %}var(--primary){% elif cell.is_past %}#b0b7c2{% elif cell.is_weekend %}#9ca3af{% else %}#374151{% endif %};margin-bottom:.2rem;">
+            {{ cell.date.day }}{% if cell.date.day == 1 %} <span style="font-size:.65rem;font-weight:600;opacity:.7;">{{ cell.date|date:"M" }}</span>{% endif %}
+          </div>
+          {% if cell.has_blockout %}
+          <div title="Block-out" style="height:3px;background:#f59e0b;border-radius:2px;margin-bottom:.2rem;"></div>
+          {% endif %}
+          <div style="display:flex;flex-wrap:wrap;gap:2px;">
+            {% for instr in cell.instructors %}
+            <span title="{{ instr.user.get_full_name }}" style="width:19px;height:19px;border-radius:50%;background:{{ instr.cal_color }};{% if cell.is_past %}opacity:.45;{% endif %}color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.57rem;font-weight:800;cursor:default;flex-shrink:0;">{{ instr.cal_initials }}</span>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+</div>
+{% endif %}
 </div>
 
 <style>
@@ -63,8 +109,6 @@
 
   .row-action-btn{font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;}
   .row-action-btn:hover{background:#f3f5f7;color:#1f2933;}
-  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;font-weight:600;}
-  .btn:hover{filter:brightness(1.07);}
   .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
   .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(460px,95vw);}
@@ -76,6 +120,38 @@
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
   .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
 </style>
+
+<!-- Remove from roster modal -->
+<div id="remove-instr-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(560px,95vw);">
+    <h2 id="remove-title" style="margin:0 0 .5rem;font-size:1.05rem;"></h2>
+    <p id="remove-desc" style="font-size:.84rem;color:#5b6573;margin:0 0 .9rem;"></p>
+    <form method="post" id="remove-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="remove_instructor">
+      <input type="hidden" name="member_id" id="remove-member-id">
+      <div id="remove-bookings-wrap" style="display:none;margin-bottom:.9rem;">
+        <p style="font-size:.82rem;font-weight:600;color:#1f2933;margin:0 0 .5rem;">Re-assign upcoming flights</p>
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem;" id="remove-bookings-table">
+          <thead>
+            <tr style="border-bottom:1px solid #e3e6ea;">
+              <th style="text-align:left;padding:.25rem .4rem;color:#8a93a0;font-weight:600;font-size:.72rem;text-transform:uppercase;">Date</th>
+              <th style="text-align:left;padding:.25rem .4rem;color:#8a93a0;font-weight:600;font-size:.72rem;text-transform:uppercase;">Member</th>
+              <th style="text-align:left;padding:.25rem .4rem;color:#8a93a0;font-weight:600;font-size:.72rem;text-transform:uppercase;">Aircraft</th>
+              <th style="text-align:left;padding:.25rem .4rem;color:#8a93a0;font-weight:600;font-size:.72rem;text-transform:uppercase;">Reassign to</th>
+            </tr>
+          </thead>
+          <tbody id="remove-bookings-body"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="cbtn" onclick="document.getElementById('remove-instr-modal').hidden=true">✕ Close</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn" style="background:#c0392b;color:#fff;border-color:#c0392b;">Remove from roster</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Add to roster modal -->
 <div id="add-instr-modal" class="modal-back" hidden>
@@ -95,24 +171,85 @@
         </select>
       </label>
       <div class="modal-actions">
-        <button type="button" class="cbtn" onclick="document.getElementById('add-instr-modal').hidden=true">Cancel</button>
+        <button type="button" class="cbtn" onclick="document.getElementById('add-instr-modal').hidden=true">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add to roster</button>
       </div>
     </form>
     {% else %}
+    {% if all_on_roster %}
     <p style="font-size:.85rem;color:#8a93a0;margin:.1rem 0 .9rem;">
-      No eligible members found. To add someone to the roster, first assign them an instructor-type role on their
-      <a href="{% url 'core:manage_members' club.slug %}">member profile</a>.
+      All members with an instructor-type role are already on the roster. To add someone new, first assign them an instructor role on their <a href="{% url 'core:manage_members' club.slug %}">member profile</a>.
     </p>
+    {% else %}
+    <p style="font-size:.85rem;color:#8a93a0;margin:.1rem 0 .9rem;">
+      No members have an instructor-type role yet. Assign the instructor role to a member on their <a href="{% url 'core:manage_members' club.slug %}">member profile</a>, then add them here.
+    </p>
+    {% endif %}
     <div class="modal-actions">
-      <button type="button" class="cbtn" onclick="document.getElementById('add-instr-modal').hidden=true">Close</button>
+      <button type="button" class="cbtn" onclick="document.getElementById('add-instr-modal').hidden=true">✕ Close</button>
     </div>
     {% endif %}
   </div>
 </div>
 <script>
-document.getElementById('add-instr-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
-document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('add-instr-modal').hidden=true; });
+const _instrBookings = {
+  {% for instr in instructors %}
+  {{ instr.id }}: [{% for b in instr.future_bookings %}
+    {id:{{ b.id }}, date:"{{ b.scheduled_start|date:'j M Y' }}", member:"{{ b.member.user.get_full_name|escapejs }}", aircraft:"{{ b.aircraft.registration|escapejs }}"}{% if not forloop.last %},{% endif %}
+  {% endfor %}]{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+const _otherInstrs = {
+  {% for instr in instructors %}
+  {{ instr.id }}: [{% for other in instructors %}{% if other.id != instr.id %}{id:{{ other.id }}, name:"{{ other.user.get_full_name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endif %}{% endfor %}]{% if not forloop.last %},{% endif %}
+  {% endfor %}
+};
+
+function openRemove(memberId, name, bookingCount) {
+  document.getElementById('remove-member-id').value = memberId;
+  document.getElementById('remove-title').textContent = 'Remove ' + name + ' from roster?';
+  const desc = document.getElementById('remove-desc');
+  const wrap = document.getElementById('remove-bookings-wrap');
+  const tbody = document.getElementById('remove-bookings-body');
+  tbody.innerHTML = '';
+
+  const bookings = _instrBookings[memberId] || [];
+  const others   = _otherInstrs[memberId]  || [];
+
+  if (bookings.length) {
+    desc.textContent = bookings.length + ' upcoming booking(s) will have their instructor cleared. You can reassign each below.';
+    wrap.style.display = '';
+    bookings.forEach(function(b) {
+      const opts = '<option value="">Leave unassigned</option>' +
+        others.map(function(o){ return '<option value="' + o.id + '">' + o.name + '</option>'; }).join('');
+      tbody.insertAdjacentHTML('beforeend',
+        '<tr>' +
+        '<td style="padding:.3rem .4rem;white-space:nowrap;">' + b.date + '</td>' +
+        '<td style="padding:.3rem .4rem;">' + b.member + '</td>' +
+        '<td style="padding:.3rem .4rem;white-space:nowrap;">' + b.aircraft + '</td>' +
+        '<td style="padding:.3rem .4rem;"><select name="reassign_' + b.id + '" style="font-size:.82rem;padding:.2rem .4rem;border:1px solid #d6dae0;border-radius:5px;width:100%;">' + opts + '</select></td>' +
+        '</tr>'
+      );
+    });
+  } else {
+    desc.textContent = name + ' has no upcoming bookings. They will simply be removed from the roster.';
+    wrap.style.display = 'none';
+  }
+  document.getElementById('remove-instr-modal').hidden = false;
+}
+
+['add-instr-modal','remove-instr-modal'].forEach(function(id){
+  var el = document.getElementById(id);
+  if(el) el.addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
+});
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape'){
+    ['add-instr-modal','remove-instr-modal'].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.hidden=true;
+    });
+  }
+});
 </script>
 {% endblock %}

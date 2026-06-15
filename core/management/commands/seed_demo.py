@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import time, date
 
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
@@ -36,7 +36,7 @@ MEMBER_CATEGORIES = [
 
 AIRCRAFT = [
     {"registration": "ZK-WAC", "aircraft_type": "PA38", "seats": 2,
-     "total_time_method": "tacho_less_5", "records_tacho": True},
+     "total_time_method": "tacho", "records_tacho": True},
     {"registration": "ZK-TAW", "aircraft_type": "C152", "seats": 2,
      "total_time_method": "hobbs", "records_hobbs": True},
 ]
@@ -47,17 +47,30 @@ FLIGHT_TYPES = [
     {"name": "Trial Flight", "code": "TRIAL", "is_training": False},
 ]
 
-# username, first, last, role_name, category_name
+# username, first, last, role_name, category_name, standing, subscription_expires, resigned_at
 PEOPLE = [
-    ("dominic", "Dominic", "Hales", "Admin", "Private Pilot"),
-    ("admin2", "Alex", "Reed", "Admin", "Commercial Pilot"),
-    ("sean", "Sean", "Kemp", "Instructor", "Instructor"),
-    ("jane", "Jane", "Park", "Instructor", "Instructor"),
-    ("mike", "Mike", "Lowe", "Member", "Student Pilot"),
-    ("rita", "Rita", "Singh", "Member", "Private Pilot"),
+    # Admins — no subscription expiry needed
+    ("dominic", "Dominic", "Hales",   "Admin",      "Private Pilot",       "active",    None,         None),
+    ("admin2",  "Alex",    "Reed",    "Admin",      "Commercial Pilot",    "active",    "2027-03-31", None),
+    # Instructors
+    ("sean",    "Sean",    "Kemp",    "Instructor", "Instructor",          "active",    "2027-03-31", None),
+    ("jane",    "Jane",    "Park",    "Instructor", "Instructor",          "active",    "2026-12-31", None),
+    # Standard members — current
+    ("mike",    "Mike",    "Lowe",    "Member",     "Student Pilot",       "active",    "2027-03-31", None),
+    ("rita",    "Rita",    "Singh",   "Member",     "Private Pilot",       "active",    "2027-03-31", None),
+    # Expiring soon (within 30 days of today)
+    ("sarah",   "Sarah",   "Williams","Member",     "Commercial Pilot",    "active",    "2026-07-05", None),
+    # In grace period (expired, but within 60-day grace window)
+    ("paulo",   "Paulo",   "Ferreira","Member",     "Private Pilot",       "active",    "2026-05-10", None),
+    # Past grace period (expired > 60 days ago — auto-lapse not yet run)
+    ("tom",     "Tom",     "Chen",    "Member",     "Private Pilot",       "active",    "2026-03-01", None),
+    # Non-standard standings
+    ("james",   "James",   "Okafor",  "Member",     "Student Pilot",       "suspended", "2026-03-31", None),
+    ("lucy",    "Lucy",    "Hart",    "Member",     "Private Pilot",       "pending",   None,         None),
+    ("bob",     "Bob",     "Morris",  "Member",     "Life Member (Flying)","resigned",  "2025-12-31", "2025-12-15"),
 ]
 
-DEFAULT_PASSWORD = "changeme123"
+DEFAULT_PASSWORD = "clubhangar2026"
 
 
 class Command(BaseCommand):
@@ -134,35 +147,42 @@ class Command(BaseCommand):
             )
 
         # People (users + memberships)
-        for username, first, last, role_name, cat_name in PEOPLE:
+        for username, first, last, role_name, cat_name, standing, exp_str, resigned_str in PEOPLE:
             user, u_created = User.objects.get_or_create(
                 username=username,
                 defaults={"first_name": first, "last_name": last},
             )
             if u_created:
                 user.set_password(DEFAULT_PASSWORD)
-                # Admins get Django staff/superuser so they can reach /admin/
                 if role_name == "Admin":
                     user.is_staff = True
                     user.is_superuser = True
                 user.save()
+
+            exp_date     = date.fromisoformat(exp_str)     if exp_str     else None
+            resigned_date = date.fromisoformat(resigned_str) if resigned_str else None
 
             member, m_created = ClubMember.objects.get_or_create(
                 user=user, club=club,
                 defaults={
                     "role": roles[role_name],
                     "membership_category": categories.get(cat_name),
-                    "standing": "active",
+                    "standing": standing,
+                    "subscription_expires": exp_date,
+                    "resigned_at": resigned_date,
                 },
             )
             if not m_created:
                 member.role = roles[role_name]
                 member.membership_category = categories.get(cat_name)
-                member.standing = "active"
-                member.save()
+                member.standing = standing
+                member.subscription_expires = exp_date
+                member.resigned_at = resigned_date
+                member.save(update_fields=['role', 'membership_category', 'standing',
+                                           'subscription_expires', 'resigned_at'])
 
             self.stdout.write(
-                f"  {username} ({role_name}): "
+                f"  {username} ({role_name}, {standing}): "
                 f"{'created' if (u_created or m_created) else 'updated'}"
             )
 

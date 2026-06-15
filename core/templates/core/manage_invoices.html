@@ -2,8 +2,8 @@
 {% block title %}Invoices · {{ club.name }}{% endblock %}
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1.2rem;">Manage</h1>
-  {% include "core/_manage_nav.html" with active_section="invoices" %}
+  <h1 style="margin-bottom:1rem;">Sales</h1>
+  {% include "core/_sales_tabs.html" with active_tab="invoices" %}
 
   <form method="get" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">
     <select name="status" class="finput" style="width:auto;" onchange="this.form.submit()">
@@ -52,15 +52,15 @@
           {{ inv.due_date|date:"j M Y" }}
           {% if inv.is_overdue %}<br><span style="font-size:.75rem;">{{ inv.days_overdue }}d overdue</span>{% endif %}
         </td>
-        <td style="text-align:right;">${{ inv.total }}</td>
+        <td style="text-align:right;">${{ inv.total|currency }}</td>
         <td style="text-align:right;{% if inv.balance_due %}font-weight:600;{% endif %}">
-          {% if inv.balance_due %}<span style="color:{% if inv.is_overdue %}#c0392b{% else %}#1f2933{% endif %};">${{ inv.balance_due }}</span>{% else %}<span style="color:#216c2a;">—</span>{% endif %}
+          {% if inv.balance_due %}<span style="color:{% if inv.is_overdue %}#c0392b{% else %}#1f2933{% endif %};">${{ inv.balance_due|currency }}</span>{% else %}<span style="color:#216c2a;">—</span>{% endif %}
         </td>
         <td>
           <span class="inv-badge inv-{{ inv.status }}">{{ inv.get_status_display }}</span>
         </td>
         <td style="text-align:right;white-space:nowrap;">
-          <a href="{% url 'core:invoice_detail' club.slug inv.id %}" class="row-action-btn">View</a>
+          <a href="{% url 'core:invoice_detail' club.slug inv.id %}" class="row-action-btn" data-overlay>View</a>
           <a href="{% url 'core:invoice_print' club.slug inv.id %}" target="_blank" class="row-action-btn" style="margin-left:.2rem;">Print</a>
         </td>
       </tr>

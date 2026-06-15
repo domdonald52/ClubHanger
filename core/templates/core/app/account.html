@@ -1,0 +1,224 @@
+{% extends "core/app/base.html" %}
+{% load tz humanize %}
+{% block title %}Account · {{ club.name }}{% endblock %}
+
+{% block app_bar %}
+<span class="app-bar-title">Account</span>
+{% endblock %}
+
+{% block content %}
+<div class="gap-sm"></div>
+
+<!-- Balance -->
+{% if balance is not None %}
+<div class="app-card" style="background:var(--banner);color:#fff;">
+  <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.7;margin-bottom:.3rem;">Account balance</div>
+  <div style="font-size:2.2rem;font-weight:800;letter-spacing:-.02em;line-height:1.1;">
+    {% if balance >= 0 %}<span style="opacity:.5;font-size:1.2rem;font-weight:500;">$</span>{{ balance|floatformat:2|intcomma }}
+    {% else %}<span style="color:#fca5a5;">−${{ balance|floatformat:2|slice:"1:"|intcomma }}</span>{% endif %}
+  </div>
+  <div style="font-size:.74rem;opacity:.65;margin-top:.4rem;">
+    {% if balance >= 0 %}Account in credit{% else %}Balance owing — please top up{% endif %}
+  </div>
+</div>
+{% else %}
+<div class="app-card" style="color:#8a93a0;text-align:center;font-size:.88rem;">No account linked</div>
+{% endif %}
+
+<!-- Outstanding amounts -->
+{% if unpaid_flights or unpaid_invoices %}
+<div class="app-section gap-sm">
+  <span class="app-section-title" style="color:#e03131;">Outstanding amounts</span>
+</div>
+
+{% if unpaid_flights %}
+<div style="padding:0 .75rem .2rem;display:flex;align-items:baseline;justify-content:space-between;">
+  <span style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Flights awaiting payment</span>
+  <span style="font-size:.82rem;font-weight:700;color:#e03131;">${{ unpaid_flights_total|floatformat:2|intcomma }}</span>
+</div>
+<div class="app-list">
+  {% for fc in unpaid_flights %}
+  <div class="app-list-row" style="cursor:pointer;" onclick="openFlightSheet(this)"
+       data-reg="{{ fc.booking.aircraft.registration }}"
+       data-type="{% if fc.booking.aircraft.aircraft_type %}{{ fc.booking.aircraft.aircraft_type.name }}{% endif %}"
+       data-date="{{ fc.booking.scheduled_start|localtime|date:'j M Y' }}"
+       data-sched="{{ fc.booking.scheduled_start|localtime|time:'H:i' }}–{{ fc.booking.scheduled_end|localtime|time:'H:i' }}"
+       data-instr="{% if fc.booking.instructor %}{{ fc.booking.instructor.get_full_name }}{% else %}Solo{% endif %}"
+       data-ftype="{% if fc.booking.flight_type %}{{ fc.booking.flight_type.name }}{% endif %}"
+       data-departed="{{ fc.booking.departed_at|localtime|time:'H:i'|default:'' }}"
+       data-arrived="{{ fc.booking.arrived_at|localtime|time:'H:i'|default:'' }}"
+       data-hours="{{ fc.actual_flight_hours }}"
+       data-total="{{ fc.total_charge|floatformat:2 }}"
+       data-paid="{{ fc.amount_paid|floatformat:2 }}"
+       data-owing="{{ fc.balance_owing|floatformat:2 }}"
+       data-partial="{{ fc.is_partially_paid|yesno:'1,0' }}">
+    <div class="app-list-main">
+      <div class="app-list-title" style="font-size:.87rem;">{{ fc.booking.aircraft.registration }} &middot; {{ fc.booking.scheduled_start|localtime|date:"j M Y" }}</div>
+      <div class="app-list-sub">
+        {% if fc.is_partially_paid %}Partial — ${{ fc.amount_paid|floatformat:2|intcomma }} of ${{ fc.total_charge|floatformat:2|intcomma }} paid{% else %}Unpaid — total ${{ fc.total_charge|floatformat:2|intcomma }}{% endif %}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:.4rem;">
+      <div style="font-size:.95rem;font-weight:700;color:#e03131;">${{ fc.balance_owing|floatformat:2|intcomma }}</div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if unpaid_invoices %}
+<div style="padding:.6rem .75rem .2rem;display:flex;align-items:baseline;justify-content:space-between;">
+  <span style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Unpaid invoices</span>
+  <span style="font-size:.82rem;font-weight:700;color:#e03131;">${{ unpaid_invoices_total|floatformat:2|intcomma }}</span>
+</div>
+<div class="app-list">
+  {% for inv in unpaid_invoices %}
+  <div class="app-list-row" style="cursor:default;">
+    <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;
+      background:{% if inv.needs_attention %}#e03131{% else %}#f59e0b{% endif %};"></div>
+    <div class="app-list-main">
+      <div class="app-list-title" style="font-size:.87rem;">{{ inv.display_number }} &middot; {{ inv.issue_date|date:"j M Y" }}</div>
+      <div class="app-list-sub" style="color:{% if inv.needs_attention %}#e03131{% else %}#6b7280{% endif %};">
+        {% if inv.is_overdue %}Overdue — due {{ inv.due_date|date:"j M" }}
+        {% elif inv.needs_attention %}Issued 30+ days ago — please follow up
+        {% else %}Awaiting reconciliation — payments may take a few days to appear{% endif %}
+      </div>
+    </div>
+    <div style="font-size:.95rem;font-weight:700;color:{% if inv.needs_attention %}#e03131{% else %}#f59e0b{% endif %};">${{ inv.balance_due|floatformat:2|intcomma }}</div>
+  </div>
+  {% endfor %}
+</div>
+<div style="padding:.5rem .75rem;font-size:.73rem;color:#9ca3af;line-height:1.5;">
+  Bank payments may take a few business days to be reconciled. If you've paid recently, check back in 2–3 days. Contact the club if an invoice is still showing after 30 days.
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Transactions -->
+{% if transactions_page %}
+<div class="app-section gap-sm">
+  <span class="app-section-title">Transactions</span>
+  {% if transactions_page.paginator.num_pages > 1 %}
+  <span style="font-size:.75rem;color:#8a93a0;">Page {{ transactions_page.number }} of {{ transactions_page.paginator.num_pages }}</span>
+  {% endif %}
+</div>
+<div class="app-list">
+  {% for tx in transactions_page %}
+  <div class="app-list-row" style="cursor:default;">
+    <div class="app-list-main">
+      <div class="app-list-title" style="font-size:.85rem;">{{ tx.description|truncatechars:44 }}</div>
+      <div class="app-list-sub">{{ tx.created_at|localtime|date:"j M Y" }} &middot; {{ tx.get_transaction_type_display }}</div>
+    </div>
+    <div class="app-list-right" style="font-weight:700;color:{% if tx.direction == 'debit' %}#e03131{% else %}#2a7a3b{% endif %};">
+      {% if tx.direction == 'debit' %}&minus;{% else %}+{% endif %}${{ tx.amount|floatformat:2|intcomma }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if transactions_page.paginator.num_pages > 1 %}
+<div style="display:flex;gap:.5rem;padding:.75rem .75rem 0;">
+  {% if transactions_page.has_previous %}
+  <a href="?page={{ transactions_page.previous_page_number }}" class="app-btn secondary" style="flex:1;text-align:center;border-radius:10px;padding:.6rem;">← Newer</a>
+  {% else %}
+  <div style="flex:1;"></div>
+  {% endif %}
+  {% if transactions_page.has_next %}
+  <a href="?page={{ transactions_page.next_page_number }}" class="app-btn secondary" style="flex:1;text-align:center;border-radius:10px;padding:.6rem;">Older →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% elif balance is not None %}
+<div class="app-empty">No transactions yet</div>
+{% endif %}
+
+<div class="gap-md"></div>
+
+<!-- ── Flight detail sheet ── -->
+<div id="fl-sheet-back" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:300;" onclick="closeFlightSheet()"></div>
+<div id="fl-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
+  <div style="width:36px;height:4px;background:#e0e3e8;border-radius:2px;margin:0 auto .9rem;"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+    <div>
+      <div style="font-size:1.1rem;font-weight:750;" id="fl-reg"></div>
+      <div style="font-size:.8rem;color:#8a93a0;margin-top:.15rem;" id="fl-type"></div>
+    </div>
+    <button onclick="closeFlightSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1rem;">
+    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Date</div>
+      <div style="font-size:.86rem;font-weight:600;" id="fl-date"></div>
+    </div>
+    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Scheduled</div>
+      <div style="font-size:.86rem;font-weight:600;" id="fl-sched"></div>
+    </div>
+    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Actual</div>
+      <div style="font-size:.86rem;font-weight:600;" id="fl-actual"></div>
+    </div>
+    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Instructor</div>
+      <div style="font-size:.86rem;font-weight:600;" id="fl-instr"></div>
+    </div>
+    <div id="fl-ftype-wrap" style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;display:none;">
+      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Flight type</div>
+      <div style="font-size:.86rem;font-weight:600;" id="fl-ftype"></div>
+    </div>
+    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Flight time</div>
+      <div style="font-size:.86rem;font-weight:600;" id="fl-hours"></div>
+    </div>
+  </div>
+  <div style="background:#fff0f0;border-radius:10px;padding:.75rem .9rem;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:.72rem;color:#e03131;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.15rem;">Balance owing</div>
+      <div style="font-size:.78rem;color:#6b7280;" id="fl-charge-detail"></div>
+    </div>
+    <div style="font-size:1.2rem;font-weight:800;color:#e03131;" id="fl-owing"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  function openFlightSheet(row) {
+    var d = row.dataset;
+    document.getElementById('fl-reg').textContent = d.reg;
+    document.getElementById('fl-type').textContent = d.type || '';
+    document.getElementById('fl-date').textContent = d.date;
+    document.getElementById('fl-sched').textContent = d.sched;
+    var actual = (d.departed && d.arrived) ? d.departed + '–' + d.arrived : (d.departed ? 'Departed ' + d.departed : '—');
+    document.getElementById('fl-actual').textContent = actual;
+    document.getElementById('fl-instr').textContent = d.instr;
+    var ftWrap = document.getElementById('fl-ftype-wrap');
+    if (d.ftype) { document.getElementById('fl-ftype').textContent = d.ftype; ftWrap.style.display = ''; }
+    else { ftWrap.style.display = 'none'; }
+    document.getElementById('fl-hours').textContent = d.hours ? d.hours + ' h' : '—';
+    document.getElementById('fl-owing').textContent = '$' + d.owing;
+    var detail = d.partial === '1' ? '$' + d.paid + ' of $' + d.total + ' paid' : 'Total $' + d.total;
+    document.getElementById('fl-charge-detail').textContent = detail;
+    document.getElementById('fl-sheet-back').style.display = '';
+    var sheet = document.getElementById('fl-sheet');
+    sheet.style.display = '';
+    sheet.style.transform = 'translateY(100%)';
+    sheet.style.transition = 'transform .25s ease';
+    requestAnimationFrame(function(){ sheet.style.transform = 'translateY(0)'; });
+  }
+  function closeFlightSheet() {
+    var sheet = document.getElementById('fl-sheet');
+    sheet.style.transform = 'translateY(100%)';
+    setTimeout(function(){
+      sheet.style.display = 'none';
+      document.getElementById('fl-sheet-back').style.display = 'none';
+    }, 250);
+  }
+  window.openFlightSheet = openFlightSheet;
+  window.closeFlightSheet = closeFlightSheet;
+})();
+</script>
+{% endblock %}

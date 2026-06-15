@@ -46,7 +46,9 @@
     </button>
     <button class="stab-btn" id="tabBtn-credentials" data-tab="credentials">
       Credentials
-      <span class="attn-pill {% if lapsed_creds_data %}attn-amber{% else %}attn-ok{% endif %}">{{ lapsed_creds_data|length }}</span>
+      {% with total_cred=lapsed_creds_data|length|add:instructor_cred_issues|length %}
+      <span class="attn-pill {% if instructor_cred_issues %}attn-red{% elif lapsed_creds_data %}attn-amber{% else %}attn-ok{% endif %}">{{ total_cred }}</span>
+      {% endwith %}
     </button>
     <button class="stab-btn" id="tabBtn-maintenance" data-tab="maintenance">
       Maintenance
@@ -153,6 +155,32 @@
 
   <!-- ── Lapsed credentials ────────────────────────────────────────────── -->
   <div id="tab-credentials" class="stab-panel">
+
+    {% if instructor_cred_issues %}
+    <div class="notice err" style="margin-bottom:1.4rem;">
+      <strong>⚠ Instructor credential issue{{ instructor_cred_issues|length|pluralize }} — {{ instructor_cred_issues|length }} instructor{{ instructor_cred_issues|length|pluralize }} flying today with lapsed credentials.</strong>
+      <p style="margin:.4rem 0 .5rem;font-size:.83rem;">These instructors should not conduct flights until their credentials are confirmed current. Contact them before their first booking departs.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:.84rem;margin-top:.5rem;">
+        {% for row in instructor_cred_issues %}
+        <tr style="border-top:1px solid #fca5a5;">
+          <td style="padding:.4rem .5rem 0 0;font-weight:600;white-space:nowrap;">{{ row.cm.user.get_full_name }}</td>
+          <td style="padding:.4rem .5rem 0 0;">
+            {% for issue in row.lapsed %}
+              <span style="display:inline-block;background:#fee2e2;color:#c0392b;border-radius:4px;padding:.1rem .45rem;font-size:.76rem;font-weight:600;margin:.1rem .2rem .1rem 0;">{{ issue }}</span>
+            {% endfor %}
+          </td>
+          <td style="padding:.4rem .5rem 0 0;color:#7f1d1d;font-size:.83rem;">
+            {% for b in row.bookings %}{{ b.scheduled_start|date:"H:i" }} {{ b.aircraft.registration }}{% if not forloop.last %}, {% endif %}{% endfor %}
+          </td>
+          <td style="padding:.4rem 0 0 0;white-space:nowrap;">
+            <a href="{% url 'core:manage_instructor_detail' club.slug row.cm.id %}" class="cbtn-sm cbtn-danger" data-overlay>View →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+    {% endif %}
+
     <p style="font-size:.83rem;color:#5b6573;margin-bottom:1rem;">
       Members with at least one expired credential who have an upcoming booking.
       Contact the member to discuss renewal before their next flight.
@@ -231,7 +259,7 @@
     flights:     {{ unpaid_flights|length }},
     conflicts:   {{ conflicts_data|length }},
     invoices:    {{ unpaid_invoices|length }},
-    credentials: {{ lapsed_creds_data|length }},
+    credentials: {{ lapsed_creds_data|length|add:instructor_cred_issues|length }},
     maintenance: {{ maint_items|length }},
   };
 
@@ -247,9 +275,11 @@
     document.getElementById('tabBtn-' + t).addEventListener('click', function(){ showTab(t); });
   });
 
+  var qTab = new URLSearchParams(location.search).get('tab') || '';
   var stored = '';
   try { stored = sessionStorage.getItem('attn-tab') || ''; } catch(e){}
-  var defaultTab = (stored && tabs.indexOf(stored) >= 0) ? stored
+  var defaultTab = (qTab && tabs.indexOf(qTab) >= 0) ? qTab
+    : (stored && tabs.indexOf(stored) >= 0) ? stored
     : (tabs.find(function(t){ return counts[t] > 0; }) || tabs[0]);
   showTab(defaultTab);
 })();

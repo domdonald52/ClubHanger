@@ -1,4 +1,4 @@
-{% load static %}
+{% load static currency_filters %}
 {% comment %}Inline (no-chrome) version — rendered inside the calendar detail overlay.{% endcomment %}
 <style>
   .bd-inline{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:.9rem;color:#1f2933;}
@@ -32,13 +32,23 @@
   .flabel{font-size:.78rem;color:#5b6573;display:block;}
   .finput{display:block;width:100%;margin-top:.2rem;padding:.38rem .5rem;border:1px solid #d6dae0;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
   select.finput{appearance:auto;}
-  .btn{background:var(--primary,#2563eb);color:#fff;border:none;border-radius:7px;padding:.45rem .9rem;font-size:.85rem;font-weight:600;cursor:pointer;}
-  .btn:hover{filter:brightness(1.07);}
+  .btn{background:var(--primary,#2563eb);color:#fff;border:none;border-radius:6px;padding:.42rem .85rem;font-size:.85rem;font-weight:500;cursor:pointer;transition:filter .2s;}
+  .btn:hover{filter:brightness(1.08);}
   .btn.secondary{background:#f3f5f7;color:#1f2933;border:1px solid #d6dae0;}
-  .btn.secondary:hover{background:#eef1f4;}
+  .btn.secondary:hover{background:#e8eaed;filter:none;}
   .detail-link{font-size:.78rem;color:#8a93a0;text-decoration:none;display:inline-flex;align-items:center;gap:.2rem;margin-top:.6rem;}
   .detail-link:hover{color:var(--primary,#2563eb);}
+  .money-wrap{display:flex;align-items:center;gap:0;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff;}
+  .money-sym{padding:0 .4rem;font-size:.88rem;color:#8a93a0;background:#f8f9fb;border-right:1px solid #ddd;line-height:2.2;}
+  .money-input{border:none!important;border-radius:0!important;flex:1;min-width:0;margin-top:0!important;text-align:right;}
+  .money-input:focus{outline:2px solid var(--primary,#2563eb);outline-offset:-1px;border-radius:0 5px 5px 0!important;}
 </style>
+<script>
+function fmtMoney(el) { const v=parseFloat(el.value); if(!isNaN(v)) el.value=v.toFixed(2); }
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('.money-input').forEach(function(el){el.addEventListener('blur',function(){fmtMoney(el);});});
+});
+</script>
 
 <div class="bd-inline">
   <div class="bd-inline-header">
@@ -99,7 +109,7 @@
         <tr>
           <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
           <td>{{ item.description }}</td>
-          <td style="text-align:right;font-weight:600;">${{ item.amount }}</td>
+          <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
           <td style="width:32px;">
             {% if not fc.is_paid %}
             <form method="post" onsubmit="return confirm('Remove this charge?')">
@@ -119,7 +129,7 @@
       <tfoot>
         <tr>
           <td colspan="2" style="text-align:right;font-weight:600;font-size:.88rem;padding:.5rem .5rem;">Total</td>
-          <td style="text-align:right;font-weight:700;font-size:.95rem;padding:.5rem .5rem;">${{ total }}</td>
+          <td style="text-align:right;font-weight:700;font-size:.95rem;padding:.5rem .5rem;">${{ total|currency }}</td>
           <td></td>
         </tr>
       </tfoot>
@@ -214,14 +224,14 @@
             </select>
           </label>
           <button type="submit" class="btn"
-                  onclick="return confirm('Record payment of ${{ total }} — this cannot be undone.')">
-            Record payment — ${{ total }}
+                  onclick="return confirm('Record payment of ${{ total|currency }} — this cannot be undone.')">
+            Record payment — ${{ total|currency }}
           </button>
         </div>
         {% if booking.member.account %}
         <div style="font-size:.78rem;color:#8a93a0;margin-top:.35rem;">
           Account balance: <strong style="color:{% if booking.member.account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">
-            ${{ booking.member.account.balance }}</strong>
+            ${{ booking.member.account.balance|currency }}</strong>
         </div>
         {% endif %}
       </form>

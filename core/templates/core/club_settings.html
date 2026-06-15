@@ -1,20 +1,28 @@
 {% extends "core/base.html" %}
+{% load currency_filters %}
 {% block title %}{% if is_types %}Types{% else %}Club settings{% endif %} · {{ club.name }}{% endblock %}
+{% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Lora:wght@400;500;600&family=Poppins:wght@400;500;600&family=Nunito:wght@400;500;700&display=swap" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
-<div class="container" style="padding:2rem;max-width:960px;">
+<div class="container" style="padding:2rem;max-width:1200px;">
   <h1 style="margin-bottom:1.2rem;">{% if is_types %}Types{% else %}Settings{% endif %}</h1>
 
-  {% if saved %}<div class="snotice ok">Settings saved.</div>{% endif %}
   {% if ft_error %}<div class="snotice err">{{ ft_error }}</div>{% endif %}
 
   <!-- Tab bar -->
   <div class="stab-bar" data-managed="1">
     {% if not is_types %}
     <button class="stab-btn" id="tabBtn-general"    data-tab="general">General</button>
+    <button class="stab-btn" id="tabBtn-bookings"   data-tab="bookings">Bookings</button>
     <button class="stab-btn" id="tabBtn-appearance" data-tab="appearance">Appearance</button>
-    <button class="stab-btn" id="tabBtn-billing"    data-tab="billing">Billing</button>
+    <button class="stab-btn" id="tabBtn-billing"     data-tab="billing">Billing</button>
+    <button class="stab-btn" id="tabBtn-membership" data-tab="membership">Membership</button>
     <button class="stab-btn" id="tabBtn-roles"      data-tab="roles">Roles</button>
+    <button class="stab-btn" id="tabBtn-budget"     data-tab="budget">Budget</button>
     {% else %}
     <button class="stab-btn" id="tabBtn-scheduling"    data-tab="scheduling">Flight types</button>
     <button class="stab-btn" id="tabBtn-charge-types"  data-tab="charge-types">Charge types</button>
@@ -77,51 +85,140 @@
         </div>
       </div>
 
-      <h2 class="sh2">Booking defaults</h2>
-      <div class="fgrid">
-        <label class="flabel">Default duration (min)
-          <input type="number" name="default_booking_duration" value="{{ config.default_booking_duration }}"
-                 step="{{ config.time_slot_interval }}" class="finput">
+      <div class="fgrid" style="margin-bottom:1rem;">
+        <label class="flabel">Phone <span style="font-weight:400;color:#8a93a0;">(also printed on invoices)</span>
+          <input type="text" name="billing_phone" value="{{ config.billing_phone }}" class="finput"
+                 pattern="[0-9+\(\)\s\-]{7,20}" title="7–20 digits, spaces, +, -, ()">
         </label>
-        <label class="flabel">Duration options (comma-sep)
-          <input type="text" name="duration_options" value="{{ config.duration_options }}" class="finput">
-        </label>
-        <label class="flabel">Slot interval (min)
-          <input type="number" name="time_slot_interval" value="{{ config.time_slot_interval }}" class="finput">
+        <label class="flabel">Email <span style="font-weight:400;color:#8a93a0;">(also printed on invoices)</span>
+          <input type="email" name="billing_email" value="{{ config.billing_email }}" class="finput">
         </label>
       </div>
+      <label class="flabel" style="margin-bottom:1.6rem;">Address <span style="font-weight:400;color:#8a93a0;">(also printed on invoices)</span>
+        <textarea name="billing_address" class="finput" rows="3">{{ config.billing_address }}</textarea>
+      </label>
 
-      <h2 class="sh2" style="margin-top:1.6rem;">Operating hours</h2>
-      <div class="fgrid">
-        <label class="flabel">Start
-          <input type="time" name="operating_hours_start" value="{{ config.operating_hours_start|time:'H:i' }}" class="finput">
-        </label>
-        <label class="flabel">End
-          <input type="time" name="operating_hours_end" value="{{ config.operating_hours_end|time:'H:i' }}" class="finput">
-        </label>
-      </div>
-
-      <h2 class="sh2" style="margin-top:1.6rem;">Typical flying hours</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .8rem;">Bookings outside these hours prompt the booker to confirm they intend to fly off-hours.</p>
-      <div class="fgrid">
-        <label class="flabel">Start
-          <input type="time" name="typical_hours_start" value="{{ config.typical_hours_start|time:'H:i' }}" class="finput">
-        </label>
-        <label class="flabel">End
-          <input type="time" name="typical_hours_end" value="{{ config.typical_hours_end|time:'H:i' }}" class="finput">
-        </label>
-      </div>
-
-      <div style="margin-top:1.6rem;">
-        <button type="submit" class="btn">Save settings</button>
+      <div style="margin-top:.4rem;">
+        <button type="submit" name="_tab" value="general" class="btn">Save</button>
       </div>
     </div><!-- /tab-general -->
+
+    <!-- ── BOOKINGS tab ── -->
+    <div id="tab-bookings" class="stab-panel">
+      <form method="post" id="bookings-form">
+        {% csrf_token %}
+        <input type="hidden" name="_tab" value="bookings">
+
+        <h2 class="sh2">Operating hours</h2>
+        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .8rem;">
+          The full span of the daily calendar. Aircraft and bookings outside these hours are not displayed.
+        </p>
+        <div class="fgrid">
+          <label class="flabel">Start
+            <input type="time" name="operating_hours_start" value="{{ config.operating_hours_start|time:'H:i' }}" class="finput">
+          </label>
+          <label class="flabel">End
+            <input type="time" name="operating_hours_end" value="{{ config.operating_hours_end|time:'H:i' }}" class="finput">
+          </label>
+        </div>
+
+        <h2 class="sh2" style="margin-top:1.6rem;">Booking slots</h2>
+        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .8rem;">
+          The standard time slots members can book into. These appear in the mobile booking finder and define the
+          &ldquo;normal&rdquo; flying window on the calendar — anything within operating hours but outside these slots
+          is shown as atypical and requires the member to confirm before saving.
+          Add as many as you like, in any order. Skip lunch, mix durations, add evening slots.
+        </p>
+        <input type="hidden" name="booking_slots" id="slot-hidden" value="{{ config.booking_slots }}">
+        <div id="slot-rows" style="display:flex;flex-direction:column;gap:.45rem;max-width:380px;margin-bottom:.75rem;"></div>
+        <button type="button" onclick="addSlotRow()" class="cbtn cbtn-sm">+ Add slot</button>
+
+        <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
+
+        <h2 class="sh2">Booking blocks</h2>
+        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .9rem;">Prevent members from making new bookings when account conditions aren't met. Instructors and admins are always exempt.</p>
+
+        <label style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.1rem;cursor:pointer;">
+          <input type="checkbox" name="booking_block_enabled" value="on"{% if config.booking_block_enabled %} checked{% endif %}
+                 style="width:16px;height:16px;cursor:pointer;" id="bb-enabled">
+          <span style="font-size:.9rem;font-weight:600;">Enable booking blocks</span>
+        </label>
+
+        <div id="bb-conditions" style="{% if not config.booking_block_enabled %}opacity:.45;pointer-events:none;{% endif %}">
+          <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.2rem 0 .8rem;">Block conditions <span style="font-weight:400;font-size:.78rem;color:#8a93a0;text-transform:none;letter-spacing:0;">(any one triggers a block)</span></h3>
+          <div class="fgrid" style="margin-bottom:1rem;">
+            <label class="flabel">Block when unpaid flight charges are older than (days)
+              <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">Leave blank to disable. Credit limit blocks are set per member.</span>
+              <input type="number" name="booking_block_unpaid_flight_days" value="{{ config.booking_block_unpaid_flight_days|default:'' }}"
+                     min="1" class="finput" style="width:120px;" placeholder="e.g. 30">
+            </label>
+            <label class="flabel">Block when unpaid invoices are older than (days)
+              <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">Leave blank to disable.</span>
+              <input type="number" name="booking_block_invoice_days" value="{{ config.booking_block_invoice_days|default:'' }}"
+                     min="1" class="finput" style="width:120px;" placeholder="e.g. 30">
+            </label>
+          </div>
+          <label class="flabel" style="margin-bottom:1.2rem;">Message shown to blocked member
+            <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">Leave blank to auto-generate from your club phone / email.</span>
+            <textarea name="booking_block_message" class="finput" rows="3"
+                      placeholder="e.g. Your account has an outstanding balance. Please call the club office to discuss.">{{ config.booking_block_message }}</textarea>
+          </label>
+        </div>
+
+        <div style="margin-top:1.6rem;">
+          <button type="submit" class="btn">Save</button>
+        </div>
+      </form>
+    </div><!-- /tab-bookings -->
+
+  <script>
+  (function(){
+    // Booking slots
+    var raw = '{{ config.booking_slots|escapejs }}';
+    var pairs = raw ? raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
+    pairs.forEach(function(p) {
+      var dash = p.indexOf('-', 3);
+      addSlotRow(p.slice(0, dash).trim(), p.slice(dash + 1).trim());
+    });
+    document.getElementById('bookings-form').addEventListener('submit', function() {
+      var rows = document.querySelectorAll('.bs-row');
+      var vals = [];
+      rows.forEach(function(row) {
+        var s = row.querySelector('.bs-start').value.slice(0, 5);
+        var e = row.querySelector('.bs-end').value.slice(0, 5);
+        if (s && e) vals.push(s + '-' + e);
+      });
+      document.getElementById('slot-hidden').value = vals.join(', ');
+    });
+    function addSlotRow(start, end) {
+      var row = document.createElement('div');
+      row.className = 'bs-row';
+      row.style.cssText = 'display:flex;align-items:center;gap:.5rem;';
+      row.innerHTML =
+        '<input type="time" class="finput bs-start" value="' + (start || '') + '" style="width:110px;">' +
+        '<span style="color:#8a93a0;font-size:.85rem;">to</span>' +
+        '<input type="time" class="finput bs-end" value="' + (end || '') + '" style="width:110px;">' +
+        '<button type="button" onclick="this.parentNode.remove()" style="background:none;border:none;color:#c8cdd4;cursor:pointer;font-size:1.1rem;padding:.1rem .4rem;line-height:1;" title="Remove">&#x2715;</button>';
+      document.getElementById('slot-rows').appendChild(row);
+    }
+    window.addSlotRow = addSlotRow;
+    // Booking blocks toggle
+    var cb = document.getElementById('bb-enabled');
+    var panel = document.getElementById('bb-conditions');
+    if (cb && panel) {
+      cb.addEventListener('change', function() {
+        panel.style.opacity = cb.checked ? '' : '.45';
+        panel.style.pointerEvents = cb.checked ? '' : 'none';
+      });
+    }
+  })();
+  </script>
 
     <div id="tab-appearance" class="stab-panel">
       <!-- Hidden fields for the current colours — updated by palette selection -->
       <input type="hidden" name="theme_banner"   id="inp-banner"   value="{{ config.theme_banner }}">
       <input type="hidden" name="theme_primary"  id="inp-primary"  value="{{ config.theme_primary }}">
-      <input type="hidden" name="theme_accent"   id="inp-accent"   value="{{ config.theme_primary }}">
+      <input type="hidden" name="theme_accent"   id="inp-accent"   value="{{ config.theme_accent }}">
       <input type="hidden" name="theme_confirmed"      id="inp-theme_confirmed"      value="{{ config.theme_confirmed }}">
       <input type="hidden" name="theme_pending"        id="inp-theme_pending"        value="{{ config.theme_pending }}">
       <input type="hidden" name="theme_departed"       id="inp-theme_departed"       value="{{ config.theme_departed }}">
@@ -198,7 +295,69 @@
         </div>
       </div>
 
-      <button type="submit" class="btn">Save appearance</button>
+      <h2 class="sh2" style="margin-top:1.2rem;">Body font</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">Selecting a font previews it on this page. Save to apply across the whole app.</p>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;" id="font-options">
+        {% for opt in font_options %}
+        <label class="font-label" data-font="{{ opt.value }}"
+               style="display:flex;align-items:center;gap:.4rem;padding:.5rem 1.1rem;border:1.5px solid {% if config.font_choice == opt.value %}var(--primary){% else %}#d6dae0{% endif %};border-radius:6px;cursor:pointer;background:{% if config.font_choice == opt.value %}color-mix(in srgb,var(--primary) 8%,#fff){% else %}#fff{% endif %};">
+          <input type="radio" name="font_choice" value="{{ opt.value }}" {% if config.font_choice == opt.value %}checked{% endif %} style="accent-color:var(--primary);">
+          <span style="font-family:{{ opt.stack }};font-size:.9rem;font-weight:500;">{{ opt.label }}</span>
+        </label>
+        {% endfor %}
+      </div>
+      <script>
+      var FONT_STACKS = {
+        'system':  "system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif",
+        'inter':   "'Inter',sans-serif",
+        'poppins': "'Poppins',sans-serif",
+        'nunito':  "'Nunito',sans-serif",
+        'lora':    "'Lora',Georgia,serif",
+      };
+      document.querySelectorAll('.font-label input[type=radio]').forEach(function(radio) {
+        radio.addEventListener('change', function() {
+          document.body.style.fontFamily = FONT_STACKS[this.value] || '';
+          document.querySelectorAll('.font-label').forEach(function(l) {
+            var active = l.dataset.font === radio.value;
+            l.style.borderColor = active ? 'var(--primary)' : '#d6dae0';
+            l.style.background  = active ? 'color-mix(in srgb,var(--primary) 8%,#fff)' : '#fff';
+          });
+        });
+      });
+      </script>
+
+      <h2 class="sh2" style="margin-top:1.2rem;">Chart colours</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">8–10 hex colours used in stacked charts. Should be distinct and complement your primary colour. Leave blank to use the built-in burnt-orange defaults.</p>
+      <div id="chart-color-swatches" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem;">
+        {% for c in config.get_chart_colors %}
+        <div style="display:flex;flex-direction:column;align-items:center;gap:.25rem;">
+          <input type="color" value="{{ c }}" data-ci="{{ forloop.counter0 }}"
+                 style="width:40px;height:32px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;"
+                 oninput="updateChartColor({{ forloop.counter0 }},this.value)">
+          <span style="font-size:.68rem;font-family:monospace;color:#8a93a0;">{{ forloop.counter }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      <input type="hidden" name="chart_colors" id="inp-chart-colors" value="{{ config.chart_colors|default:'[]' }}">
+      <script>
+      (function(){
+        let _cc = {{ config.get_chart_colors|safe }};
+        function updateChartColor(i, val) {
+          _cc[i] = val;
+          document.getElementById('inp-chart-colors').value = JSON.stringify(_cc);
+        }
+        window.updateChartColor = updateChartColor;
+        window.applyChartColors = function(colors) {
+          _cc = colors.slice();
+          document.getElementById('inp-chart-colors').value = JSON.stringify(_cc);
+          document.querySelectorAll('#chart-color-swatches input[type="color"]').forEach((inp, i) => {
+            if (i < _cc.length) inp.value = _cc[i];
+          });
+        };
+      })();
+      </script>
+
+      <button type="submit" name="_tab" value="appearance" class="btn">Save appearance</button>
     </div><!-- /tab-appearance -->
   </form>
 
@@ -602,7 +761,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No incident types defined yet.</p>
+    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No event types defined yet.</p>
     {% endif %}
 
     <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
@@ -635,8 +794,9 @@
             <input type="number" name="ot_sort" id="edit-ot-sort" class="finput" style="width:80px;" min="0">
           </label>
           <div class="modal-actions">
-            <button type="submit" class="btn">Save</button>
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true">Cancel</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true">✕ Close</button>
+            <span style="flex:1"></span>
+            <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
         </form>
       </div>
@@ -717,9 +877,10 @@
           <label class="flabel" style="margin-bottom:.9rem;">Sort order
             <input type="number" name="ct_sort" id="edit-ct-sort" class="finput" style="width:80px;" min="0">
           </label>
-          <div style="display:flex;gap:.5rem;justify-content:flex-end;">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true">Cancel</button>
-            <button type="submit" class="btn">Save</button>
+          <div class="modal-actions">
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true">✕ Close</button>
+            <span style="flex:1"></span>
+            <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
         </form>
       </div>
@@ -806,9 +967,9 @@
           </div>
           <label class="flabel">Description<input type="text" name="vt_desc" id="edit-vt-desc" class="finput" placeholder="Optional"></label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-vt-modal').hidden=true">Cancel</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-vt-modal').hidden=true">✕ Close</button>
             <span style="flex:1"></span>
-            <button type="submit" class="cbtn primary">Save</button>
+            <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
         </form>
       </div>
@@ -834,16 +995,10 @@
       <input type="hidden" name="action" value="save_billing">
 
       <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Club details on invoices</h3>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .9rem;">Phone, email and address are set in the <a href="?tab=general" class="slink">General tab</a>.</p>
       <div class="fgrid" style="margin-bottom:1rem;">
-        <label class="flabel">Legal name
+        <label class="flabel">Legal name <span style="font-weight:400;color:#8a93a0;">(as registered with the Incorporated Societies Register)</span>
           <input type="text" name="billing_name" value="{{ config.billing_name }}" class="finput" placeholder="e.g. Aero Club Inc.">
-        </label>
-        <label class="flabel">Phone
-          <input type="text" name="billing_phone" value="{{ config.billing_phone }}" class="finput"
-                 pattern="[0-9+\(\)\s\-]{7,20}" title="7–20 digits, spaces, +, -, ()">
-        </label>
-        <label class="flabel">Email
-          <input type="email" name="billing_email" value="{{ config.billing_email }}" class="finput">
         </label>
         <label class="flabel">GST / tax number <span style="font-weight:400;color:#8a93a0;">(8–9 digits)</span>
           <input type="text" name="gst_number" value="{{ config.gst_number }}" class="finput"
@@ -853,9 +1008,6 @@
           <input type="number" name="gst_rate" value="{{ config.gst_rate }}" step="0.01" min="0" max="99" class="finput" style="width:90px;">
         </label>
       </div>
-      <label class="flabel" style="margin-bottom:1rem;">Address <span style="font-weight:400;color:#8a93a0;">(postal, printed on invoices)</span>
-        <textarea name="billing_address" class="finput" rows="3">{{ config.billing_address }}</textarea>
-      </label>
 
       <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Bank &amp; payment</h3>
       <div class="fgrid" style="margin-bottom:1rem;">
@@ -888,21 +1040,101 @@
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:.8rem;">
-        <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Financial year</h3>
-      <label class="flabel" style="max-width:200px;margin-bottom:1.2rem;">FY start month
+      <button type="submit" class="btn">Save</button>
+    </form>
+  </div><!-- /tab-billing -->
+
+  <!-- ── MEMBERSHIP tab ── -->
+  <div id="tab-membership" class="stab-panel">
+    <h2 style="font-size:1rem;margin-bottom:.9rem;">Membership</h2>
+
+    <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Financial year</h3>
+    <form method="post" style="display:flex;align-items:flex-end;gap:.9rem;flex-wrap:wrap;margin-bottom:1.4rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_membership_tab">
+      <label class="flabel" style="max-width:200px;margin:0;">FY start month
         <select name="fy_start_month" class="finput">
-          {% for m in "123456789101112"|make_list %}{% endfor %}
           {% for val, lbl in fy_month_choices %}
           <option value="{{ val }}" {% if config.fy_start_month == val %}selected{% endif %}>{{ lbl }}</option>
           {% endfor %}
         </select>
       </label>
+      <button type="submit" class="btn" style="margin-bottom:0;">Save</button>
+    </form>
 
-      <button type="submit" class="btn">Save</button>
+    <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Auto-lapse</h3>
+    <p class="s-desc" style="margin-bottom:.9rem;">Members with <strong>active</strong> standing whose subscription expired more than the grace period ago will be auto-lapsed when you click the button below, or when the <code>update_lapsed_members</code> management command runs.</p>
+    <form method="post" style="display:flex;align-items:flex-end;gap:.9rem;flex-wrap:wrap;margin-bottom:.9rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_membership_tab">
+      <label class="flabel" style="max-width:180px;margin:0;">Grace period (days)
+        <input type="number" name="lapse_grace_days" value="{{ config.lapse_grace_days }}" min="0" class="finput" style="width:90px;">
+      </label>
+      <button type="submit" class="btn" style="margin-bottom:0;">Save</button>
+    </form>
+    <form method="post" style="margin-bottom:1.4rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="run_auto_lapse">
+      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
+        <button type="submit" class="cbtn{% if lapse_preview %} primary{% endif %}">
+          Run auto-lapse now{% if lapse_preview %} ({{ lapse_preview|length }} pending){% endif %}
+        </button>
+        {% if lapse_preview %}
+        <span style="font-size:.82rem;color:#c0392b;">
+          {% for m in lapse_preview %}{{ m.user.get_full_name }}{% if m.subscription_expires %} (exp. {{ m.subscription_expires|date:"j M Y" }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </span>
+        {% else %}
+        <span style="font-size:.82rem;color:#8a93a0;">No members are overdue for lapsing.</span>
+        {% endif %}
       </div>
     </form>
-  </div><!-- /tab-billing -->
+
+    <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
+
+    <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Renewal invoices</h3>
+    <p class="s-desc" style="margin-bottom:.9rem;">
+      Send annual subscription invoices to all active members whose role requires renewal and has a fee set.
+      Next financial year end: <strong>{{ renewal_fy_end|date:"j N Y" }}</strong> ({{ renewal_fy_label }}).
+      Invoices are created as <em>sent</em> using the role's annual fee — the same amount that pre-fills the manual invoice modal.
+      Members already holding an unpaid subscription invoice are skipped automatically.
+    </p>
+    <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem;">
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="run_bulk_renewal">
+        <button type="submit" class="cbtn{% if renewal_preview %} primary{% endif %}"
+                onclick="return confirm('Send {{ renewal_fy_label }} renewal invoices to {{ renewal_preview|length }} member(s)?')">
+          Send renewal invoices{% if renewal_preview %} ({{ renewal_preview|length }} eligible){% endif %}
+        </button>
+      </form>
+      {% if not renewal_preview %}
+      <span style="font-size:.82rem;color:#8a93a0;">No members are currently eligible — all are already invoiced or have no fee set.</span>
+      {% endif %}
+    </div>
+    {% if renewal_preview %}
+    <table class="ft-table" style="margin-bottom:1rem;">
+      <thead><tr><th>Member</th><th>Role</th><th>Annual fee</th></tr></thead>
+      <tbody>
+        {% for m in renewal_preview %}
+        <tr>
+          <td><a href="{% url 'core:manage_member_detail' club.slug m.id %}">{{ m.user.get_full_name }}</a></td>
+          <td style="color:#5b6573;">{{ m.role.name }}</td>
+          <td>${{ m.role.annual_renewal_fee }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+
+    <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
+
+    <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Registrar's report</h3>
+    <p class="s-desc" style="margin-bottom:.9rem;">Export a point-in-time member register for CAA or auditing purposes. You can select the as-at date and output format on the Members page.</p>
+    <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+      <a href="{% url 'core:registrar_export' club.slug %}?fmt=csv" class="cbtn">Download current register (CSV)</a>
+      <a href="{% url 'core:manage_members' club.slug %}" class="cbtn-sm">Open Members page (date options)</a>
+    </div>
+  </div><!-- /tab-membership -->
 
   <!-- ── ROLES tab ── -->
   <div id="tab-roles" class="stab-panel">
@@ -921,28 +1153,15 @@
         <tr>
           <th style="min-width:130px;">Role</th>
           <th style="min-width:120px;">Bookings</th>
-          <th style="text-align:center;min-width:52px;" title="Access to Operations (Bookings, Block-outs, Sales, Members)">Operations</th>
-          <th style="text-align:center;min-width:52px;" title="Access to Fleet section (Aircraft)">Fleet</th>
-          <th style="text-align:center;min-width:52px;" title="Access to Safety section (Events, Action items)">Safety</th>
-          <th style="text-align:center;min-width:52px;" title="Access to Configuration (Settings, Types)">Config</th>
-          <th style="text-align:center;min-width:52px;" title="Access to Analytics and Reports">Analytics</th>
-          <th style="text-align:center;min-width:52px;" title="Full access — implies all permissions above">All access</th>
-          <th style="text-align:center;min-width:52px;" title="Included in annual renewal">Renewal</th>
-          <th style="min-width:90px;">Annual fee</th>
+          <th style="text-align:center;min-width:52px;" title="Operations nav section: Bookings, Block-outs, Sales — and People nav section: Members, Contacts">Ops &amp; People</th>
+          <th style="text-align:center;min-width:42px;" title="Safety nav section: Events, Action items">Safety</th>
+          <th style="text-align:center;min-width:42px;" title="Fleet nav section: Aircraft management">Fleet</th>
+          <th style="text-align:center;min-width:42px;" title="Reports nav section: Analytics, Export, Integrity">Reports</th>
+          <th style="text-align:center;min-width:42px;" title="Config nav section: Settings, Types, Aerodromes">Config</th>
+          <th style="text-align:center;min-width:42px;background:color-mix(in srgb,var(--primary) 10%,#fff);border-left:2px solid var(--primary);border-right:2px solid var(--primary);" title="Full access — implies all permissions above. Assign with care.">All</th>
+          <th style="text-align:center;min-width:42px;" title="Member is included in the annual renewal cycle">Renewal</th>
+          <th style="min-width:80px;">Annual fee</th>
           <th style="min-width:64px;"></th>
-        </tr>
-        <tr class="perm-desc-row">
-          <td></td>
-          <td style="font-size:.72rem;color:#adb5bd;">Access level</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Bookings etc.</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Aircraft</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Events</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Settings</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Reports</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Full access</td>
-          <td style="font-size:.72rem;color:#adb5bd;text-align:center;">Annual</td>
-          <td style="font-size:.72rem;color:#adb5bd;">$ / year</td>
-          <td></td>
         </tr>
       </thead>
       <tbody>
@@ -982,7 +1201,7 @@
           </td>
           {% for perm, val in role.perm_items %}
           {% with is_super=role.is_superadmin is_admin_role=role.system_role_type %}
-          <td style="text-align:center;">
+          <td style="text-align:center;{% if perm == 'is_superadmin' %}background:color-mix(in srgb,var(--primary) 10%,#fff);border-left:2px solid var(--primary);border-right:2px solid var(--primary);{% endif %}">
             {% if is_admin_role == 'admin' %}
             {# Admin system role: always fully ON, locked #}
             <span class="ft-pill ft-pill-active" style="min-width:32px;opacity:.55;cursor:default;" title="Administrator always has full access">✓</span>
@@ -1003,23 +1222,29 @@
           </td>
           {% endwith %}
           {% endfor %}
-          <td>
-            <form method="post" style="display:flex;gap:.3rem;align-items:center;">{% csrf_token %}
-              <input type="hidden" name="action" value="set_role_fee">
-              <input type="hidden" name="role_id" value="{{ role.id }}">
-              <input type="number" name="fee" value="{{ role.annual_renewal_fee|default:'' }}"
-                     min="0" step="0.01" class="finput" style="width:80px;font-size:.82rem;" placeholder="—">
-              <button type="submit" class="cbtn-sm">✓</button>
-            </form>
+          <td style="white-space:nowrap;">
+            <div style="display:flex;align-items:center;gap:.3rem;">
+              <div class="money-wrap" style="flex-shrink:0;">
+                <span class="money-sym">$</span>
+                <input type="number" class="money-input no-spin role-fee-input"
+                       id="fee-inp-{{ role.id }}"
+                       data-role-id="{{ role.id }}"
+                       data-orig="{{ role.annual_renewal_fee|default:'' }}"
+                       value="{{ role.annual_renewal_fee|default:'' }}"
+                       min="0" step="0.01" style="width:60px;font-size:.82rem;" placeholder="—"
+                       disabled>
+              </div>
+              <button type="button" class="cbtn-sm fee-amend-btn" data-for="fee-inp-{{ role.id }}">Amend</button>
+              <button type="button" class="cbtn-sm fee-save-btn" data-for="fee-inp-{{ role.id }}" style="display:none;">Save</button>
+              <button type="button" class="cbtn-sm fee-cancel-btn" data-for="fee-inp-{{ role.id }}" style="display:none;">Cancel</button>
+            </div>
           </td>
           <td style="text-align:right;">
             {% if not role.is_system_role %}
-            <form method="post" style="display:inline;"
-                  onsubmit="return confirm('Delete role \'{{ role.name|escapejs }}\'?{% if role.member_count %} {{ role.member_count }} member{{ role.member_count|pluralize }} will lose this role and drop to no access.{% endif %}')">{% csrf_token %}
-              <input type="hidden" name="action" value="delete_role">
-              <input type="hidden" name="role_id" value="{{ role.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
-            </form>
+            <button type="button" class="cbtn-sm cbtn-danger"
+                    onclick="openRoleDelModal('{{ role.id }}', '{{ role.name|escapejs }}', {{ role.member_count }})">
+              Delete
+            </button>
             {% endif %}
           </td>
         </tr>
@@ -1039,11 +1264,86 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="add_role">
       <label class="flabel" style="margin:0;flex:1;min-width:160px;">Name
-        <input type="text" name="role_name" class="finput" placeholder="e.g. Student" required autocomplete="off">
+        <input type="text" name="role_name" class="finput" placeholder="e.g. Non-member staff" required autocomplete="off">
       </label>
       <button type="submit" class="btn" style="margin-bottom:0;">Add role</button>
     </form>
+  <!-- Role delete confirmation modal -->
+  <div id="role-del-modal" class="modal-back" hidden>
+    <div class="modal" style="max-width:420px;">
+      <h2>Delete role?</h2>
+      <p id="role-del-msg" style="margin:.5rem 0 1.2rem;font-size:.88rem;color:#4a5568;"></p>
+      <form id="role-del-form" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_role">
+        <input id="role-del-id" type="hidden" name="role_id" value="">
+        <div class="modal-actions">
+          <button type="submit" class="btn" style="background:#c0392b;border-color:#c0392b;">Delete</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('role-del-modal').hidden=true">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   </div><!-- /tab-roles -->
+
+  <!-- ── BUDGET tab ── -->
+  {% if not is_types %}
+  <div id="tab-budget" class="stab-panel">
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.4rem;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <div>
+          <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .25rem;">Flying budget — {{ budget_fy_year }}/{{ budget_fy_year|add:1 }} FY</h2>
+          <p style="font-size:.8rem;color:#8a93a0;margin:0;">Budgeted hours per aircraft per month. Used for dashboard variance tracking.</p>
+        </div>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_budget">
+        <input type="hidden" name="fy_year" value="{{ budget_fy_year }}">
+        <div style="overflow-x:auto;">
+          <table style="border-collapse:collapse;font-size:.82rem;width:100%;">
+            <thead>
+              <tr style="border-bottom:2px solid #e3e6ea;">
+                <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;white-space:nowrap;">Aircraft</th>
+                {% for m, lbl, yr in budget_month_labels %}
+                <th style="padding:.4rem .35rem;text-align:center;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;min-width:52px;">{{ lbl }}</th>
+                {% endfor %}
+                <th style="padding:.4rem .35rem;text-align:right;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ac in budget_aircraft %}
+              <tr style="border-bottom:1px solid #f0f2f4;">
+                <td style="padding:.45rem .6rem;font-weight:550;white-space:nowrap;">{{ ac.registration }}</td>
+                {% with ac_total=0 %}
+                {% for m, lbl, yr in budget_month_labels %}
+                <td style="padding:.3rem .25rem;">
+                  {% budget_val budget_entries ac.id budget_fy_year m as bv %}
+                  <input type="number" name="budget_{{ ac.id }}_{{ m }}" class="finput bud-input"
+                         value="{{ bv }}"
+                         min="0" max="999" step="1" placeholder="—"
+                         style="width:52px;padding:.28rem .3rem;font-size:.82rem;text-align:center;"
+                         oninput="updateRowTotal(this)">
+                </td>
+                {% endfor %}
+                {% endwith %}
+                <td style="padding:.45rem .35rem;text-align:right;font-weight:600;font-size:.82rem;" class="row-total" id="row-total-{{ ac.id }}">—</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="14" style="padding:1.5rem;text-align:center;color:#8a93a0;">No aircraft found.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center;">
+          <button type="submit" class="cbtn primary">Save budget</button>
+          <span style="font-size:.78rem;color:#8a93a0;">Enter 0 to explicitly budget zero hours; leave blank to exclude from calculations.</span>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
 
 
 </div>
@@ -1068,7 +1368,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-ft-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-ft-modal')">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add flight type</button>
       </div>
@@ -1087,9 +1387,9 @@
         <input type="text" name="ft_name" id="eft-name" required class="finput">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-ft-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-ft-modal')">✕ Close</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Save</button>
+        <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1113,7 +1413,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-ig-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-ig-modal')">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add grade</button>
       </div>
@@ -1140,9 +1440,9 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-ig-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-ig-modal')">✕ Close</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Save</button>
+        <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1160,11 +1460,14 @@
       <label class="flabel" style="margin-top:.1rem;">Description <span style="font-weight:400;">(optional)</span>
         <input type="text" name="st_desc" class="finput" placeholder="e.g. Additional insurance loading">
       </label>
-      <label class="flabel" style="margin-top:.1rem;width:120px;">Amount/flight
-        <input type="number" name="st_amount" value="0" min="0" step="0.01" class="finput money-input">
+      <label class="flabel" style="margin-top:.1rem;max-width:160px;">Amount/flight
+        <div style="display:flex;align-items:center;gap:.3rem;margin-top:.25rem;">
+          <span style="font-size:.9rem;color:#5b6573;flex-shrink:0;">$</span>
+          <input type="number" name="st_amount" value="0" min="0" step="0.01" class="finput money-input" style="text-align:right;">
+        </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add surcharge</button>
       </div>
@@ -1185,13 +1488,16 @@
       <label class="flabel" style="margin-top:.1rem;">Description
         <input type="text" name="st_desc" id="esc-desc" class="finput">
       </label>
-      <label class="flabel" style="margin-top:.1rem;width:120px;">Amount/flight
-        <input type="number" name="st_amount" id="esc-amount" min="0" step="0.01" class="finput money-input">
+      <label class="flabel" style="margin-top:.1rem;max-width:160px;">Amount/flight
+        <div style="display:flex;align-items:center;gap:.3rem;margin-top:.25rem;">
+          <span style="font-size:.9rem;color:#5b6573;flex-shrink:0;">$</span>
+          <input type="number" name="st_amount" id="esc-amount" min="0" step="0.01" class="finput money-input" style="text-align:right;">
+        </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')">✕ Close</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Save</button>
+        <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1217,7 +1523,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-bot-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-bot-modal')">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add type</button>
       </div>
@@ -1240,9 +1546,9 @@
                style="display:block;width:48px;height:36px;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-bot-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-bot-modal')">✕ Close</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Save</button>
+        <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1261,9 +1567,9 @@
         <input type="text" name="at_icao" id="eat-icao" class="finput" maxlength="10" placeholder="e.g. C172">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-at-modal')">Cancel</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-at-modal')">✕ Close</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Save</button>
+        <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1339,11 +1645,13 @@
   .pal-banner{display:block;width:32px;height:40px;}
   .pal-primary{display:block;width:16px;height:40px;}
   .pal-name{display:block;padding:0 .7rem;font-size:.78rem;font-weight:600;color:#5b6573;white-space:nowrap;}
+  .no-spin::-webkit-inner-spin-button,.no-spin::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  .no-spin{-moz-appearance:textfield;}
 </style>
 
 <script>
 (function(){
-  const TABS = {% if not is_types %}['general', 'appearance', 'billing', 'roles']{% else %}['scheduling', 'charge-types', 'blockout-types', 'aircraft-types', 'incident-types', 'contact-types', 'voucher-types']{% endif %};
+  const TABS = {% if not is_types %}['general', 'bookings', 'appearance', 'billing', 'membership', 'roles', 'budget']{% else %}['scheduling', 'charge-types', 'blockout-types', 'aircraft-types', 'incident-types', 'contact-types', 'voucher-types']{% endif %};
 
   window.activateTab = function activateTab(id) {
     TABS.forEach(t => {
@@ -1367,14 +1675,30 @@
 
   // ── Palette-based appearance tab ──────────────────────────────────────────
   const PALETTES = [
-    { name:'Navy',      banner:'#1b3a5c', primary:'#2563eb', confirmed:'#16a34a', pending:'#f97316', departed:'#d97706', returned:'#2563eb', completedPaid:'#7c3aed' },
-    { name:'Forest',    banner:'#1c4532', primary:'#059669', confirmed:'#059669', pending:'#f59e0b', departed:'#b45309', returned:'#0284c7', completedPaid:'#6d28d9' },
-    { name:'Slate',     banner:'#1e293b', primary:'#6366f1', confirmed:'#16a34a', pending:'#f97316', departed:'#b45309', returned:'#6366f1', completedPaid:'#7c3aed' },
-    { name:'Burgundy',  banner:'#6b1a2a', primary:'#dc2626', confirmed:'#16a34a', pending:'#f97316', departed:'#d97706', returned:'#3b82f6', completedPaid:'#a21caf' },
-    { name:'Teal',      banner:'#0f4c5c', primary:'#0891b2', confirmed:'#059669', pending:'#f97316', departed:'#d97706', returned:'#0891b2', completedPaid:'#7c3aed' },
-    { name:'Charcoal',  banner:'#2d3748', primary:'#667eea', confirmed:'#22c55e', pending:'#f97316', departed:'#d97706', returned:'#667eea', completedPaid:'#a855f7' },
-    { name:'Midnight',  banner:'#1a1a2e', primary:'#7c3aed', confirmed:'#22c55e', pending:'#f59e0b', departed:'#f59e0b', returned:'#06b6d4', completedPaid:'#7c3aed' },
-    { name:'Warm Grey', banner:'#3d3530', primary:'#d97706', confirmed:'#65a30d', pending:'#f97316', departed:'#d97706', returned:'#2563eb', completedPaid:'#7c3aed' },
+    { name:'Rust', banner:'#3d3530', primary:'#d97706',
+      confirmed:'#65a30d', pending:'#f97316', departed:'#d97706', returned:'#0891b2', completedPaid:'#ae3708',
+      chartColors:['#ae3708','#173d3c','#f89d08','#e64301','#7d7268','#fb8007','#c4a882','#4a4540','#d4824a','#9b8b7a'] },
+    { name:'Navy',      banner:'#1b3a5c', primary:'#2563eb',
+      confirmed:'#16a34a', pending:'#f97316', departed:'#3b82f6', returned:'#06b6d4', completedPaid:'#1d4ed8',
+      chartColors:['#2563eb','#1d4ed8','#0891b2','#0ea5e9','#3b82f6','#475569','#60a5fa','#0c4a6e','#93c5fd','#94a3b8'] },
+    { name:'Forest',    banner:'#1c4532', primary:'#059669',
+      confirmed:'#059669', pending:'#f59e0b', departed:'#15803d', returned:'#0891b2', completedPaid:'#065f46',
+      chartColors:['#059669','#065f46','#15803d','#34d399','#4b5563','#16a34a','#84cc16','#064e3b','#a7f3d0','#6b7280'] },
+    { name:'Teal',      banner:'#0f4c5c', primary:'#0891b2',
+      confirmed:'#059669', pending:'#f97316', departed:'#0891b2', returned:'#0e7490', completedPaid:'#6d28d9',
+      chartColors:['#0891b2','#059669','#0e7490','#10b981','#64748b','#22d3ee','#34d399','#155e75','#06b6d4','#94a3b8'] },
+    { name:'Olive',     banner:'#1e2818', primary:'#7b9e3a',
+      confirmed:'#22c55e', pending:'#f59e0b', departed:'#7b9e3a', returned:'#22d3ee', completedPaid:'#4d7c0f',
+      chartColors:['#7b9e3a','#4d7c0f','#a3c560','#22c55e','#6b7280','#84cc16','#4ade80','#166534','#bbf7d0','#9ca3af'] },
+    { name:'Brass',     banner:'#2c1a0e', primary:'#b07d2a',
+      confirmed:'#22c55e', pending:'#f59e0b', departed:'#b07d2a', returned:'#0ea5e9', completedPaid:'#7d4f00',
+      chartColors:['#b07d2a','#7d4f00','#d4a853','#f59e0b','#78716c','#e9c46a','#f4a261','#44362a','#fcd34d','#a8a29e'] },
+    { name:'Plum',      banner:'#2d1b35', primary:'#9b59b6',
+      confirmed:'#22c55e', pending:'#f59e0b', departed:'#9b59b6', returned:'#06b6d4', completedPaid:'#6d28d9',
+      chartColors:['#9b59b6','#6d28d9','#c084fc','#8b5cf6','#64748b','#e879f9','#a78bfa','#4c1d95','#f0abfc','#94a3b8'] },
+    { name:'Burgundy',  banner:'#6b1a2a', primary:'#dc2626',
+      confirmed:'#16a34a', pending:'#f97316', departed:'#dc2626', returned:'#3b82f6', completedPaid:'#991b1b',
+      chartColors:['#dc2626','#b91c1c','#f97316','#ea580c','#78716c','#fca5a5','#fed7aa','#57534e','#ef4444','#a8a29e'] },
   ];
 
   // CSS var key → field slug mapping for status colours
@@ -1405,6 +1729,7 @@
     document.documentElement.style.setProperty('--banner', banner);
     document.documentElement.style.setProperty('--primary', primary);
     if (palette) applyStatusColours(palette);
+    if (palette && palette.chartColors && window.applyChartColors) applyChartColors(palette.chartColors);
   }
 
   function buildPalettes() {
@@ -1467,7 +1792,7 @@
 // ── Settings modal helpers ────────────────────────────────────────────────
 const S_MODALS = ['add-ft-modal','edit-ft-modal','add-ig-modal','edit-ig-modal',
                   'add-sc-modal','edit-sc-modal','add-bot-modal','edit-bot-modal',
-                  'edit-at-modal'];
+                  'edit-at-modal','role-del-modal'];
 
 function sOpenModal(id) { document.getElementById(id).hidden = false; }
 function sCloseModal(id) { document.getElementById(id).hidden = true; }
@@ -1523,5 +1848,79 @@ function openEditAircraftType(id, name, icao) {
   document.getElementById('eat-icao').value = icao;
   sOpenModal('edit-at-modal');
 }
+
+// ── Role delete modal ──────────────────────────────────────────────────────
+function openRoleDelModal(id, name, memberCount) {
+  document.getElementById('role-del-id').value = id;
+  const msg = memberCount > 0
+    ? `"${name}" has ${memberCount} member${memberCount !== 1 ? 's' : ''}. They will lose this role and drop to no access.`
+    : `Delete role "${name}"? This cannot be undone.`;
+  document.getElementById('role-del-msg').textContent = msg;
+  document.getElementById('role-del-modal').hidden = false;
+}
+
+// ── Annual fee Amend/Save/Cancel ─────────────────────────────────────────
+document.querySelectorAll('.fee-amend-btn').forEach(btn => {
+  const td      = btn.closest('td');
+  const inp     = document.getElementById(btn.dataset.for);
+  const saveBtn = td.querySelector('.fee-save-btn');
+  const canBtn  = td.querySelector('.fee-cancel-btn');
+
+  function enterAmend() {
+    btn.style.display = 'none';
+    saveBtn.style.display = '';
+    canBtn.style.display = '';
+    inp.disabled = false;
+    inp.focus(); inp.select();
+  }
+  function exitAmend(restore) {
+    if (restore) inp.value = inp.dataset.orig;
+    inp.disabled = true;
+    btn.style.display = '';
+    saveBtn.style.display = 'none';
+    canBtn.style.display = 'none';
+    saveBtn.classList.remove('primary');
+  }
+
+  btn.addEventListener('click', enterAmend);
+  canBtn.addEventListener('click', () => exitAmend(true));
+  inp.addEventListener('input', () => {
+    saveBtn.classList.toggle('primary', inp.value !== inp.dataset.orig);
+  });
+  saveBtn.addEventListener('click', () => {
+    const fd = new FormData();
+    fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+    fd.append('action', 'set_role_fee');
+    fd.append('role_id', inp.dataset.roleId);
+    fd.append('fee', inp.value);
+    fetch('', {method:'POST', body:fd, credentials:'same-origin'})
+      .then(r => {
+        if (r.ok || r.redirected) {
+          inp.dataset.orig = inp.value;
+          exitAmend(false);
+          if (window.toast) window.toast('Fee saved');
+        } else {
+          if (window.toast) window.toast('Save failed', 'err');
+        }
+      })
+      .catch(() => { if (window.toast) window.toast('Save failed', 'err'); });
+  });
+});
+
+// ── Budget grid row totals ──────────────────────────────────────────────────
+function updateRowTotal(inp) {
+  const row = inp.closest('tr');
+  if (!row) return;
+  let sum = 0;
+  row.querySelectorAll('.bud-input').forEach(i => {
+    const v = parseFloat(i.value);
+    if (!isNaN(v)) sum += v;
+  });
+  const cell = row.querySelector('.row-total');
+  if (cell) cell.textContent = sum > 0 ? sum.toFixed(1) + 'h' : '—';
+}
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.bud-input').forEach(i => updateRowTotal(i));
+});
 </script>
 {% endblock %}

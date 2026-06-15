@@ -1,11 +1,9 @@
-{% extends "core/base.html" %}
+{% extends base_template|default:"core/base.html" %}
+{% load currency_filters %}
 {% block title %}Invoice {{ invoice.display_number }} · {{ club.name }}{% endblock %}
 {% block content %}
 <div style="padding:2rem;max-width:900px;margin:0 auto;">
   <a href="{% url 'core:manage_invoices' club.slug %}" class="back-link">← Invoices</a>
-
-  {% if error %}<div class="notice err">{{ error }}</div>{% endif %}
-  {% if success %}<div class="notice ok">{{ success }}</div>{% endif %}
 
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.4rem;">
     <div>
@@ -21,12 +19,12 @@
       <span class="inv-badge inv-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
       <a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn">Print / PDF ↗</a>
       {% if invoice.flight_completion %}
-      <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}" class="cbtn">View booking</a>
+      <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}" class="cbtn" data-overlay>View booking</a>
       {% endif %}
     </div>
   </div>
 
-  <!-- Line items -->
+  <!-- Charges table -->
   <div class="inv-card" style="margin-bottom:1.2rem;">
     <div class="inv-card-head">Charges</div>
     <div style="padding:.5rem 0;">
@@ -46,8 +44,8 @@
             <td style="padding:.5rem .9rem;">{{ item.description }}</td>
             <td style="padding:.5rem .6rem;text-align:center;color:#5b6573;">{{ item.quantity }}</td>
             <td style="padding:.5rem .6rem;text-align:center;color:#8a93a0;">{{ item.unit }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">${{ item.rate }}</td>
-            <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ item.amount }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">${{ item.rate|currency }}</td>
+            <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ item.amount|currency }}</td>
           </tr>
           {% empty %}
           <tr><td colspan="5" style="padding:1rem .9rem;color:#8a93a0;text-align:center;">No line items.</td></tr>
@@ -56,20 +54,20 @@
         <tfoot>
           <tr style="border-top:2px solid #e3e6ea;">
             <td colspan="4" style="padding:.5rem .9rem;text-align:right;color:#8a93a0;font-size:.82rem;">G.S.T. {{ invoice.gst_rate }}% included</td>
-            <td style="padding:.5rem .9rem;text-align:right;color:#8a93a0;">${{ invoice.gst_amount }}</td>
+            <td style="padding:.5rem .9rem;text-align:right;color:#8a93a0;">${{ invoice.gst_amount|currency }}</td>
           </tr>
           <tr>
             <td colspan="4" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Invoice total</td>
-            <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;">${{ invoice.total }}</td>
+            <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;">${{ invoice.total|currency }}</td>
           </tr>
           {% if invoice.amount_paid %}
           <tr>
             <td colspan="4" style="padding:.4rem .9rem;text-align:right;color:#216c2a;">Payments received</td>
-            <td style="padding:.4rem .9rem;text-align:right;color:#216c2a;">${{ invoice.amount_paid }}</td>
+            <td style="padding:.4rem .9rem;text-align:right;color:#216c2a;">${{ invoice.amount_paid|currency }}</td>
           </tr>
           <tr style="border-top:1px solid #eef1f4;">
             <td colspan="4" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Total due</td>
-            <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;{% if invoice.balance_due %}color:#c0392b;{% else %}color:#216c2a;{% endif %}">${{ invoice.balance_due }}</td>
+            <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;{% if invoice.balance_due %}color:#c0392b;{% else %}color:#216c2a;{% endif %}">${{ invoice.balance_due|currency }}</td>
           </tr>
           {% endif %}
         </tfoot>
@@ -77,20 +75,41 @@
     </div>
   </div>
 
-  <!-- Actions (hidden once paid or voided) -->
-  {% if invoice.status != 'void' and invoice.status != 'paid' %}
+  <!-- Combined actions + notes form -->
+  {% if invoice.status != 'void' %}
   <div class="inv-card" style="margin-bottom:1.2rem;">
-    <div class="inv-card-head">Actions</div>
-    <div style="padding:.8rem .9rem;display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
-      {% if invoice.status == 'draft' %}
-      <form method="post" style="display:inline;">
-        {% csrf_token %}<input type="hidden" name="action" value="mark_sent">
+    <div class="inv-card-head">
+      {% if invoice.status == 'paid' %}Payment recorded{% else %}Actions{% endif %}
+    </div>
+    <form method="post" style="padding:.9rem;">
+      {% csrf_token %}
+      {% if error %}<div class="notice err" style="margin-bottom:.8rem;">{{ error }}</div>{% endif %}
+
+      <!-- Description & notes — always editable -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem;">
+        <label class="flabel" style="margin:0;">Flight description <span style="font-weight:400;color:#8a93a0;">(shown on invoice)</span>
+          <input type="text" name="description" value="{{ invoice.description }}" class="finput"
+                 {% if invoice.status == 'paid' or invoice.status == 'void' %}disabled style="opacity:.6;"{% endif %}>
+        </label>
+        <label class="flabel" style="margin:0;">Internal notes
+          <textarea name="notes" class="finput" rows="1"
+                    {% if invoice.status == 'paid' or invoice.status == 'void' %}disabled style="opacity:.6;"{% endif %}>{{ invoice.notes }}</textarea>
+        </label>
+      </div>
+
+      {% if invoice.status == 'paid' %}
+      <p style="font-size:.84rem;color:#216c2a;font-weight:500;">✓ Paid in full on {{ invoice.paid_at|date:"j M Y" }}</p>
+
+      {% elif invoice.status == 'draft' %}
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
+        <input type="hidden" name="action" value="mark_sent">
         <button type="submit" class="btn">Mark as sent</button>
-      </form>
-      {% endif %}
-      {% if invoice.status == 'sent' %}
-      <form method="post" style="display:inline-flex;gap:.4rem;align-items:flex-end;">
-        {% csrf_token %}<input type="hidden" name="action" value="mark_paid">
+        <span style="font-size:.8rem;color:#8a93a0;">Sends the invoice status to "Sent" so payment can be recorded.</span>
+      </div>
+
+      {% elif invoice.status == 'sent' %}
+      <div style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;">
+        <input type="hidden" name="action" value="mark_paid">
         <label class="flabel" style="margin:0;">Payment received
           <div class="money-wrap" style="margin-top:.2rem;">
             <span class="money-sym">$</span>
@@ -98,47 +117,36 @@
                    value="{{ invoice.balance_due }}" class="finput money-input" style="width:90px;" required>
           </div>
         </label>
-        <button type="submit" class="btn">Record payment</button>
-      </form>
+        <button type="submit" class="btn">Save &amp; record payment</button>
+      </div>
       {% endif %}
-      <form method="post" style="display:inline;" onsubmit="return confirm('Void this invoice?')">
+    </form>
+
+    {% if invoice.status != 'paid' %}
+    <div style="padding:0 .9rem .9rem;border-top:1px solid #f0f2f4;margin-top:.6rem;padding-top:.6rem;">
+      <form method="post" onsubmit="return confirm('Void this invoice?')" style="display:inline;">
         {% csrf_token %}<input type="hidden" name="action" value="void">
-        <button type="submit" class="cbtn cbtn-danger">Void invoice</button>
+        <button type="submit" class="cbtn cbtn-danger" style="font-size:.82rem;">Void invoice</button>
       </form>
     </div>
+    {% endif %}
   </div>
   {% endif %}
 
-  <!-- Description / notes — always editable (admin notes, not financial data) -->
-  <div class="inv-card">
-    <div class="inv-card-head">Description &amp; notes</div>
-    <div style="padding:.8rem .9rem;">
-      <form method="post">
-        {% csrf_token %}<input type="hidden" name="action" value="update_description">
-        <label class="flabel">Flight description <span style="font-weight:400;color:#8a93a0;">(shown on invoice)</span>
-          <input type="text" name="description" value="{{ invoice.description }}" class="finput">
-        </label>
-        <label class="flabel" style="margin-top:.5rem;">Internal notes
-          <textarea name="notes" class="finput" rows="2">{{ invoice.notes }}</textarea>
-        </label>
-        <button type="submit" class="btn" style="margin-top:.6rem;">Save</button>
-      </form>
-    </div>
-  </div>
+  {% if invoice.status == 'void' %}
+  <div class="notice err" style="margin-bottom:1.2rem;">This invoice has been voided.</div>
+  {% endif %}
 </div>
 
 <style>
   .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
   .back-link:hover{color:var(--banner);}
-  .inv-card{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.2rem;}
+  .inv-card{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.2rem;overflow:hidden;}
   .inv-card-head{background:#fafbfc;padding:.6rem .9rem;border-bottom:1px solid #eef1f4;font-size:.88rem;font-weight:600;}
   .inv-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;}
   .inv-draft{background:#f3f5f7;color:#5b6573;}
   .inv-sent{background:#dbeafe;color:#1d4ed8;}
   .inv-paid{background:#dcfce7;color:#166534;}
   .inv-void{background:#fee2e2;color:#991b1b;}
-  .money-wrap{position:relative;display:inline-flex;align-items:center;}
-  .money-sym{position:absolute;left:.5rem;color:#8a93a0;font-size:.85rem;}
-  .money-input{padding-left:1.4rem!important;}
 </style>
 {% endblock %}

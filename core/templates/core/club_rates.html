@@ -10,7 +10,7 @@
 
   {% if saved %}<div class="snotice ok">Rates saved.</div>{% endif %}
 
-  <div class="stab-bar">
+  <div class="stab-bar" data-managed="1">
     <button class="stab-btn active" data-tab="hire">Hire rates</button>
     <button class="stab-btn" data-tab="instructor">Instructor rates</button>
     <button class="stab-btn" data-tab="surcharges">Surcharges</button>
@@ -31,7 +31,7 @@
           <td><strong>{{ r.aircraft.registration }}</strong></td>
           <td>{{ r.flight_type.name }}</td>
           <td style="font-family:monospace;font-size:.82rem;color:#8a93a0;">{{ r.time_method }}</td>
-          <td><strong>${{ r.amount }}</strong></td>
+          <td><strong>${{ r.amount|currency }}</strong></td>
           <td style="font-size:.82rem;color:#8a93a0;">
             {% if r.aircraft.hire_includes_fuel %}Wet{% else %}Dry{% endif %}
           </td>
@@ -78,7 +78,7 @@
         </select>
       </label>
       <label class="flabel">Rate ($/hr)
-        <input type="number" name="amount" step="0.01" min="0" required class="finput" style="width:110px;">
+        <input type="number" name="amount" step="0.01" min="0" required class="finput money-input" style="width:110px;">
       </label>
       <button type="submit" class="btn" style="flex-shrink:0;">Add rate</button>
     </form>
@@ -102,8 +102,8 @@
             <td>
               <div style="display:inline-flex;align-items:center;gap:.3rem;">
                 $<input type="number" name="ig_rate_{{ ig.id }}" value="{{ ig.hourly_rate }}"
-                        step="0.01" min="0"
-                        style="width:100px;padding:.35rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;">
+                        step="0.01" min="0" class="money-input"
+                        style="width:100px;padding:.35rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;text-align:right;">
               </div>
             </td>
           </tr>
@@ -138,8 +138,8 @@
             <td>
               <div style="display:inline-flex;align-items:center;gap:.3rem;">
                 $<input type="number" name="st_amount_{{ st.id }}" value="{{ st.amount }}"
-                        step="0.01" min="0"
-                        style="width:100px;padding:.35rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;">
+                        step="0.01" min="0" class="money-input"
+                        style="width:100px;padding:.35rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;text-align:right;">
               </div>
             </td>
           </tr>

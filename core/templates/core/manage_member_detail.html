@@ -7,9 +7,9 @@
   {% if request.GET.err %}<div class="notice err" style="margin-bottom:1rem;">{{ request.GET.err }}</div>{% endif %}
 
   <!-- Back link -->
-  <a href="{% url 'core:manage_members' club.slug %}" style="font-size:.82rem;color:#8a93a0;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;margin-bottom:1rem;">
+  <a href="{% if request.GET.back %}{{ request.GET.back }}{% else %}{% url 'core:manage_members' club.slug %}{% endif %}" style="font-size:.82rem;color:#8a93a0;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;margin-bottom:1rem;">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg>
-    Members
+    Back
   </a>
 
   <!-- Standalone avatar upload form -->
@@ -39,21 +39,22 @@
       <h1 style="font-size:1.5rem;font-weight:700;margin:0 0 .2rem;">{{ member.user.get_full_name }}</h1>
       <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
         <span class="standing-badge standing-{{ member.standing }}">{{ member.get_standing_display }}</span>
-        {% if member.role %}<span class="role-chip">{{ member.role.name }}</span>{% endif %}
-        <span style="font-size:.82rem;color:#8a93a0;">Member since {{ member.join_date|date:"M Y" }}</span>
+        {% if member.role and member.standing == 'active' %}<span class="role-chip">{{ member.role.name }}</span>{% endif %}
+        <span style="font-size:.82rem;color:#8a93a0;">Joined {{ member.join_date|date:"M Y" }}</span>
       </div>
       <div style="font-size:.83rem;color:#8a93a0;margin-top:.3rem;">{{ member.user.email }}</div>
     </div>
   </div>
 
   <!-- Tab bar -->
-  <div class="stab-bar">
+  <div class="stab-bar" data-managed="1">
     <button class="stab-btn" id="tabBtn-contact"      data-tab="contact">Contact</button>
     <button class="stab-btn" id="tabBtn-membership"   data-tab="membership">Membership</button>
     <button class="stab-btn" id="tabBtn-credentials"  data-tab="credentials">Credentials</button>
     <button class="stab-btn" id="tabBtn-account"      data-tab="account">Account</button>
     <button class="stab-btn" id="tabBtn-passengers"   data-tab="passengers">Passengers</button>
     <button class="stab-btn" id="tabBtn-bookings"     data-tab="bookings">Bookings</button>
+    <button class="stab-btn" id="tabBtn-history"      data-tab="history">History</button>
   </div>
 
   <!-- ── CONTACT ── -->
@@ -66,13 +67,20 @@
         <label class="flabel">First name<input type="text" name="first_name" value="{{ member.user.first_name }}" class="finput"></label>
         <label class="flabel">Last name<input type="text" name="last_name" value="{{ member.user.last_name }}" class="finput"></label>
         <label class="flabel">Date of birth<input type="date" name="date_of_birth" value="{{ member.date_of_birth|date:'Y-m-d'|default:'' }}" class="finput"></label>
+        <label class="flabel">Sex <span style="font-weight:400;color:#aaa;">(optional)</span>
+          <select name="sex" class="finput">
+            <option value="">— not specified —</option>
+            <option value="M" {% if member.sex == 'M' %}selected{% endif %}>Male</option>
+            <option value="F" {% if member.sex == 'F' %}selected{% endif %}>Female</option>
+          </select>
+        </label>
         <label class="flabel">Email<input type="email" name="email" value="{{ member.user.email }}" class="finput"></label>
         <label class="flabel">Mobile<input type="text" name="phone_mobile" value="{{ member.phone_mobile }}" class="finput"></label>
         <label class="flabel">Home phone<input type="text" name="phone_home" value="{{ member.phone_home }}" class="finput"></label>
         <label class="flabel">Work phone<input type="text" name="phone_work" value="{{ member.phone_work }}" class="finput"></label>
       </div>
       <h2 class="section-title" style="margin-top:1.2rem;">Next of kin</h2>
-      <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .7rem;">Pre-populated on departure declarations. Editable per-flight.</p>
+      <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .7rem;">Auto-filled on departure declarations; editable per flight.</p>
       <div class="field-grid">
         <label class="flabel">Name<input type="text" name="next_of_kin_name" value="{{ member.next_of_kin_name }}" class="finput" placeholder="Full name"></label>
         <label class="flabel">Phone<input type="text" name="next_of_kin_phone" value="{{ member.next_of_kin_phone }}" class="finput" placeholder="+64 …"></label>
@@ -83,17 +91,14 @@
         <label class="flabel">Suburb<input type="text" name="suburb" value="{{ member.suburb }}" class="finput"></label>
         <label class="flabel">Postcode<input type="text" name="postcode" value="{{ member.postcode }}" class="finput"></label>
       </div>
-      <button type="submit" class="btn" style="margin-top:.5rem;">Save contact details</button>
+      <button type="submit" class="btn" style="margin-top:.5rem;">Save</button>
     </form>
   </section>
 
   <!-- ── PASSENGERS ── -->
   <section id="tab-passengers" class="stab-panel detail-section">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-      <div>
-        <h2 class="section-title" style="margin:0 0 .2rem;">Frequent passengers</h2>
-        <p style="font-size:.78rem;color:#8a93a0;margin:0;">Saved for quick selection on departure declarations.</p>
-      </div>
+      <p style="font-size:.78rem;color:#8a93a0;margin:0;">Saved for quick selection on departure declarations.</p>
       <button type="button" class="cbtn-add" onclick="document.getElementById('add-pax-form').hidden=false">+ Add passenger</button>
     </div>
 
@@ -109,7 +114,7 @@
         </label>
         <div style="display:flex;gap:.4rem;">
           <button type="submit" class="btn">Save</button>
-          <button type="button" class="cbtn" onclick="document.getElementById('add-pax-form').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-pax-form').hidden=true">✕ Close</button>
         </div>
       </form>
     </div>
@@ -140,7 +145,6 @@
 
   <!-- ── MEMBERSHIP ── -->
   <section id="tab-membership" class="stab-panel detail-section">
-    <h2 class="section-title">Membership</h2>
     {% if club_member.is_admin %}
     <form method="post">
       {% csrf_token %}
@@ -161,17 +165,42 @@
         </label>
         <label class="flabel" style="display:flex;flex-direction:column;gap:.4rem;">Admin access
           <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;margin-top:.25rem;cursor:pointer;">
-            <input type="checkbox" name="has_admin_access" {% if member.has_admin_access %}checked{% endif %}
-                   style="width:auto;">
-            Grant Settings &amp; Rates access (e.g. for CFI or club secretary)
+            <span class="tog-sw">
+              <input type="checkbox" name="has_admin_access" {% if member.has_admin_access %}checked{% endif %}>
+              <span class="tog-track"></span>
+            </span>
+            Grant Settings &amp; Rates access
           </label>
         </label>
-        <label class="flabel">Subscription expires<input type="date" name="subscription_expires" value="{{ member.subscription_expires|date:'Y-m-d' }}" class="finput"></label>
+        <label class="flabel">Subscription expires
+          <div style="display:flex;gap:.4rem;align-items:center;">
+            <input type="date" name="subscription_expires" id="sub-exp-input" value="{{ member.subscription_expires|date:'Y-m-d' }}" class="finput" style="flex:1;">
+            <button type="button" class="cbtn-sm" style="white-space:nowrap;flex-shrink:0;" title="Set to end of current financial year ({{ next_fy_end|date:'j M Y' }})" onclick="document.getElementById('sub-exp-input').value='{{ next_fy_end|date:'Y-m-d' }}'">FY end ({{ next_fy_end|date:"j M" }})</button>
+          </div>
+        </label>
         <label class="flabel">Last renewed<input type="date" value="{{ member.last_renewed|date:'Y-m-d' }}" class="finput" disabled style="opacity:.5;"></label>
         <label class="flabel">Join date<input type="text" value="{{ member.join_date }}" class="finput" disabled style="opacity:.5;"></label>
       </div>
-      <button type="submit" class="btn" style="margin-top:.5rem;">Save membership</button>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.5rem;">
+        <button type="submit" class="btn">Save</button>
+        {% if club_member.is_admin and not existing_sub_invoice %}
+        <button type="button" class="cbtn" onclick="document.getElementById('sub-inv-modal').hidden=false">Generate subscription invoice</button>
+        {% endif %}
+      </div>
     </form>
+    {% if existing_sub_invoice %}
+    <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:.7rem 1rem;margin-top:.75rem;font-size:.82rem;">
+      <p style="margin:0 0 .2rem;color:#7a5c00;font-weight:600;">Outstanding subscription invoice</p>
+      <p style="margin:0;color:#5a4400;">
+        <a href="{% url 'core:invoice_detail' club.slug existing_sub_invoice.id %}" style="color:#5a4400;font-weight:600;">{{ existing_sub_invoice.display_number }}</a>
+        &mdash; {{ existing_sub_invoice.issue_date|date:"j M Y" }}
+        &mdash; <span style="color:{% if existing_sub_invoice.status == 'sent' %}#e65100{% else %}#8a93a0{% endif %};">{{ existing_sub_invoice.get_status_display }}</span>
+        {% if existing_sub_invoice.total %}&mdash; ${{ existing_sub_invoice.total|floatformat:2 }}{% endif %}
+        {% if existing_sub_invoice.subscription_expiry_date %}&mdash; valid to {{ existing_sub_invoice.subscription_expiry_date|date:"j M Y" }}{% endif %}
+      </p>
+    </div>
+    {% endif %}
+
     {% else %}
     <div class="field-grid">
       <div class="ro-field"><span class="ro-label">Standing</span>{{ member.get_standing_display }}</div>
@@ -184,12 +213,11 @@
 
   <!-- ── CREDENTIALS ── -->
   <section id="tab-credentials" class="stab-panel detail-section">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem;">
-      <h2 class="section-title" style="margin:0;">Credentials</h2>
-      {% if club_member.is_admin or club_member.is_instructor %}
+    {% if club_member.is_admin or club_member.is_instructor %}
+    <div style="display:flex;justify-content:flex-end;margin-bottom:.8rem;">
       <button type="button" class="cbtn-add" onclick="document.getElementById('add-cred-modal').hidden=false">+ Add credential</button>
-      {% endif %}
     </div>
+    {% endif %}
     {% if credentials %}
     <table class="cred-table">
       <thead><tr><th>Type</th><th>Name / sub-type</th><th>Certificate #</th><th>Issued</th><th>Expires</th><th>Status</th><th>Evidence</th>{% if club_member.is_admin or club_member.is_instructor %}<th></th>{% endif %}</tr></thead>
@@ -284,7 +312,7 @@
           <input type="file" name="evidence" accept="image/*,.pdf" class="finput" style="padding:.3rem;">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true">✕ Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Add credential</button>
         </div>
@@ -338,36 +366,73 @@
           <input type="file" name="evidence" accept="image/*,.pdf" class="finput" style="padding:.3rem;">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('edit-cred-modal').hidden=true">Cancel</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('edit-cred-modal').hidden=true">✕ Close</button>
           <span style="flex:1"></span>
-          <button type="submit" class="cbtn primary">Save changes</button>
+          <button type="submit" class="cbtn" data-dirty-save>Save</button>
         </div>
       </form>
     </div>
   </div>
 
+  <!-- Generate subscription invoice modal -->
+  {% if club_member.is_admin %}
+  <div id="sub-inv-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(500px,96vw);">
+      <h2>Generate subscription invoice</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="raise_subscription_invoice">
+        <div class="field-grid" style="margin-bottom:.75rem;">
+          <label class="flabel">Amount ($)
+            <input type="number" name="amount" step="0.01" min="0.01" class="finput"
+                   value="{{ prorata_amount|default:'' }}" placeholder="e.g. 250.00" required>
+            {% if member.role and not member.role.annual_renewal_fee %}<span style="font-size:.75rem;color:#e65100;">No annual fee set on role — enter manually</span>{% endif %}
+          </label>
+          <label class="flabel">Subscription valid to
+            <input type="date" name="subscription_expiry_date" class="finput" value="{{ fy_end|date:'Y-m-d' }}" required>
+          </label>
+        </div>
+        <label class="flabel" style="margin-bottom:.75rem;">Notes (optional)
+          <textarea name="notes" class="finput" rows="2" placeholder="e.g. Pro-rata from June" style="resize:vertical;"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button type="submit" class="btn">Generate &amp; send</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('sub-inv-modal').hidden=true">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
   <!-- ── ACCOUNT ── -->
   <section id="tab-account" class="stab-panel detail-section">
-    <h2 class="section-title">Account</h2>
     {% if account %}
     <div class="field-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.4rem;">
       <div class="ro-field">
         <span class="ro-label">Balance</span>
         <span style="font-size:1.2rem;font-weight:700;color:{% if account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">
-          ${{ account.balance }}
+          ${{ account.balance|currency }}
         </span>
       </div>
       <div class="ro-field">
         <span class="ro-label">Credit limit</span>
-        {% if account.credit_limit is not None %}${{ account.credit_limit }}{% else %}Exempt{% endif %}
+        <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-top:.2rem;">
+          {% if account.credit_limit is not None %}
+            <span style="font-weight:600;">${{ account.credit_limit|currency }}</span>
+          {% else %}
+            <span class="status-pill sp-ok" style="font-size:.72rem;">Exempt</span>
+          {% endif %}
+          {% if club_member.is_admin %}
+          <button type="button" class="cbtn-xs"
+                  onclick="document.getElementById('set-cl-wrap').hidden=!document.getElementById('set-cl-wrap').hidden">Edit</button>
+          {% endif %}
+        </div>
         {% if club_member.is_admin %}
-        <button type="button" class="cbtn-xs" style="margin-left:.4rem;"
-                onclick="document.getElementById('set-cl-wrap').hidden=!document.getElementById('set-cl-wrap').hidden">Edit</button>
         <div id="set-cl-wrap" hidden style="margin-top:.5rem;">
           <form method="post" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
             {% csrf_token %}
             <input type="hidden" name="action" value="set_credit_limit">
-            <input type="number" name="credit_limit" min="0" step="1" placeholder="e.g. 500"
+            <input type="number" name="credit_limit" min="0" step="0.01" placeholder="e.g. 500"
                    value="{% if account.credit_limit is not None %}{{ account.credit_limit }}{% endif %}"
                    class="finput" style="width:110px;margin:0;">
             <span style="font-size:.78rem;color:#8a93a0;">Leave blank = Exempt</span>
@@ -376,65 +441,96 @@
         </div>
         {% endif %}
       </div>
-      <div class="ro-field"><span class="ro-label">Status</span>{% if account.has_warning %}<span style="color:#c0392b;font-weight:600;">Over limit</span>{% else %}OK{% endif %}</div>
+      <div class="ro-field">
+        <span class="ro-label">Credit status</span>
+        <div style="margin-top:.2rem;">
+          {% if account.has_warning %}
+            <span class="status-pill" style="background:#fee2e2;color:#b91c1c;font-size:.72rem;">Over limit</span>
+          {% else %}
+            <span class="status-pill sp-ok" style="font-size:.72rem;">OK</span>
+          {% endif %}
+        </div>
+      </div>
     </div>
 
     {% if club_member.is_admin %}
-    <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-bottom:1.6rem;">
-
-      <!-- Top-up -->
-      <details style="flex:1;min-width:220px;">
-        <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);list-style:none;padding:.35rem 0;">+ Record top-up</summary>
-        <form method="post" style="margin-top:.6rem;">
-          {% csrf_token %}<input type="hidden" name="action" value="account_topup">
-          <label class="flabel">Amount<input type="number" name="amount" min="0.01" step="0.01" class="finput" required></label>
-          <label class="flabel">Method
-            <select name="payment_method" class="finput">
-              <option value="bank_transfer">Bank transfer</option>
-              <option value="eftpos">EFTPOS</option>
-              <option value="cash">Cash</option>
-              <option value="other">Other</option>
-            </select>
-          </label>
-          <label class="flabel">Reference<input type="text" name="reference" class="finput" placeholder="Optional bank ref or receipt no."></label>
-          <button type="submit" class="btn" style="margin-top:.3rem;">Add credit</button>
-        </form>
-      </details>
-
-      <!-- Adjustment -->
-      <details style="flex:1;min-width:220px;">
-        <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);list-style:none;padding:.35rem 0;">± Manual adjustment</summary>
-        <form method="post" style="margin-top:.6rem;">
-          {% csrf_token %}<input type="hidden" name="action" value="account_adjustment">
-          <label class="flabel">Direction
-            <select name="direction" class="finput">
-              <option value="credit">Credit (add funds)</option>
-              <option value="debit">Debit (charge)</option>
-            </select>
-          </label>
-          <label class="flabel">Amount<input type="number" name="amount" min="0.01" step="0.01" class="finput" required></label>
-          <label class="flabel">Description<input type="text" name="description" class="finput" required placeholder="Reason for adjustment"></label>
-          <button type="submit" class="btn" style="margin-top:.3rem;">Save</button>
-        </form>
-      </details>
-
-      <!-- Transfer -->
-      <details style="flex:1;min-width:220px;">
-        <summary style="cursor:pointer;font-size:.82rem;font-weight:600;color:var(--primary);list-style:none;padding:.35rem 0;">⇄ Transfer to member</summary>
-        <form method="post" style="margin-top:.6rem;">
-          {% csrf_token %}<input type="hidden" name="action" value="account_transfer">
-          <label class="flabel">To member
-            <select name="dest_member_id" class="finput" required>
-              <option value="">— select —</option>
-              {% for m in all_members %}<option value="{{ m.id }}">{{ m.user.get_full_name }}</option>{% endfor %}
-            </select>
-          </label>
-          <label class="flabel">Amount<input type="number" name="amount" min="0.01" step="0.01" class="finput" required></label>
-          <label class="flabel">Notes<input type="text" name="description" class="finput" placeholder="Optional reason"></label>
-          <button type="submit" class="btn" style="margin-top:.3rem;">Transfer</button>
-        </form>
-      </details>
+    <!-- Action trigger buttons -->
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem;">
+      <button class="cbtn cbtn-sm" onclick="acctPanel('panel-topup')">Top up account</button>
+      <button class="cbtn cbtn-sm" onclick="acctPanel('panel-adjust')">Manual adjustment</button>
+      <button class="cbtn cbtn-sm" onclick="acctPanel('panel-transfer')">Transfer to member</button>
     </div>
+
+    <!-- Top-up panel -->
+    <div id="panel-topup" hidden style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
+      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.75rem;">Top up account</div>
+      <form method="post">
+        {% csrf_token %}<input type="hidden" name="action" value="account_topup">
+        <label class="flabel">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" min="0.01" step="0.01" class="money-input" required></div></label>
+        <label class="flabel">Method
+          <select name="payment_method" class="finput">
+            <option value="bank_transfer">Bank transfer</option>
+            <option value="eftpos">EFTPOS</option>
+            <option value="cash">Cash</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label class="flabel">Reference<input type="text" name="reference" class="finput" placeholder="Optional bank ref or receipt no."></label>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem;">
+          <button type="submit" class="btn">Top Up</button>
+          <button type="button" class="btn secondary" onclick="acctPanel(null)">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Manual adjustment panel -->
+    <div id="panel-adjust" hidden style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
+      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.75rem;">Manual adjustment</div>
+      <form method="post">
+        {% csrf_token %}<input type="hidden" name="action" value="account_adjustment">
+        <label class="flabel">Direction
+          <select name="direction" class="finput">
+            <option value="credit">Credit (add funds)</option>
+            <option value="debit">Debit (charge)</option>
+          </select>
+        </label>
+        <label class="flabel">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" min="0.01" step="0.01" class="money-input" required></div></label>
+        <label class="flabel">Description<input type="text" name="description" class="finput" required placeholder="Reason for adjustment"></label>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem;">
+          <button type="submit" class="btn">Confirm</button>
+          <button type="button" class="btn secondary" onclick="acctPanel(null)">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Transfer panel -->
+    <div id="panel-transfer" hidden style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
+      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.75rem;">Transfer to member</div>
+      <form method="post">
+        {% csrf_token %}<input type="hidden" name="action" value="account_transfer">
+        <label class="flabel">To member
+          <select name="dest_member_id" class="finput" required>
+            <option value="">— select —</option>
+            {% for m in all_members %}<option value="{{ m.id }}">{{ m.user.get_full_name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="flabel">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" min="0.01" step="0.01" class="money-input" required></div></label>
+        <label class="flabel">Notes<input type="text" name="description" class="finput" placeholder="Optional reason"></label>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem;">
+          <button type="submit" class="btn">Transfer</button>
+          <button type="button" class="btn secondary" onclick="acctPanel(null)">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+    var _acctPanels = ['panel-topup','panel-adjust','panel-transfer'];
+    function acctPanel(id) {
+      _acctPanels.forEach(function(p) {
+        document.getElementById(p).hidden = (p !== id);
+      });
+    }
+    </script>
     {% endif %}
 
     <!-- Transaction list -->
@@ -448,9 +544,9 @@
           <td style="font-size:.8rem;white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
           <td style="font-size:.8rem;color:#8a93a0;">{{ tx.get_transaction_type_display }}</td>
           <td style="font-size:.85rem;">{{ tx.description }}</td>
-          <td style="text-align:right;font-weight:600;">${{ tx.amount }}</td>
+          <td style="text-align:right;font-weight:600;">${{ tx.amount|currency }}</td>
           <td style="text-align:right;font-weight:600;color:{% if tx.direction == 'debit' %}#c0392b{% else %}#2a7a3b{% endif %};">
-            {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount }}
+            {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount|currency }}
           </td>
         </tr>
         {% endfor %}
@@ -545,8 +641,6 @@
   .status-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
   /* status-chip colours defined in base.html */
 
-  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
-  .btn:hover{filter:brightness(1.07);}
   .cbtn-xs{padding:.15rem .45rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.72rem;cursor:pointer;vertical-align:middle;}
   .cbtn-xs:hover{background:#f3f5f7;}
 
@@ -563,7 +657,7 @@
 
 <script>
 (function(){
-  const TABS = ['contact','membership','credentials','account','passengers','bookings'];
+  const TABS = ['contact','membership','credentials','account','passengers','bookings','history'];
   function activate(id) {
     TABS.forEach(t => {
       document.getElementById('tab-'+t).classList.toggle('active', t===id);
@@ -573,19 +667,20 @@
   }
   TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
   const hash = location.hash.replace('#','');
+  const _stored = (()=>{ try{ return localStorage.getItem('memberDetailTab'); }catch(e){} })();
   const init = (TABS.includes(hash) ? hash : null)
-    || (()=>{ try{ return localStorage.getItem('memberDetailTab'); }catch(e){} })()
+    || (TABS.includes(_stored) ? _stored : null)
     || 'contact';
   activate(init);
 })();
 
-// Credential modals
-['add-cred-modal','edit-cred-modal'].forEach(id => {
+// Modals — click-outside and Escape to close
+['add-cred-modal','edit-cred-modal','sub-inv-modal'].forEach(id => {
   const m = document.getElementById(id);
   if (m) m.addEventListener('click', e => { if (e.target === m) m.hidden = true; });
 });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') ['add-cred-modal','edit-cred-modal'].forEach(id => {
+  if (e.key === 'Escape') ['add-cred-modal','edit-cred-modal','sub-inv-modal'].forEach(id => {
     const m = document.getElementById(id); if (m) m.hidden = true;
   });
 });
@@ -608,4 +703,39 @@ function openEditCred(id, type, name, certNum, issueDate, expiryDate, notes, acT
   document.getElementById('edit-cred-modal').hidden = false;
 }
 </script>
+
+<!-- ── HISTORY ── -->
+<section id="tab-history" class="stab-panel detail-section">
+  <h2 class="sh2">Membership history</h2>
+  {% if membership_history %}
+  <table class="cred-table">
+    <thead>
+      <tr><th>Date</th><th>Event</th><th>Detail</th><th>By</th></tr>
+    </thead>
+    <tbody>
+    {% for e in membership_history %}
+    <tr>
+      <td style="white-space:nowrap;color:#8a93a0;">{{ e.changed_at|date:"j M Y" }}</td>
+      <td>{{ e.get_event_type_display }}</td>
+      <td>
+        {% if e.old_value and e.old_value != "—" %}<span style="color:#8a93a0;">{{ e.old_value }}</span> → {% endif %}
+        {% if e.new_value %}
+          {% if e.event_type == "subscription_renewed" %}{{ e.new_value|date:"j M Y" }}
+          {% else %}{{ e.new_value }}{% endif %}
+        {% endif %}
+        {% if e.note %}<span style="color:#8a93a0;display:block;font-size:.8rem;margin-top:.15rem;">{{ e.note }}</span>{% endif %}
+      </td>
+      <td style="color:#8a93a0;">{{ e.changed_by.get_full_name|default:"—" }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#8a93a0;font-size:.85rem;">No history recorded yet.</p>
+  {% endif %}
+
+  {% if member.resigned_at %}
+  <div class="notice warn" style="margin-top:1rem;">Membership ceased {{ member.resigned_at|date:"j M Y" }} — retained for 7-year ISA 2022 register.</div>
+  {% endif %}
+</section>
 {% endblock %}

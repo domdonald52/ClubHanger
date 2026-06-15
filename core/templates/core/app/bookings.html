@@ -1,0 +1,164 @@
+{% extends "core/app/base.html" %}
+{% load tz %}
+{% block title %}My Bookings · {{ club.name }}{% endblock %}
+{% block page_title %}My Bookings{% endblock %}
+
+{% block content %}
+<div class="gap-sm"></div>
+
+{% if request.GET.saved %}
+<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:0 .75rem .5rem;font-size:.83rem;font-weight:600;">Booking requested — pending instructor confirmation.</div>
+{% endif %}
+
+{% if upcoming %}
+<div class="app-section"><span class="app-section-title">Upcoming</span></div>
+<div class="app-list" style="margin-bottom:.5rem;">
+  {% for b in upcoming %}
+  <div class="app-list-row" id="booking-{{ b.id }}" style="cursor:pointer;"
+       data-id="{{ b.id }}"
+       data-reg="{{ b.aircraft.registration }}"
+       data-status="{{ b.status }}"
+       data-status-label="{{ b.get_status_display }}"
+       data-start="{{ b.scheduled_start|localtime|date:'D j M' }} {{ b.scheduled_start|localtime|time:'H:i' }}"
+       data-end="{{ b.scheduled_end|localtime|time:'H:i' }}"
+       data-instr="{% if b.instructor %}{{ b.instructor.get_full_name }}{% else %}Solo{% endif %}"
+       data-type="{% if b.flight_type %}{{ b.flight_type.name }}{% endif %}"
+       data-cancellable="{% if b.status == 'pending' or b.status == 'confirmed' %}1{% else %}0{% endif %}"
+       onclick="openBookingSheet(this)">
+    <div style="width:38px;height:38px;border-radius:10px;background:{{ theme.confirmed|default:'#2563eb' }}1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:{{ theme.confirmed|default:'#2563eb' }};">
+      {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
+    </div>
+    <div class="app-list-main">
+      <div class="app-list-title">{{ b.aircraft.registration }}
+        &nbsp;<span class="st-pill st-{{ b.status }}">{{ b.get_status_display }}</span>
+      </div>
+      <div class="app-list-sub">
+        {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
+        {% if b.instructor %} &middot; {{ b.instructor.get_short_name }}{% else %} &middot; Solo{% endif %}
+      </div>
+    </div>
+    <svg class="app-list-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="app-empty">No upcoming bookings</div>
+{% endif %}
+
+{% if past %}
+<div class="app-section gap-sm"><span class="app-section-title">Recent flights</span></div>
+<div class="app-list">
+  {% for b in past %}
+  <div class="app-list-row">
+    <div style="width:38px;height:38px;border-radius:10px;background:#f4f6f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:#8a93a0;">
+      {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
+    </div>
+    <div class="app-list-main">
+      <div class="app-list-title" style="color:#4a5568;">{{ b.aircraft.registration }}</div>
+      <div class="app-list-sub">{{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
+        {% if b.flight_type %} &middot; {{ b.flight_type.name }}{% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+<div class="gap-md"></div>
+
+<!-- ── Booking detail sheet ── -->
+<div id="bk-sheet-back" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:300;" onclick="closeBookingSheet()"></div>
+<div id="bk-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
+  <div style="width:36px;height:4px;background:#e0e3e8;border-radius:2px;margin:0 auto .9rem;"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;">
+    <div>
+      <div style="font-size:1.1rem;font-weight:750;" id="bk-reg"></div>
+      <div id="bk-status-wrap" style="margin-top:.2rem;"></div>
+    </div>
+    <button onclick="closeBookingSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1.1rem;">
+    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+      <div style="font-size:.7rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Date &amp; time</div>
+      <div style="font-size:.86rem;font-weight:600;" id="bk-start"></div>
+      <div style="font-size:.8rem;color:#6b7280;" id="bk-end"></div>
+    </div>
+    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+      <div style="font-size:.7rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Instructor</div>
+      <div style="font-size:.86rem;font-weight:600;" id="bk-instr"></div>
+    </div>
+    <div id="bk-type-wrap" style="grid-column:1/-1;background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;display:none;">
+      <div style="font-size:.7rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Flight type</div>
+      <div style="font-size:.86rem;font-weight:600;" id="bk-type"></div>
+    </div>
+  </div>
+
+  <div id="bk-cancel-section" style="display:none;">
+    <div style="font-size:.82rem;font-weight:600;color:#1f2933;margin-bottom:.45rem;">Cancellation reason</div>
+    <select id="bk-cancel-reason" style="display:block;width:100%;padding:.5rem .6rem;border:1px solid #dde1e8;border-radius:9px;font-size:.86rem;background:#fff;margin-bottom:.7rem;">
+      <option value="no_longer_required">No longer required</option>
+      <option value="scheduling_conflict">Scheduling conflict</option>
+      <option value="weather">Weather</option>
+      <option value="aircraft_unavailable">Aircraft unavailable</option>
+      <option value="other">Other</option>
+    </select>
+    <form id="bk-cancel-form" method="post" action="{% url 'core:app_bookings' club.slug %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="cancel_booking">
+      <input type="hidden" name="booking_id" id="bk-cancel-id">
+      <input type="hidden" name="cancellation_reason" id="bk-cancel-reason-input">
+      <button type="submit" class="app-btn" style="background:#e03131;width:100%;"
+              onclick="document.getElementById('bk-cancel-reason-input').value=document.getElementById('bk-cancel-reason').value">
+        Cancel booking
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function(){
+  function openBookingSheet(row) {
+    var d = row.dataset;
+    document.getElementById('bk-reg').textContent = d.reg;
+    document.getElementById('bk-status-wrap').innerHTML =
+      '<span class="st-pill st-' + d.status + '">' + d.statusLabel + '</span>';
+    document.getElementById('bk-start').textContent = d.start;
+    document.getElementById('bk-end').textContent = '— ' + d.end;
+    document.getElementById('bk-instr').textContent = d.instr;
+
+    var typeWrap = document.getElementById('bk-type-wrap');
+    if (d.type) {
+      document.getElementById('bk-type').textContent = d.type;
+      typeWrap.style.display = '';
+    } else {
+      typeWrap.style.display = 'none';
+    }
+
+    var cancelSec = document.getElementById('bk-cancel-section');
+    cancelSec.style.display = d.cancellable === '1' ? '' : 'none';
+    document.getElementById('bk-cancel-id').value = d.id;
+
+    document.getElementById('bk-sheet-back').style.display = '';
+    var sheet = document.getElementById('bk-sheet');
+    sheet.style.display = '';
+    sheet.style.transform = 'translateY(100%)';
+    sheet.style.transition = 'transform .25s ease';
+    requestAnimationFrame(function(){ sheet.style.transform = 'translateY(0)'; });
+  }
+
+  function closeBookingSheet() {
+    var sheet = document.getElementById('bk-sheet');
+    sheet.style.transform = 'translateY(100%)';
+    setTimeout(function(){
+      sheet.style.display = 'none';
+      document.getElementById('bk-sheet-back').style.display = 'none';
+    }, 250);
+  }
+
+  window.openBookingSheet = openBookingSheet;
+  window.closeBookingSheet = closeBookingSheet;
+})();
+</script>
+{% endblock %}

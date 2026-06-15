@@ -3,9 +3,9 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1.2rem;">Manage</h1>
+  <h1 style="margin-bottom:1rem;">Sales</h1>
+  {% include "core/_sales_tabs.html" with active_tab="payments" %}
 
-  {% include "core/_manage_nav.html" with active_section="charges" %}
 
   <!-- Unpaid completions -->
   <h2 class="sh2" style="margin-bottom:.6rem;">
@@ -33,7 +33,7 @@
           <span class="out-chip">{{ fc.get_outcome_display }}</span>
           {% endif %}
         </td>
-        <td style="text-align:right;font-weight:600;">${{ fc.total_charge }}</td>
+        <td style="text-align:right;font-weight:600;">${{ fc.total_charge|currency }}</td>
         <td style="text-align:right;">
           <a href="{% url 'core:booking_detail' club.slug fc.booking.id %}" class="cbtn">Process →</a>
         </td>
@@ -47,30 +47,56 @@
 
   <hr style="border:none;border-top:1px solid #eef1f4;margin:2rem 0 1.4rem;">
 
-  <!-- Recent transactions -->
-  <h2 class="sh2" style="margin-bottom:.6rem;">Recent transactions <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">(last 50)</span></h2>
+  <!-- Transactions -->
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:.6rem;">
+    <h2 class="sh2" style="margin:0;">Transactions
+      <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ tx_page.paginator.count }} total)</span>
+    </h2>
+    {% if tx_page.paginator.num_pages > 1 %}
+    <span style="font-size:.82rem;color:#8a93a0;">Page {{ tx_page.number }} of {{ tx_page.paginator.num_pages }}</span>
+    {% endif %}
+  </div>
 
-  {% if recent_tx %}
+  {% if tx_page.object_list %}
   <table class="ct">
     <thead><tr>
       <th>Member</th><th>Type</th><th>Description</th><th>Payment</th>
       <th style="text-align:right;">Amount</th><th>Date</th>
     </tr></thead>
     <tbody>
-      {% for tx in recent_tx %}
+      {% for tx in tx_page %}
       <tr>
         <td>{{ tx.account.club_member.user.get_full_name }}</td>
         <td style="font-size:.8rem;color:#8a93a0;">{{ tx.get_transaction_type_display }}</td>
         <td style="font-size:.85rem;">{{ tx.description }}</td>
         <td style="font-size:.82rem;color:#8a93a0;">{{ tx.get_payment_method_display|default:"—" }}</td>
         <td style="text-align:right;font-weight:600;color:{% if tx.direction == 'debit' %}#c0392b{% else %}#2a7a3b{% endif %};">
-          {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount }}
+          {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount|currency }}
         </td>
         <td style="font-size:.82rem;color:#8a93a0;white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
+  {% if tx_page.paginator.num_pages > 1 %}
+  <div style="display:flex;gap:.4rem;align-items:center;margin-top:.75rem;">
+    {% if tx_page.has_previous %}
+    <a href="?page={{ tx_page.previous_page_number }}" class="cbtn">← Prev</a>
+    {% endif %}
+    {% for n in tx_page.paginator.page_range %}
+      {% if n == tx_page.number %}
+      <span style="padding:.25rem .55rem;border-radius:5px;background:#2563eb;color:#fff;font-size:.82rem;font-weight:600;">{{ n }}</span>
+      {% elif n == 1 or n == tx_page.paginator.num_pages or n >= tx_page.number|add:"-2" and n <= tx_page.number|add:"2" %}
+      <a href="?page={{ n }}" class="cbtn">{{ n }}</a>
+      {% elif n == tx_page.number|add:"-3" or n == tx_page.number|add:"3" %}
+      <span style="font-size:.82rem;color:#8a93a0;">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if tx_page.has_next %}
+    <a href="?page={{ tx_page.next_page_number }}" class="cbtn">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
   {% else %}
   <p style="color:#8a93a0;font-size:.85rem;">No transactions yet.</p>
   {% endif %}

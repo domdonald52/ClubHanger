@@ -1,0 +1,318 @@
+{% extends "core/app/base.html" %}
+{% load tz %}
+{% block title %}Profile · {{ club.name }}{% endblock %}
+
+{% block extra_style %}
+<style>
+.m-pill { font-size:.62rem; font-weight:700; padding:.15rem .5rem; border-radius:20px; text-transform:uppercase; letter-spacing:.05em; }
+.m-pill-green  { background:#dcfce7; color:#166534; }
+.m-pill-amber  { background:#fef3c7; color:#92400e; }
+.m-pill-red    { background:#fee2e2; color:#b91c1c; }
+.m-pill-grey   { background:#f0f2f4; color:#6b7280; }
+
+/* Collapsible credential rows — outer .cred-list clips to 14px radius */
+.cred-list { background:#fff; border-radius:14px; overflow:hidden; margin:0 .75rem; box-shadow:0 1px 4px rgba(0,0,0,.07); }
+.cred-details { background:#fff; border-top:1px solid #f0f2f4; }
+.cred-details:first-child { border-top:none; }
+.cred-details summary {
+  display:flex; align-items:center; gap:.75rem;
+  padding:.85rem 1rem;
+  cursor:pointer; list-style:none; user-select:none;
+}
+.cred-details summary::-webkit-details-marker { display:none; }
+.cred-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.cred-main { flex:1; min-width:0; }
+.cred-type-name { font-size:.87rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cred-sub { font-size:.75rem; color:#8a93a0; margin-top:.1rem; }
+.cred-chev { color:#c8cdd4; flex-shrink:0; transition:transform .2s; }
+.cred-details[open] .cred-chev { transform:rotate(90deg); }
+.cred-body {
+  padding:.75rem 1rem .85rem;
+  border-top:1px solid #f0f2f4;
+  font-size:.83rem; color:#4a5568;
+  display:grid; gap:.35rem;
+}
+.cred-body-row { display:flex; gap:.5rem; }
+.cred-body-lbl { color:#9ca3af; font-size:.75rem; min-width:60px; flex-shrink:0; padding-top:.05rem; }
+.cred-evidence-link { color:var(--primary); font-weight:600; font-size:.82rem; text-decoration:none; }
+</style>
+{% endblock %}
+
+{% block app_bar %}
+<span class="app-bar-title">My Profile</span>
+<a href="{% url 'core:app_profile_edit' club.slug %}" class="app-bar-action" title="Edit details">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+</a>
+{% endblock %}
+
+{% block content %}
+{% if saved %}
+<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Saved.</div>
+{% endif %}
+<div class="gap-sm"></div>
+
+<!-- Member info -->
+<div class="app-card">
+  <div class="app-card-title">Membership</div>
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.65rem;">
+    {% if club_member.avatar %}
+    <img src="{{ club_member.avatar.url }}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e8eaed;">
+    {% else %}
+    <div style="width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0;">
+      {{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}
+    </div>
+    {% endif %}
+    <span style="font-size:1rem;font-weight:700;">{{ club_member.user.get_full_name }}</span>
+    {% if club_member.standing == 'active' %}
+    <span class="m-pill m-pill-green">Active</span>
+    {% elif club_member.standing == 'suspended' %}
+    <span class="m-pill m-pill-red">Suspended</span>
+    {% elif club_member.standing == 'lapsed' %}
+    <span class="m-pill m-pill-amber">Lapsed</span>
+    {% else %}
+    <span class="m-pill m-pill-grey">{{ club_member.get_standing_display }}</span>
+    {% endif %}
+  </div>
+  <div style="display:grid;gap:.4rem;font-size:.86rem;">
+    {% if club_member.subscription_expires %}
+    <div style="display:flex;align-items:center;gap:.6rem;">
+      <span style="color:#9ca3af;font-size:.75rem;min-width:52px;">Expires</span>
+      <span style="font-weight:600;">{{ club_member.subscription_expires|date:"j/n/Y" }}</span>
+      {% if sub_status == 'expired' %}
+      <span class="m-pill m-pill-red">Expired</span>
+      {% elif sub_status == 'expiring' %}
+      <span class="m-pill m-pill-amber">{{ sub_days }}d left</span>
+      {% endif %}
+    </div>
+    {% endif %}
+    {% if club_member.caa_number %}
+    <div>
+      <span style="color:#9ca3af;font-size:.75rem;min-width:52px;display:inline-block;">CAA</span>
+      {{ club_member.caa_number }}
+    </div>
+    {% endif %}
+    {% if club_member.role %}
+    <div>
+      <span style="color:#9ca3af;font-size:.75rem;min-width:52px;display:inline-block;">Role</span>
+      {{ club_member.role.name }}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Credentials -->
+<div class="app-section gap-sm" style="display:flex;align-items:center;justify-content:space-between;padding-right:.75rem;">
+  <button id="cred-toggle" onclick="toggleCreds()" style="display:flex;align-items:center;gap:.3rem;background:none;border:none;padding:0;cursor:pointer;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">
+    Credentials
+    <svg id="cred-chev-all" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+  <a href="{% url 'core:app_credential_add' club.slug %}" class="app-btn-sm" style="padding:.3rem .7rem;font-size:.78rem;">+ Add</a>
+</div>
+
+{% if credentials %}
+<div class="cred-list" id="cred-section">
+{% for c in credentials %}
+<details class="cred-details">
+  <summary>
+    <div class="cred-dot" style="background:{% if not c.expiry_date %}#c8cdd4{% elif c.is_expired %}#e03131{% elif c.expires_soon %}#f59e0b{% else %}#2a7a3b{% endif %};"></div>
+    <div class="cred-main">
+      <div class="cred-type-name">{{ c.get_credential_type_display }}{% if c.aircraft_type %} — {{ c.aircraft_type.name }}{% endif %}</div>
+      <div class="cred-sub">
+        {% if c.expiry_date %}
+          {% if c.is_expired %}Expired {{ c.expiry_date|date:"j M Y" }}
+          {% elif c.expires_soon %}Expires {{ c.expiry_date|date:"j M Y" }} &mdash; {{ c.days_until_expiry }}d left
+          {% else %}Expires {{ c.expiry_date|date:"j M Y" }}{% endif %}
+        {% else %}No expiry{% endif %}
+      </div>
+    </div>
+    {% if c.is_expired %}
+    <span class="m-pill m-pill-red" style="font-size:.58rem;">Expired</span>
+    {% elif c.expires_soon %}
+    <span class="m-pill m-pill-amber" style="font-size:.58rem;">{{ c.days_until_expiry }}d</span>
+    {% endif %}
+    <svg class="cred-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </summary>
+  <div class="cred-body">
+    {% if c.name %}
+    <div class="cred-body-row">
+      <span class="cred-body-lbl">Notes</span>
+      <span>{{ c.name }}</span>
+    </div>
+    {% endif %}
+    {% if c.certificate_number %}
+    <div class="cred-body-row">
+      <span class="cred-body-lbl">Cert #</span>
+      <span>{{ c.certificate_number }}</span>
+    </div>
+    {% endif %}
+    {% if c.issue_date %}
+    <div class="cred-body-row">
+      <span class="cred-body-lbl">Issued</span>
+      <span>{{ c.issue_date|date:"j M Y" }}</span>
+    </div>
+    {% endif %}
+    {% if c.expiry_date %}
+    <div class="cred-body-row">
+      <span class="cred-body-lbl">Expires</span>
+      <span>{{ c.expiry_date|date:"j M Y" }}</span>
+    </div>
+    {% endif %}
+    {% if c.evidence %}
+    <div class="cred-body-row" style="margin-top:.2rem;">
+      <span class="cred-body-lbl">Evidence</span>
+      <a href="{{ c.evidence.url }}" target="_blank" class="cred-evidence-link">View ↗</a>
+    </div>
+    {% endif %}
+    {% if c.notes %}
+    <div class="cred-body-row">
+      <span class="cred-body-lbl">Notes</span>
+      <span style="color:#6b7280;">{{ c.notes }}</span>
+    </div>
+    {% endif %}
+  </div>
+</details>
+{% endfor %}
+</div>
+{% else %}
+<div class="app-empty">No credentials recorded — tap + Add to add one</div>
+{% endif %}
+
+<div class="gap-md"></div>
+
+<!-- Notifications -->
+<div class="app-section gap-sm" id="notifications" style="display:flex;align-items:center;justify-content:space-between;padding-right:.75rem;">
+  <button onclick="toggleNotifs()" style="display:flex;align-items:center;gap:.3rem;background:none;border:none;padding:0;cursor:pointer;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">
+    Notifications
+    <svg id="notif-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
+</div>
+<div id="notif-section">
+
+<!-- Email notification toggles -->
+<style>
+.notif-sw { position:relative;width:44px;height:26px;flex-shrink:0; }
+.notif-sw input { opacity:0;position:absolute;width:0;height:0; }
+.notif-sw-track { display:block;position:absolute;inset:0;border-radius:13px;background:#d1d5db;transition:background .2s;cursor:pointer; }
+.notif-sw input:checked + .notif-sw-track { background:var(--primary); }
+.notif-sw-track::after { content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.notif-sw input:checked + .notif-sw-track::after { left:21px; }
+</style>
+<form method="post" action="{% url 'core:app_profile' club.slug %}#notifications" id="notif-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save_notifications">
+  <div class="app-list">
+    {% for tog in notification_toggle_fields %}
+    <label class="app-list-row" style="cursor:pointer;gap:.75rem;padding:.75rem 1rem;">
+      <div class="app-list-main">
+        <div class="app-list-title" style="font-size:.86rem;">{{ tog.label }}</div>
+      </div>
+      <span class="notif-sw">
+        <input type="checkbox" name="{{ tog.field }}" value="on"{% if tog.enabled %} checked{% endif %} onchange="this.closest('form').submit()">
+        <span class="notif-sw-track"></span>
+      </span>
+    </label>
+    {% empty %}
+    <div class="app-list-row"><div class="app-list-main app-list-title" style="font-size:.86rem;color:#9ca3af;">No notification options available</div></div>
+    {% endfor %}
+  </div>
+</form>
+
+<!-- Push notifications -->
+<div class="app-card" style="margin-top:.5rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
+    <div>
+      <div style="font-size:.88rem;font-weight:600;">Push notifications</div>
+      <div id="push-status-text" style="font-size:.76rem;color:#9ca3af;margin-top:.15rem;">Checking…</div>
+    </div>
+    <button id="push-toggle-btn" class="app-btn-sm" style="min-width:90px;" onclick="togglePush()">…</button>
+  </div>
+</div>
+</div><!-- /notif-section -->
+
+{% if other_clubs %}
+<div class="app-section gap-sm"><span class="app-section-title">My clubs</span></div>
+<div class="app-card" style="padding:0;">
+  {% for ocm in other_clubs %}
+  <a href="{% url 'core:gantt_day' ocm.club.slug %}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid #f0f2f4;text-decoration:none;color:inherit;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16l-4-4H5l-2 2 5 1 3 3 5-1 5-1z"/><path d="M12 12V5l-2-1"/></svg>
+    <div style="flex:1;">
+      <div style="font-size:.88rem;font-weight:600;">{{ ocm.club.name }}</div>
+      <div style="font-size:.74rem;color:#9ca3af;">Switch to this club</div>
+    </div>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+  {% endfor %}
+</div>
+<div class="gap-sm"></div>
+{% endif %}
+
+<!-- Sign out -->
+<div style="padding:0 .75rem 1rem;">
+  <a href="/admin/logout/?next=/app/{{ club.slug }}/" class="app-btn secondary" style="text-align:center;">Sign out</a>
+</div>
+
+{% block extra_js %}
+<script>
+var _credsOpen = true;
+function toggleCreds() {
+  var sec = document.getElementById('cred-section');
+  var chev = document.getElementById('cred-chev-all');
+  if (!sec) return;
+  _credsOpen = !_credsOpen;
+  sec.style.display = _credsOpen ? '' : 'none';
+  chev.style.transform = _credsOpen ? '' : 'rotate(-90deg)';
+}
+var _notifsOpen = true;
+function toggleNotifs() {
+  var sec = document.getElementById('notif-section');
+  var chev = document.getElementById('notif-chev');
+  if (!sec) return;
+  _notifsOpen = !_notifsOpen;
+  sec.style.display = _notifsOpen ? '' : 'none';
+  chev.style.transform = _notifsOpen ? '' : 'rotate(-90deg)';
+}
+</script>
+<script>
+var _pushState = 'unknown';
+
+async function refreshPushUI() {
+  var state = await ClubPush.getState();
+  _pushState = state;
+  var statusEl = document.getElementById('push-status-text');
+  var btnEl    = document.getElementById('push-toggle-btn');
+  if (state === 'unsupported') {
+    statusEl.textContent = 'Not supported on this browser';
+    btnEl.disabled = true; btnEl.textContent = 'N/A';
+  } else if (state === 'denied') {
+    statusEl.textContent = 'Blocked — enable in browser settings';
+    btnEl.disabled = true; btnEl.textContent = 'Blocked';
+  } else if (state === 'subscribed') {
+    statusEl.textContent = 'You\'ll receive alerts for bookings, charges, and invoices';
+    btnEl.textContent = 'Turn off'; btnEl.disabled = false;
+    btnEl.style.background = 'transparent';
+    btnEl.style.color = '#e03131';
+    btnEl.style.border = '1.5px solid #e03131';
+  } else {
+    statusEl.textContent = 'Get alerts for booking confirmations, charges, and invoices';
+    btnEl.textContent = 'Turn on'; btnEl.disabled = false;
+    btnEl.style.background = '';
+    btnEl.style.color = '';
+    btnEl.style.border = '';
+  }
+}
+
+async function togglePush() {
+  var btn = document.getElementById('push-toggle-btn');
+  btn.disabled = true;
+  if (_pushState === 'subscribed') {
+    await ClubPush.unsubscribe();
+  } else {
+    await ClubPush.subscribe();
+  }
+  await refreshPushUI();
+}
+
+refreshPushUI();
+</script>
+{% endblock %}
+{% endblock %}

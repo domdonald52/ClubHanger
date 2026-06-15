@@ -1,0 +1,152 @@
+{% extends base_template %}
+{% block title %}{{ contact.name }} · {{ club.name }}{% endblock %}
+{% block inline_title %}{{ inline_title }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:2rem;max-width:900px;">
+
+  {% if not request.GET.inline %}
+  <a href="{% url 'core:manage_contacts' club.slug %}" class="back-link">← Contacts</a>
+  {% endif %}
+
+  <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;">
+    <h1 style="margin:0;">{{ contact.name }}</h1>
+    <span style="font-size:.82rem;color:#8a93a0;">{% if contact.contact_type %}{{ contact.contact_type.name }}{% endif %}{% if contact.is_organisation %} · <span style="font-weight:600;color:#1a56db;">Organisation</span>{% endif %}</span>
+  </div>
+
+  {% if error %}<div class="notice err" style="margin-bottom:1rem;">{{ error }}</div>{% endif %}
+
+  {% if contact.converted_to_member %}
+  <div class="notice ok" style="margin-bottom:1rem;">
+    Converted to member: <a href="{% url 'core:manage_member_detail' club.slug contact.converted_to_member_id %}" data-overlay>{{ contact.converted_to_member.user.get_full_name }}</a>
+  </div>
+  {% endif %}
+
+  <div class="stab-bar" data-managed="1">
+    <button class="stab-btn" data-tab="details">Details</button>
+    <button class="stab-btn" data-tab="bookings">Flights <span style="font-size:.75rem;color:#8a93a0;">({{ bookings|length }})</span></button>
+  </div>
+
+  <!-- Details tab -->
+  <div id="tab-details" class="stab-panel">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save">
+      <div class="field-grid">
+        <label class="flabel">Name <span class="req">*</span>
+          <input type="text" name="name" value="{{ contact.name }}" class="finput" required maxlength="200">
+        </label>
+        <label class="flabel">Type
+          <select name="contact_type" class="finput">
+            <option value="">— none —</option>
+            {% for ct in contact_types %}
+            <option value="{{ ct.id }}" {% if contact.contact_type_id == ct.id %}selected{% endif %}>{{ ct.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="flabel">Email
+          <input type="email" name="email" value="{{ contact.email }}" class="finput" maxlength="200">
+        </label>
+        <label class="flabel">Phone
+          <input type="text" name="phone" value="{{ contact.phone }}" class="finput" maxlength="50">
+        </label>
+        <label class="flabel" style="grid-column:1/-1;">
+          <input type="checkbox" name="is_organisation" value="1" id="is-org-edit"
+                 {% if contact.is_organisation %}checked{% endif %} onchange="toggleOrgEdit(this)">
+          This is an organisation (not an individual)
+        </label>
+        <label class="flabel" id="org-edit-wrap" style="grid-column:1/-1;{% if contact.is_organisation %}display:none;{% endif %}">
+          Sponsoring organisation / school
+          <input type="text" name="organisation" value="{{ contact.organisation }}" class="finput" maxlength="200">
+        </label>
+        <label class="flabel" style="grid-column:1/-1;">Notes
+          <textarea name="notes" class="finput" rows="3">{{ contact.notes }}</textarea>
+        </label>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.9rem;align-items:center;">
+        <button type="submit" class="cbtn primary">Save</button>
+        {% if contact.can_convert %}
+        <button type="button" class="cbtn-sm" style="margin-left:.5rem;" onclick="document.getElementById('convert-modal').hidden=false">Convert to member…</button>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  <!-- Bookings tab -->
+  <div id="tab-bookings" class="stab-panel">
+    {% if bookings %}
+    <table class="ct">
+      <thead><tr>
+        <th>Date</th><th>Aircraft</th><th>Flight type</th><th>Arranged by</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+        {% for b in bookings %}
+        <tr>
+          <td style="white-space:nowrap;font-size:.84rem;">{{ b.scheduled_start|date:"j M Y" }}</td>
+          <td>{{ b.aircraft.registration }}</td>
+          <td style="font-size:.82rem;color:#5b6573;">{{ b.flight_type.name }}</td>
+          <td style="font-size:.82rem;">{{ b.member.user.get_full_name }}</td>
+          <td><span class="status-chip status-{{ b.display_status_key }}">{{ b.display_status }}</span></td>
+          <td><a href="{% url 'core:booking_detail' club.slug b.id %}" class="row-action-btn" data-overlay>View →</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.88rem;padding:.5rem 0;">No flights recorded for this contact.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- Convert to member modal -->
+{% if contact.can_convert %}
+<div id="convert-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(460px,95vw);">
+    <h2 style="margin:0 0 .5rem;font-size:1.05rem;">Convert to member</h2>
+    <p style="font-size:.84rem;color:#5b6573;margin:0 0 .9rem;">
+      Creates a member account for {{ contact.name }}. They'll need to reset their password before logging in.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="convert_to_member">
+      <label class="flabel">Email address <span class="req">*</span>
+        <input type="email" name="email" value="{{ contact.email }}" class="finput" required
+               placeholder="Required to create login">
+      </label>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem;">
+        <button type="button" class="cbtn" onclick="document.getElementById('convert-modal').hidden=true">✕ Close</button>
+        <button type="submit" class="cbtn primary">Convert to member</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<script>
+(function(){
+  var tabs = ['details','bookings'];
+  function show(t) {
+    tabs.forEach(function(id){
+      document.getElementById('tab-'+id).classList.toggle('active', id===t);
+      document.querySelector('.stab-btn[data-tab="'+id+'"]').classList.toggle('active', id===t);
+    });
+  }
+  document.querySelectorAll('.stab-btn[data-tab]').forEach(function(btn){
+    btn.addEventListener('click', function(){ show(this.dataset.tab); });
+  });
+  show('details');
+})();
+
+function toggleOrgEdit(chk) {
+  document.getElementById('org-edit-wrap').style.display = chk.checked ? 'none' : '';
+}
+
+document.querySelectorAll('.modal-back').forEach(function(m){
+  m.addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
+});
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape') document.querySelectorAll('.modal-back').forEach(function(m){ m.hidden=true; });
+});
+</script>
+{% endblock %}

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Seed data for ClubHanger — Wellington Aero Club.
+Seed data for ClubHangar — Wellington Aero Club.
 
 Creates a realistic club dataset:
   • 50 members (mix of students, private hire, club members, suspended)
@@ -37,6 +37,8 @@ from core.models import (
     Account, AccountTransaction, FlightPayment, ClubConfig,
     InstructorAvailability, AircraftSurchargeType,
     Contact, ContactType,
+    FlyingBudget,
+    MemberCredential, CredentialType,
     create_maint_log_entry,
 )
 from core.services.booking_service import ServiceResult
@@ -76,6 +78,7 @@ if args.reset and not DRY:
     Booking.objects.filter(club=club).delete()
     MaintenanceLogEntry.objects.filter(aircraft__club=club).delete()
     AccountTransaction.objects.filter(account__club_member__club=club).delete()
+    MemberCredential.objects.filter(club_member__club=club).delete()
     Account.objects.filter(club_member__club=club).update(balance=D('0'))
     log('Cleared all flight, transaction and maintenance data')
 
@@ -144,11 +147,11 @@ AIRCRAFT_DATA = [
     ('ZK-TAW', type_c152, 'hobbs', 2, 'online',  4820.0, None),
     ('ZK-EKE', type_c172, 'hobbs', 4, 'online',  3210.0, None),
     ('ZK-TWR', type_pa38, 'hobbs', 2, 'online',  5640.0, None),
-    ('ZK-WAC', type_pa28, 'tacho_less_5', 4, 'online', None, 3980.0),
+    ('ZK-WAC', type_pa28, 'tacho', 4, 'online', None, 3980.0),
     ('ZK-MGA', type_c172, 'hobbs', 4, 'online',  6100.0, None),
     ('ZK-GHX', type_c152, 'hobbs', 2, 'online',  7230.0, None),
     ('ZK-NEP', type_da40, 'hobbs', 4, 'online',  1840.0, None),
-    ('ZK-BFR', type_pa28, 'tacho_less_5', 4, 'online', None, 4510.0),
+    ('ZK-BFR', type_pa28, 'tacho', 4, 'online', None, 4510.0),
     ('ZK-JEZ', type_gr2,  'hobbs', 4, 'online',  9120.0, None),
     ('ZK-OLD', type_c152, 'hobbs', 2, 'retired', 12400.0, None),
 ]
@@ -163,7 +166,7 @@ for reg, atype, method, seats, status, hobbs_init, tacho_init in AIRCRAFT_DATA:
         club=club, registration=reg,
         defaults=dict(
             aircraft_type=atype, total_time_method=method,
-            maint_time_source=method.replace('tacho_less_5','tacho').replace('hobbs','hobbs'),
+            maint_time_source=method,
             maint_time_fraction=D('0.95') if 'tacho' in method else D('1.0'),
             seats=seats, status=status,
             hobbs_initial=D(str(hobbs_init)) if hobbs_init else None,
@@ -236,10 +239,10 @@ RATES = [
     ('ZK-MGA', 'Student Solo',  175, 'hobbs', False),
     ('ZK-MGA', 'Private Hire',  185, 'hobbs', False),
     # PA-28 Warriors — hire
-    ('ZK-WAC', 'Private Hire',  210, 'tacho_less_5', False),
-    ('ZK-WAC', 'Solo Hire',     200, 'tacho_less_5', False),
-    ('ZK-BFR', 'Private Hire',  215, 'tacho_less_5', False),
-    ('ZK-BFR', 'Solo Hire',     205, 'tacho_less_5', False),
+    ('ZK-WAC', 'Private Hire',  210, 'tacho', False),
+    ('ZK-WAC', 'Solo Hire',     200, 'tacho', False),
+    ('ZK-BFR', 'Private Hire',  215, 'tacho', False),
+    ('ZK-BFR', 'Solo Hire',     205, 'tacho', False),
     # PA-38 Tomahawk
     ('ZK-TWR', 'Student Dual',  170, 'hobbs', False),
     ('ZK-TWR', 'Student Solo',  150, 'hobbs', False),
@@ -360,7 +363,7 @@ for username, first, last, role_key, standing, is_instr, grade_key, is_admin in 
     })
     if not uc:
         user.first_name = first; user.last_name = last; user.save()
-    user.set_password('clubhanger2026')
+    user.set_password('clubhangar2026')
     user.save()
 
     role_obj = roles_map.get(role_key)
@@ -382,6 +385,40 @@ for username, first, last, role_key, standing, is_instr, grade_key, is_admin in 
 
     members[username] = cm
     log(f'{"+" if mc else "="} {first} {last} ({role_key}, {standing})')
+
+# ── Instructor credentials ────────────────────────────────────────────────────
+head('Instructor credentials')
+# Each rostered instructor gets: instructor cert, medical, and current flight review.
+# Expiry dates are staggered so the demo shows a mix of near-expiry and current.
+# username → (instr_grade_type, medical_type, instr_expiry_offset_days, medical_expiry_offset_days, fr_expiry_offset_days)
+INSTR_CRED_DATA = {
+    'jane':    (CredentialType.INSTRUCTOR_B, CredentialType.MEDICAL_C1,  730,  365, 500),
+    'richard': (CredentialType.INSTRUCTOR_C, CredentialType.MEDICAL_C2,  400,  180, 300),
+    'helen':   (CredentialType.INSTRUCTOR_A, CredentialType.MEDICAL_C1,  900,  270, 600),
+    'sarah_i': (CredentialType.INSTRUCTOR_C, CredentialType.MEDICAL_C2,  200,   90, 100),  # near-expiry for demo
+    'peter_i': (CredentialType.INSTRUCTOR_B, CredentialType.MEDICAL_C1,  600,  365, 400),
+}
+if not DRY:
+    _cred_creator = User.objects.filter(is_superuser=True).first()
+    for username, (instr_type, med_type, instr_days, med_days, fr_days) in INSTR_CRED_DATA.items():
+        cm = members.get(username)
+        if not cm:
+            continue
+        today_d = NOW.date()
+        for ctype, days in [
+            (instr_type, instr_days),
+            (med_type,   med_days),
+            (CredentialType.FLIGHT_REVIEW, fr_days),
+        ]:
+            MemberCredential.objects.get_or_create(
+                club_member=cm, credential_type=ctype,
+                defaults=dict(
+                    issue_date=today_d - timedelta(days=730),
+                    expiry_date=today_d + timedelta(days=days),
+                    created_by=_cred_creator,
+                ),
+            )
+        log(f'  {cm.user.get_full_name()} — {instr_type} / {med_type} / FR')
 
 # ── Instructor availability windows ───────────────────────────────────────────
 head('Instructor availability')
@@ -470,7 +507,8 @@ if not DRY:
         ft_obj  = ft.get(ft_name)
         instr   = members[instr_un].user if instr_un and members.get(instr_un) else None
 
-        start_dt = NOW - timedelta(days=days_ago, hours=2)
+        # Pin start to 10:00 AM local on that date — always within operating hours
+        start_dt = NOW.replace(hour=10, minute=0, second=0, microsecond=0) - timedelta(days=days_ago)
         end_dt   = start_dt + timedelta(hours=hours + 0.5)
 
         b = Booking.objects.create(
@@ -749,12 +787,13 @@ if not DRY and contacts_seed:
     instr_m = ClubMember.objects.filter(club=club, is_on_instructor_roster=True).first()
 
     def _make_trial(contact, billed_to, days_ago=30):
-        """Create a completed trial flight booking for a contact."""
+        """Create a completed trial flight booking with FlightCompletion for a contact."""
         ac = Aircraft.objects.filter(club=club, status='online').first()
         if not (ac and instr_m and trial_ft):
             return
         from django.utils import timezone as _tz
-        start = _tz.now() - timezone.timedelta(days=days_ago)
+        start = NOW.replace(hour=14, minute=0, second=0, microsecond=0) - timezone.timedelta(days=days_ago)
+        arrived = start + timezone.timedelta(hours=1)
         b = Booking.objects.create(
             club=club,
             member=instr_m,
@@ -765,11 +804,65 @@ if not DRY and contacts_seed:
             instructor=instr_m.user,
             status='completed',
             scheduled_start=start,
-            scheduled_end=start + timezone.timedelta(hours=1),
+            scheduled_end=arrived,
             departed_at=start + timezone.timedelta(minutes=5),
-            arrived_at=start + timezone.timedelta(hours=1),
+            arrived_at=arrived,
             created_by=instr_m.user,
         )
+
+        # Get current hobbs from last FlightCompletion or fall back to initial
+        last_fc = (FlightCompletion.objects
+                   .filter(booking__aircraft=ac, hobbs_end__isnull=False)
+                   .order_by('-booking__arrived_at').first())
+        h_start = float(last_fc.hobbs_end) if last_fc else float(ac.hobbs_initial or 0)
+        h_end   = round(h_start + 1.0, 1)
+
+        fc = FlightCompletion.objects.create(
+            booking=b, outcome='completed', logged_by=admin_user,
+            hobbs_start=D(str(h_start)), hobbs_end=D(str(h_end)),
+            actual_flight_hours=D('1.0'),
+            departed_with_aircraft=ac,
+            departed_with_instructor=instr_m.user,
+        )
+
+        # Hire charge
+        rate_obj = ChargeRate.objects.filter(
+            aircraft=ac, flight_type=trial_ft, time_method=ac.total_time_method
+        ).first()
+        total = D('0')
+        if rate_obj:
+            hire_amt = D(str(round(float(rate_obj.amount) * 1.0, 2)))
+            FlightChargeItem.objects.create(
+                flight_completion=fc, item_type='hire',
+                description=f'Aircraft hire — {ac.registration}',
+                amount=hire_amt,
+            )
+            total += hire_amt
+
+        # Club-absorbed flights have no charge to the payer
+        if billed_to == Booking.BILLED_CLUB:
+            total = D('0')
+            fc.charge_items.all().delete()
+
+        fc.total_charge = total
+        fc.save(update_fields=['total_charge'])
+
+        # Mark as paid
+        if total == D('0'):
+            # Zero-charge: is_paid is True automatically
+            fc.paid_at = arrived
+            fc.save(update_fields=['paid_at'])
+        else:
+            pay_method = 'invoice' if billed_to == Booking.BILLED_ORGANISATION else 'eftpos'
+            acct, _ = Account.objects.get_or_create(
+                club_member=instr_m, defaults={'balance': D('0')}
+            )
+            FlightPayment.objects.create(
+                completion=fc, member=instr_m, amount=total,
+                method=pay_method, paid_at=arrived, recorded_by=admin_user,
+            )
+            fc._sync_payment_cache()
+
         return b
 
     if jamie and school:
@@ -795,6 +888,46 @@ if not DRY and contacts_seed:
             emma.save(update_fields=['converted_to_member'])
             log(f'  Emma Walsh → converted to member {converted_m.user.get_full_name()}')
 
+
+# ── Flying budget (current FY, per online aircraft) ──────────────────────────
+head('Flying budget')
+if not DRY:
+    from datetime import date as _date
+    _cfg = ClubConfig.objects.get(club=club)
+    _today = _date.today()
+    _fy_year = _today.year if _today.month >= _cfg.fy_start_month else _today.year - 1
+    # Monthly budget hours per aircraft registration (slightly varied to look realistic)
+    _BUDGETS = {
+        'ZK-TAW': [28, 30, 32, 30, 28, 25, 22, 25, 28, 30, 32, 30],  # C152 trainer
+        'ZK-EKE': [22, 24, 26, 24, 22, 20, 18, 20, 22, 24, 26, 24],  # C172
+        'ZK-TWR': [20, 22, 24, 22, 20, 18, 16, 18, 20, 22, 24, 22],  # PA38
+        'ZK-WAC': [16, 18, 20, 18, 16, 14, 12, 14, 16, 18, 20, 18],  # PA28
+        'ZK-MGA': [22, 24, 26, 24, 22, 20, 18, 20, 22, 24, 26, 24],  # C172
+        'ZK-GHX': [26, 28, 30, 28, 26, 22, 20, 22, 26, 28, 30, 28],  # C152
+        'ZK-NEP': [14, 16, 18, 16, 14, 12, 10, 12, 14, 16, 18, 16],  # DA40
+        'ZK-BFR': [16, 18, 20, 18, 16, 14, 12, 14, 16, 18, 20, 18],  # PA28
+        'ZK-JEZ': [10, 12, 14, 12, 10,  8,  8,  8, 10, 12, 14, 12],  # Grumman
+    }
+    # Build 12 month list starting from fy_start_month
+    _fy_months = []
+    _m, _y = _cfg.fy_start_month, _fy_year
+    for _ in range(12):
+        _fy_months.append(_m)
+        _m += 1
+        if _m > 12:
+            _m = 1
+    count = 0
+    for reg, monthly_hrs in _BUDGETS.items():
+        ac = Aircraft.objects.filter(club=club, registration=reg).first()
+        if not ac:
+            continue
+        for i, month in enumerate(_fy_months):
+            FlyingBudget.objects.update_or_create(
+                club=club, aircraft=ac, fy_year=_fy_year, month=month,
+                defaults={'budgeted_hours': monthly_hrs[i]},
+            )
+            count += 1
+    log(f'Flying budget: {count} entries for FY{_fy_year}')
 
 print('\n' + '─'*55)
 if DRY:

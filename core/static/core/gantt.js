@@ -59,10 +59,12 @@
     const pad = (n) => String(n).padStart(2, "0");
     return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
-  function toast(msg) {
+  function toast(msg, type) {
+    if (window.toast) { window.toast(msg, type || ''); return; }
+    // fallback if window.toast not yet loaded
     const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.hidden = false;
+    if (!t) return;
+    t.textContent = msg; t.hidden = false;
     clearTimeout(t._timer);
     t._timer = setTimeout(() => (t.hidden = true), 3500);
   }
@@ -110,11 +112,17 @@
   const btnDepart = document.getElementById("m-depart");
   const btnCheckin = document.getElementById("m-checkin-btn");
   const btnCharges = document.getElementById("m-charges-link");
+  const btnDeclLink = document.getElementById("m-decl-btn");
   const btnWatch = document.getElementById("m-watch");
   const editFields = document.getElementById("m-edit-fields");
   const checkinFields = document.getElementById("m-checkin-fields");
-  const declWarn = document.getElementById("m-decl-warn");
+  const dvView = document.getElementById("m-depart-view");
+  const dvCredSection = document.getElementById("dv-cred-section");
+  const dvBack = document.getElementById("dv-back");
+  const dvConfirm = document.getElementById("dv-confirm");
   const btnWatchLabel = document.getElementById("m-watch-label");
+  let _currentPill = null;
+  let _departHasCredWarnings = false;
 
   // Mutable set — updated on watch toggles without page reload
   const watchedIds = new Set((cfg.watchedIds || []).map(String));
@@ -154,9 +162,12 @@
     });
   }
   // Populate member select with status badges
-  (function populateMembers() {
+  function populateMembers(filter) {
+    const prev = fMember.value;
     fMember.innerHTML = "";
+    const q = (filter || '').toLowerCase();
     MEMBERS.forEach((m) => {
+      if (q && !m.name.toLowerCase().includes(q)) return;
       const o = document.createElement("option");
       o.value = m.id;
       const badge = m.badge === 'current' ? '' : m.badge === 'non_member' ? ' ·Non-mbr' : ' ·Lapsed';
@@ -165,9 +176,18 @@
       if (m.badge !== 'current') o.style.color = '#adb5bd';
       fMember.appendChild(o);
     });
-  })();
+    // With no filter, restore the previous selection.
+    // With a filter, let the first matching result show (don't restore — that's the whole point).
+    if (!q && prev) fMember.value = prev;
+  }
+  populateMembers();
+  const memberSearch = document.getElementById('m-member-search');
+  if (memberSearch) {
+    memberSearch.addEventListener('input', () => { populateMembers(memberSearch.value); updateMemberNotice(); });
+  }
   fillSelect(fAircraft, AIRCRAFT, "id", "reg", false);
-  fillSelect(fInstructor, INSTRUCTORS, "id", "name", true);
+  // Only show instructors who are available today (on_roster true or null=no schedule=always available)
+  fillSelect(fInstructor, INSTRUCTORS.filter(i => i.on_roster === true), "id", "name", true);
   fillSelect(fFlightType, FLIGHT_TYPES, "id", "name", false);
 
   const memberNotice = document.getElementById("m-member-notice");
@@ -233,6 +253,7 @@
     const defFt = defaultFlightTypeFor(isSolo);
     if (defFt) fFlightType.value = defFt.id;
     syncInstructorVisibility();
+    if (memberSearch) { memberSearch.value = ''; populateMembers(); }
     if (!cfg.canManage) {
       fMember.value = cfg.currentUserId;
     } else if (MEMBERS.length) {
@@ -284,9 +305,18 @@
       });
     }
 
-    // Ghost track = instructor role changed or inactive
+    if (types.includes("instructor_roster")) {
+      items.push({
+        icon: "👤",
+        title: "Instructor off roster",
+        detail: "The assigned instructor is not rostered for this date.",
+        tip: "Reassign to a rostered instructor or update their availability schedule.",
+      });
+    }
+
+    // Ghost track = instructor role changed or inactive (catches cases not in issue_types)
     const track = pill.parentElement;
-    if (track && track.dataset.ghost === "true") {
+    if (track && track.dataset.ghost === "true" && !types.includes("instructor_roster")) {
       const gr = track.dataset.ghostReason;
       const label = gr === "role_changed" ? "Instructor role removed"
                   : gr === "inactive"     ? "Instructor inactive"
@@ -314,6 +344,10 @@
 
   function openEdit(pill) {
     removePreview();
+    _currentPill = pill;
+    if (dvView) dvView.hidden = true;
+    if (dvBack) dvBack.hidden = true;
+    if (dvConfirm) dvConfirm.hidden = true;
     document.getElementById("modal-title").textContent = "Edit booking";
     fId.value = pill.dataset.id;
     btnDelete.hidden = false;
@@ -322,6 +356,11 @@
     const statusText = document.getElementById("m-status-text");
     btnConfirm.hidden = !(cfg.canManage && st === "pending");
     btnDepart.hidden = !(cfg.canManage && st === "confirmed");
+    const declPendingOnOpen = pill.dataset.declPending === "true";
+    if (btnDeclLink) {
+      btnDeclLink.hidden = true;  // always hidden in footer; "Open declaration →" is inside the inline panel
+      btnDeclLink.dataset.declUrl = pill.dataset.declUrl || "";
+    }
     // departed: hide edit fields, show check-in panel
     const isDeparted = (st === "departed");
     const isCompleted = (st === "completed");
@@ -346,8 +385,10 @@
       btnCharges.style.background = paid ? "var(--completed-paid,#7c3aed)" : "var(--returned,#2563eb)";
       btnCharges.style.borderColor = btnCharges.style.background;
     }
-    // declaration warning for confirmed flights
-    declWarn.hidden = !(st === "confirmed" && pill.dataset.requiresDeclaration === "true" && pill.dataset.hasDeclaration !== "true");
+    // Check-in title for departed flights
+    if (isDeparted) {
+      document.getElementById("modal-title").textContent = `Check in — ${pill.dataset.member} · ${pill.dataset.registration}`;
+    }
     // reset check-in fields and mark required based on aircraft config
     if (isDeparted) {
       document.getElementById("m-outcome").value = "completed";
@@ -355,34 +396,69 @@
       ["m-hobbs-start","m-hobbs-end","m-tacho-start","m-tacho-end","m-airswitch-start","m-airswitch-end"].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = "";
       });
-      const needHobbs     = pill.dataset.recordsHobbs     === "true";
-      const needTacho     = pill.dataset.recordsTacho     === "true";
-      const needAirswitch = pill.dataset.recordsAirswitch === "true";
+      const billingMethod = pill.dataset.totalTimeMethod || '';
+      const maintMethod   = pill.dataset.maintTimeSource  || '';
+      const needHobbs     = pill.dataset.recordsHobbs === "true" || billingMethod === 'hobbs' || maintMethod === 'hobbs';
+      const needTacho     = pill.dataset.recordsTacho === "true" || billingMethod === 'tacho' || maintMethod === 'tacho';
+      const needAirswitch = pill.dataset.recordsAirswitch === "true" || billingMethod === 'airswitch' || maintMethod === 'airswitch';
+      // When multiple instruments are needed, label each with its purpose so instructors know why
+      const multiInstrument = (needHobbs ? 1 : 0) + (needTacho ? 1 : 0) + (needAirswitch ? 1 : 0) > 1;
+      function instrNote(key) {
+        if (!multiInstrument) return "";
+        if (billingMethod === key && maintMethod === key) return " (billing/maint)";
+        if (billingMethod === key) return " (billing)";
+        if (maintMethod   === key) return " (maintenance)";
+        return "";
+      }
       [["m-hobbs-start","Hobbs start"],["m-hobbs-end","Hobbs end"]].forEach(([id, lbl]) => {
         const el = document.getElementById(id); if (!el) return;
-        el.required = needHobbs;
+        el.required = needHobbs; el.disabled = !needHobbs; el.value = needHobbs ? el.value : "";
         el.style.borderColor = "";
-        el.closest("label").style.opacity = needHobbs ? "1" : ".45";
-        el.closest("label").firstChild.textContent = needHobbs ? lbl + " *" : lbl;
+        el.closest("label").style.opacity = needHobbs ? "1" : ".35";
+        el.closest("label").firstChild.textContent = needHobbs ? lbl + " *" + instrNote('hobbs') : lbl;
       });
       [["m-tacho-start","Tacho start"],["m-tacho-end","Tacho end"]].forEach(([id, lbl]) => {
         const el = document.getElementById(id); if (!el) return;
-        el.required = needTacho;
+        el.required = needTacho; el.disabled = !needTacho; el.value = needTacho ? el.value : "";
         el.style.borderColor = "";
-        el.closest("label").style.opacity = needTacho ? "1" : ".45";
-        el.closest("label").firstChild.textContent = needTacho ? lbl + " *" : lbl;
+        el.closest("label").style.opacity = needTacho ? "1" : ".35";
+        el.closest("label").firstChild.textContent = needTacho ? lbl + " *" + instrNote('tacho') : lbl;
       });
       [["m-airswitch-start","Air switch start"],["m-airswitch-end","Air switch end"]].forEach(([id, lbl]) => {
         const el = document.getElementById(id); if (!el) return;
-        el.required = needAirswitch;
+        el.required = needAirswitch; el.disabled = !needAirswitch; el.value = needAirswitch ? el.value : "";
         el.style.borderColor = "";
-        el.closest("label").style.opacity = needAirswitch ? "1" : ".45";
-        el.closest("label").firstChild.textContent = needAirswitch ? lbl + " *" : lbl;
+        el.closest("label").style.opacity = needAirswitch ? "1" : ".35";
+        el.closest("label").firstChild.textContent = needAirswitch ? lbl + " *" + instrNote('airswitch') : lbl;
       });
       // Store for validation
-      btnCheckin.dataset.needsHobbs     = needHobbs;
-      btnCheckin.dataset.needsTacho     = needTacho;
-      btnCheckin.dataset.needsAirswitch = needAirswitch;
+      btnCheckin.dataset.needsHobbs      = needHobbs;
+      btnCheckin.dataset.needsTacho      = needTacho;
+      btnCheckin.dataset.needsAirswitch  = needAirswitch;
+      btnCheckin.dataset.scheduledHours  = (parseFloat(pill.dataset.duration || '0') / 60).toFixed(2);
+
+      // Lock start fields (protected current readings) and show/hide their amend links
+      [['m-hobbs-start', needHobbs], ['m-tacho-start', needTacho], ['m-airswitch-start', needAirswitch]].forEach(([id, needed]) => {
+        const inp = document.getElementById(id);
+        const lnk = document.getElementById(id + '-amend');
+        if (!inp) return;
+        if (needed && !inp.disabled) {
+          inp.readOnly = true;
+          inp.style.background = '#f3f5f7';
+          inp.style.cursor = 'default';
+          if (lnk) lnk.style.display = '';
+        } else {
+          if (lnk) lnk.style.display = 'none';
+        }
+      });
+      // Reset error notice and end-field borders
+      const checkinErr  = document.getElementById('m-checkin-error');
+      const checkinWarn = document.getElementById('m-checkin-warn');
+      if (checkinErr)  { checkinErr.hidden  = true; checkinErr.textContent  = ''; }
+      if (checkinWarn) { checkinWarn.hidden = true; checkinWarn.textContent = ''; }
+      ['m-hobbs-end','m-tacho-end','m-airswitch-end'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.style.borderColor = '';
+      });
 
       // Pre-fill start values from last recorded end for this aircraft
       fetch(`/api/booking/${pill.dataset.id}/prev-readings/`, { credentials: "same-origin" })
@@ -416,6 +492,7 @@
     fDesc.value = pill.dataset.desc || "";
     if (pill.dataset.flightTypeId) fFlightType.value = pill.dataset.flightTypeId;
     syncInstructorVisibility();
+    if (memberSearch) { memberSearch.value = ''; populateMembers(); }
     const m = MEMBERS.find((x) => x.name === pill.dataset.member);
     if (m) fMember.value = m.id;
     updateMemberNotice();
@@ -429,6 +506,13 @@
       conflictNotice.innerHTML = "";
     }
 
+    // Plain members editing their own booking: lock member + instructor fields
+    const _memberOwned = !cfg.canManage && (pill.dataset.memberUserId === String(cfg.currentUserId));
+    fMember.disabled = _memberOwned;
+    fMember.style.opacity = _memberOwned ? ".5" : "";
+    fInstructor.disabled = _memberOwned;
+    if (fInstructorLabel) fInstructorLabel.style.opacity = _memberOwned ? ".5" : "";
+
     modal.hidden = false;
   }
   const btnSave = document.getElementById("m-save");
@@ -436,51 +520,25 @@
   function closeModal() {
     modal.hidden = true;
     removePreview();
+    fMember.disabled = false; fMember.style.opacity = "";
+    fInstructor.disabled = false;
+    if (fInstructorLabel) fInstructorLabel.style.opacity = "";
     btnConfirm.hidden = true;
     btnDepart.hidden = true;
+    if (btnDeclLink) btnDeclLink.hidden = true;
     btnCheckin.hidden = true;
     btnCharges.hidden = true;
-    declWarn.hidden = true;
     document.getElementById("m-status-notice").hidden = true;
     editFields.style.display = "";
     checkinFields.hidden = true;
     btnSave.hidden = false;
     btnDelete.hidden = false;
+    if (dvView) dvView.hidden = true;
+    if (dvBack) dvBack.hidden = true;
+    if (dvConfirm) dvConfirm.hidden = true;
   }
   document.getElementById("m-cancel").addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
-
-  // Depart button — AJAX
-  btnDepart.addEventListener("click", function() {
-    const id = document.getElementById("m-booking-id").value;
-    if (!id) return;
-    const reason = (document.getElementById("m-decl-reason") || {}).value || "";
-    const body = {};
-    if (reason.trim()) body.no_declaration_reason = reason.trim();
-    post(`/api/booking/${id}/depart/`, body).then(res => {
-      if (!res.ok) {
-        if (res.data && res.data.needs_reason) {
-          declWarn.hidden = false;
-        } else {
-          showToast(res.data && res.data.error ? res.data.error : "Could not depart");
-        }
-        return;
-      }
-      // Update ALL pills for this booking (aircraft row + instructor row)
-      document.querySelectorAll(`.pill[data-id="${id}"]`).forEach(pill => {
-        pill.classList.remove("confirmed","pending");
-        pill.classList.add("departed");
-        pill.dataset.status = "departed";
-        const nm = pill.querySelector(".nm");
-        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱] /, "") ;
-        if (nm && !nm.textContent.startsWith("✈")) nm.textContent = "✈ " + nm.textContent;
-        const sub = pill.querySelector(".sub");
-        if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · checked out"; }
-      });
-      closeModal();
-      showToast("Booking marked as departed");
-    });
-  });
 
   // Check-in button — AJAX
   btnCheckin.addEventListener("click", function() {
@@ -496,12 +554,30 @@
     const te = document.getElementById("m-tacho-end").value.trim();
     const as_ = (document.getElementById("m-airswitch-start") || {}).value?.trim() || "";
     const ae  = (document.getElementById("m-airswitch-end")   || {}).value?.trim() || "";
-    if (needsHobbs     && (!hs || !he))  { toast("Hobbs start and end are required"); return; }
-    if (needsTacho     && (!ts || !te))  { toast("Tacho start and end are required"); return; }
-    if (needsAirswitch && (!as_|| !ae))  { toast("Air switch start and end are required"); return; }
-    if (needsHobbs && he && hs && parseFloat(he) <= parseFloat(hs)) { toast("Hobbs end must be greater than start"); return; }
-    if (needsTacho && te && ts && parseFloat(te) <= parseFloat(ts)) { toast("Tacho end must be greater than start"); return; }
-    if (needsAirswitch && ae && as_ && parseFloat(ae) <= parseFloat(as_)) { toast("Air switch end must be greater than start"); return; }
+    const _ciErr = document.getElementById('m-checkin-error');
+    const _ciErrs = [];
+    ['m-hobbs-end','m-tacho-end','m-airswitch-end'].forEach(id => { const el = document.getElementById(id); if (el) el.style.borderColor = ''; });
+    function _ciFail(msg, endId) {
+      if (endId) { const el = document.getElementById(endId); if (el) el.style.borderColor = '#e03131'; }
+      _ciErrs.push(msg);
+    }
+    if (needsHobbs && !hs)  _ciFail('Hobbs start is required');
+    if (needsHobbs && !he)  _ciFail('Hobbs end is required', 'm-hobbs-end');
+    if (needsTacho && !ts)  _ciFail('Tacho start is required');
+    if (needsTacho && !te)  _ciFail('Tacho end is required', 'm-tacho-end');
+    if (needsAirswitch && !as_) _ciFail('Air switch start is required');
+    if (needsAirswitch && !ae)  _ciFail('Air switch end is required', 'm-airswitch-end');
+    if (needsHobbs && hs && he && parseFloat(he) <= parseFloat(hs)) _ciFail('Hobbs end must be greater than start', 'm-hobbs-end');
+    if (needsTacho && ts && te && parseFloat(te) <= parseFloat(ts)) _ciFail('Tacho end must be greater than start', 'm-tacho-end');
+    if (needsAirswitch && as_ && ae && parseFloat(ae) <= parseFloat(as_)) _ciFail('Air switch end must be greater than start', 'm-airswitch-end');
+    if (_ciErrs.length) {
+      if (_ciErr) { _ciErr.textContent = _ciErrs.join(' · '); _ciErr.hidden = false; }
+      else showToast(_ciErrs[0], 'err');
+      return;
+    }
+    if (_ciErr) _ciErr.hidden = true;
+    const _ciWarn = document.getElementById('m-checkin-warn');
+    if (_ciWarn) _ciWarn.hidden = true;
     const body = {
       outcome:          document.getElementById("m-outcome").value,
       outcome_notes:    document.getElementById("m-outcome-notes").value,
@@ -537,6 +613,63 @@
     const v = document.getElementById("m-outcome").value;
     document.getElementById("m-outcome-notes-wrap").hidden = (v === "completed");
   }
+  // Amend links — unlock locked start fields
+  ['hobbs','tacho','airswitch'].forEach(key => {
+    const lnk = document.getElementById(`m-${key}-start-amend`);
+    const inp = document.getElementById(`m-${key}-start`);
+    if (!lnk || !inp) return;
+    lnk.addEventListener('click', e => {
+      e.preventDefault();
+      inp.readOnly = false;
+      inp.style.background = '';
+      inp.style.cursor = '';
+      lnk.style.display = 'none';
+      inp.focus();
+    });
+  });
+
+  // Instrument reading blur: round to 1dp; validate end > start; warn if delta > 1.3× scheduled
+  const _endStartMap = {'m-hobbs-end':'m-hobbs-start','m-tacho-end':'m-tacho-start','m-airswitch-end':'m-airswitch-start'};
+  const _instrLabels = {'m-hobbs-end':'Hobbs','m-tacho-end':'Tacho','m-airswitch-end':'Air switch'};
+  function _refreshCheckinWarnings() {
+    const warnEl = document.getElementById('m-checkin-warn');
+    if (!warnEl) return;
+    const scheduledHours = parseFloat(btnCheckin.dataset.scheduledHours || '0');
+    const warns = [];
+    Object.entries(_endStartMap).forEach(([endId, startId]) => {
+      const endEl = document.getElementById(endId);
+      const startEl = document.getElementById(startId);
+      if (!endEl || !startEl || !endEl.value || !startEl.value) return;
+      const delta = parseFloat(endEl.value) - parseFloat(startEl.value);
+      if (scheduledHours > 0 && delta > 0 && delta > scheduledHours * 1.3) {
+        endEl.style.borderColor = '#f59e0b';
+        warns.push(`${_instrLabels[endId]} reading (${delta.toFixed(1)}h) is more than 1.3× the scheduled duration`);
+      } else if (endEl.style.borderColor === '#f59e0b') {
+        endEl.style.borderColor = '';
+      }
+    });
+    warnEl.textContent = warns.join(' · ');
+    warnEl.hidden = warns.length === 0;
+  }
+
+  ["m-hobbs-start","m-hobbs-end","m-tacho-start","m-tacho-end","m-airswitch-start","m-airswitch-end"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("blur", () => {
+      if (el.value !== "") el.value = parseFloat(el.value).toFixed(1);
+      const startId = _endStartMap[id];
+      if (startId) {
+        const startEl = document.getElementById(startId);
+        if (el.value && startEl && startEl.value) {
+          const isLow = parseFloat(el.value) <= parseFloat(startEl.value);
+          el.style.borderColor = isLow ? '#e03131' : '';
+        } else {
+          el.style.borderColor = '';
+        }
+      }
+      _refreshCheckinWarnings();
+    });
+  });
   fStart.addEventListener("input", updatePreview);
   fDuration.addEventListener("input", updatePreview);
   fAircraft.addEventListener("change", updatePreview);
@@ -651,13 +784,14 @@
     });
   });
 
-  // Pre-confirmation credential check
+  // Credential check modal — shared by Confirm booking and Check out actions
   const credCheckModal = document.getElementById("cred-check-modal");
   const credCheckBody  = document.getElementById("cred-check-body");
   const credCheckTitle = document.getElementById("cred-check-title");
   const credCheckConfirm = document.getElementById("cred-check-confirm");
   const credCheckCancel  = document.getElementById("cred-check-cancel");
-  let _pendingConfirmId = null;
+  let _pendingCredId = null;
+  let _pendingCredAction = null;  // 'confirm' | 'depart'
 
   function doConfirm(id) {
     post(`/api/booking/${id}/confirm/`, {}).then((res) => {
@@ -667,16 +801,44 @@
     });
   }
 
-  btnConfirm.addEventListener("click", () => {
-    const id = fId.value;
-    if (!id) return;
-    _pendingConfirmId = id;
+  function doDepart(id, body) {
+    post(`/api/booking/${id}/depart/`, body || {}).then(res => {
+      if (!res.ok) {
+        if (dvConfirm) { dvConfirm.disabled = false; dvConfirm.textContent = "Confirm check out"; }
+        showToast(res.data && res.data.error ? res.data.error : "Could not depart");
+        return;
+      }
+      document.querySelectorAll(`.pill[data-id="${id}"]`).forEach(pill => {
+        pill.classList.remove("confirmed", "pending");
+        pill.classList.add("departed");
+        pill.dataset.status = "departed";
+        const nm = pill.querySelector(".nm");
+        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱] /, "");
+        if (nm && !nm.textContent.startsWith("✈")) nm.textContent = "✈ " + nm.textContent;
+        const sub = pill.querySelector(".sub");
+        if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · checked out"; }
+        pill.querySelectorAll(".pill-dot-decl").forEach(el => el.remove());
+      });
+      closeModal();
+      showToast("Booking marked as departed");
+    });
+  }
 
-    if (!credCheckModal) { doConfirm(id); return; }
+  function showCredCheckModal(id, action) {
+    if (!credCheckModal) {
+      if (action === 'confirm') doConfirm(id);
+      return;
+    }
+    _pendingCredId = id;
+    _pendingCredAction = action;
 
-    // Fetch credential check before showing confirm
+    const actionLabel = action === 'depart' ? 'Check out' : 'Confirm booking';
     credCheckBody.innerHTML = '<p style="color:#8a93a0;font-size:.85rem;padding:.5rem 0;">Checking…</p>';
+    credCheckConfirm.textContent = actionLabel;
+    credCheckConfirm.style.background = '';
+    credCheckConfirm.style.borderColor = '';
     credCheckModal.hidden = false;
+
     fetch(`/api/booking/${id}/credential-check/`, { credentials: "same-origin" })
       .then(r => r.json())
       .then(data => {
@@ -684,7 +846,7 @@
         const STATUS_COLOR = { ok: "#2a7a3b", warn: "#c76c00", info: "#2563eb" };
         const URGENCY_BAR  = { green: "#4caf50", amber: "#ff9800", red: "#e03131" };
 
-        credCheckTitle.textContent = `Confirm booking — ${data.member}`;
+        credCheckTitle.textContent = `${action === 'depart' ? 'Check out' : 'Confirm booking'} — ${data.member}`;
 
         // Member credential checks
         const memberRows = (data.checks || []).map(c =>
@@ -697,8 +859,10 @@
            </div>`
         ).join('');
 
-        // Aircraft maintenance
-        const maintRows = (data.maintenance || []).map(m => {
+        // Aircraft maintenance — only AMBER/RED items shown; all-green gets a summary tick
+        const allMaint = data.maintenance || [];
+        const warnMaint = allMaint.filter(m => m.urgency === 'amber' || m.urgency === 'red');
+        const maintRows = warnMaint.map(m => {
           const barColor = URGENCY_BAR[m.urgency] || '#4caf50';
           const pct = m.progress_pct !== null ? m.progress_pct : null;
           const bar = pct !== null
@@ -714,6 +878,9 @@
                     ${bar}
                   </div>`;
         }).join('');
+        const maintAllClear = allMaint.length > 0 && warnMaint.length === 0
+          ? `<div style="font-size:.84rem;color:#2a7a3b;padding:.3rem 0;">✓ No maintenance concerns</div>`
+          : '';
 
         const hobbsNote = data.current_hobbs !== null && data.current_hobbs !== undefined
           ? `<div style="font-size:.78rem;color:#8a93a0;margin-top:.5rem;">Last recorded Hobbs: <strong>${data.current_hobbs}</strong></div>`
@@ -723,21 +890,194 @@
         if (memberRows) {
           html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.4rem 0 .2rem;">Pilot — ${data.member}</div>${memberRows}`;
         }
-        if (maintRows) {
-          html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.6rem 0 .2rem;">Aircraft — ${data.aircraft_reg || ''}</div>${maintRows}${hobbsNote}`;
+        if (allMaint.length > 0) {
+          html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.6rem 0 .2rem;">Aircraft — ${data.aircraft_reg || ''}</div>${maintRows}${maintAllClear}${hobbsNote}`;
         }
-        credCheckBody.innerHTML = html ||
-          '<p style="color:#8a93a0;font-size:.85rem;">No checks found.</p>';
-
         const hasWarnings = data.has_warnings || data.has_maint_warnings;
-        credCheckConfirm.textContent = hasWarnings ? "Confirm anyway (staff override)" : "Confirm booking";
+
+        let overrideInputHtml = '';
+        if (action === 'depart' && hasWarnings) {
+          overrideInputHtml = `<div style="margin-top:.8rem;padding:.65rem .75rem;background:#fff8e6;border:1px solid #fcd34d;border-radius:7px;">
+            <label style="display:block;font-size:.8rem;font-weight:600;color:#92400e;margin-bottom:.35rem;">Override reason <span style="color:#c0392b;">*</span></label>
+            <input type="text" id="cred-check-override-reason"
+                   style="display:block;width:100%;padding:.38rem .5rem;border:2px solid #f59e0b;border-radius:5px;font-size:.88rem;box-sizing:border-box;background:#fffbeb;"
+                   placeholder="e.g. Flying with instructor, emergency crew duty…">
+          </div>`;
+        }
+
+        credCheckBody.innerHTML = (html ||
+          '<p style="color:#8a93a0;font-size:.85rem;">No checks found.</p>') + overrideInputHtml;
+
+        const overrideLabel = action === 'depart' ? 'Check out anyway (staff override)' : 'Confirm anyway (staff override)';
+        credCheckConfirm.textContent = hasWarnings ? overrideLabel : actionLabel;
         credCheckConfirm.style.background = hasWarnings ? "#c76c00" : "";
         credCheckConfirm.style.borderColor = hasWarnings ? "#c76c00" : "";
       })
-      .catch(() => { doConfirm(id); });  // fallback if check fails
+      .catch(() => {
+        if (action === 'confirm') doConfirm(id);
+      });
+  }
+
+  function openDeclOverlay(url) {
+    if (!url) url = btnDeclLink ? btnDeclLink.dataset.declUrl : "";
+    if (!url) return;
+    openDetailOverlay(url);
+  }
+  if (btnDeclLink) btnDeclLink.addEventListener("click", () => openDeclOverlay());
+
+  const dvDeclOpenBtn = document.getElementById("dv-decl-open");
+  if (dvDeclOpenBtn) dvDeclOpenBtn.addEventListener("click", () => openDeclOverlay(dvDeclOpenBtn.dataset.declUrl));
+
+  function openDepartView(pill) {
+    const id = pill.dataset.id;
+    const reg = pill.dataset.registration;
+    const declPending = pill.dataset.declPending === "true";
+    const declUrl = pill.dataset.declUrl || "";
+
+    // Use currently-selected member (may have been changed in the edit dialog)
+    const selMember = MEMBERS.find(m => String(m.id) === String(fMember.value));
+    const memberName = selMember ? selMember.name : pill.dataset.member;
+    document.getElementById("modal-title").textContent = `Check out — ${memberName} · ${reg}`;
+
+    editFields.style.display = "none";
+    btnWatch.hidden = true;
+    btnDelete.hidden = true;
+    btnConfirm.hidden = true;
+    if (btnDeclLink) btnDeclLink.hidden = true;
+    btnDepart.hidden = true;
+    btnCheckin.hidden = true;
+    btnCharges.hidden = true;
+    btnSave.hidden = true;
+    document.getElementById("m-status-notice").hidden = true;
+
+    if (dvView) dvView.hidden = false;
+    if (dvBack) dvBack.hidden = false;
+    if (dvConfirm) dvConfirm.hidden = false;
+
+    const dvDeclSection = document.getElementById("dv-decl-section");
+    const dvDeclReason  = document.getElementById("dv-decl-reason");
+    const dvOverrideSec = document.getElementById("dv-override-section");
+    const dvOverrideReason = document.getElementById("dv-override-reason");
+    if (dvDeclSection) dvDeclSection.hidden = !declPending;
+    if (dvDeclReason)  dvDeclReason.value = "";
+    if (dvDeclOpenBtn) dvDeclOpenBtn.dataset.declUrl = declUrl;
+    if (dvOverrideSec) dvOverrideSec.hidden = true;
+    if (dvOverrideReason) dvOverrideReason.value = "";
+    _departHasCredWarnings = false;
+
+    if (dvCredSection) dvCredSection.innerHTML = '<p style="color:#8a93a0;font-size:.84rem;padding:.3rem 0;">Checking credentials and maintenance…</p>';
+
+    fetch(`/api/booking/${id}/credential-check/`, { credentials: "same-origin" })
+      .then(r => r.json())
+      .then(data => {
+        _departHasCredWarnings = !!(data.has_warnings || data.has_maint_warnings);
+
+        const STATUS_ICON  = { ok: "✓", warn: "⚠", info: "ℹ" };
+        const STATUS_COLOR = { ok: "#2a7a3b", warn: "#c76c00", info: "#2563eb" };
+        const URGENCY_BAR  = { green: "#4caf50", amber: "#ff9800", red: "#e03131" };
+
+        const memberRows = (data.checks || []).map(c =>
+          `<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.25rem 0;border-bottom:1px solid #f0f2f4;">
+             <span style="font-size:.9rem;color:${STATUS_COLOR[c.status] || '#5b6573'};flex-shrink:0;width:18px;">${STATUS_ICON[c.status] || '?'}</span>
+             <div>
+               <div style="font-size:.83rem;font-weight:600;color:#1f2933;">${c.label}</div>
+               <div style="font-size:.79rem;color:#5b6573;">${c.detail}</div>
+             </div>
+           </div>`
+        ).join('');
+
+        const allMaint = data.maintenance || [];
+        const warnMaint = allMaint.filter(m => m.urgency === 'amber' || m.urgency === 'red');
+        const maintRows = warnMaint.map(m => {
+          const barColor = URGENCY_BAR[m.urgency] || '#4caf50';
+          const pct = m.progress_pct !== null ? m.progress_pct : null;
+          const bar = pct !== null
+            ? `<div style="height:5px;background:#eef1f4;border-radius:3px;margin-top:.25rem;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;"></div></div>`
+            : '';
+          return `<div style="padding:.25rem 0;border-bottom:1px solid #f0f2f4;">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                      <span style="font-size:.83rem;font-weight:600;color:#1f2933;">${m.name}</span>
+                      <span style="font-size:.75rem;color:${barColor};font-weight:600;">${m.detail}</span>
+                    </div>${bar}
+                  </div>`;
+        }).join('');
+
+        const maintAllClear = allMaint.length > 0 && warnMaint.length === 0
+          ? `<div style="font-size:.83rem;color:#2a7a3b;padding:.25rem 0;">✓ No maintenance concerns</div>`
+          : '';
+        const hobbsNote = data.current_hobbs !== null && data.current_hobbs !== undefined
+          ? `<div style="font-size:.77rem;color:#8a93a0;margin-top:.4rem;">Last recorded Hobbs: <strong>${data.current_hobbs}</strong></div>`
+          : '';
+
+        let html = '';
+        if (memberRows) html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.35rem 0 .15rem;">Pilot — ${data.member}</div>${memberRows}`;
+        if (allMaint.length > 0) html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.5rem 0 .15rem;">Aircraft — ${data.aircraft_reg || ''}</div>${maintRows}${maintAllClear}${hobbsNote}`;
+        if (!html) html = '<p style="color:#2a7a3b;font-size:.84rem;padding:.3rem 0;">✓ All checks passed.</p>';
+        if (dvCredSection) dvCredSection.innerHTML = html;
+
+        if (dvOverrideSec) dvOverrideSec.hidden = !_departHasCredWarnings;
+      })
+      .catch(() => {
+        if (dvCredSection) dvCredSection.innerHTML = '<p style="color:#8a93a0;font-size:.84rem;">Could not load checks — you may proceed.</p>';
+      });
+  }
+
+  if (dvBack) dvBack.addEventListener("click", () => {
+    if (_currentPill) openEdit(_currentPill);
   });
 
-  if (credCheckConfirm) credCheckConfirm.addEventListener("click", () => { if (_pendingConfirmId) doConfirm(_pendingConfirmId); });
+  if (dvConfirm) dvConfirm.addEventListener("click", () => {
+    if (!_currentPill) { showToast("Error: no booking selected"); return; }
+    const id = _currentPill.dataset.id;
+    const body = {};
+
+    const dvDeclSection = document.getElementById("dv-decl-section");
+    const dvDeclReason  = document.getElementById("dv-decl-reason");
+    if (dvDeclSection && !dvDeclSection.hidden) {
+      const reason = dvDeclReason ? dvDeclReason.value.trim() : "";
+      if (!reason) {
+        if (dvDeclReason) { dvDeclReason.style.borderColor = "#e03131"; dvDeclReason.focus(); }
+        showToast("Enter a declaration override reason before checking out");
+        return;
+      }
+      body.no_declaration_reason = reason;
+      if (dvDeclReason) dvDeclReason.style.borderColor = "";
+    }
+
+    if (_departHasCredWarnings) {
+      const dvOverrideReason = document.getElementById("dv-override-reason");
+      const reason = dvOverrideReason ? dvOverrideReason.value.trim() : "";
+      if (!reason) {
+        if (dvOverrideReason) { dvOverrideReason.style.borderColor = "#e03131"; dvOverrideReason.focus(); }
+        showToast("Enter a credential override reason before checking out");
+        return;
+      }
+      body.eligibility_override_reason = reason;
+      if (dvOverrideReason) dvOverrideReason.style.borderColor = "";
+    }
+
+    dvConfirm.disabled = true;
+    dvConfirm.textContent = "Checking out…";
+    // Include current member selection so checkout always uses the displayed member
+    body.member_user_id = fMember.value;
+    doDepart(id, body);
+  });
+
+  btnConfirm.addEventListener("click", () => {
+    const id = fId.value;
+    if (!id) return;
+    showCredCheckModal(id, 'confirm');
+  });
+
+  btnDepart.addEventListener("click", () => {
+    if (!_currentPill) return;
+    openDepartView(_currentPill);
+  });
+
+  if (credCheckConfirm) credCheckConfirm.addEventListener("click", () => {
+    if (!_pendingCredId) return;
+    doConfirm(_pendingCredId);
+  });
   if (credCheckCancel)  credCheckCancel.addEventListener("click",  () => { if (credCheckModal) credCheckModal.hidden = true; });
   if (credCheckModal) credCheckModal.addEventListener("click", e => { if (e.target === credCheckModal) credCheckModal.hidden = true; });
 
@@ -778,7 +1118,7 @@
     document.querySelectorAll('.track[data-row-type="aircraft"]:not([data-ghost])').forEach((track) => {
       track.classList.add("bookable");
       track.addEventListener("click", (e) => {
-        if (e.target.closest(".pill")) return;
+        if (_recentDrag || e.target.closest(".pill")) return;
         const rect = track.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const hardBand = hardBandAtX(track, x);
@@ -873,24 +1213,55 @@
           openEdit(pill);
         }
       } else if (cfg.canBook) {
-        // Non-staff: open watch modal for other members' active bookings
         const isOwn = pill.dataset.memberUserId === String(cfg.currentUserId);
-        const isActive = pill.dataset.status !== "cancelled" && pill.dataset.status !== "completed";
-        if (!isOwn && isActive) openWatchModal(pill);
+        const st    = pill.dataset.status;
+        const isActive = st !== "cancelled" && st !== "completed";
+        if (isOwn && st === "pending") {
+          // Member can edit their own unconfirmed booking
+          openEdit(pill);
+        } else if (isOwn && st === "confirmed") {
+          // Confirmed — show contact notice
+          const phone = cfg.clubPhone;
+          const msg = phone
+            ? `This booking is confirmed. To make changes please contact the club on ${phone}.`
+            : "This booking is confirmed. To make changes please contact the club.";
+          toast(msg);
+        } else if (!isOwn && isActive) {
+          openWatchModal(pill);
+        }
       }
     });
   });
 
   // ---- drag + resize ---------------------------------------------------
-  // Cache all tracks once so we can map a Y coordinate to a row reliably,
-  // without depending on elementsFromPoint (which is unreliable mid-capture).
-  const ALL_TRACKS = Array.from(document.querySelectorAll(".track[data-row-type]:not([data-ghost])"));
-  function trackAtY(clientY) {
-    for (const t of ALL_TRACKS) {
+  // Set for one animation frame after any drag so the track click-to-create
+  // handler doesn't fire when the cursor lands on an empty area after a drop.
+  let _recentDrag = false;
+
+  // Escape cancels an in-progress drag.
+  let _cancelActiveDrag = null;
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && _cancelActiveDrag) { _cancelActiveDrag(); }
+  });
+
+  // Cache all tracks for Y→row lookup. Aircraft ghosts excluded; instructor
+  // ghosts included so admins can explicitly assign an off-roster instructor.
+  const ALL_TRACKS = Array.from(document.querySelectorAll(
+    ".track[data-row-type='aircraft']:not([data-ghost]), .track[data-row-type='instructor']"
+  ));
+
+  function trackAtY(clientY, rowType) {
+    const tracks = rowType
+      ? ALL_TRACKS.filter((t) => t.dataset.rowType === rowType)
+      : ALL_TRACKS;
+    let nearest = null, nearestDist = Infinity;
+    for (const t of tracks) {
       const r = t.getBoundingClientRect();
       if (clientY >= r.top && clientY <= r.bottom) return t;
+      const dist = Math.min(Math.abs(clientY - r.top), Math.abs(clientY - r.bottom));
+      if (dist < nearestDist) { nearestDist = dist; nearest = t; }
     }
-    return null;
+    return nearest;
   }
 
   if (cfg.canManage) {
@@ -900,67 +1271,158 @@
   function makeInteractive(pill) {
     let mode = null; // 'move' | 'resize'
     let startX, startY, origLeft, origWidth, moved;
+    let origRowType, origParent;
+    let cursorOffsetX, cursorOffsetY; // where in the pill the pointer went down
+    let capturedPointerId = null;
+    let linkedPill = null;
+    let dragGhost = null, linkedGhost = null;
+    let linkedGhostTop = 0; // Y is fixed for the linked ghost — it never changes rows
+
+    function _makeGhost(source, rect) {
+      const g = source.cloneNode(true);
+      Object.assign(g.style, {
+        position: "fixed",
+        left: rect.left + "px",
+        top: rect.top + "px",
+        width: rect.width + "px",
+        height: rect.height + "px",
+        margin: "0",
+        zIndex: "9999",
+        pointerEvents: "none",
+        opacity: "0.92",
+        boxShadow: "0 8px 24px rgba(16,24,40,.35)",
+        cursor: "grabbing",
+        transform: "none",
+      });
+      document.body.appendChild(g);
+      return g;
+    }
+
+    function _clearDragState() {
+      if (dragGhost)   { dragGhost.remove();   dragGhost   = null; }
+      if (linkedGhost) { linkedGhost.remove();  linkedGhost = null; }
+      pill.style.opacity = "";
+      if (linkedPill)  { linkedPill.style.opacity = ""; linkedPill = null; }
+      ALL_TRACKS.forEach((t) => t.classList.remove("drag-over"));
+    }
+
+    function cancelDrag() {
+      _clearDragState();
+      pill.style.width = origWidth + "px"; // restore if resize was in progress
+      pill.classList.remove("drag", "invalid");
+      try { if (capturedPointerId !== null) pill.releasePointerCapture(capturedPointerId); } catch(_) {}
+      mode = null; moved = false; capturedPointerId = null;
+      _cancelActiveDrag = null;
+    }
 
     pill.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
       mode = e.target.hasAttribute("data-resize") ? "resize" : "move";
-      // Departed bookings can only be resized (to extend end time), not moved
-      if (mode === "move" && pill.dataset.status === "departed") return;
+      if (mode === "move" && pill.dataset.status === "departed") {
+        showToast("Can't move a departed flight");
+        pill.classList.add("shake");
+        pill.addEventListener("animationend", () => pill.classList.remove("shake"), { once: true });
+        return;
+      }
+      const rect = pill.getBoundingClientRect();
+      cursorOffsetX = e.clientX - rect.left; // capture where in the pill was clicked
+      cursorOffsetY = e.clientY - rect.top;
       startX = e.clientX;
       startY = e.clientY;
-      origLeft = parseFloat(pill.style.left);
+      origLeft  = parseFloat(pill.style.left);
       origWidth = parseFloat(pill.style.width);
       moved = false;
+      origRowType = pill.parentElement.dataset.rowType;
+      origParent  = pill.parentElement;
+      capturedPointerId = e.pointerId;
+      linkedPill = null; dragGhost = null; linkedGhost = null;
       pill.setPointerCapture(e.pointerId);
-      pill.classList.add("drag");
+      _cancelActiveDrag = cancelDrag;
       e.preventDefault();
     });
 
     pill.addEventListener("pointermove", (e) => {
       if (!mode) return;
-      const dx = e.clientX - startX;
-      const dy = e.clientY - startY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) moved = true;
+      if (!moved && (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3)) moved = true;
+      if (!moved) return;
 
       if (mode === "resize") {
-        let w = Math.max(minToPx(SLOT), origWidth + dx);
-        pill.style.width = w + "px";
-      } else {
-        // follow vertically across tracks using cached bounds
-        const trackUnder = trackAtY(e.clientY);
-        if (trackUnder && trackUnder !== pill.parentElement) {
-          trackUnder.appendChild(pill);
-        }
-        let left = Math.max(0, origLeft + dx);
-        pill.style.left = left + "px";
+        const dx = e.clientX - startX;
+        pill.style.width = Math.max(minToPx(SLOT), origWidth + dx) + "px";
+        pill.classList.toggle("invalid", overlapsInTrack(pill.parentElement, origLeft, parseFloat(pill.style.width), pill.dataset.id));
+        return;
       }
-      const t = pill.parentElement;
-      const bad = overlapsInTrack(t, parseFloat(pill.style.left), parseFloat(pill.style.width), pill.dataset.id);
-      pill.classList.toggle("invalid", bad);
+
+      // move — spawn ghosts on first significant movement
+      if (!dragGhost) {
+        const rect = pill.getBoundingClientRect();
+        dragGhost = _makeGhost(pill, rect);
+        pill.style.opacity = "0.25";
+        pill.classList.add("drag");
+
+        const otherType = origRowType === "aircraft" ? "instructor" : "aircraft";
+        linkedPill = document.querySelector(
+          `.track[data-row-type="${otherType}"] .pill[data-id="${pill.dataset.id}"]`
+        ) || null;
+        if (linkedPill) {
+          const lRect = linkedPill.getBoundingClientRect();
+          linkedGhostTop = lRect.top; // locked — never changes
+          linkedGhost = _makeGhost(linkedPill, lRect);
+          linkedGhost.style.zIndex = "9998";
+          linkedPill.style.opacity = "0.25";
+        }
+      }
+
+      // Ghost tracks cursor exactly — cursor-relative, no accumulated drift
+      dragGhost.style.left = (e.clientX - cursorOffsetX) + "px";
+      dragGhost.style.top  = (e.clientY - cursorOffsetY) + "px";
+
+      // Linked ghost mirrors X only — stays locked to its row's Y
+      if (linkedGhost) {
+        linkedGhost.style.left = (e.clientX - cursorOffsetX) + "px";
+        linkedGhost.style.top  = linkedGhostTop + "px";
+      }
+
+      const hoverTrack = trackAtY(e.clientY, origRowType);
+      ALL_TRACKS.forEach((t) => t.classList.toggle("drag-over", t === hoverTrack));
     });
 
     pill.addEventListener("pointerup", (e) => {
       if (!mode) return;
-      pill.releasePointerCapture(e.pointerId);
+      try { pill.releasePointerCapture(e.pointerId); } catch(_) {}
+      capturedPointerId = null;
+      _cancelActiveDrag = null;
       pill.classList.remove("drag");
       const finishedMode = mode;
       mode = null;
-      if (!moved) { pill._didDrag = false; return; }
-      pill._didDrag = true;
 
-      // Resolve the true drop row by Y coordinate (robust, no elementsFromPoint).
-      let newTrack = pill.parentElement;
-      if (finishedMode === "move") {
-        const under = trackAtY(e.clientY);
-        if (under) {
-          newTrack = under;
-          if (under !== pill.parentElement) under.appendChild(pill);
-        }
+      if (!moved) {
+        _clearDragState();
+        pill._didDrag = false;
+        return;
       }
 
-      // snap
-      const leftPx = snap(pxToMin(parseFloat(pill.style.left))) * PX;
+      pill._didDrag = true;
+      _recentDrag = true;
+      requestAnimationFrame(() => { _recentDrag = false; });
+
+      let newTrack = origParent;
+
+      if (finishedMode === "move") {
+        const target = trackAtY(e.clientY, origRowType) || origParent;
+        // Ghost screen-left = e.clientX - cursorOffsetX; subtract track's screen-left for track-relative px
+        const rawLeft = (e.clientX - cursorOffsetX) - target.getBoundingClientRect().left;
+        _clearDragState();
+        if (target !== origParent) target.appendChild(pill);
+        pill.style.left = Math.max(0, rawLeft) + "px";
+        newTrack = target;
+      } else {
+        _clearDragState();
+      }
+
+      const leftPx  = snap(pxToMin(parseFloat(pill.style.left)))  * PX;
       const widthPx = snap(pxToMin(parseFloat(pill.style.width))) * PX;
-      pill.style.left = leftPx + "px";
+      pill.style.left  = leftPx  + "px";
       pill.style.width = widthPx + "px";
 
       if (overlapsInTrack(newTrack, leftPx, widthPx, pill.dataset.id)) {
@@ -968,14 +1430,12 @@
         return location.reload();
       }
 
-      const newStart = startFromLeft(leftPx);
-      const newDuration = snap(pxToMin(widthPx));
-      const newRowType = newTrack.dataset.rowType;
+      const newStart      = startFromLeft(leftPx);
+      const newDuration   = snap(pxToMin(widthPx));
+      const newRowType    = newTrack.dataset.rowType;
       const newResourceId = String(newTrack.dataset.resourceId);
+      const payload       = { new_start: newStart.toISOString(), duration: newDuration };
 
-      const payload = { new_start: newStart.toISOString(), duration: newDuration };
-
-      // Detect resource change (dragged to a different row)
       let changeMsg = null;
       if (finishedMode === "move") {
         if (newRowType === "aircraft" && newResourceId !== String(pill.dataset.aircraftId)) {
@@ -1005,15 +1465,25 @@
         });
       };
 
-      // Always confirm any reschedule — notifications may be sent automatically.
-      const origStart = new Date(pill.dataset.start);
+      const origStart    = new Date(pill.dataset.start);
       const origDuration = parseInt(pill.dataset.duration, 10);
-      const timeChanged = newStart.getTime() !== origStart.getTime() || newDuration !== origDuration;
+      const timeChanged  = newStart.getTime() !== origStart.getTime() || newDuration !== origDuration;
+      const fmt = (d) => d.toLocaleString([], { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+      const isPending    = pill.dataset.status === "pending";
+      const notifLine    = isPending
+        ? "The member will be notified of the updated booking time."
+        : "Any notifications will be re-sent to the member.";
 
       const proceed = () => {
-        if (changeMsg) askConfirm(changeMsg, () => send(false), () => location.reload());
-        else send(false);
+        if (changeMsg) {
+          // Include time change detail when both resource and time shifted
+          const timeNote = timeChanged ? `\n\nTime will also move to ${fmt(newStart)}.\n${notifLine}` : "";
+          askConfirm(changeMsg + timeNote, () => send(false), () => location.reload());
+        } else {
+          send(false);
+        }
       };
+
       const proceedWithTypCheck = () => {
         if (isOutsideTypical(newStart, newDuration)) {
           const typMsg = `This booking falls outside typical hours (${cfg.typicalStart}–${cfg.typicalEnd}).\n\nConfirm you intend to book off-hours?`;
@@ -1022,14 +1492,18 @@
           proceed();
         }
       };
+
       if (timeChanged && !changeMsg) {
-        const fmt = (d) => d.toLocaleString([], { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-        const moveMsg = `Move booking to ${fmt(newStart)}?\n\nAny notifications will be re-sent to the member.`;
-        askConfirm(moveMsg, proceedWithTypCheck, () => location.reload());
+        askConfirm(`Move booking to ${fmt(newStart)}?\n\n${notifLine}`, proceedWithTypCheck, () => location.reload());
       } else {
         proceedWithTypCheck();
       }
     });
+
+    // pointercancel fires when the browser interrupts the drag (touch gesture
+    // take-over, scroll, system UI). Without this handler the ghost elements
+    // would stay on the body and the drag state would be corrupted.
+    pill.addEventListener("pointercancel", cancelDrag);
   }
 
   // ---- Block-out creation modal ------------------------------------------
@@ -1165,17 +1639,21 @@
     const inlineUrl = url + (url.includes("?") ? "&" : "?") + "inline=1";
     try {
       const resp = await fetch(inlineUrl, { credentials: "same-origin" });
+      if (!resp.ok) {
+        detailBody.innerHTML = `<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load booking details (${resp.status}). <a href="${url}" target="_blank" style="color:inherit;text-decoration:underline;">Open in new tab →</a></p>`;
+        return;
+      }
       const html = await resp.text();
       detailBody.innerHTML = html;
       // innerHTML doesn't execute <script> tags — re-run them so inline JS (e.g. fee dropdowns) works
       detailBody.querySelectorAll("script").forEach(orig => {
         const s = document.createElement("script");
         s.textContent = orig.textContent;
-        orig.replaceWith(s);
+        try { orig.replaceWith(s); } catch(_e) {}
       });
       attachOverlayForms(url);
     } catch(e) {
-      detailBody.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load booking details.</p>';
+      detailBody.innerHTML = `<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load booking details. <a href="${url}" target="_blank" style="color:inherit;text-decoration:underline;">Open in new tab →</a></p>`;
     }
   }
 

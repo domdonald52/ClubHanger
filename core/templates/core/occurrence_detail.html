@@ -1,0 +1,210 @@
+{% extends base_template|default:"core/base.html" %}
+{% block title %}Event #{{ report.id }} · {{ club.name }}{% endblock %}
+{% block inline_title %}Event #{{ report.id }}{% endblock %}
+
+{% block content %}
+<div style="max-width:820px;margin:0 auto;padding:{% if is_inline %}1.2rem{% else %}2rem{% endif %};">
+  {% if not is_inline %}
+  <a href="{% if back %}{{ back }}{% else %}{% url 'core:occurrence_list' club.slug %}{% endif %}" class="back-link">← Back</a>
+  {% endif %}
+
+  {% if request.GET.saved %}<script>window.toast && window.toast('Saved','ok');</script>{% endif %}
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.2rem;">
+    <div>
+      <h1 style="margin:0 0 .2rem;font-size:1.3rem;">{{ report.occurrence_type.name }}</h1>
+      <div style="font-size:.83rem;color:#8a93a0;">Reported by {{ report.reported_by.user.get_full_name }} · {{ report.reported_at|date:"j M Y H:i" }}</div>
+    </div>
+    <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+      {% if report.is_safety_risk %}<span style="background:#fff0f0;color:#c0392b;font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:20px;border:1px solid #f5c6c6;">⚠ Safety risk</span>{% endif %}
+      <span class="status-chip occ-{{ report.status }}">{{ report.get_status_display }}</span>
+    </div>
+  </div>
+
+  <!-- Report details -->
+  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
+    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Event details</div>
+    <div style="padding:.8rem .9rem;display:grid;grid-template-columns:1fr 1fr;gap:.6rem 1.4rem;font-size:.85rem;">
+      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Date</span><br>{{ report.date_of_occurrence|date:"j M Y" }}{% if report.time_of_occurrence %} {{ report.time_of_occurrence|time:"H:i" }}{% endif %}</div>
+      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Location</span><br>{{ report.location|default:"—" }}</div>
+      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Aircraft</span><br>{{ report.aircraft.registration|default:"—" }}</div>
+      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Related flight</span><br>
+        {% if report.related_booking %}<a href="{% url 'core:booking_detail' club.slug report.related_booking_id %}">{{ report.related_booking.scheduled_start|date:"j M Y H:i" }}</a>{% else %}—{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
+    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Description</div>
+    <div style="padding:.8rem .9rem;font-size:.88rem;white-space:pre-wrap;">{{ report.description }}</div>
+  </div>
+
+  {% if report.immediate_action %}
+  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
+    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Immediate action taken</div>
+    <div style="padding:.8rem .9rem;font-size:.88rem;white-space:pre-wrap;">{{ report.immediate_action }}</div>
+  </div>
+  {% endif %}
+
+  {% if club_member.can_access_manage %}
+  <!-- ── Safety risk toggle ── -->
+  <form method="post" style="margin-bottom:1rem;">
+    {% csrf_token %}
+    {% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
+    <input type="hidden" name="action" value="set_safety_risk">
+    <input type="hidden" name="is_safety_risk" value="{% if report.is_safety_risk %}0{% else %}1{% endif %}">
+    <button type="submit" class="cbtn sm">{% if report.is_safety_risk %}Remove safety risk flag{% else %}Flag as safety risk{% endif %}</button>
+  </form>
+
+  <!-- ── Actions ── -->
+  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
+    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+      Actions required
+      {% if actions %}<span style="font-size:.75rem;color:#8a93a0;">{{ actions|length }} item{{ actions|length|pluralize }}</span>{% endif %}
+    </div>
+    <div style="padding:.8rem .9rem;">
+      {% if actions %}
+      {% for a in actions %}
+      <div style="display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid #f3f5f7;font-size:.85rem;">
+        <div style="flex:1;">
+          <div>{{ a.description }}</div>
+          {% if a.assigned_to %}<div style="font-size:.78rem;color:#8a93a0;margin-top:.2rem;">→ {{ a.assigned_to.user.get_full_name }}{% if a.due_date %} · due {{ a.due_date|date:"j M" }}{% endif %}</div>{% endif %}
+        </div>
+        <div style="white-space:nowrap;">
+          {% if a.status == 'open' %}
+          <form method="post" style="display:inline;">{% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
+            <input type="hidden" name="action" value="complete_action"><input type="hidden" name="action_id" value="{{ a.id }}">
+            <button type="submit" class="cbtn-sm">Done</button>
+          </form>
+          <button type="button" class="cbtn-sm danger" onclick="document.getElementById('override-{{ a.id }}').hidden=false">Override</button>
+          {% elif a.status == 'complete' %}
+          <span style="color:#216c2a;font-size:.78rem;font-weight:600;">✓ Done</span>
+          {% else %}
+          <span style="color:#8a93a0;font-size:.78rem;">Overridden</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if a.status == 'open' %}
+      <div id="override-{{ a.id }}" hidden style="padding:.5rem 0;border-bottom:1px solid #f3f5f7;">
+        <form method="post" style="display:flex;gap:.4rem;align-items:flex-end;">
+          {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
+          <input type="hidden" name="action" value="override_action"><input type="hidden" name="action_id" value="{{ a.id }}">
+          <label class="flabel" style="flex:1;margin:0;font-size:.82rem;">Reason
+            <input type="text" name="override_note" class="finput" required placeholder="Why is this being overridden?">
+          </label>
+          <button type="submit" class="cbtn-sm danger" style="margin-bottom:1px;">Confirm</button>
+          <button type="button" class="cbtn-sm" onclick="document.getElementById('override-{{ a.id }}').hidden=true" style="margin-bottom:1px;">✕ Close</button>
+        </form>
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% else %}
+      <div style="color:#8a93a0;font-size:.83rem;">No actions added yet.</div>
+      {% endif %}
+
+      {% if report.status != 'closed' %}
+      <!-- Add action form -->
+      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid #eef1f4;">
+        <form method="post" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;">
+          {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
+          <input type="hidden" name="action" value="add_action">
+          <label class="flabel" style="flex:2;min-width:160px;margin:0;font-size:.82rem;">Action description
+            <input type="text" name="action_desc" class="finput" required placeholder="What needs to be done?">
+          </label>
+          <label class="flabel" style="flex:1;min-width:130px;margin:0;font-size:.82rem;">Assign to
+            <select name="assigned_to" class="finput">
+              <option value="">— anyone —</option>
+              {% for instr in instructors %}<option value="{{ instr.id }}">{{ instr.user.get_full_name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="flabel" style="width:110px;margin:0;font-size:.82rem;">Due date
+            <input type="date" name="due_date" class="finput">
+          </label>
+          <button type="submit" class="cbtn-sm" style="margin-bottom:1px;">Add action</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Review panel ── -->
+  {% if report.status != 'closed' %}
+  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
+    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Review</div>
+    <div style="padding:.8rem .9rem;">
+      <form method="post">
+        {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
+        <label class="flabel" style="margin-bottom:.8rem;">Notes
+          <textarea name="review_notes" class="finput" rows="3" placeholder="Observations, follow-up, CAA referral…">{{ report.review_notes }}</textarea>
+        </label>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+          <button type="submit" name="action" value="save_notes" class="cbtn">Save</button>
+          {% if report.status == 'submitted' %}
+          <button type="submit" name="action" value="mark_reviewed" class="cbtn primary">Mark reviewed</button>
+          {% endif %}
+          <span style="flex:1"></span>
+          {% if actions and report.all_actions_resolved %}
+          <button type="submit" name="action" value="close" class="cbtn primary">Close report</button>
+          {% elif not actions %}
+          <button type="button" class="cbtn primary" id="btn-close-no-action-trigger">Close — no action required</button>
+          {% endif %}
+        </div>
+        <div id="close-no-action-confirm" hidden style="margin-top:.6rem;padding:.5rem .7rem;background:#fff8e6;border:1px solid #fcd34d;border-radius:6px;font-size:.83rem;color:#92400e;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          Close this report with no action required. This cannot be easily undone.
+          <div style="display:flex;gap:.4rem;margin-left:auto;">
+            <button type="submit" name="action" value="close_no_action" class="cbtn primary" style="font-size:.8rem;padding:.3rem .7rem;">Yes, close it</button>
+            <button type="button" id="btn-close-no-action-cancel" class="cbtn" style="font-size:.8rem;padding:.3rem .7rem;">Cancel</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <form method="post" style="margin-bottom:1rem;">
+    {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
+    <input type="hidden" name="action" value="reopen">
+    <button type="submit" class="cbtn" style="border-color:#d6dae0;color:#374151;background:#f9fafb;">↩ Reopen report</button>
+  </form>
+  {% if report.review_notes %}
+  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
+    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Review notes</div>
+    <div style="padding:.8rem .9rem;font-size:.88rem;white-space:pre-wrap;">{{ report.review_notes }}</div>
+  </div>
+  {% endif %}
+  {% endif %}
+  {% endif %}
+
+  <!-- ── Audit trail ── -->
+  {% if audit %}
+  <div style="border:1px solid #e3e6ea;border-radius:10px;">
+    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Activity</div>
+    <div style="padding:.4rem .9rem;">
+      {% for entry in audit %}
+      <div style="display:flex;gap:.8rem;padding:.45rem 0;border-bottom:1px solid #f3f5f7;font-size:.82rem;align-items:baseline;">
+        <span style="color:#8a93a0;white-space:nowrap;flex-shrink:0;">{{ entry.timestamp|date:"j M H:i" }}</span>
+        <span><strong>{{ entry.verb }}</strong>{% if entry.actor %} — {{ entry.actor.user.get_full_name }}{% endif %}{% if entry.note %}<span style="color:#8a93a0;"> · {{ entry.note }}</span>{% endif %}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<style>
+  .occ-submitted{background:#dbeafe;color:#1d4ed8;}
+  .occ-reviewed{background:#eaf6ec;color:#216c2a;}
+  .occ-closed{background:#f3f5f7;color:#8a93a0;}
+  .occ-draft{background:#fffbeb;color:#92400e;}
+</style>
+<script>
+(function(){
+  const trigger    = document.getElementById('btn-close-no-action-trigger');
+  const confirmDiv = document.getElementById('close-no-action-confirm');
+  const cancel     = document.getElementById('btn-close-no-action-cancel');
+  if (!trigger || !confirmDiv) return;
+  trigger.addEventListener('click', () => { confirmDiv.hidden = false; trigger.hidden = true; });
+  cancel.addEventListener('click',  () => { confirmDiv.hidden = true;  trigger.hidden = false; });
+})();
+</script>
+{% endblock %}

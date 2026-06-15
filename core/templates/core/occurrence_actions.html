@@ -1,0 +1,136 @@
+{% extends "core/base.html" %}
+{% block title %}Action items · {{ club.name }}{% endblock %}
+
+{% block content %}
+<div class="container" style="padding:2rem;max-width:1100px;">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:.25rem;">
+    <h1>Action items</h1>
+    <a href="{% url 'core:occurrence_list' club.slug %}" class="cbtn-sm">All safety reports →</a>
+  </div>
+  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.6rem;">
+    Open safety actions requiring completion or sign-off.
+    {% if not actions %}<strong style="color:#2a7a3b;">All clear.</strong>{% endif %}
+  </p>
+
+  <!-- filter bar -->
+  <form method="get" style="margin-bottom:1.2rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+    <label style="font-size:.84rem;color:#5b6573;">Assigned to</label>
+    <select name="assigned" onchange="this.form.submit()" style="font-size:.84rem;padding:.28rem .55rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;color:#1f2933;">
+      <option value="">Everyone</option>
+      {% for m in instructors %}
+        <option value="{{ m.id }}" {% if f_assigned == m.id|stringformat:"s" %}selected{% endif %}>{{ m.user.get_full_name }}</option>
+      {% endfor %}
+    </select>
+    {% if f_assigned %}
+      <a href="{% url 'core:occurrence_actions' club.slug %}" class="cbtn-sm">Clear</a>
+    {% endif %}
+  </form>
+
+  {% if actions %}
+  <table class="exc-table">
+    <thead>
+      <tr>
+        <th>Action</th>
+        <th>Report</th>
+        <th>Assigned to</th>
+        <th>Due</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for oa in actions %}
+      <tr>
+        <td style="max-width:340px;">
+          <span style="font-size:.84rem;color:#1f2933;">{{ oa.description }}</span>
+        </td>
+        <td style="white-space:nowrap;">
+          <a href="{% url 'core:occurrence_detail' club.slug oa.report_id %}" style="font-size:.83rem;color:var(--primary);">
+            {{ oa.report.occurrence_type.name }}<br>
+            <span style="color:#8a93a0;font-weight:400;">{{ oa.report.date_of_occurrence|date:"j M Y" }}</span>
+          </a>
+        </td>
+        <td style="font-size:.83rem;">
+          {% if oa.assigned_to %}{{ oa.assigned_to.user.get_full_name }}{% else %}<span style="color:#bbb;">Unassigned</span>{% endif %}
+        </td>
+        <td style="font-size:.83rem;white-space:nowrap;">
+          {% if oa.due_date %}
+            {% with days_left=oa.due_date|timeuntil %}
+              <span {% if oa.due_date < today %} style="color:#c0392b;font-weight:600;"{% endif %}>
+                {{ oa.due_date|date:"j M Y" }}
+              </span>
+            {% endwith %}
+          {% else %}
+            <span style="color:#bbb;">—</span>
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap;text-align:right;">
+          <button type="button" class="cbtn-sm" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="confirmComplete({{ oa.id }})">Complete</button>
+          <form id="complete-form-{{ oa.id }}" method="post" style="display:none;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="complete_action">
+            <input type="hidden" name="action_id" value="{{ oa.id }}">
+          </form>
+          <button type="button" class="cbtn-sm cbtn-danger" onclick="openOverride({{ oa.id }}, '{{ oa.description|truncatechars:60|escapejs }}')">Override</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#8a93a0;font-size:.9rem;padding:.75rem 0;">No open action items.</p>
+  {% endif %}
+
+</div>
+
+<!-- override dialog -->
+<dialog id="override-dlg" style="border:1px solid #d6dae0;border-radius:10px;padding:1.5rem;width:420px;max-width:95vw;">
+  <h3 style="margin:0 0 .5rem;">Override action</h3>
+  <p id="override-desc" style="font-size:.85rem;color:#5b6573;margin-bottom:.9rem;"></p>
+  <form method="post" id="override-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="override_action">
+    <input type="hidden" name="action_id" id="override-id">
+    <label style="font-size:.84rem;color:#5b6573;display:block;margin-bottom:.3rem;">Reason (required)</label>
+    <textarea name="override_note" id="override-note" rows="3"
+      style="width:100%;box-sizing:border-box;border:1px solid #d6dae0;border-radius:6px;padding:.45rem .6rem;font-size:.84rem;font-family:inherit;resize:vertical;"
+      required></textarea>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem;">
+      <button type="button" class="cbtn" onclick="document.getElementById('override-dlg').close()">✕ Close</button>
+      <button type="submit" class="cbtn primary">Override</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="complete-confirm-strip" hidden style="position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:#fff8e6;border:1px solid #fcd34d;border-radius:8px;padding:.55rem .9rem;font-size:.84rem;color:#92400e;display:flex;gap:.6rem;align-items:center;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;">
+  <span id="complete-confirm-text">Mark this action complete?</span>
+  <button type="button" class="cbtn primary" style="font-size:.8rem;padding:.28rem .65rem;" id="complete-confirm-yes">Yes, complete it</button>
+  <button type="button" class="cbtn" style="font-size:.8rem;padding:.28rem .65rem;" id="complete-confirm-no">Cancel</button>
+</div>
+
+<script>
+var _pendingCompleteId = null;
+function confirmComplete(id) {
+  _pendingCompleteId = id;
+  document.getElementById('complete-confirm-strip').hidden = false;
+}
+document.getElementById('complete-confirm-yes').addEventListener('click', function() {
+  if (_pendingCompleteId !== null) {
+    document.getElementById('complete-form-' + _pendingCompleteId).submit();
+  }
+  document.getElementById('complete-confirm-strip').hidden = true;
+});
+document.getElementById('complete-confirm-no').addEventListener('click', function() {
+  _pendingCompleteId = null;
+  document.getElementById('complete-confirm-strip').hidden = true;
+});
+
+function openOverride(id, desc) {
+  document.getElementById('override-id').value = id;
+  document.getElementById('override-desc').textContent = desc;
+  document.getElementById('override-note').value = '';
+  document.getElementById('override-dlg').showModal();
+}
+</script>
+
+{% endblock %}

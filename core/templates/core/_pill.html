@@ -1,6 +1,8 @@
 {% load static %}
 <div class="pill {{ p.status }}{% if p.paid %} paid{% endif %}{% if p.conflict %} conflict{% endif %}{% if p.override %} override{% endif %}"
      data-id="{{ p.id }}"
+     data-decl-pending="{{ p.decl_pending|yesno:'true,false' }}"
+     data-decl-url="{{ p.decl_url }}"
      data-left="{{ p.left }}"
      data-width="{{ p.width }}"
      data-start="{{ p.start_iso }}"
@@ -21,8 +23,10 @@
      data-records-hobbs="{{ p.records_hobbs|yesno:'true,false' }}"
      data-records-tacho="{{ p.records_tacho|yesno:'true,false' }}"
      data-records-airswitch="{{ p.records_airswitch|yesno:'true,false' }}"
+     data-total-time-method="{{ p.total_time_method }}"
+     data-maint-time-source="{{ p.maint_time_source }}"
      data-paid="{{ p.paid|yesno:'true,false' }}"
-     title="{{ p.member_name }} · {{ p.start_label }}–{{ p.end_label }}{% if p.member_not_current %} · ⚑ Member {{ p.member_standing }}{% endif %}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.override %} · booked over block-out{% endif %}"
+     title="{{ p.member_name }} · {{ p.start_label }}–{{ p.end_label }}{% if p.member_not_current %} · ⚑ Member {{ p.member_standing }}{% endif %}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.override %} · booked over block-out{% endif %}{% if p.decl_pending %} · ⚑ Declaration not submitted{% endif %}"
      style="left:{{ p.left }}px;width:{{ p.width }}px;">
   <div class="nm">{% if p.conflict %}⚠ {% endif %}{% if p.status == 'departed' %}✈ {% elif p.status == 'completed' %}{% if p.paid %}✓ {% else %}⏱ {% endif %}{% endif %}{{ p.member_name }}</div>
   <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · departed{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>

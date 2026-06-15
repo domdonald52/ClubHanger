@@ -2,31 +2,45 @@
 {% block title %}Aerodromes · {{ club.name }}{% endblock %}
 
 {% block content %}
-<div class="container" style="padding:2rem;max-width:960px;">
-  <h1 style="margin-bottom:1rem;">Manage</h1>
-  {% include "core/_manage_nav.html" with active_section="aerodromes" %}
+<div class="container" style="padding:2rem;max-width:1100px;">
+  <h1 style="margin-bottom:1rem;">Aerodromes</h1>
 
   <div class="ae-page-header">
     <div>
-      <h2 class="ae-page-title">Aerodromes &amp; Landing Fees</h2>
       <p class="ae-page-desc">Aerodromes you fly to and their landing fee rates. Used when completing a flight charge.</p>
     </div>
-    <button type="button" class="cbtn-add" id="add-ae-btn">+ Add aerodrome</button>
+    <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+      <button type="button" class="cbtn-sm" id="ae-expand-all" title="Expand all">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+          <path d="M2 4.5L6.5 8.5L11 4.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 1.5L6.5 5.5L11 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+        </svg>
+      </button>
+      <button type="button" class="cbtn-sm" id="ae-collapse-all" title="Collapse all">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+          <path d="M2 8.5L6.5 4.5L11 8.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 11.5L6.5 7.5L11 11.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+        </svg>
+      </button>
+      <button type="button" class="cbtn-add" id="add-ae-btn">+ Add aerodrome</button>
+    </div>
   </div>
 
   {% if error %}<div class="snotice err">{{ error }}</div>{% endif %}
 
   {% for ae in aerodromes %}
-  <div class="ae-card{% if not ae.is_active %} ae-card-inactive{% endif %}">
-    <div class="ae-header">
+  <div class="ae-card{% if not ae.is_active %} ae-card-inactive{% endif %}" id="ae-card-{{ ae.id }}">
+    <div class="ae-header" onclick="toggleAe(event, {{ ae.id }})">
+      <span class="ae-chev">▾</span>
       <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:baseline;gap:.55rem;">
+        <div style="display:flex;align-items:baseline;gap:.55rem;flex-wrap:wrap;">
           <span class="ae-icao">{{ ae.icao_code }}</span>
           <span class="ae-name">{{ ae.name }}</span>
+          {% if ae.is_home %}<span class="ae-home-pill">Home</span>{% endif %}
         </div>
         {% if ae.notes %}<div class="ae-notes-text">{{ ae.notes }}</div>{% endif %}
       </div>
-      <div class="ae-actions">
+      <div class="ae-actions" onclick="event.stopPropagation()">
         <form method="post" style="display:inline;">
           {% csrf_token %}
           <input type="hidden" name="action" value="set_aerodrome_status">
@@ -37,7 +51,7 @@
           </select>
         </form>
         <button type="button" class="cbtn-sm"
-                onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name|escapejs }}', '{{ ae.notes|escapejs }}')">Edit</button>
+                onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name|escapejs }}', '{{ ae.notes|escapejs }}', {{ ae.is_home|yesno:'true,false' }})">Edit</button>
         <form method="post" style="display:inline;"
               onsubmit="return confirm('Delete {{ ae.icao_code }} — {{ ae.name|escapejs }}?')">
           {% csrf_token %}
@@ -59,7 +73,7 @@
           <input type="hidden" name="ft_id" value="{{ ft.id }}">
           <input type="hidden" name="ft_name" value="{{ ft.name }}">
           <span class="fee-dollar">$</span>
-          <input type="number" name="ft_amount" value="{{ ft.default_amount }}" step="0.01" min="0"
+          <input type="number" name="ft_amount" value="{{ ft.default_amount }}" step="0.01" min="0" class="finput money-input"
                  class="fee-input" onchange="this.form.submit()">
         </form>
         <form method="post" style="display:inline;"
@@ -81,7 +95,7 @@
         <input type="text" name="ft_name" placeholder="Fee name (e.g. Full stop)" required
                class="fee-name-input">
         <span class="fee-dollar">$</span>
-        <input type="number" name="ft_amount" placeholder="0.00" step="0.01" min="0"
+        <input type="number" name="ft_amount" placeholder="0.00" step="0.01" min="0" class="finput money-input"
                class="fee-input fee-input-new" required>
         <button type="submit" class="cbtn-sm">Add</button>
       </form>
@@ -120,7 +134,7 @@
                   placeholder="Agreement terms, billing cycle, contacts…" style="resize:vertical;"></textarea>
       </label>
       <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="add-ae-cancel">Cancel</button>
+        <button type="button" class="cbtn" id="add-ae-cancel">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add aerodrome</button>
       </div>
@@ -143,10 +157,15 @@
         <textarea name="notes" id="eam-notes" rows="3" class="finput"
                   placeholder="Agreement terms, billing cycle, contacts…" style="resize:vertical;"></textarea>
       </label>
+      <label class="flabel" style="margin-top:.7rem;display:flex;align-items:center;gap:.5rem;cursor:pointer;">
+        <input type="checkbox" name="is_home" id="eam-is-home" value="1">
+        Home aerodrome
+        <span style="font-size:.78rem;color:#8a93a0;font-weight:400;">(used for weather, METAR/TAF)</span>
+      </label>
       <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="eam-cancel">Cancel</button>
+        <button type="button" class="cbtn" id="eam-cancel">✕ Close</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Save changes</button>
+        <button type="submit" class="cbtn primary">Save</button>
       </div>
     </form>
   </div>
@@ -159,9 +178,14 @@
 
   .ae-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;margin-bottom:.9rem;overflow:hidden;transition:opacity .15s;}
   .ae-card-inactive{opacity:.55;}
-  .ae-header{display:flex;align-items:center;gap:.7rem;padding:.8rem 1rem;border-bottom:1px solid #f0f2f4;background:#fafbfc;}
-  .ae-icao{font-size:.82rem;font-weight:700;color:#1f2933;letter-spacing:.04em;background:#f0f2f4;padding:.15rem .45rem;border-radius:4px;}
+  .ae-header{display:flex;align-items:center;gap:.7rem;padding:.8rem 1rem;border-bottom:1px solid color-mix(in srgb,var(--banner) 20%,#e3e6ea);background:color-mix(in srgb,var(--banner) 10%,#fff);cursor:pointer;user-select:none;}
+  .ae-header:hover{background:color-mix(in srgb,var(--banner) 15%,#fff);}
+  .ae-chev{font-size:.7rem;color:var(--banner);flex-shrink:0;transition:transform .18s;width:10px;text-align:center;}
+  .ae-card.ae-collapsed .ae-chev{transform:rotate(-90deg);}
+  .ae-card.ae-collapsed .ae-fees{display:none;}
+  .ae-icao{font-size:.82rem;font-weight:700;letter-spacing:.04em;background:color-mix(in srgb,var(--banner) 18%,#fff);color:color-mix(in srgb,var(--banner) 80%,#000);padding:.15rem .45rem;border-radius:4px;}
   .ae-name{color:#1f2933;font-size:.92rem;font-weight:500;}
+  .ae-home-pill{font-size:.68rem;font-weight:700;padding:.15rem .45rem;border-radius:10px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;vertical-align:middle;line-height:1.3;}
   .ae-notes-text{font-size:.78rem;color:#8a93a0;margin-top:.25rem;}
   .ae-actions{display:flex;gap:.4rem;align-items:center;flex-shrink:0;}
   .ae-fees{padding:.8rem 1rem;}
@@ -187,7 +211,33 @@
 </style>
 
 <script>
+function toggleAe(e, id) {
+  if (e.target.closest('.ae-actions')) return;
+  var card = document.getElementById('ae-card-' + id);
+  var collapsed = card.classList.toggle('ae-collapsed');
+  try { localStorage.setItem('ae-col-' + id, collapsed ? '1' : '0'); } catch(x) {}
+}
+
+function setAllAe(collapse) {
+  document.querySelectorAll('.ae-card[id^="ae-card-"]').forEach(function(card) {
+    card.classList.toggle('ae-collapsed', collapse);
+    var id = card.id.replace('ae-card-', '');
+    try { localStorage.setItem('ae-col-' + id, collapse ? '1' : '0'); } catch(x) {}
+  });
+}
+
 (function(){
+  // Restore collapsed state from localStorage
+  document.querySelectorAll('.ae-card[id^="ae-card-"]').forEach(function(card) {
+    var id = card.id.replace('ae-card-', '');
+    try { if (localStorage.getItem('ae-col-' + id) === '1') card.classList.add('ae-collapsed'); } catch(x) {}
+  });
+
+  var expandBtn = document.getElementById('ae-expand-all');
+  var collapseBtn = document.getElementById('ae-collapse-all');
+  if (expandBtn) expandBtn.addEventListener('click', function() { setAllAe(false); });
+  if (collapseBtn) collapseBtn.addEventListener('click', function() { setAllAe(true); });
+
   const addModal  = document.getElementById('add-ae-modal');
   const editModal = document.getElementById('edit-ae-modal');
 
@@ -201,11 +251,12 @@
   document.getElementById('eam-cancel').addEventListener('click', () => { editModal.hidden = true; });
   editModal.addEventListener('click', e => { if (e.target === editModal) editModal.hidden = true; });
 
-  window.openEditAe = function(id, icao, name, notes) {
+  window.openEditAe = function(id, icao, name, notes, isHome) {
     document.getElementById('eam-id').value = id;
     document.getElementById('eam-title').textContent = 'Edit ' + icao;
     document.getElementById('eam-name').value = name;
     document.getElementById('eam-notes').value = notes;
+    document.getElementById('eam-is-home').checked = !!isHome;
     editModal.hidden = false;
   };
 

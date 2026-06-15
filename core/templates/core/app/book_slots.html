@@ -1,0 +1,225 @@
+{% extends "core/app/base.html" %}
+{% block title %}Find a Slot · {{ club.name }}{% endblock %}
+
+{% block app_bar_brand %}{% endblock %}
+{% block app_bar %}
+<a href="{% url 'core:app_book' club.slug %}" class="app-bar-action" style="margin-left:-.2rem;">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</a>
+<span class="app-bar-title">{% if mode == 'dual' %}Dual{% else %}Solo{% endif %} — {{ selected|date:"D j M" }}</span>
+{% endblock %}
+
+{% block extra_style %}
+<style>
+/* ── Date band ── */
+.date-band-wrap {
+  position:sticky; top:0; z-index:20;
+  background:#fff; border-bottom:1px solid #e8eaed;
+}
+.date-band-hdr {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.45rem .75rem .3rem;
+}
+.date-band-label { font-size:.84rem; font-weight:700; color:#374151; }
+.date-jump-btn {
+  background:none; border:1.5px solid #d5d9e0; border-radius:8px;
+  padding:.25rem .6rem; font-size:.78rem; font-weight:600; color:#374151;
+  cursor:pointer; display:flex; align-items:center; gap:.3rem;
+}
+.date-jump-btn:active { background:#f0f2f4; }
+.date-band {
+  display:flex; overflow-x:auto; gap:0;
+  padding:.2rem .4rem .5rem;
+  scrollbar-width:none;
+}
+.date-band::-webkit-scrollbar { display:none; }
+.wday {
+  flex-shrink:0; width:44px; display:flex; flex-direction:column; align-items:center;
+  padding:.3rem .1rem; border-radius:8px; text-decoration:none;
+  font-size:.6rem; font-weight:600; color:#8a93a0; text-transform:uppercase;
+  -webkit-tap-highlight-color:transparent; position:relative;
+}
+.wday-month {
+  font-size:.55rem; font-weight:700; text-transform:uppercase; color:#bac0ca;
+  position:absolute; top:-1px; left:0; right:0; text-align:center; letter-spacing:.03em;
+}
+.wday-num { font-size:1.02rem; font-weight:700; color:#1f2933; line-height:1.3; }
+.wday.today .wday-num { color:var(--primary); }
+.wday.selected { background:var(--primary); }
+.wday.selected .wday-num, .wday.selected { color:#fff; }
+.wday.selected .wday-month { color:rgba(255,255,255,.6); }
+
+/* ── Slot group header (solo: Morning/Afternoon/Evening; dual: instructor name) ── */
+.slot-group-hdr {
+  padding:.6rem .75rem .25rem;
+  font-size:.68rem; font-weight:700; text-transform:uppercase;
+  letter-spacing:.07em; color:#9ca3af;
+}
+.instr-hdr {
+  padding:.65rem .75rem .3rem;
+  font-size:.82rem; font-weight:700; color:#374151;
+  border-bottom:1px solid #f0f2f4;
+  background:#fafbfc;
+}
+
+/* ── Slot row (solo) ── */
+.slot-row {
+  display:flex; align-items:center;
+  padding:.7rem 1rem;
+  border-bottom:1px solid #f0f2f4;
+  background:#fff;
+}
+.slot-row.unavailable { opacity:.4; }
+.slot-time { min-width:76px; font-size:.92rem; font-weight:700; color:#1f2933; }
+.slot-time-end { font-size:.72rem; font-weight:500; color:#9ca3af; }
+
+/* ── Slot row (dual — under each instructor) ── */
+.dual-slot-row {
+  display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+  padding:.55rem 1rem;
+  border-bottom:1px solid #f0f2f4;
+  background:#fff;
+}
+.dual-slot-time {
+  min-width:105px; font-size:.82rem; font-weight:600; color:#6b7280; white-space:nowrap;
+}
+
+/* ── Type pills ── */
+.type-pills { display:flex; flex-wrap:wrap; gap:.3rem; flex:1; }
+.type-pill {
+  padding:.22rem .55rem; border-radius:7px;
+  font-size:.72rem; font-weight:700;
+  background:color-mix(in srgb,var(--primary) 12%,#fff);
+  color:var(--primary);
+  text-decoration:none; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:background .1s;
+}
+.type-pill:active { background:color-mix(in srgb,var(--primary) 22%,#fff); }
+@keyframes pill-tap {
+  0%   { background:color-mix(in srgb,var(--primary) 12%,#fff); transform:scale(1); }
+  30%  { background:color-mix(in srgb,var(--primary) 38%,#fff); transform:scale(.91); }
+  100% { background:color-mix(in srgb,var(--primary) 12%,#fff); transform:scale(1); }
+}
+.type-pill-tapped { animation:pill-tap .22s ease-out; }
+.slot-chev { color:#c8cdd4; margin-left:.5rem; flex-shrink:0; }
+.slot-none { font-size:.78rem; color:#c8cdd4; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- Scrollable 28-day date band -->
+<div class="date-band-wrap">
+  <div class="date-band-hdr">
+    <span class="date-band-label">{{ selected|date:"l, j M" }}</span>
+    <div style="position:relative;display:inline-block;">
+      <button class="date-jump-btn" type="button" style="pointer-events:none;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Jump to date
+      </button>
+      <input type="date" value="{{ selected|date:'Y-m-d' }}" min="{{ week_days.0.date|date:'Y-m-d' }}" max="{{ week_days|last|date:'Y-m-d' }}"
+             onchange="window.location='?mode={{ mode }}&date='+this.value"
+             style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:none;background:transparent;">
+    </div>
+  </div>
+  <div class="date-band" id="date-band">
+    {% for wd in week_days %}
+    <a href="?mode={{ mode }}&date={{ wd.date|date:'Y-m-d' }}"
+       id="wday-{{ wd.date|date:'Y-m-d' }}"
+       class="wday{% if wd.is_today %} today{% endif %}{% if wd.is_selected %} selected{% endif %}"
+       {% if wd.month_label %}style="padding-top:1.1rem;"{% endif %}>
+      {% if wd.month_label %}<span class="wday-month">{{ wd.month_label }}</span>{% endif %}
+      <span style="font-size:.6rem;font-weight:600;color:inherit;">{{ wd.name }}</span>
+      <span class="wday-num">{{ wd.num }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</div>
+<script>
+(function(){
+  var sel = document.getElementById('wday-{{ selected|date:"Y-m-d" }}');
+  var band = document.getElementById('date-band');
+  if (sel && band) {
+    var left = sel.offsetLeft - band.offsetWidth / 2 + sel.offsetWidth / 2;
+    band.scrollLeft = Math.max(0, left);
+  }
+})();
+</script>
+
+{% if not all_aircraft %}
+<div class="app-empty" style="margin-top:3rem;">No aircraft available for booking.</div>
+
+{% elif mode == 'dual' %}
+
+  {% if not instructor_slot_groups %}
+  <div class="app-empty" style="margin-top:3rem;">No dual slots available — try another day.</div>
+  {% else %}
+  {% for ig in instructor_slot_groups %}
+  <div class="instr-hdr">{{ ig.instructor_name }}</div>
+  <div style="background:#fff;margin-bottom:1px;">
+    {% for slot in ig.slot_rows %}
+    <div class="dual-slot-row">
+      <span class="dual-slot-time">{{ slot.start }} – {{ slot.end }}</span>
+      <div class="type-pills">
+        {% for pill in slot.type_pills %}
+        <a href="{% url 'core:app_book_confirm' club.slug %}?mode=dual&date={{ selected|date:'Y-m-d' }}&start={{ slot.start }}&end={{ slot.end }}&instructor={{ ig.instructor_id }}&ac={{ pill.aircraft_id }}&ac_type={{ pill.type_name|urlencode }}"
+           class="type-pill">{{ pill.reg }} · {{ pill.type_name }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+{% else %}
+
+  <!-- Solo: time-grouped slot rows with type pills -->
+  {% regroup slots by h as hour_groups %}
+  {% for hg in hour_groups %}
+  {% with first=hg.list.0 %}
+  {% if first.h < 12 %}
+  {% if first.h == 7 %}<div class="slot-group-hdr">Morning</div>{% endif %}
+  {% elif first.h == 12 %}<div class="slot-group-hdr">Afternoon</div>
+  {% elif first.h == 17 %}<div class="slot-group-hdr">Evening</div>
+  {% endif %}
+  {% endwith %}
+
+  <div style="background:#fff;margin-bottom:1px;">
+  {% for slot in hg.list %}
+  <div class="slot-row{% if not slot.available %} unavailable{% endif %}">
+    <div class="slot-time">
+      {{ slot.start }}<div class="slot-time-end">–{{ slot.end }}</div>
+    </div>
+    <div class="type-pills">
+      {% if slot.available %}
+        {% for pill in slot.type_pills %}
+        <a href="{% url 'core:app_book_confirm' club.slug %}?mode=solo&date={{ selected|date:'Y-m-d' }}&ac={{ pill.aircraft_id }}&ac_type={{ pill.type_name|urlencode }}&start={{ slot.start }}&end={{ slot.end }}"
+           class="type-pill">{{ pill.reg }} · {{ pill.type_name }}</a>
+        {% endfor %}
+      {% else %}
+        <span class="slot-none">No aircraft free</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+  {% endfor %}
+
+{% endif %}
+
+<div style="height:1rem;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('touchstart', function(e) {
+  var pill = e.target.closest('.type-pill');
+  if (!pill) return;
+  pill.classList.remove('type-pill-tapped');
+  void pill.offsetWidth;
+  pill.classList.add('type-pill-tapped');
+}, {passive: true});
+</script>
+{% endblock %}

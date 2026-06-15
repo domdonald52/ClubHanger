@@ -1,0 +1,323 @@
+{% extends "core/app/base.html" %}
+{% block title %}Find a Slot · {{ club.name }}{% endblock %}
+{% block page_title %}Find a Slot{% endblock %}
+
+{% block extra_style %}
+<style>
+/* ── Week strip ── */
+.week-strip {
+  display:flex; overflow-x:auto; gap:0;
+  background:#fff; border-bottom:1px solid #e8eaed;
+  padding:.35rem .5rem;
+  scrollbar-width:none;
+}
+.week-strip::-webkit-scrollbar { display:none; }
+.wday {
+  flex:1; min-width:42px; display:flex; flex-direction:column; align-items:center;
+  padding:.35rem .15rem; border-radius:8px; text-decoration:none;
+  font-size:.62rem; font-weight:600; color:#8a93a0; text-transform:uppercase;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.wday-num { font-size:1.05rem; font-weight:700; color:#1f2933; line-height:1.2; }
+.wday.today .wday-num { color:var(--primary); }
+.wday.selected { background:var(--primary); color:#fff; }
+.wday.selected .wday-num { color:#fff; }
+
+/* ── Aircraft filter chips ── */
+.ac-filter { display:flex; overflow-x:auto; gap:.4rem; padding:.55rem .75rem; background:#f4f6f9; border-bottom:1px solid #e8eaed; scrollbar-width:none; }
+.ac-filter::-webkit-scrollbar { display:none; }
+.ac-chip {
+  flex-shrink:0; padding:.3rem .7rem; border-radius:20px; border:1.5px solid #d5d9e0;
+  background:#fff; font-size:.78rem; font-weight:600; color:#4b5563; cursor:pointer;
+  text-decoration:none; white-space:nowrap; transition:all .12s;
+}
+.ac-chip.active { background:var(--primary); border-color:var(--primary); color:#fff; }
+
+/* ── Timeline outer ── */
+.tl-outer {
+  flex:1; overflow:auto; position:relative;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* ── Header strip (aircraft names) ── */
+.tl-header-wrap {
+  display:flex; position:sticky; top:0; z-index:10;
+  background:#fff; border-bottom:1px solid #dde1e6;
+  overflow:hidden;
+}
+.tl-time-corner { width:44px; flex-shrink:0; background:#fff; border-right:1px solid #e8eaed; }
+.tl-headers-scroll { display:flex; overflow:hidden; flex:1; }
+.tl-ac-head {
+  min-width:110px; flex:1; padding:.4rem .3rem;
+  text-align:center; font-size:.72rem; font-weight:700; color:#374151;
+  border-right:1px solid #f0f2f4; background:#fff;
+}
+
+/* ── Main grid ── */
+.tl-main { display:flex; }
+.tl-time-axis {
+  width:44px; flex-shrink:0; position:sticky; left:0; z-index:9;
+  background:#fff; border-right:1px solid #e8eaed;
+}
+.tl-time-label {
+  position:absolute; right:5px; font-size:.6rem; color:#9ca3af; font-weight:500;
+  transform:translateY(-50%);
+}
+.tl-cols { display:flex; flex:1; }
+.tl-col {
+  min-width:110px; flex:1; position:relative; border-right:1px solid #f0f2f4;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+
+/* ── Hour grid lines ── */
+.tl-hour-line {
+  position:absolute; left:0; right:0; border-top:1px solid #e8eaed; pointer-events:none;
+}
+.tl-half-line {
+  position:absolute; left:0; right:0; border-top:1px dashed #f0f2f4; pointer-events:none;
+}
+
+/* ── Out of hours shade ── (below DAY_END handled by not rendering) */
+
+/* ── Booking blocks ── */
+.tl-block {
+  position:absolute; left:3px; right:3px; border-radius:5px;
+  padding:2px 4px; font-size:.6rem; font-weight:700; color:#fff;
+  overflow:hidden; pointer-events:none;
+  line-height:1.3;
+}
+.tl-block.is-mine { outline:2px solid rgba(0,0,0,.25); outline-offset:-1px; }
+
+/* ── Dual: instructor-available band ── */
+.tl-free-band {
+  position:absolute; left:0; right:0; pointer-events:none;
+  background:rgba(34,197,94,.12); border-left:2px solid rgba(34,197,94,.5);
+}
+.tl-free-label {
+  position:absolute; right:3px; font-size:.55rem; font-weight:700;
+  color:rgba(22,163,74,.85); pointer-events:none;
+}
+
+/* ── Tap-select overlay ── */
+.tl-select-overlay {
+  position:absolute; left:0; right:0; pointer-events:none;
+  background:color-mix(in srgb,var(--primary) 18%,transparent);
+  border:2px solid var(--primary); border-radius:5px; display:none;
+  transition:top .08s, height .08s;
+}
+
+/* ── Slot confirm bottom sheet ── */
+.slot-sheet {
+  position:fixed; bottom:calc(56px + var(--safe-bottom)); left:0; right:0;
+  background:#fff; border-top:1px solid #e3e6ea;
+  padding:.85rem 1rem;
+  display:none; z-index:30;
+  box-shadow:0 -4px 16px rgba(0,0,0,.1);
+}
+.slot-sheet.open { display:block; }
+.slot-sheet-title { font-size:.78rem; font-weight:700; color:#374151; margin-bottom:.4rem; }
+.slot-sheet-row { display:flex; align-items:center; gap:.75rem; }
+.slot-time { font-size:1rem; font-weight:700; color:var(--primary); }
+.slot-ac { font-size:.85rem; color:#6b7280; }
+</style>
+{% endblock %}
+
+{% block app_bar_brand %}{% endblock %}
+{% block app_bar %}
+<a href="{% url 'core:app_book' club.slug %}" class="app-bar-action" style="margin-left:-.2rem;">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</a>
+<span class="app-bar-title">
+  {% if mode == 'dual' %}Dual{% else %}Solo{% endif %} — {{ selected|date:"D j M" }}
+</span>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
+
+  <!-- Week strip -->
+  <div class="week-strip" id="week-strip">
+    {% for wd in week_days %}
+    <a href="?mode={{ mode }}&date={{ wd.date|date:'Y-m-d' }}{% if ac_param %}&ac={{ ac_param }}{% endif %}"
+       class="wday{% if wd.is_today %} today{% endif %}{% if wd.is_selected %} selected{% endif %}">
+      {{ wd.name }}
+      <span class="wday-num">{{ wd.num }}</span>
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Aircraft filter -->
+  <div class="ac-filter">
+    <a href="?mode={{ mode }}&date={{ selected|date:'Y-m-d' }}"
+       class="ac-chip{% if not selected_ac_id %} active{% endif %}">All</a>
+    {% for ac in all_aircraft %}
+    <a href="?mode={{ mode }}&date={{ selected|date:'Y-m-d' }}&ac={{ ac.id }}"
+       class="ac-chip{% if selected_ac_id == ac.id %} active{% endif %}">{{ ac.registration }}</a>
+    {% endfor %}
+  </div>
+
+  <!-- Timeline -->
+  <div class="tl-outer" id="tl-outer">
+    <!-- Aircraft headers -->
+    <div class="tl-header-wrap">
+      <div class="tl-time-corner"></div>
+      <div class="tl-headers-scroll" id="tl-heads">
+        {% for item in aircraft_data %}
+        <div class="tl-ac-head">{{ item.ac.registration }}</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Main grid -->
+    <div class="tl-main">
+      <!-- Time axis -->
+      <div class="tl-time-axis" style="height:{{ tl_height }}px;position:relative;">
+        {% for tl in time_labels %}
+        <div class="tl-time-label" style="top:{{ tl.top }}px;">{{ tl.label }}</div>
+        {% endfor %}
+      </div>
+
+      <!-- Aircraft columns -->
+      <div class="tl-cols" id="tl-cols">
+        {% for item in aircraft_data %}
+        <div class="tl-col" id="col-{{ item.ac.id }}" style="height:{{ tl_height }}px;"
+             data-ac-id="{{ item.ac.id }}" data-ac-reg="{{ item.ac.registration }}">
+
+          <!-- Hour grid lines + half-hour dashes -->
+          {% for tl in time_labels %}
+          <div class="tl-hour-line" style="top:{{ tl.top }}px;"></div>
+          {% if not forloop.last %}
+          <div class="tl-half-line" style="top:{{ tl.top|add:30 }}px;"></div>
+          {% endif %}
+          {% endfor %}
+
+          <!-- Dual: free instructor bands -->
+          {% if mode == 'dual' %}
+          {% for band in item.free_bands %}
+          <div class="tl-free-band" style="top:{{ band.top }}px;height:{{ band.height }}px;">
+            {% if band.height > 18 %}
+            <div class="tl-free-label" style="top:2px;">
+              {{ band.count }} free
+            </div>
+            {% endif %}
+          </div>
+          {% empty %}
+          {% endfor %}
+          {% endif %}
+
+          <!-- Existing bookings -->
+          {% for block in item.blocks %}
+          <div class="tl-block{% if block.is_mine %} is-mine{% endif %}"
+               style="top:{{ block.top }}px;height:{{ block.height }}px;background:{{ block.color }};">
+            {{ block.name }}<br>{{ block.time }}
+          </div>
+          {% endfor %}
+
+          <!-- Tap-select overlay (one per column) -->
+          <div class="tl-select-overlay" id="sel-{{ item.ac.id }}"></div>
+
+        </div>
+        {% empty %}
+        <div style="padding:2rem;color:#8a93a0;font-size:.88rem;">No aircraft available</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Slot confirm sheet -->
+<div class="slot-sheet" id="slot-sheet">
+  <div class="slot-sheet-title">Tap to confirm slot</div>
+  <div class="slot-sheet-row">
+    <div>
+      <div class="slot-time" id="sheet-time">—</div>
+      <div class="slot-ac" id="sheet-ac">—</div>
+    </div>
+    <a id="sheet-btn" href="#" class="app-btn-sm" style="margin-left:auto;">
+      Continue →
+    </a>
+    <button onclick="closeSheet()" class="app-btn-sm ghost">✕</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const MODE     = '{{ mode }}';
+const DATE_STR = '{{ selected|date:"Y-m-d" }}';
+const DAY_START = {{ day_start }};
+const PX_PER_HR = {{ px_per_hr }};
+const TL_HEIGHT = {{ tl_height }};
+const BASE_URL  = '{% url "core:app_book_confirm" club.slug %}';
+
+// ── Scroll sync: header tracks horizontal scroll ──────────────────────────
+const outer = document.getElementById('tl-outer');
+const heads  = document.getElementById('tl-heads');
+outer.addEventListener('scroll', () => { heads.scrollLeft = outer.scrollLeft; });
+
+// ── Auto-scroll to current time ───────────────────────────────────────────
+(function() {
+  const now = new Date();
+  if ('{{ selected|date:"Y-m-d" }}' === now.toISOString().slice(0, 10)) {
+    const hrs = now.getHours() + now.getMinutes() / 60;
+    const px  = Math.max(0, (hrs - DAY_START) * PX_PER_HR - 80);
+    setTimeout(() => outer.scrollTop = px, 80);
+  }
+})();
+
+// ── Tap a column to pick start time ──────────────────────────────────────
+let selAcId = null, selAcReg = null, selStart = null, selEnd = null;
+
+document.querySelectorAll('.tl-col').forEach(col => {
+  col.addEventListener('click', e => {
+    if (e.target.classList.contains('tl-block')) return;
+
+    // y position within the column (accounting for scroll)
+    const rect   = col.getBoundingClientRect();
+    const scrollY = document.getElementById('tl-outer').scrollTop;
+    const headerH = document.getElementById('tl-outer').querySelector('.tl-header-wrap').offsetHeight;
+    const y = e.clientY - rect.top + scrollY - headerH;
+
+    const hrs   = DAY_START + Math.max(0, y) / PX_PER_HR;
+    const slot  = Math.floor(hrs * 2) / 2;  // snap to 30-min
+    const endSl = slot + 1;                  // default 1 hour
+
+    selAcId  = col.dataset.acId;
+    selAcReg = col.dataset.acReg;
+    selStart = slotToStr(slot);
+    selEnd   = slotToStr(endSl);
+
+    // Draw overlay
+    document.querySelectorAll('.tl-select-overlay').forEach(o => o.style.display = 'none');
+    const ov = document.getElementById('sel-' + selAcId);
+    if (ov) {
+      const top    = (slot  - DAY_START) * PX_PER_HR;
+      const height = (endSl - slot)     * PX_PER_HR;
+      ov.style.display = 'block';
+      ov.style.top     = top + 'px';
+      ov.style.height  = height + 'px';
+    }
+
+    // Show sheet
+    document.getElementById('sheet-time').textContent = selStart + '–' + selEnd;
+    document.getElementById('sheet-ac').textContent   = selAcReg;
+    const url = BASE_URL + '?mode=' + MODE + '&date=' + DATE_STR +
+                '&ac=' + selAcId + '&start=' + selStart + '&end=' + selEnd;
+    document.getElementById('sheet-btn').href = url;
+    document.getElementById('slot-sheet').classList.add('open');
+  });
+});
+
+function slotToStr(slot) {
+  const h = Math.floor(slot);
+  const m = (slot % 1) * 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+}
+function closeSheet() {
+  document.getElementById('slot-sheet').classList.remove('open');
+  document.querySelectorAll('.tl-select-overlay').forEach(o => o.style.display = 'none');
+  selAcId = null;
+}
+</script>
+{% endblock %}

@@ -38,7 +38,7 @@
       {% if booking.client %}
       <div class="bcard-row">
         <span class="bl">Client</span>
-        <a href="{% url 'core:contact_detail' club.slug booking.client_id %}" data-overlay>{{ booking.client.name }}</a>
+        <a href="{% url 'core:contact_detail' club.slug booking.client_id %}" data-overlay style="color:var(--primary);font-weight:500;text-decoration:none;">{{ booking.client.name }}</a>
         <span style="color:#8a93a0;font-size:.82rem;">· {{ booking.client.contact_type.name }}{% if booking.billed_to %} · billed to {{ booking.get_billed_to_display }}{% endif %}</span>
       </div>
       {% endif %}
@@ -93,8 +93,8 @@
   </div>
   {% endif %}
 
-  <!-- ── Declaration (shown whenever one exists or is required) ── -->
-  {% if requires_decl or has_submitted_decl %}
+  <!-- ── Declaration (shown whenever one exists or is required, but not when override reason already shown inline) ── -->
+  {% if not booking.departed_without_declaration and requires_decl or not booking.departed_without_declaration and has_submitted_decl %}
   <div class="section" style="padding:.9rem 1.2rem;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
       <div style="font-size:.88rem;">
@@ -141,19 +141,38 @@
   <div class="section">
     <h2 class="sh2">Check out</h2>
 
-    {% if eligibility %}
-    <div style="margin-bottom:1rem;">
-      <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8a93a0;margin-bottom:.35rem;">Compliance checks</div>
-      <div class="eligibility-panel">
-        {% for item in eligibility.items %}
-        <div class="elig-row elig-{{ item.severity }}">
-          <span class="elig-icon">{% if item.severity == 'ok' %}✓{% elif item.severity == 'warn' %}⚠{% elif item.severity == 'block' %}✗{% else %}i{% endif %}</span>
-          <span class="elig-label">{{ item.label }}</span>
-          <span class="elig-msg">{{ item.message }}</span>
+    {% if eligibility or departure_maint_items %}
+    <details class="readiness-box" {% if eligibility.has_blocks or eligibility.has_warnings or departure_maint_items %}open{% endif %}>
+      <summary class="readiness-summary {% if eligibility.has_blocks %}rs-red{% elif eligibility.has_warnings or departure_maint_items %}rs-amber{% else %}rs-green{% endif %}">
+        {% if eligibility.has_blocks %}✗ Pilot &amp; aircraft — blocked{% elif eligibility.has_warnings or departure_maint_items %}⚠ Pilot &amp; aircraft — items to review{% else %}✓ Pilot &amp; aircraft — all clear{% endif %}
+      </summary>
+      <div class="readiness-body">
+        {% if eligibility %}
+        <div class="readiness-section-lbl">Pilot — {{ booking.member.user.get_full_name }}</div>
+        <div class="eligibility-panel" style="margin-bottom:.7rem;">
+          {% for item in eligibility.items %}
+          <div class="elig-row elig-{{ item.severity }}">
+            <span class="elig-icon">{% if item.severity == 'ok' %}✓{% elif item.severity == 'warn' %}⚠{% elif item.severity == 'block' %}✗{% else %}i{% endif %}</span>
+            <span class="elig-label">{{ item.label }}</span>
+            <span class="elig-msg">{{ item.message }}</span>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
+        {% endif %}
+        {% if departure_maint_items %}
+        <div class="readiness-section-lbl">Aircraft — {{ booking.aircraft.registration }}</div>
+        <div class="eligibility-panel">
+          {% for mi in departure_maint_items %}
+          <div class="elig-row {% if mi.urgency == 'red' %}elig-block{% else %}elig-warn{% endif %}">
+            <span class="elig-icon">{% if mi.urgency == 'red' %}✗{% else %}⚠{% endif %}</span>
+            <span class="elig-label">{{ mi.name }}</span>
+            <span class="elig-msg">{{ mi.detail }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
-    </div>
+    </details>
     {% endif %}
 
     {% if requires_decl and not has_submitted_decl %}
@@ -229,9 +248,9 @@
           <input type="text" name="description" class="finput" value="{{ booking.description|default:'' }}" placeholder="Optional notes for this flight">
         </label>
         <div style="margin-top:.7rem;display:flex;gap:.5rem;">
-          <button type="submit" class="btn" style="font-size:.82rem;">Save changes</button>
+          <button type="submit" class="btn" style="font-size:.82rem;">Save</button>
           <button type="button" class="cbtn" style="font-size:.82rem;"
-                  onclick="document.getElementById('edit-details-panel').hidden=true">Cancel</button>
+                  onclick="document.getElementById('edit-details-panel').hidden=true">✕ Close</button>
         </div>
       </form>
     </div>
@@ -342,43 +361,119 @@
           </div>
           <div id="split-section" hidden style="margin-top:.6rem;padding:.75rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
             <input type="hidden" name="has_split" value="1">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.55rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;">
               <span style="font-size:.82rem;font-weight:600;color:#1f2933;">Split flight between members</span>
-              <button type="button" class="cbtn-sm cbtn-danger" onclick="toggleSplit()">✕ Cancel split</button>
+              <button type="button" class="cbtn-sm cbtn-danger" onclick="toggleSplit()">✕ Cancel</button>
             </div>
-            <p style="font-size:.76rem;color:#8a93a0;margin:0 0 .6rem;">
-              Enter the instrument reading at the handover point. Segment 1 runs from start to handover; segment 2 from handover to end.
-            </p>
+            <p style="font-size:.76rem;color:#8a93a0;margin:0 0 .65rem;">Enter the instrument reading at each handover. Up to 4 members.</p>
 
-            <div style="font-size:.79rem;font-weight:600;color:#5b6573;margin-bottom:.3rem;">1. {{ booking.member.user.get_full_name }} — from start to handover</div>
-            <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-bottom:.55rem;">
-              {% if booking.aircraft.records_hobbs %}
-              <label class="flabel">Hobbs at handover
-                <input type="number" name="seg_hobbs_h1" id="seg-hobbs-h1" step="0.1" class="finput" style="width:105px;" oninput="updateSplitHours()">
-              </label>
-              {% endif %}
-              {% if booking.aircraft.records_tacho %}
-              <label class="flabel">Tacho at handover
-                <input type="number" name="seg_tacho_h1" id="seg-tacho-h1" step="0.01" class="finput" style="width:105px;" oninput="updateSplitHours()">
-              </label>
-              {% endif %}
-              {% if booking.aircraft.records_airswitch %}
-              <label class="flabel">Air switch at handover
-                <input type="number" name="seg_airswitch_h1" id="seg-airswitch-h1" step="0.1" class="finput" style="width:105px;" oninput="updateSplitHours()">
-              </label>
-              {% endif %}
+            <!-- Seg 1: always the booking member -->
+            <div style="font-size:.79rem;font-weight:600;color:#5b6573;padding:.25rem 0 .2rem;">1. {{ booking.member.user.get_full_name }}</div>
+
+            <!-- Handover 1 (always shown when split is open) -->
+            <div id="handover-1">
+              <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:700;margin:.35rem 0 .2rem;">↓ Handover</div>
+              <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
+                {% if booking.aircraft.records_hobbs %}
+                <label class="flabel">Hobbs
+                  <input type="number" name="seg_hobbs_h1" id="seg-hobbs-h1" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+                {% if booking.aircraft.records_tacho %}
+                <label class="flabel">Tacho
+                  <input type="number" name="seg_tacho_h1" id="seg-tacho-h1" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+                {% if booking.aircraft.records_airswitch %}
+                <label class="flabel">Air switch
+                  <input type="number" name="seg_airswitch_h1" id="seg-airswitch-h1" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+              </div>
             </div>
 
-            <div id="split-hours-preview" style="font-size:.78rem;color:#2a7a3b;font-weight:600;margin-bottom:.5rem;display:none;"></div>
-
-            <label class="flabel">2. Second member
-              <select name="seg_member_2" class="finput" style="max-width:260px;">
-                <option value="">— select —</option>
+            <!-- Seg 2: always shown -->
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
+              <span style="font-size:.79rem;font-weight:600;color:#5b6573;min-width:1.3rem;">2.</span>
+              <select name="seg_member_2" class="finput" style="max-width:240px;flex:1;" oninput="updateSplitHours()">
+                <option value="">— select member —</option>
                 {% for m in club_members %}{% if m.id != booking.member_id %}
                 <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
                 {% endif %}{% endfor %}
               </select>
-            </label>
+            </div>
+
+            <!-- Handover 2 (shown when 3rd member added) -->
+            <div id="handover-2" hidden>
+              <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:700;margin:.35rem 0 .2rem;">↓ Handover</div>
+              <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
+                {% if booking.aircraft.records_hobbs %}
+                <label class="flabel">Hobbs
+                  <input type="number" name="seg_hobbs_h2" id="seg-hobbs-h2" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+                {% if booking.aircraft.records_tacho %}
+                <label class="flabel">Tacho
+                  <input type="number" name="seg_tacho_h2" id="seg-tacho-h2" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+                {% if booking.aircraft.records_airswitch %}
+                <label class="flabel">Air switch
+                  <input type="number" name="seg_airswitch_h2" id="seg-airswitch-h2" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Seg 3 (shown when 3rd member added) -->
+            <div id="seg-3" hidden style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
+              <span style="font-size:.79rem;font-weight:600;color:#5b6573;min-width:1.3rem;">3.</span>
+              <select name="seg_member_3" class="finput" style="max-width:200px;flex:1;" oninput="updateSplitHours()">
+                <option value="">— select member —</option>
+                {% for m in club_members %}{% if m.id != booking.member_id %}
+                <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
+                {% endif %}{% endfor %}
+              </select>
+              <button type="button" onclick="removeSplitSeg(3)" class="cbtn-sm cbtn-danger">✕</button>
+            </div>
+
+            <!-- Handover 3 (shown when 4th member added) -->
+            <div id="handover-3" hidden>
+              <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:700;margin:.35rem 0 .2rem;">↓ Handover</div>
+              <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
+                {% if booking.aircraft.records_hobbs %}
+                <label class="flabel">Hobbs
+                  <input type="number" name="seg_hobbs_h3" id="seg-hobbs-h3" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+                {% if booking.aircraft.records_tacho %}
+                <label class="flabel">Tacho
+                  <input type="number" name="seg_tacho_h3" id="seg-tacho-h3" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+                {% if booking.aircraft.records_airswitch %}
+                <label class="flabel">Air switch
+                  <input type="number" name="seg_airswitch_h3" id="seg-airswitch-h3" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                </label>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Seg 4 (shown when 4th member added) -->
+            <div id="seg-4" hidden style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
+              <span style="font-size:.79rem;font-weight:600;color:#5b6573;min-width:1.3rem;">4.</span>
+              <select name="seg_member_4" class="finput" style="max-width:200px;flex:1;" oninput="updateSplitHours()">
+                <option value="">— select member —</option>
+                {% for m in club_members %}{% if m.id != booking.member_id %}
+                <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
+                {% endif %}{% endfor %}
+              </select>
+              <button type="button" onclick="removeSplitSeg(4)" class="cbtn-sm cbtn-danger">✕</button>
+            </div>
+
+            <div id="split-hours-preview" style="font-size:.78rem;color:#2a7a3b;font-weight:600;margin:.4rem 0;display:none;"></div>
+
+            <button type="button" id="split-add-btn" class="cbtn-sm" onclick="addSplitSeg()" style="margin-top:.3rem;">+ Add another person</button>
           </div>
         </div>
 
@@ -433,7 +528,7 @@
     {% if fc.actual_flight_hours %}
     <div style="font-size:.83rem;color:#5b6573;margin-bottom:.8rem;display:flex;gap:1.2rem;flex-wrap:wrap;">
       <span>{{ fc.actual_flight_hours }}h billed
-        ({% if booking.aircraft.total_time_method == 'tacho_less_5' %}Tacho{% else %}{{ booking.aircraft.get_total_time_method_display }}{% endif %})</span>
+        ({{ booking.aircraft.get_total_time_method_display }})</span>
       {% if fc.hobbs_start and fc.hobbs_end %}<span style="color:#8a93a0;">Hobbs {{ fc.hobbs_start }} → {{ fc.hobbs_end }}</span>{% endif %}
       {% if fc.tacho_start and fc.tacho_end %}<span style="color:#8a93a0;">Tacho {{ fc.tacho_start }} → {{ fc.tacho_end }}</span>{% endif %}
       {% if fc.airswitch_start and fc.airswitch_end %}<span style="color:#8a93a0;">Air switch {{ fc.airswitch_start }} → {{ fc.airswitch_end }}</span>{% endif %}
@@ -915,7 +1010,7 @@
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Need a formal invoice?</summary>
             <div style="margin-top:.4rem;">
               {% if total %}
-              <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="cbtn" style="font-size:.8rem;">Generate invoice</a>
+              <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="cbtn" style="font-size:.8rem;" data-overlay>Generate invoice</a>
               {% else %}
               <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Generate invoice</span>
               {% endif %}
@@ -962,6 +1057,16 @@
   .elig-warn{background:#fffbf0;}.elig-warn .elig-icon{color:#9a6700;}.elig-warn .elig-msg{color:#7a5800;}
   .elig-block{background:#fff5f5;}.elig-block .elig-icon{color:#c0392b;}.elig-block .elig-msg{color:#c0392b;}
   .elig-info{background:#f8f9fa;}.elig-info .elig-icon{color:#8a93a0;}.elig-info .elig-msg{color:#6b7280;}
+  .readiness-box{border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:1rem;}
+  .readiness-summary{list-style:none;padding:.45rem .8rem;font-size:.83rem;font-weight:650;cursor:pointer;user-select:none;}
+  .readiness-summary::-webkit-details-marker{display:none;}
+  .readiness-summary::before{content:'▶ ';font-size:.65rem;margin-right:.3rem;vertical-align:middle;}
+  details.readiness-box[open] .readiness-summary::before{content:'▼ ';}
+  .rs-green{background:#f0faf2;color:#1e6e32;border-bottom:none;}
+  .rs-amber{background:#fffbf0;color:#7a5800;border-bottom:1px solid #f0e5c0;}
+  .rs-red{background:#fff5f5;color:#9b1c1c;border-bottom:1px solid #fca5a5;}
+  .readiness-body{padding:.75rem .85rem .6rem;}
+  .readiness-section-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;margin-bottom:.3rem;}
   .sh2{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 .9rem;}
 
   .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
@@ -1031,7 +1136,7 @@ function updateCheckinPreview() {
   if (rates.time_method === 'hobbs') {
     startEl = document.getElementById('ci-hobbs-start');
     endEl   = document.getElementById('ci-hobbs-end');
-  } else if (rates.time_method === 'tacho' || rates.time_method === 'tacho_less_5') {
+  } else if (rates.time_method === 'tacho') {
     startEl = document.getElementById('ci-tacho-start');
     endEl   = document.getElementById('ci-tacho-end');
   } else if (rates.time_method === 'airswitch') {
@@ -1110,49 +1215,116 @@ function checkMeterGap(inp) {
 }
 
 // Split flight
-function toggleSplit() {
+var splitSegCount = 2;
+
+window.toggleSplit = function toggleSplit() {
   var sec = document.getElementById('split-section');
   var btn = document.getElementById('split-toggle-btn');
   if (!sec) return;
   if (sec.hidden) {
     sec.hidden = false;
     btn.style.display = 'none';
+    splitSegCount = 2;
   } else {
     sec.hidden = true;
     btn.style.display = '';
-    ['seg-hobbs-h1','seg-tacho-h1','seg-airswitch-h1'].forEach(function(id){
-      var el = document.getElementById(id); if (el) el.value = '';
-    });
-    document.getElementById('split-hours-preview').style.display = 'none';
+    _resetSplitFields();
   }
+};
+
+function _resetSplitFields() {
+  [2, 3].forEach(function(n) {
+    var h = document.getElementById('handover-' + n);
+    var s = document.getElementById('seg-' + (n + 1));
+    if (h) h.hidden = true;
+    if (s) s.hidden = true;
+  });
+  ['hobbs','tacho','airswitch'].forEach(function(k) {
+    [1,2,3].forEach(function(n) {
+      var el = document.getElementById('seg-' + k + '-h' + n);
+      if (el) el.value = '';
+    });
+  });
+  [2,3,4].forEach(function(n) {
+    var sel = document.querySelector('[name="seg_member_' + n + '"]');
+    if (sel) sel.value = '';
+  });
+  splitSegCount = 2;
+  var addBtn = document.getElementById('split-add-btn');
+  if (addBtn) { addBtn.hidden = false; }
+  document.getElementById('split-hours-preview').style.display = 'none';
+}
+
+function addSplitSeg() {
+  splitSegCount++;
+  var h = document.getElementById('handover-' + (splitSegCount - 1));
+  var s = document.getElementById('seg-' + splitSegCount);
+  if (h) h.hidden = false;
+  if (s) s.hidden = false;
+  if (splitSegCount >= 4) {
+    var addBtn = document.getElementById('split-add-btn');
+    if (addBtn) addBtn.hidden = true;
+  }
+  updateSplitHours();
+}
+
+function removeSplitSeg(n) {
+  var s = document.getElementById('seg-' + n);
+  var h = document.getElementById('handover-' + (n - 1));
+  if (s) s.hidden = true;
+  if (h) h.hidden = true;
+  // Clear fields for the removed segment and its preceding handover
+  var sel = document.querySelector('[name="seg_member_' + n + '"]');
+  if (sel) sel.value = '';
+  ['hobbs','tacho','airswitch'].forEach(function(k) {
+    var el = document.getElementById('seg-' + k + '-h' + (n - 1));
+    if (el) el.value = '';
+  });
+  splitSegCount--;
+  var addBtn = document.getElementById('split-add-btn');
+  if (addBtn) addBtn.hidden = false;
+  updateSplitHours();
 }
 
 function updateSplitHours() {
   var method = '{{ booking.aircraft.total_time_method|default:"hobbs" }}';
-  var s, e, h1;
-  if (method === 'hobbs') {
-    s  = parseFloat(document.getElementById('ci-hobbs-start')?.value);
-    e  = parseFloat(document.getElementById('ci-hobbs-end')?.value);
-    h1 = parseFloat(document.getElementById('seg-hobbs-h1')?.value);
-  } else if (method === 'tacho' || method === 'tacho_less_5') {
-    s  = parseFloat(document.getElementById('ci-tacho-start')?.value);
-    e  = parseFloat(document.getElementById('ci-tacho-end')?.value);
-    h1 = parseFloat(document.getElementById('seg-tacho-h1')?.value);
-  } else {
-    s  = parseFloat(document.getElementById('ci-airswitch-start')?.value);
-    e  = parseFloat(document.getElementById('ci-airswitch-end')?.value);
-    h1 = parseFloat(document.getElementById('seg-airswitch-h1')?.value);
-  }
+  var prefix = method === 'tacho' ? 'tacho' : (method === 'airswitch' ? 'airswitch' : 'hobbs');
+  var startEl = document.getElementById('ci-' + prefix + '-start');
+  var endEl   = document.getElementById('ci-' + prefix + '-end');
   var preview = document.getElementById('split-hours-preview');
-  if (!isNaN(s) && !isNaN(e) && !isNaN(h1) && h1 > s && h1 < e) {
-    var mult = (method === 'tacho_less_5') ? 0.95 : 1.0;
-    var h1r = ((h1 - s) * mult).toFixed(1);
-    var h2r = ((e - h1) * mult).toFixed(1);
-    preview.textContent = '{{ booking.member.user.get_full_name|escapejs }}: ' + h1r + 'h  ·  Member 2: ' + h2r + 'h';
-    preview.style.display = '';
-  } else {
-    preview.style.display = 'none';
+  if (!startEl || !endEl) { preview.style.display = 'none'; return; }
+  var s = parseFloat(startEl.value);
+  var e = parseFloat(endEl.value);
+  if (isNaN(s) || isNaN(e)) { preview.style.display = 'none'; return; }
+
+  // Collect handover points
+  var points = [s];
+  for (var i = 1; i < splitSegCount; i++) {
+    var hEl = document.getElementById('seg-' + prefix + '-h' + i);
+    points.push(hEl ? parseFloat(hEl.value) : NaN);
   }
+  points.push(e);
+
+  // Validate all points are strictly ascending
+  var valid = true;
+  for (var j = 1; j < points.length; j++) {
+    if (isNaN(points[j]) || points[j] <= points[j-1]) { valid = false; break; }
+  }
+  if (!valid) { preview.style.display = 'none'; return; }
+
+  // Build member names
+  var names = ['{{ booking.member.user.get_full_name|escapejs }}'];
+  for (var k = 2; k <= splitSegCount; k++) {
+    var sel = document.querySelector('[name="seg_member_' + k + '"]');
+    names.push(sel && sel.selectedIndex > 0 ? sel.options[sel.selectedIndex].text : 'Member ' + k);
+  }
+
+  var parts = [];
+  for (var m = 0; m < splitSegCount; m++) {
+    parts.push(names[m] + ': ' + (points[m+1] - points[m]).toFixed(1) + 'h');
+  }
+  preview.textContent = parts.join('  ·  ');
+  preview.style.display = '';
 }
 
 // Landing fee form helpers

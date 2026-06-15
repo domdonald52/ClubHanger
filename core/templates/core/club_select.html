@@ -1,0 +1,41 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Select Club — ClubHangar</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:system-ui,-apple-system,sans-serif;background:#f0f4f8;min-height:100vh;display:flex;align-items:center;justify-content:center;}
+    .card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.10);padding:2rem;max-width:420px;width:100%;margin:1rem;}
+    h1{font-size:1.2rem;font-weight:700;color:#1f2933;margin-bottom:.4rem;}
+    p{font-size:.84rem;color:#8a93a0;margin-bottom:1.4rem;}
+    .club-btn{display:flex;align-items:center;gap:.9rem;width:100%;padding:.9rem 1rem;border:1.5px solid #e3e6ea;border-radius:10px;background:#fff;cursor:pointer;text-decoration:none;color:inherit;margin-bottom:.6rem;transition:border-color .15s,background .15s;}
+    .club-btn:hover{border-color:#a0aab4;background:#f7f9fc;}
+    .club-icon{width:40px;height:40px;border-radius:8px;background:#eef1f4;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .club-icon img{width:36px;height:36px;object-fit:contain;border-radius:6px;}
+    .club-name{font-weight:700;font-size:.95rem;color:#1f2933;}
+    .club-role{font-size:.76rem;color:#8a93a0;margin-top:.1rem;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Choose a club</h1>
+    <p>You're a member of multiple clubs. Which one would you like to open?</p>
+    {% for cm in memberships %}
+    <a href="{% url 'core:gantt_day' cm.club.slug %}" class="club-btn">
+      <div class="club-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16l-4-4H5l-2 2 5 1 3 3 5-1 5-1z"/><path d="M12 12V5l-2-1"/>
+        </svg>
+      </div>
+      <div>
+        <div class="club-name">{{ cm.club.name }}</div>
+        <div class="club-role">{{ cm.role.name|default:"Member" }}</div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+</body>
+</html>

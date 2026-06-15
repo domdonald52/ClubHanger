@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Aero Club Booking{% endblock %}</title>
+    {% if theme.font_url %}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="{{ theme.font_url }}" rel="stylesheet">{% endif %}
+    {% block extra_head %}{% endblock %}
     <style>
         :root {
             --banner: {{ theme.banner|default:'#1d3a5f' }};
@@ -16,9 +18,10 @@
             --completed-paid: {{ theme.completed_paid|default:'#7c3aed' }};
             --weekend: {{ theme.weekend|default:'#fbf3e6' }};
             --atypical: {{ theme.atypical|default:'#eef1f4' }};
+            --font: {{ theme.font_family|default:"system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"|safe }};
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+        body { font-family: var(--font); background: #f5f7fa; color: #333; line-height: 1.6; }
         header { background: var(--banner); color: white; padding: 0 1rem; box-shadow: 0 1px 0 rgba(255,255,255,.08); height: 52px; display: flex; align-items: center; }
         .header-content { max-width: 1600px; margin: 0 auto; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
         .logo { font-size: 1rem; font-weight: 650; letter-spacing: -.01em; display: flex; align-items: center; gap: .5rem; color: #fff; opacity: .95; }
@@ -50,10 +53,21 @@
         .sidenav-link:hover { background: #f0f4ff; color: var(--primary); }
         .sidenav-link:hover svg { opacity: .85; }
         .sidenav-link.active { background: color-mix(in srgb,var(--primary) 10%,#fff); color: var(--primary); font-weight: 600; }
+        .nav-badge { background: #e03131; color: #fff; font-size: .6rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; padding: 0 4px; display: inline-flex; align-items: center; justify-content: center; line-height: 1; margin-left: auto; }
         .sidenav-link.active svg { opacity: 1; }
         .sidenav-link.danger { color: #c0392b; }
         .sidenav-link.danger:hover { background: #fff0f0; }
         .sidenav-divider { border: none; border-top: 1px solid #eef1f4; margin: .4rem .5rem; }
+        /* Collapsible nav sections */
+        .nav-section-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; background: none; border: none; cursor: pointer; font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: #9aa3ad; padding: .7rem .5rem .2rem; font-family: inherit; line-height: 1; }
+        .nav-section-toggle:hover { color: #6b7588; }
+        .nav-section-toggle .chev { transition: transform .2s; flex-shrink: 0; }
+        .nav-section.closed .nav-section-toggle .chev { transform: rotate(-90deg); }
+        .nav-section-items { overflow: hidden; max-height: 400px; transition: max-height .22s ease; }
+        .nav-section.closed .nav-section-items { max-height: 0; }
+        .nav-toggle-end { display:inline-flex; align-items:center; gap:5px; }
+        .nav-alert-dot { display:none; width:7px; height:7px; background:#e53e3e; border-radius:50%; flex-shrink:0; }
+        .nav-section.closed .nav-alert-dot { display:block; }
         .user-info { font-size: .8rem; color: rgba(255,255,255,.75); display: flex; align-items: center; gap: .55rem; white-space: nowrap; }
         .role-badge { font-size: .7rem; font-weight: 600; padding: .15rem .45rem; border-radius: 4px; background: rgba(255,255,255,.18); color: #fff; letter-spacing: .02em; }
         .user-menu { position: relative; }
@@ -78,6 +92,7 @@
         .btn.secondary { background: #f3f5f7; color: #1f2933; border: 1px solid #d6dae0; }
         .btn.secondary:hover { background: #e8eaed; filter: none; }
     </style>
+    <script>const CHART_PALETTE = {{ theme.chart_colors|default:"[]"|safe }};const CHART_MAX_BAR = 52;</script>
 </head>
 <body>
     <header>
@@ -164,6 +179,15 @@
                             <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="2" width="13" height="12" rx="1.5"/><path d="M1 6h13M5 1v2.5M10 1v2.5"/></svg>
                             My bookings
                         </a>
+                        {% if other_clubs %}
+                        <div class="dd-divider"></div>
+                        {% for ocm in other_clubs %}
+                        <a href="{% url 'core:gantt_day' ocm.club.slug %}" class="dd-item">
+                            <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 7.5l-4-4-4 4"/><path d="M9 3.5v8M3 12.5h9"/></svg>
+                            Switch to {{ ocm.club.name }}
+                        </a>
+                        {% endfor %}
+                        {% endif %}
                         <div class="dd-divider"></div>
                         <a href="/admin/logout/" class="dd-item dd-signout">
                             <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M10 10l3-3-3-3M13 7H6"/></svg>
@@ -194,61 +218,99 @@
                 <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
                 Find Slots
             </a>
+            <a href="{% url 'core:club_weather' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'club_weather' %}active{% endif %}">
+                <svg width="15" height="15" viewBox="-1 -1 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 10a4 4 0 0 1 4-4 5 5 0 0 1 9 1.5A3.5 3.5 0 0 1 11.5 13H4a2 2 0 0 1-2-3Z"/></svg>
+                Weather
+            </a>
+            <a href="{% url 'core:live_map' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'live_map' %}active{% endif %}">
+                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 1 C7 2.5 6.5 4 6.5 5.5 L2 7 L6.5 8.5 L6.5 11 L5 12 L5 13 L7.5 12 L10 13 L10 12 L8.5 11 L8.5 8.5 L13 7 L8.5 5.5 C8.5 4 8 2.5 7.5 1 Z"/></svg>
+                Live Map
+            </a>
 
             {% if club_member.is_admin or club_member.is_instructor %}
-            <div class="sidenav-section-label" style="margin-top:.6rem;">Operations</div>
-            <a href="{% url 'core:manage_bookings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_bookings' %}active{% endif %}">Bookings</a>
-            <a href="{% url 'core:manage_blockouts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_blockouts' %}active{% endif %}">Block-outs</a>
-            <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_instructors manage_instructor_detail' %}active{% endif %}">Staff roster</a>
-            {% if club_member.is_admin %}
-            <a href="{% url 'core:manage_charges' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_charges manage_invoices manage_vouchers manage_sundry' %}active{% endif %}">Sales</a>
-            {% endif %}
-            <a href="{% url 'core:manage_exceptions' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_exceptions' %}active{% endif %}">
-              Attention{% if exceptions_count %}<span class="conflict-badge" style="margin-left:auto;">{{ exceptions_count }}</span>{% endif %}
-            </a>
 
-            <div class="sidenav-section-label" style="margin-top:.6rem;">People</div>
-            {% if club_member.is_admin %}<a href="{% url 'core:manage_members' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_members' %}active{% endif %}">Members</a>{% endif %}
-            {% if club_member.is_admin %}<a href="{% url 'core:manage_contacts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_contacts contact_detail' %}active{% endif %}">Contacts</a>{% endif %}
+            <div class="nav-section" data-section="operations">
+              <button class="nav-section-toggle" type="button">Operations<svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></button>
+              <div class="nav-section-items">
+                <a href="{% url 'core:manage_bookings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_bookings' %}active{% endif %}">Bookings</a>
+                <a href="{% url 'core:manage_blockouts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_blockouts' %}active{% endif %}">Block-outs</a>
+                <a href="{% url 'core:manage_instructors' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_instructors manage_instructor_detail' %}active{% endif %}">Staff roster</a>
+                {% if club_member.is_admin %}<a href="{% url 'core:manage_announcements' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_announcements' %}active{% endif %}">Notices</a>{% endif %}
+                {% if club_member.is_admin %}<a href="{% url 'core:manage_charges' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_charges manage_invoices manage_vouchers manage_sundry' %}active{% endif %}">Sales</a>{% endif %}
+                <a href="{% url 'core:manage_exceptions' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_exceptions' %}active{% endif %}">Attention{% if exceptions_count %}<span class="conflict-badge" style="margin-left:auto;">{{ exceptions_count }}</span>{% endif %}</a>
+              </div>
+            </div>
 
-            <div class="sidenav-section-label" style="margin-top:.6rem;">Fleet</div>
-            <a href="{% url 'core:manage_aircraft' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_aircraft manage_aircraft_detail' %}active{% endif %}">Aircraft</a>
-
-            <div class="sidenav-section-label" style="margin-top:.6rem;">Safety</div>
-            <a href="{% url 'core:occurrence_list' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'occurrence_list occurrence_detail' %}active{% endif %}">
-              Events{% if open_occurrences_count %}<span class="conflict-badge" style="margin-left:auto;">{{ open_occurrences_count }}</span>{% endif %}
-            </a>
-            <a href="{% url 'core:occurrence_actions' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'occurrence_actions' %}active{% endif %}">
-              Action items{% if open_actions_count %}<span class="conflict-badge" style="margin-left:auto;">{{ open_actions_count }}</span>{% endif %}
-            </a>
-
-            <div class="sidenav-section-label" style="margin-top:.6rem;">Analytics</div>
-            <a href="{% url 'core:reports' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">Reports</a>
-            {% if club_member.is_admin %}<a href="{% url 'core:data_page' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'data_page' %}active{% endif %}">Data</a>{% endif %}
-            {% if club_member.is_admin %}<a href="{% url 'core:health_check' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'health_check' %}active{% endif %}">Health check</a>{% endif %}
+            <div class="nav-section" data-section="safety">
+              <button class="nav-section-toggle" type="button">Safety<svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></button>
+              <div class="nav-section-items">
+                <a href="{% url 'core:occurrence_list' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'occurrence_list occurrence_detail' %}active{% endif %}">Events{% if open_occurrences_count %}<span class="conflict-badge" style="margin-left:auto;">{{ open_occurrences_count }}</span>{% endif %}</a>
+                <a href="{% url 'core:occurrence_actions' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'occurrence_actions' %}active{% endif %}">Action items{% if open_actions_count %}<span class="conflict-badge" style="margin-left:auto;">{{ open_actions_count }}</span>{% endif %}</a>
+              </div>
+            </div>
 
             {% if club_member.is_admin %}
-            <div class="sidenav-section-label" style="margin-top:.6rem;">Configuration</div>
-            <a href="{% url 'core:club_settings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'club_settings' %}active{% endif %}">Settings</a>
-            <a href="{% url 'core:club_types' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'club_types' %}active{% endif %}">Types</a>
-            <a href="{% url 'core:manage_aerodromes' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aerodromes' %}active{% endif %}">Aerodromes</a>
+            <div class="nav-section" data-section="people">
+              <button class="nav-section-toggle" type="button">People<svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></button>
+              <div class="nav-section-items">
+                <a href="{% url 'core:manage_members' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_members' %}active{% endif %}">Members</a>
+                <a href="{% url 'core:manage_contacts' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_contacts contact_detail' %}active{% endif %}">Contacts</a>
+              </div>
+            </div>
+
+            <div class="nav-section" data-section="fleet">
+              <button class="nav-section-toggle" type="button">Fleet<svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></button>
+              <div class="nav-section-items">
+                <a href="{% url 'core:manage_aircraft' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name in 'manage_aircraft manage_aircraft_detail' %}active{% endif %}">Aircraft</a>
+              </div>
+            </div>
+
+            <div class="nav-section" data-section="reporting">
+              <button class="nav-section-toggle" type="button">Reporting<svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></button>
+              <div class="nav-section-items">
+                <a href="{% url 'core:reports' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'reports' %}active{% endif %}">Analytics</a>
+                <a href="{% url 'core:data_page' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'data_page' %}active{% endif %}">Export</a>
+                <a href="{% url 'core:health_check' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'health_check' %}active{% endif %}">Integrity{% if integrity_issues_count %} <span class="nav-badge">{{ integrity_issues_count }}</span>{% endif %}</a>
+              </div>
+            </div>
+
+            <div class="nav-section" data-section="config">
+              <button class="nav-section-toggle" type="button">Configuration<svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></button>
+              <div class="nav-section-items">
+                <a href="{% url 'core:club_settings' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'club_settings' %}active{% endif %}">Settings</a>
+                <a href="{% url 'core:club_types' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'club_types' %}active{% endif %}">Types</a>
+                <a href="{% url 'core:manage_aerodromes' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_aerodromes' %}active{% endif %}">Aerodromes</a>
+              </div>
+            </div>
             {% endif %}
+
+            {% endif %}
+
+            {% if club_member.is_admin or club_member.is_instructor %}
+            <a href="{% url 'core:manage_guide' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'manage_guide' %}active{% endif %}" style="margin-top:.4rem;">
+              <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2h11v11H2z"/><path d="M5 5h5M5 7.5h5M5 10h3"/></svg>
+              Staff guide
+            </a>
             {% endif %}
 
             <hr class="sidenav-divider" style="margin-top:.8rem;">
-            <div class="sidenav-section-label">Account</div>
-            <a href="{% url 'core:my_profile' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'my_profile' %}active{% endif %}">
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="5" r="3"/><path d="M1.5 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
-                My profile
-            </a>
-            <a href="{% url 'core:occurrence_submit' club.slug %}" class="sidenav-link" data-overlay>
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 1v6M7.5 10v.5M3 7.5A4.5 4.5 0 1 0 12 7.5 4.5 4.5 0 0 0 3 7.5z"/></svg>
-                Log an event{% if open_actions_count %}<span class="conflict-badge" style="margin-left:auto;">{{ open_actions_count }}</span>{% endif %}
-            </a>
-            <a href="/admin/logout/" class="sidenav-link danger">
-                <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M10 10l3-3-3-3M13 7H6"/></svg>
-                Sign out
-            </a>
+            <div class="nav-section" data-section="account">
+              <button class="nav-section-toggle" type="button">Account<svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg></button>
+              <div class="nav-section-items">
+                <a href="{% url 'core:my_profile' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'my_profile' %}active{% endif %}">
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="5" r="3"/><path d="M1.5 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+                    My profile
+                </a>
+                <a href="{% url 'core:occurrence_submit' club.slug %}" class="sidenav-link" data-overlay>
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 1v6M7.5 10v.5M3 7.5A4.5 4.5 0 1 0 12 7.5 4.5 4.5 0 0 0 3 7.5z"/></svg>
+                    Log an event
+                </a>
+                <a href="/admin/logout/" class="sidenav-link danger">
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2H3a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3M10 10l3-3-3-3M13 7H6"/></svg>
+                    Sign out
+                </a>
+              </div>
+            </div>
         </div>
     </nav>
     {% endif %}
@@ -260,6 +322,25 @@
 .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
 .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
 textarea.finput{resize:vertical;}
+select.finput{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b7280' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65rem center;background-size:.55rem;padding-right:2rem;cursor:pointer;}
+/* ── Availability search: sticky filter + calendar bar ── */
+.avail-sticky{position:sticky;top:0;z-index:50;background:#fff;padding-bottom:.5rem;border-bottom:2px solid #eef1f4;}
+@media(min-width:900px){.avail-sticky{top:52px;}}
+/* ── Availability results grid ── */
+.slots-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}
+@media(max-width:680px){.slots-grid{grid-template-columns:1fr;}}
+.week-sep{grid-column:1/-1;display:flex;align-items:center;gap:.6rem;padding:.2rem 0;font-size:.7rem;font-weight:700;color:#a0aab4;letter-spacing:.06em;text-transform:uppercase;margin-top:.4rem;}
+.week-sep::before,.week-sep::after{content:'';flex:1;height:1px;background:#e3e6ea;}
+/* ── Availability calendar band ── */
+.cal-band{display:flex;gap:.25rem;overflow-x:auto;padding:.4rem 0 .5rem;margin-bottom:1.2rem;scrollbar-width:thin;scrollbar-color:#dde2e8 transparent;}
+.cal-band::-webkit-scrollbar{height:4px;}.cal-band::-webkit-scrollbar-thumb{background:#dde2e8;border-radius:2px;}
+.cal-month-sep{display:flex;align-items:flex-end;font-size:.65rem;font-weight:600;color:#8a93a0;padding:0 .25rem .25rem;flex-shrink:0;white-space:nowrap;letter-spacing:.03em;text-transform:uppercase;}
+.cal-chip{display:flex;flex-direction:column;align-items:center;padding:.28rem .45rem;border-radius:7px;min-width:36px;flex-shrink:0;text-align:center;line-height:1.2;}
+a.cal-chip{background:var(--primary,#2563eb);color:#fff;text-decoration:none;}
+a.cal-chip:hover{filter:brightness(1.1);}
+span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
+.cal-chip-wd{font-size:.6rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+.cal-chip-dn{font-size:.82rem;font-weight:700;}
 .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
 .req{color:#c0392b;font-size:.8rem;}
 .info-table{width:100%;font-size:.85rem;border-collapse:collapse;}
@@ -273,7 +354,7 @@ textarea.finput{resize:vertical;}
 .modal h2{margin:0 0 1rem;font-size:1rem;font-weight:650;font-family:inherit;}
 .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:1rem;}
 /* ── Shared action buttons ── */
-.cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;font-family:inherit;text-decoration:none;display:inline-block;}
+.cbtn{padding:.45rem .9rem;border-radius:7px;border:1px solid #d6dae0;background:#fff;cursor:pointer;font-size:.85rem;font-family:inherit;text-decoration:none;display:inline-block;color:#1f2933;}
 .cbtn:hover{background:#f3f5f7;}
 .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
 .cbtn.primary:hover{filter:brightness(1.08);background:var(--primary);}
@@ -281,6 +362,8 @@ textarea.finput{resize:vertical;}
 .cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);}
 .cbtn-sm{padding:.22rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;}
 .cbtn-sm:hover{background:#f3f5f7;}
+.cbtn-sm.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+.cbtn-sm.primary:hover{filter:brightness(1.08);background:var(--primary);}
 .cbtn-danger{border-color:#fca5a5;color:#c0392b;}
 .cbtn.danger{background:#d64545;color:#fff;border-color:#d64545;}
 .cbtn.danger:hover{filter:brightness(1.08);background:#d64545;}
@@ -364,8 +447,9 @@ textarea.finput{resize:vertical;}
 .status-pill.sp-warn{background:#fff7e6;color:#b06800;}
 .status-pill.sp-warn:hover{background:#ffeece;}
 /* In-page sub-tab bar (settings, aircraft detail, instructor detail, profile) */
-.stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;flex-wrap:wrap;}
-.stab-btn{display:inline-block;padding:.55rem 1.1rem;border:none;background:none;cursor:pointer;font-size:.9rem;font-weight:500;font-family:inherit;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s;text-decoration:none;}
+.stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;background:linear-gradient(to bottom,transparent calc(100% - 2px),#e3e6ea calc(100% - 2px));}
+.stab-bar::-webkit-scrollbar{height:0;width:0}
+.stab-btn{display:inline-block;padding:.55rem 1.1rem;border:none;background:none;cursor:pointer;font-size:.9rem;font-weight:500;font-family:inherit;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:0;border-radius:6px 6px 0 0;transition:color .15s;text-decoration:none;white-space:nowrap;flex-shrink:0;}
 .stab-btn:hover{color:var(--banner);}
 .stab-btn.active{color:var(--banner);border-bottom-color:var(--primary);font-weight:650;}
 .stab-panel{display:none;}
@@ -566,6 +650,52 @@ textarea.finput{resize:vertical;}
   if (closeBtn) closeBtn.addEventListener('click', closeNav);
   if (overlay)  overlay.addEventListener('click', closeNav);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && nav && nav.classList.contains('open')) closeNav(); });
+
+  // Collapsible nav sections
+  (function(){
+    var DEFAULTS_OPEN = ['operations','safety','account'];
+    var activeSections = (function(){
+      var a = document.querySelectorAll('.nav-section-items .sidenav-link.active');
+      var s = [];
+      a.forEach(function(el){ var sec = el.closest('.nav-section'); if(sec) s.push(sec.dataset.section); });
+      return s;
+    })();
+    document.querySelectorAll('.nav-section').forEach(function(sec){
+      var name = sec.dataset.section;
+      var stored = null;
+      try { stored = localStorage.getItem('nav-sec-' + name); } catch(e){}
+      var open;
+      if (activeSections.indexOf(name) >= 0) {
+        open = true;
+      } else if (stored !== null) {
+        open = stored === '1';
+      } else {
+        open = DEFAULTS_OPEN.indexOf(name) >= 0;
+      }
+      if (!open) sec.classList.add('closed');
+      sec.querySelector('.nav-section-toggle').addEventListener('click', function(){
+        var isClosed = sec.classList.toggle('closed');
+        try { localStorage.setItem('nav-sec-' + name, isClosed ? '0' : '1'); } catch(e){}
+      });
+    });
+
+    // Red dot on section header when collapsed and badges exist inside
+    document.querySelectorAll('.nav-section').forEach(function(sec){
+      var total = Array.from(sec.querySelectorAll('.nav-section-items .conflict-badge'))
+        .reduce(function(sum, el){ return sum + (parseInt(el.textContent, 10) || 0); }, 0);
+      if (!total) return;
+      var toggle = sec.querySelector('.nav-section-toggle');
+      var chev = toggle.querySelector('.chev');
+      var dot = document.createElement('span');
+      dot.className = 'nav-alert-dot';
+      dot.title = total + ' item' + (total > 1 ? 's' : '') + ' need attention';
+      var end = document.createElement('span');
+      end.className = 'nav-toggle-end';
+      chev.parentNode.insertBefore(end, chev);
+      end.appendChild(dot);
+      end.appendChild(chev);
+    });
+  })();
 })();
 </script>
 
@@ -580,6 +710,7 @@ textarea.finput{resize:vertical;}
 <style>
   .page-overlay-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:flex-start;justify-content:center;z-index:500;padding:2vh 0;overflow-y:auto;}
   .page-overlay-modal{background:#fff;border-radius:10px;width:min(820px,96vw);box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;min-height:clamp(400px,65vh,680px);display:flex;flex-direction:column;}
+  .page-overlay-modal.wide{width:min(1060px,98vw);}
   .page-overlay-modal .pi-body{flex:1;}
   [hidden]{display:none!important;}
 </style>
@@ -646,7 +777,9 @@ textarea.finput{resize:vertical;}
         const sep2 = raw.includes('?') ? '&' : '?';
         const postUrl = raw + sep2 + 'inline=1';
         try {
-          const resp = await fetch(postUrl, {method:'POST', body:new FormData(f), credentials:'same-origin'});
+          const fd = new FormData(f);
+          if (e.submitter && e.submitter.name) fd.set(e.submitter.name, e.submitter.value);
+          const resp = await fetch(postUrl, {method:'POST', body:fd, credentials:'same-origin'});
           if (!resp.ok && resp.status !== 302) {
             body.innerHTML = `<p style="color:#c0392b;padding:2rem;text-align:center;">Save failed (HTTP ${resp.status}). Close and try again.</p>`;
             return;
@@ -659,7 +792,6 @@ textarea.finput{resize:vertical;}
           } else {
             // Server redirected out of inline context — close overlay and toast
             if (wasSaved && window.toast) window.toast('Saved', 'ok');
-            didChange = false;
             closeOverlay();
           }
         } catch(err) {
@@ -682,6 +814,8 @@ textarea.finput{resize:vertical;}
     const link = e.target.closest('[data-overlay]');
     if (!link || !link.href) return;
     e.preventDefault();
+    const wide = link.hasAttribute('data-overlay-wide') || !!link.closest('[data-overlay-wide]');
+    document.getElementById('page-overlay-modal').classList.toggle('wide', wide);
     openOverlay(link.href);
   });
 
@@ -772,6 +906,62 @@ document.addEventListener('DOMContentLoaded', function(){
   // Re-apply after overlay content loads
   window._setupModalForms = setupModalForms;
 })();
+
+// ── Dirty-state guard for edit modals ────────────────────────────────────────
+// Mark a save button with data-dirty-save to opt in. On modal open the button
+// loses its 'primary' class; it regains it as soon as any field differs from
+// the snapshot taken at open time, and loses it again if the user reverts.
+(function(){
+  function snapForm(form){
+    var s = {};
+    form.querySelectorAll('input,select,textarea').forEach(function(el){
+      if(!el.name) return;
+      var k = el.name + (el.type==='radio'||el.type==='checkbox' ? '::'+el.value : '');
+      s[k] = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value;
+    });
+    return s;
+  }
+  function checkDirty(form, snap){
+    var dirty = false;
+    form.querySelectorAll('input,select,textarea').forEach(function(el){
+      if(!el.name || dirty) return;
+      var k = el.name + (el.type==='radio'||el.type==='checkbox' ? '::'+el.value : '');
+      var v = (el.type==='checkbox'||el.type==='radio') ? el.checked : el.value;
+      if(!(k in snap) || v !== snap[k]) dirty = true;
+    });
+    return dirty;
+  }
+  function armDirtyModal(modal){
+    var btns = modal.querySelectorAll('[data-dirty-save]');
+    if(!btns.length) return;
+    var form = modal.querySelector('form');
+    if(!form) return;
+    // Remove old listener if re-arming
+    if(modal._dirtyOff){ modal._dirtyOff(); }
+    var snap = snapForm(form);
+    btns.forEach(function(b){ b.classList.remove('primary'); });
+    function update(){
+      var d = checkDirty(form, snap);
+      btns.forEach(function(b){ b.classList.toggle('primary', d); });
+    }
+    form.addEventListener('input', update);
+    form.addEventListener('change', update);
+    modal._dirtyOff = function(){
+      form.removeEventListener('input', update);
+      form.removeEventListener('change', update);
+    };
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('.modal-back').forEach(function(modal){
+      new MutationObserver(function(muts){
+        muts.forEach(function(m){
+          if(m.attributeName==='hidden' && !modal.hidden) armDirtyModal(modal);
+        });
+      }).observe(modal, {attributes: true});
+    });
+  });
+  window._armDirtyModal = armDirtyModal;
+})();
 </script>
 <script>
 // ── Global stab-bar tab init ─────────────────────────────────────────────────
@@ -808,7 +998,7 @@ document.addEventListener('DOMContentLoaded', function(){
   /* ── Currency inputs (shared) ── */
   .money-wrap{display:flex;align-items:center;gap:0;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;overflow:hidden;background:#fff;}
   .money-sym{padding:0 .4rem;font-size:.88rem;color:#8a93a0;background:#f8f9fb;border-right:1px solid #ddd;line-height:2.2;}
-  .money-input{border:none!important;border-radius:0!important;flex:1;min-width:0;margin-top:0!important;text-align:right;}
+  .money-input{border:none!important;border-radius:0!important;flex:1;min-width:0;margin-top:0!important;text-align:right;padding:.45rem .55rem;}
   .money-input:focus{outline:2px solid var(--primary);outline-offset:-1px;border-radius:0 5px 5px 0!important;}
 </style>
 <script>

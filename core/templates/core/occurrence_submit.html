@@ -1,0 +1,88 @@
+{% extends base_template|default:"core/base.html" %}
+{% block title %}Report a safety observation · {{ club.name }}{% endblock %}
+{% block inline_title %}Report a safety observation{% endblock %}
+
+{% block content %}
+<div style="max-width:680px;margin:0 auto;padding:{% if is_inline %}1.2rem{% else %}2rem{% endif %};">
+  {% if not is_inline %}
+  <a href="{% if back %}{{ back }}{% elif club_member.can_access_manage %}{% url 'core:occurrence_list' club.slug %}{% else %}{% url 'core:gantt_day' club.slug %}{% endif %}" class="back-link">← Back</a>
+  {% endif %}
+
+  <h1 style="margin-bottom:.25rem;">Report a safety observation</h1>
+  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.6rem;">
+    Use this form to report any safety-relevant event — snags, near misses, hazards, or anything worth recording.
+    All reports are confidential and reviewed by the club safety officer.
+  </p>
+
+  {% if request.GET.saved %}
+  <script>window.toast && window.toast('Report submitted — thank you.', 'ok');</script>
+  <div class="notice ok" style="margin-bottom:1.2rem;">Report submitted. Thank you.</div>
+  {% endif %}
+  {% if error %}<div class="notice err" style="margin-bottom:1rem;">{{ error }}</div>{% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    {% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
+    <div class="fgrid" style="margin-bottom:1rem;">
+      <label class="flabel">Safety report type <span style="color:#c0392b;">*</span>
+        <select name="occurrence_type" class="finput" required>
+          <option value="">— select —</option>
+          {% for ot in occ_types %}
+          <option value="{{ ot.id }}">{{ ot.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label class="flabel">Date <span style="color:#c0392b;">*</span>
+        <input type="date" name="date_of_occurrence" class="finput" required value="{{ today }}">
+      </label>
+
+      <label class="flabel">Time (approx.)
+        <input type="time" name="time_of_occurrence" class="finput">
+      </label>
+
+      <label class="flabel">Location
+        <input type="text" name="location" class="finput" placeholder="e.g. NZWN, overhead Masterton">
+      </label>
+    </div>
+
+    <div class="fgrid" style="margin-bottom:1rem;">
+      <label class="flabel">Aircraft (if applicable)
+        <select name="aircraft" class="finput">
+          <option value="">— none —</option>
+          {% for ac in aircraft_list %}
+          <option value="{{ ac.id }}">{{ ac.registration }} — {{ ac.aircraft_type }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      {% if recent_bookings %}
+      <label class="flabel">Link to recent flight (optional)
+        <select name="related_booking" class="finput">
+          <option value="">— none —</option>
+          {% for b in recent_bookings %}
+          <option value="{{ b.id }}">{{ b.scheduled_start|date:"j M H:i" }} · {{ b.aircraft.registration }} · {{ b.flight_type.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+    </div>
+
+    <label class="flabel" style="margin-bottom:1rem;">Description <span style="color:#c0392b;">*</span>
+      <textarea name="description" class="finput" rows="5" required
+                placeholder="Describe what happened, the sequence of events, and any contributing factors."></textarea>
+    </label>
+
+    <label class="flabel" style="margin-bottom:1.4rem;">Immediate action taken
+      <textarea name="immediate_action" class="finput" rows="3"
+                placeholder="What did you do at the time? (leave blank if none)"></textarea>
+    </label>
+
+    <label class="flabel" style="margin-bottom:1.2rem;display:flex;align-items:center;gap:.5rem;font-size:.88rem;cursor:pointer;">
+      <input type="checkbox" name="is_safety_risk" style="width:16px;height:16px;flex-shrink:0;">
+      I believe this represents an ongoing or potential safety risk
+    </label>
+    <button type="submit" class="btn">Submit</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+<div class="stab-bar" data-managed="1">
+  <a href="{% url 'core:manage_charges' club.slug %}" class="stab-btn {% if active_tab == 'payments' %}active{% endif %}">Payments</a>
+  <a href="{% url 'core:manage_invoices' club.slug %}" class="stab-btn {% if active_tab == 'invoices' %}active{% endif %}">Invoices</a>
+  <a href="{% url 'core:manage_vouchers' club.slug %}" class="stab-btn {% if active_tab == 'vouchers' %}active{% endif %}">Vouchers</a>
+  <a href="{% url 'core:manage_sundry' club.slug %}" class="stab-btn {% if active_tab == 'sundry' %}active{% endif %}">Sundry sales</a>
+</div>

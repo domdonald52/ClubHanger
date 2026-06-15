@@ -1,0 +1,959 @@
+{% extends "core/base.html" %}
+{% block title %}Staff Guide — {{ club.name }}{% endblock %}
+
+{% block content %}
+<style>
+/* ── Layout ── */
+.guide-wrap{display:flex;gap:2.5rem;max-width:1080px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+.guide-nav{width:185px;flex-shrink:0;}
+.guide-nav-inner{position:sticky;top:1.5rem;max-height:calc(100vh - 3rem);overflow-y:auto;}
+.guide-nav h3{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#9aa3ad;margin:0 0 .3rem .1rem;padding-top:.7rem;}
+.guide-nav h3:first-child{padding-top:0;}
+.guide-nav ul{list-style:none;margin:0;padding:0;}
+.guide-nav ul li a{display:block;font-size:.8rem;color:#5b6573;padding:.22rem .5rem;border-radius:5px;text-decoration:none;line-height:1.35;}
+.guide-nav ul li a:hover,.guide-nav ul li a.act{background:#f0f2f5;color:#1f2933;}
+.guide-nav .sub a{font-size:.76rem;padding-left:1rem;}
+.guide-body{flex:1;min-width:0;}
+/* ── Typography ── */
+.guide-body h1{font-size:1.5rem;font-weight:750;margin:0 0 .3rem;}
+.guide-body .lead{font-size:.93rem;color:#5b6573;margin:0 0 2rem;line-height:1.65;}
+.gsec{margin-bottom:2.8rem;}
+.gsec h2{font-size:1.12rem;font-weight:700;margin:0 0 .85rem;padding-top:2rem;border-top:2px solid #e8eaed;color:#1f2933;}
+.gsec h3{font-size:.92rem;font-weight:650;margin:1.4rem 0 .45rem;color:#1f2933;}
+.gsec h4{font-size:.83rem;font-weight:650;margin:1rem 0 .35rem;color:#374151;}
+.gsec p,.gsec li{font-size:.86rem;line-height:1.72;color:#374151;}
+.gsec p{margin:.35rem 0 .75rem;}
+.gsec ul,.gsec ol{padding-left:1.4rem;margin:.3rem 0 .75rem;}
+.gsec li{margin-bottom:.2rem;}
+/* ── Callouts ── */
+.callout{border-radius:8px;padding:.7rem 1rem;margin:.9rem 0;font-size:.83rem;line-height:1.65;}
+.callout.info{background:#f0f7ff;border-left:3px solid #3b82f6;color:#1e3a5f;}
+.callout.warn{background:#fffbeb;border-left:3px solid #f59e0b;color:#78350f;}
+.callout.tip{background:#f0fdf4;border-left:3px solid #22c55e;color:#14532d;}
+.callout.danger{background:#fff1f2;border-left:3px solid #e11d48;color:#881337;}
+.callout strong{font-weight:650;}
+/* ── Step flow ── */
+.step-flow{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem;margin:.9rem 0 1.1rem;}
+.step-flow .step{display:flex;align-items:center;gap:.4rem;background:#f4f6f8;border:1px solid #dde1e6;border-radius:20px;padding:.28rem .65rem .28rem .35rem;font-size:.77rem;font-weight:600;color:#374151;white-space:nowrap;}
+.step-flow .step .num{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:.67rem;font-weight:700;flex-shrink:0;}
+.step-flow .arrow{color:#9aa3ad;font-size:.85rem;font-weight:700;}
+/* ── Status pills ── */
+.status-flow{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem;margin:.6rem 0 .9rem;}
+.pill{font-size:.76rem;font-weight:600;padding:.2rem .6rem;border-radius:12px;white-space:nowrap;display:inline-block;}
+.pill.pending{background:#fff3e0;color:#e65100;}
+.pill.active{background:#e6f4ea;color:#2a7a3b;}
+.pill.lapsed,.pill.suspended{background:#fee2e2;color:#c0392b;}
+.pill.resigned,.pill.draft,.pill.non_member{background:#f3f5f7;color:#8a93a0;}
+.pill.transferred{background:#ede9fe;color:#5b21b6;}
+.pill.sent{background:#fff3e0;color:#e65100;}
+.pill.paid{background:#e6f4ea;color:#2a7a3b;}
+.pill.void{background:#f3f5f7;color:#8a93a0;}
+.pill.green{background:#e6f4ea;color:#2a7a3b;}
+.pill.amber{background:#fff3e0;color:#b45309;}
+.pill.red{background:#fee2e2;color:#c0392b;}
+.status-flow .sarrow{color:#9aa3ad;font-size:.85rem;}
+/* ── Tables ── */
+.guide-table{width:100%;border-collapse:collapse;font-size:.82rem;margin:.65rem 0 .9rem;}
+.guide-table th{text-align:left;font-size:.71rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3ad;padding:.38rem .55rem;border-bottom:2px solid #e8eaed;}
+.guide-table td{padding:.42rem .55rem;border-bottom:1px solid #f0f2f5;color:#374151;vertical-align:top;}
+.guide-table tr:last-child td{border-bottom:none;}
+.yes{color:#2a7a3b;font-weight:600;}
+.no{color:#c0392b;}
+.part{color:#e65100;}
+/* ── Collapsible detail blocks ── */
+.dblock{border:1px solid #e8eaed;border-radius:8px;margin:.9rem 0;}
+.dblock summary{padding:.65rem 1rem;font-size:.83rem;font-weight:650;cursor:pointer;color:#374151;list-style:none;display:flex;align-items:center;gap:.4rem;}
+.dblock summary::before{content:'▸';color:#9aa3ad;font-size:.75rem;transition:transform .18s;flex-shrink:0;}
+.dblock[open]>summary::before{transform:rotate(90deg);}
+.dblock summary::-webkit-details-marker{display:none;}
+.dblock .dbody{padding:.25rem 1rem .9rem;border-top:1px solid #f0f2f5;}
+.dblock .dbody p,.dblock .dbody li{font-size:.84rem;}
+/* ── Role cards ── */
+.role-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin:.7rem 0 .9rem;}
+.role-card{border:1px solid #e8eaed;border-radius:8px;padding:.8rem .9rem;}
+.role-card h4{margin:0 0 .3rem;font-size:.85rem;font-weight:650;color:#1f2933;}
+.role-card .badge{font-size:.7rem;font-weight:600;padding:.1rem .45rem;border-radius:10px;margin-bottom:.35rem;display:inline-block;}
+.badge.admin{background:#ede9fe;color:#5b21b6;}
+.badge.instructor{background:#dbeafe;color:#1e40af;}
+.badge.member{background:#e6f4ea;color:#2a7a3b;}
+.role-card p{margin:0;font-size:.78rem;color:#5b6573;line-height:1.5;}
+/* ── Screenshot placeholder ── */
+.sshot{border:2px dashed #d1d5db;border-radius:8px;padding:1.5rem 1rem;text-align:center;color:#9aa3ad;font-size:.78rem;margin:.9rem 0;background:#fafafa;line-height:1.5;}
+/* ── Urgency indicator ── */
+.urg{display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;font-weight:600;}
+.urg .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.dot.green{background:#22c55e;}.dot.amber{background:#f59e0b;}.dot.red{background:#ef4444;}
+@media(max-width:700px){.guide-wrap{flex-direction:column;}.guide-nav{width:auto;}.role-cards{grid-template-columns:1fr 1fr;}}
+@media(max-width:460px){.role-cards{grid-template-columns:1fr;}}
+</style>
+
+<div class="guide-wrap">
+
+  <!-- ── Sidebar ── -->
+  <nav class="guide-nav">
+    <div class="guide-nav-inner">
+      <h3>Contents</h3>
+      <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#people">Members &amp; contacts</a>
+          <ul class="sub"><li><a href="#people-members">Members</a></li><li><a href="#people-access">System access levels</a></li><li><a href="#people-contacts">Contacts</a></li><li><a href="#people-profile">Staff profile</a></li></ul>
+        </li>
+        <li><a href="#setup">Setting up</a>
+          <ul class="sub"><li><a href="#setup-general">General</a></li><li><a href="#setup-billing">Billing</a></li><li><a href="#setup-membership">Membership</a></li><li><a href="#setup-bookings">Bookings</a></li><li><a href="#setup-roles">Roles</a></li><li><a href="#setup-types">Types</a></li><li><a href="#setup-aerodromes">Aerodromes</a></li><li><a href="#setup-checklist">Checklist</a></li></ul>
+        </li>
+        <li><a href="#membership">Membership cycle</a>
+          <ul class="sub"><li><a href="#mem-new">New member</a></li><li><a href="#mem-invoice">Subscription invoice</a></li><li><a href="#mem-renewal">Renewal &amp; lapse</a></li><li><a href="#mem-standing">Standings</a></li><li><a href="#mem-block">Booking block</a></li><li><a href="#mem-registrar">Member register</a></li></ul>
+        </li>
+        <li><a href="#bookings">Bookings</a>
+          <ul class="sub"><li><a href="#book-gantt">Gantt calendar</a></li><li><a href="#book-attention">Attention page</a></li><li><a href="#book-blockouts">Block-outs</a></li><li><a href="#book-roster">Instructor roster</a></li><li><a href="#book-lifecycle">Booking lifecycle</a></li><li><a href="#book-credentials">Credentials</a></li><li><a href="#book-declarations">Declarations</a></li><li><a href="#book-findslots">Find slots</a></li><li><a href="#book-completion">Completion</a></li><li><a href="#book-charging">Charging &amp; split</a></li></ul>
+        </li>
+        <li><a href="#sales">Sales &amp; invoicing</a>
+          <ul class="sub"><li><a href="#sales-account">Account balance</a></li><li><a href="#sales-invoices">Invoices</a></li><li><a href="#sales-sundry">Sundry sales</a></li><li><a href="#sales-vouchers">Vouchers</a></li><li><a href="#sales-rates">Rates</a></li><li><a href="#sales-reconcile">Reconciliation</a></li></ul>
+        </li>
+        <li><a href="#aircraft">Aircraft &amp; maintenance</a>
+          <ul class="sub"><li><a href="#ac-setup">Aircraft setup</a></li><li><a href="#ac-maint">Maintenance items</a></li><li><a href="#ac-hours">Hours tracking</a></li><li><a href="#ac-alerts">Alerts &amp; grounding</a></li><li><a href="#ac-log">Logging work done</a></li></ul>
+        </li>
+        <li><a href="#tools">Other tools</a>
+          <ul class="sub"><li><a href="#tools-notifications">Notifications</a></li><li><a href="#tools-weather">Weather</a></li><li><a href="#tools-map">Live map</a></li><li><a href="#tools-announcements">Announcements</a></li><li><a href="#tools-reports">Reports</a></li><li><a href="#tools-events">Safety events</a></li><li><a href="#tools-data">Data export</a></li><li><a href="#tools-health">Health check</a></li></ul>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ── Body ── -->
+  <article class="guide-body">
+    <h1>ClubHangar staff guide</h1>
+    <p class="lead">ClubHangar is a management system for flying clubs — it handles members, bookings, invoicing, aircraft maintenance, and safety from one place. This guide is a process and role reference for admins and instructors, not a button-by-button manual. It covers what the system does for you, what still happens outside it, and how the four main areas connect.</p>
+
+    <!-- ════════════════ OVERVIEW -->
+    <div class="gsec" id="overview">
+      <h2>Overview</h2>
+      <p>ClubHangar has two interfaces:</p>
+      <div class="role-cards" style="grid-template-columns:1fr 1fr;">
+        <div class="role-card"><h4>Management web app</h4><p>For admins and instructors. Bookings calendar, member management, invoicing, safety, fleet, reports, settings. Best on desktop or tablet.</p></div>
+        <div class="role-card"><h4>Mobile app (PWA)</h4><p>For club members. Book flights, view account balance, manage credentials and profile, view notices. Accessed at <code>/app/{{ club.slug }}/</code> — members add it to their home screen.</p></div>
+      </div>
+      <p>The four main areas are <strong>people</strong> (members, contacts, roles, credentials), <strong>bookings</strong> (the calendar, flight lifecycle from declaration to completion), <strong>finance</strong> (account balances, invoicing, charges), and <strong>fleet</strong> (aircraft, maintenance schedules, airworthiness). They connect: a completed flight generates charges that settle against a member's pre-paid account or produce an invoice; a member's formal standing determines whether they can book; and an aircraft's maintenance state determines whether it can be offered for hire.</p>
+    </div>
+
+    <!-- ════════════════ PEOPLE -->
+    <div class="gsec" id="people">
+      <h2>Members &amp; contacts</h2>
+      <p>ClubHangar has two different types of person record. Understanding the distinction matters for how you set people up.</p>
+
+      <h3 id="people-members">Club members</h3>
+      <p>A <strong>club member</strong> is anyone with a login account in ClubHangar — not just paying members of the club. The term covers:</p>
+      <ul>
+        <li><strong>Paying members</strong> — ordinary flying members with a subscription, a role, and booking access</li>
+        <li><strong>Instructors</strong> — club or contracted flying staff who need accounts to appear on bookings, flight records, and declarations</li>
+        <li><strong>Admins</strong> — whoever runs the system (secretary, CFI, club manager)</li>
+        <li><strong>Non-members</strong> — trial flight participants, Young Eagles, etc. who need a record but are not club members (standing: Non-member)</li>
+      </ul>
+      <p>Every member record has a <strong>standing</strong> and optionally a <strong>role</strong>.</p>
+      <p><strong>Standing</strong> reflects the person's formal membership status within your incorporated society — whether they have been ratified by the committee, are pending that ratification, have let their subscription lapse, have been suspended, or have resigned. This is not just a system flag: under the Incorporated Societies Act 2022, only ratified (Active) members may vote at general meetings or stand for committee, and the society has specific record-keeping obligations for members who resign or are removed. ClubHangar tracks standing to mirror these real-world legal states. The practical system consequences — whether someone can book a flight, access the mobile app, or appear in membership reports — all flow from that underlying status.</p>
+      <p><strong>Role</strong> represents the membership category as defined in your club rules — Full Member, Student Pilot, Life Member, and so on. It carries the annual subscription fee, any special conditions, and optionally grants extra system access. A person's role can change (e.g. a student graduates to full member) without affecting their standing.</p>
+
+      <h3 id="people-access">System access levels</h3>
+      <p>Access level is separate from membership role. A person can be a Full Member (their billing role) AND an Admin (their system access). There are three levels:</p>
+      <div class="role-cards">
+        <div class="role-card">
+          <span class="badge admin">Admin</span>
+          <h4>Administrator</h4>
+          <p>Full access: member management, financial records, all settings, every Manage page. Set by ticking "Admin access" on a member record, or by assigning a role with admin flags. There must always be at least one.</p>
+        </div>
+        <div class="role-card">
+          <span class="badge instructor">Instructor</span>
+          <h4>Instructor</h4>
+          <p>Operational access: Gantt calendar, booking management, member detail pages, invoice list, invoice detail (including marking invoices paid), reports, and safety events. Cannot access the charges screen or settings. Set by assigning a role with the <em>Instructor role</em> flag. Always exempt from booking blocks.</p>
+        </div>
+        <div class="role-card">
+          <span class="badge member">Member</span>
+          <h4>Member (no flag)</h4>
+          <p>Mobile app by default. Role flags can add selective access: Manage (bookings calendar), Fleet (aircraft), Safety (events), Reports (analytics).</p>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <strong>Why instructors need a member account:</strong> Instructors must appear on booking records, flight completions, and training declarations. ClubHangar finds them, assigns them to bookings, and records their grade-based rate by looking them up as a club member. An instructor who is also a paying club member simply has a role that carries both the instructor flag and a membership subscription — the two are independent. An instructor who is not a club member (e.g. a contracted external CFI) can be given a member account with Pending or Non-member standing, no subscription, and an instructor role.
+      </div>
+
+      <details class="dblock">
+        <summary>Instructors and flight charges — what the system actually does</summary>
+        <div class="dbody">
+          <p>The system does <strong>not</strong> automatically exempt instructors from hire charges. What it does is:</p>
+          <ul>
+            <li><strong>Instructor fee</strong> (dual flights) — when an instructor is assigned to a booking, the system calculates an instructor fee from their grade rate and bills it to the <em>booking member</em> (the student), not to the instructor.</li>
+            <li><strong>Aircraft hire</strong> — charged to whoever made the booking. If an instructor books an aircraft for their own private hire, they are charged the hire rate like any other member.</li>
+            <li><strong>Booking block</strong> — instructors are always exempt, regardless of their account balance.</li>
+          </ul>
+          <p>Whether your instructors pay for personal flying is a club policy decision. The system will generate a hire charge for any booking; it is up to you to zero it out, apply a discount rate, or leave it as-is depending on your arrangement with each instructor. You can delete or adjust charge items manually before applying payment.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Staff instructors who are not club members</summary>
+        <div class="dbody">
+          <p>Some clubs employ or contract instructors who are not members of the club in the membership sense — they don't pay a subscription, don't have voting rights, and aren't on the ISA register as members. ClubHangar handles this by separating the concepts:</p>
+          <ul>
+            <li>Give the instructor a member account with standing set to <strong>Non-member</strong> or <strong>Pending</strong>. They get a login, appear on bookings and completions, and can use the management web app.</li>
+            <li>Assign them an instructor role (with the instructor flag). Do not generate a subscription invoice for them.</li>
+            <li>They will not appear in membership counts, ISA register exports, or subscription renewal reports.</li>
+          </ul>
+          <p>Where it gets more complex is if the same person is both an instructor <em>and</em> a full club member — for example, a club CFI who also personally owns shares in a club aircraft and pays a member subscription. In this case, their single account carries both the instructor role and an active standing with subscription tracking. Their instructor grade determines the rate charged to students on dual flights; their membership standing is managed separately through the normal subscription workflow.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Setting up an instructor account</summary>
+        <div class="dbody">
+          <ol>
+            <li>People → Members → + Add member. Enter name and email.</li>
+            <li>On the Membership tab, assign a role that has the <em>Instructor role</em> flag checked (e.g. a role called "CFI" or "Instructor").</li>
+            <li>Set <strong>Instructor grade</strong> if you use grade-based rates (this drives the instructor fee charged to students on dual flights).</li>
+            <li>Tick <strong>On instructor roster</strong> — this makes them selectable when assigning instructors to bookings. Untick for instructors who are archived or inactive.</li>
+            <li>Set standing to reflect their actual membership status: Active if they are a subscribing member, Non-member if they are contracted staff only.</li>
+            <li>If this instructor also manages the system, tick <strong>Admin access</strong> separately.</li>
+          </ol>
+          <p>Instructors can log in to the mobile app and the management web app (Bookings calendar and flight detail pages). They do not see Invoices, Members, or Settings.</p>
+        </div>
+      </details>
+
+      <h3 id="people-contacts">Contacts</h3>
+      <p>A <strong>contact</strong> is someone who flies with the club — as a passenger, trial flight participant, or regular seat-sharer — but who is not a member of the incorporated society and has no membership subscription. They have no login account. Their name can be added to bookings and flight records, and costs can be attributed to them, but none of the membership lifecycle applies: no standing, no subscription, no ISA register entry.</p>
+      <p>Organisations (flying schools, companies) can also be added as contacts and marked accordingly. If a contact later joins as a member, they can be converted (People → Contacts → [contact] → Convert to member) and the link between the two records is preserved.</p>
+
+      <h3 id="people-profile">Staff profile</h3>
+      <p>Each staff member (admin or instructor) has a personal profile page accessible from the account menu in the top-right corner of the management web app. From here you can:</p>
+      <ul>
+        <li><strong>Contact details</strong> — update your name, email, mobile, and address as they appear on your member record</li>
+        <li><strong>Avatar</strong> — upload a profile photo, used throughout the app wherever your name appears</li>
+        <li><strong>Notification preferences</strong> — choose which push notification types you want to receive. For instructors, this includes options specific to instructor bookings (urgent assignments, upcoming flights). For all users, slot-release notifications can be filtered by aircraft type and instructor, and capped by how far ahead you want to be notified</li>
+        <li><strong>Watched slots</strong> — view and remove any bookings you're currently watching (see <a href="#book-slotwatch">Slot watch</a> in the Bookings section)</li>
+      </ul>
+      <p>Note: changing your email here changes your login email — inform the member if you're updating someone else's details.</p>
+    </div>
+
+    <!-- ════════════════ SETUP -->
+    <div class="gsec" id="setup">
+      <h2>Setting up the club</h2>
+
+      <p>ClubHangar is configured through two screens: <strong>Settings</strong> and <strong>Settings → Types</strong>. Most of this is a one-time exercise, but getting it right at the start avoids problems in invoices, maintenance alerts, and membership records later. The sections below explain each tab, what each setting does, and where its effects surface in the rest of the system.</p>
+
+      <h3 id="setup-general">General</h3>
+      <p>The General tab holds your club's public identity: name, phone, email, and postal address. These are not just display fields — they print verbatim on every invoice the system produces. If your club trades under a different name from its legal entity name, use the trading name here and put the registered legal name in Billing.</p>
+      <p>The logo appears in the sidebar banner of the management web app. A white-on-transparent PNG at roughly 2:1 aspect ratio works best against the banner colour.</p>
+
+      <h3 id="setup-billing">Billing</h3>
+      <p>The Billing tab controls the identity and terms that appear on every invoice the system generates — whether that's a flight invoice, a subscription invoice, or a sundry charge.</p>
+      <p><strong>Legal name and GST.</strong> The legal name should match your entry in the Incorporated Societies Register exactly, since it appears as the issuing entity on all tax invoices. If you are GST-registered, enter your 8–9 digit number and rate. The rate affects invoice tax labelling; your flight and subscription rates are entered separately (Sales → Rates) and should be set inclusive or exclusive of GST consistently.</p>
+      <p><strong>Bank details and payment terms.</strong> The bank name and account number are printed in the invoice footer alongside the payment instructions text — this is what members read when paying by direct credit. The <strong>payment terms (days)</strong> value sets the due date on every invoice automatically: an invoice raised on 15 July with 30-day terms will show a due date of 14 August. This same value also feeds the booking block — if a member has an overdue invoice older than the configured threshold, they are blocked from requesting new bookings until it is resolved.</p>
+      <p><strong>Invoice numbering.</strong> The prefix (e.g. <code>INV-</code>) and next number together form the invoice number that appears on every invoice sent to members and used for bank reconciliation. The number increments automatically each time an invoice is created. If you are migrating from another system, set the next number here to avoid duplicates with your existing invoice history.</p>
+
+      <h3 id="setup-membership">Membership</h3>
+      <p>The Membership tab governs the annual subscription cycle. These settings interact closely with the Billing tab and with individual member records.</p>
+      <p><strong>Financial year start month.</strong> This is the most consequential setting in the system. It defines when each year's subscription period begins and ends, and flows into several places: the "FY27" period label on subscription invoices, the pro-rata amount pre-filled when generating a mid-year invoice, when the auto-lapse check fires, and how the Budget tab's monthly columns are labelled. If your club's subscriptions run 1 April to 31 March, set FY start month to April.</p>
+      <p><strong>Auto-lapse grace period.</strong> After a member's subscription expiry date passes, they are not immediately lapsed. The grace period (days) gives extra time before the system marks them Lapsed — useful if your club traditionally allows a few weeks' leeway at renewal time. Once the grace period passes, members are moved to Lapsed status either overnight by the management command or manually via "Run auto-lapse now" on this tab. Lapsed members can still log in but cannot request bookings.</p>
+      <p><strong>Registrar's report.</strong> At any time you can download a point-in-time register of all Active members as a CSV — suitable for the CAA, an AGM, or an audit. The Members page gives additional date-selection options for producing a historical register as-at a specific date.</p>
+
+      <h3 id="setup-bookings">Bookings</h3>
+      <p>The Bookings tab controls the Gantt calendar — the core of the club's daily operations.</p>
+      <p><strong>Operating hours.</strong> These set the earliest start and latest start visible on the Gantt. They constrain where new bookings can be created, but do not prevent a flight that departs near closing time from completing after hours. Set these to reflect your normal flying window, not an absolute cutoff.</p>
+      <p><strong>Booking slots.</strong> The slot grid defines the time increments available when creating a booking — every 15 minutes, every 30 minutes, and so on. A finer grid gives more scheduling flexibility but makes the calendar look busier. Use the visual builder to choose which slots are available within the operating window.</p>
+      <p><strong>Booking block.</strong> This is the financial gate that prevents members from requesting new bookings when they have unresolved debts. Two independent thresholds can be configured:</p>
+      <ul>
+        <li><em>Unpaid flight charges older than N days</em> — triggered when completed flights have accumulated charges that have not yet been paid or invoiced</li>
+        <li><em>Unpaid invoices older than N days</em> — triggered when a sent invoice has passed its due date unpaid</li>
+      </ul>
+      <p>Either condition independently triggers the block. The message you configure here is what appears in the mobile app when a blocked member tries to request a booking — make it clear and actionable (e.g. "You have an outstanding balance. Contact the club secretary to resolve it before booking."). Leaving both thresholds blank disables the block regardless of the enable switch. Staff with booking management access are exempt from the booking block regardless of their financial standing.</p>
+
+      <h3 id="setup-appearance">Appearance</h3>
+      <p>The Appearance tab lets you match the system's colour scheme to your club's identity. The banner colour fills the sidebar header; the primary colour is used for buttons and highlights. Booking status colours (Pending, Confirmed, Departed, Completed, etc.) control how each booking type appears on the Gantt calendar — choosing distinct colours makes it easy to see at a glance how far through the lifecycle each flight is. The body font affects the management web app only; the mobile app uses its own styling. Chart colours affect the bar and line charts in Reports.</p>
+
+      <h3 id="setup-roles">Roles</h3>
+      <p>A <strong>role</strong> is a system-level category that controls what a person in ClubHangar can access and how the billing cycle applies to them. Some roles map naturally to club membership categories (Full Member, Student Pilot, Life Member), but a role is not the same thing as club membership. A person can have a system account — and therefore appear on bookings, flight records, and safety reports — without being a member of the incorporated society. An external CFI, for example, has a system role but is not on the ISA register and pays no subscription.</p>
+      <p>Three system roles exist by default and cannot be deleted:</p>
+      <ul>
+        <li><strong>Admin</strong> — full access to everything, including Settings and Types. Assign sparingly; this role carries all permissions implied.</li>
+        <li><strong>Instructor</strong> — access to the Gantt calendar, booking management, member detail pages (including financials), the invoice list, invoice detail, and reports. Cannot access the charges screen or settings.</li>
+        <li><strong>Member</strong> — the default for paying members: mobile app access and their own bookings only.</li>
+      </ul>
+      <p>Custom roles sit alongside these three and have fully configurable permission flags. The key flags to understand:</p>
+      <ul>
+        <li><strong>Bookings access</strong> — None, View own, Manage own, or Manage all. "Manage all" gives access to the full Gantt calendar, booking detail pages, and the ability to confirm, depart, and complete flights.</li>
+        <li><strong>Ops &amp; People, Safety, Fleet, Reports, Config</strong> — grant access to specific navigation sections. Config access reaches Settings and Types.</li>
+        <li><strong>All (superadmin)</strong> — implies every permission above. Use for club managers or system administrators who need unrestricted access.</li>
+        <li><strong>Renewal required</strong> — members on this role are included in the annual subscription cycle and will be auto-lapsed if their subscription expires. Uncheck this for roles where no subscription applies — an honorary life member, a non-member instructor, or a social member who does not fly.</li>
+      </ul>
+      <p>Each role also carries an <strong>annual renewal fee</strong>. This pre-fills the amount when generating a subscription invoice for anyone on that role. It can be overridden per invoice, but a sensible default saves time at bulk renewal. Roles with no fee set will produce a blank amount field on the invoice modal — you will need to enter the amount manually.</p>
+
+      <h3 id="setup-budget">Budget</h3>
+      <p>The Budget tab lets you set monthly hour targets for each aircraft in the current financial year. These budgeted hours appear in Reports as a variance chart — actual hours flown against plan. This is purely a planning and reporting aid; the budget has no effect on bookings, charges, or any other operational function.</p>
+
+      <h3 id="setup-types">Types (Settings → Types)</h3>
+      <p>Settings → Types is a separate screen for the classification lists that label records across the whole system. Each list is configured once and then appears as a dropdown wherever that concept is used — when requesting a booking, completing a flight, logging a maintenance entry, or submitting an occurrence report.</p>
+      <p><strong>Flight types.</strong> The options available when requesting or completing a booking: Solo, Dual, Check Flight, Cross-Country, Navigation Exercise, etc. Each type carries four flags that shape behaviour throughout the system:</p>
+      <ul>
+        <li><em>Solo</em> — hides the instructor field on the booking request form. If a member selects a solo type, they cannot attach an instructor to the booking.</li>
+        <li><em>Training</em> — marks the flight as a training flight in reports and may trigger a training declaration requirement at completion.</li>
+        <li><em>Requires declaration</em> — prompts the instructor to complete a training declaration when completing the flight. Useful for any flight type where a formal learning record is expected.</li>
+        <li><em>Billable</em> — flight time on this type generates charges. Uncheck for positioning flights, ferry flights, or any non-revenue operation you do not want to bill for.</li>
+      </ul>
+      <p><strong>Charge types — instructor grades.</strong> Define the grades your club uses (C-Cat, B-Cat, A-Cat, Flight Examiner, etc.) along with the hourly rate for each. When an instructor with a given grade is assigned to a booking, their rate determines the instructor fee charged to the booking member. This is set per instructor on their profile (People → Instructors), referencing the grades defined here.</p>
+      <p><strong>Charge types — aircraft surcharges.</strong> Per-flight additions that apply to specific aircraft — a 4-seat aircraft levy, an avionics equipment surcharge, a glass cockpit fee. You define the type and amount here, then assign it to individual aircraft under Fleet → Aircraft. Every flight on that aircraft automatically includes the surcharge as a line item in the charge calculation.</p>
+      <p><strong>Block-out types.</strong> Categories for taking aircraft out of service: Annual inspection, 100-hour check, Maintenance, Paint — whatever your club uses. Aircraft block-outs are always hard: they prevent any booking on that aircraft during the block-out period and appear on the Gantt as a coloured band. All-resource block-outs (e.g. aerodrome closure) can be hard or soft — a soft block-out is a visual advisory only and does not prevent bookings. The colour you assign each type helps staff distinguish maintenance windows from closures at a glance.</p>
+      <p><strong>Aircraft types.</strong> The type list (Cessna 172, Piper PA-28, Robin DR400, etc.) is referenced in two places: each aircraft record has a type, and member credential records reference types for type ratings. The optional ICAO designator is useful for formal reports and occurrence submissions. You cannot add an aircraft to the fleet without first defining its type here.</p>
+      <p><strong>Event types.</strong> The categories available when submitting an occurrence report: Near Miss, Bird Strike, Snag, Airspace Infringement, Hazard Observation, etc. These are chosen by the member or staff member at submission and used to filter and analyse events in Reports → Safety. Inactive types are hidden from the submission form but retained on existing reports so historical data is not affected.</p>
+      <p><strong>Contact types.</strong> Categories for non-member contacts: Trial Flight, Young Eagles, Gateway Scheme, Commercial Hire, etc. When a contact appears on a flight record or payment, the type records why they were flying — useful for reporting on introductory flights or scheme participation.</p>
+
+      <h3 id="setup-aerodromes">Aerodromes (Manage → Aerodromes)</h3>
+      <p>The aerodrome list is separate from Settings — it lives under <strong>Manage → Aerodromes</strong> and is accessible to admin and instructors. Set it up early: the home aerodrome is used by the <a href="#tools-weather">Weather screen</a> to pull the METAR, and landing fees are attached to destination aerodromes so they can auto-populate at flight completion.</p>
+      <p><strong>Adding an aerodrome.</strong> Enter the ICAO code (e.g. NZWN), full name, and any notes. Mark one aerodrome as <em>Home</em> — only one can be home at a time; changing it updates the METAR source immediately. Add all aerodromes your members commonly fly to, so they appear in the destination dropdown at completion and their fees are applied automatically.</p>
+      <p><strong>Landing fee types.</strong> Each aerodrome can have multiple fee types — Full Stop, Touch &amp; Go, Night Surcharge, etc. Define these under the aerodrome record with a default amount per operation. At flight completion, when a destination aerodrome is selected, the system presents the applicable fee types for staff to confirm or override. The confirmed fees appear as line items in the charge calculation alongside the aircraft hire and instructor fee.</p>
+      <p><strong>Active / inactive.</strong> Aerodromes can be set inactive if a destination is no longer used — they stop appearing in dropdowns but historical flight records that reference them are preserved.</p>
+
+      <h3 id="setup-checklist">First-time checklist</h3>
+      <p>Complete these in roughly this order. Several items depend on earlier ones (you cannot configure aircraft rates without aircraft types; you cannot assign grades without instructor grades).</p>
+      <ul class="checklist" style="list-style:none;padding:0;">
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>General</strong> — club name, contact details, logo</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Billing</strong> — legal name, GST number and rate, bank account, payment terms (days), payment instructions text, invoice prefix</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Membership</strong> — FY start month, lapse grace period</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Types → Aircraft types</strong> — add all aircraft types before adding aircraft</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Types → Flight types</strong> — solo, dual, check flight, cross-country; set billable flag for each</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Types → Instructor grades</strong> — grades and hourly rates (e.g. C-Cat $65/hr)</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Types → Block-out types</strong> — 100-hr, Annual, Maintenance etc. with colours</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Roles</strong> — create system roles with permission flags, renewal required flag, and annual fees</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Aerodromes</strong> — home aerodrome and regular destinations (Manage → Aerodromes); landing fees per aerodrome</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Aircraft</strong> — registration, type, instruments, billing method, maintenance source, initial maintenance hours, maintenance schedule</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Rates</strong> — aircraft hourly rates per aircraft (Sales → Rates)</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>Bookings</strong> — operating hours, slot grid, booking block thresholds and message</span></li>
+        <li style="display:flex;gap:.5rem;padding:.28rem 0;font-size:.86rem;">☐ <span><strong>First admin member</strong> — ensure at least one person has admin access before you step back</span></li>
+      </ul>
+    </div>
+
+    <!-- ════════════════ MEMBERSHIP -->
+    <div class="gsec" id="membership">
+      <h2>Membership cycle</h2>
+
+      <h3 id="mem-new">New member</h3>
+      <div class="step-flow">
+        <div class="step"><span class="num">1</span>Create account</div><span class="arrow">→</span>
+        <div class="step"><span class="num">2</span>Pending</div><span class="arrow">→</span>
+        <div class="step"><span class="num">3</span>Committee vote</div><span class="arrow">→</span>
+        <div class="step"><span class="num">4</span>Assign role + send invoice</div><span class="arrow">→</span>
+        <div class="step"><span class="num">5</span>Member pays</div><span class="arrow">→</span>
+        <div class="step"><span class="num">6</span>Mark paid → Active + expiry</div>
+      </div>
+      <p><strong>1 — Create account:</strong> People → Members → + Add member. Name, email, temporary password. New accounts default to Pending — the member can log in but cannot book.</p>
+      <p><strong>2 — Pending:</strong> Member can use the mobile app to see their account and profile but cannot request bookings or appear as an active member in reports.</p>
+      <p><strong>3 — Committee ratification (ISA 2022):</strong> The committee must formally vote to admit the member before membership takes effect. Record the meeting reference and date in your club minutes. This step happens outside ClubHangar.</p>
+      <p><strong>4 — Assign role and generate invoice (member still Pending):</strong> Member detail → Membership tab → assign the appropriate role (this sets the fee rate). Click <strong>Generate subscription invoice</strong> next to the Save button. The pro-rata amount pre-fills based on days remaining to FY end; the subscription valid-to date pre-fills to the FY end. Click <strong>Generate &amp; send</strong>. The invoice is created and the member receives a push notification — their standing remains Pending at this point.</p>
+      <p><strong>5 — Member pays:</strong> EFTPOS or cash — an instructor or admin marks the invoice paid at point of sale (Sales → Invoices). Bank transfer — the bookkeeper reconciles the payment at month end and marks it paid.</p>
+      <p><strong>6 — Mark paid → Active + expiry set:</strong> When the invoice is marked fully paid, the system automatically sets standing to Active and sets subscription_expires to the date on the invoice. Both changes are recorded in the audit log. The member can now book flights.</p>
+
+      <div class="callout warn">
+        <strong>ISA 2022:</strong> Generating the invoice before committee ratification is fine — standing stays Pending until payment. Do not manually set standing to Active before ratification, as the membership history audit log records every change with timestamp and who made it.
+      </div>
+
+      <h3 id="mem-invoice">Subscription invoice</h3>
+      <p>On the member's Membership tab, click <strong>Generate subscription invoice</strong> (next to the Save button):</p>
+      <ul>
+        <li><strong>Amount</strong> — pre-calculated pro-rata: days remaining to FY end ÷ FY total days × role annual fee. Editable.</li>
+        <li><strong>Subscription valid to</strong> — defaults to the FY end date (e.g. 31 March 2027 for FY27). Editable for non-standard cases.</li>
+        <li><strong>Notes</strong> — appear on the invoice (e.g. "Pro-rata from June — new member").</li>
+      </ul>
+      <p>Click <strong>Generate &amp; send</strong> — invoice is created as Sent immediately and the member receives a push notification. For new members (standing Pending), marking the invoice paid will automatically set standing to Active.</p>
+
+      <details class="dblock">
+        <summary>Pro-rata, expiry date, and what happens if payment is late</summary>
+        <div class="dbody">
+          <p>The pro-rata amount is calculated at the moment you open the modal. The expiry date is the FY end — it doesn't shift if payment is delayed. If a member pays 30 days late on a 9-month pro-rata invoice, they get 8.something months of valid membership, not 9. The due date on the invoice (set from your payment terms) is the signal to the member of when payment is expected.</p>
+          <p>This is intentional: all members on the same role are aligned to the same FY end date, which makes bulk renewal much simpler. A member who delays paying simply loses a few weeks of their subscription window — the same model used by most clubs and many subscription services.</p>
+          <p>If you want to adjust for a significant delay (e.g., invoice sat unpaid for months), void the original and re-generate with today's date as the start. The new pro-rata will recalculate automatically.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Duplicate invoice protection</summary>
+        <div class="dbody">
+          <p>The system blocks generating a second subscription invoice if one already exists with status Draft or Sent. The Generate button is hidden and replaced with a link to the outstanding invoice. To re-issue, void the existing invoice first (Sales → Invoices → find it → Void), then generate a new one.</p>
+        </div>
+      </details>
+
+      <p>When the invoice is <strong>marked paid</strong> (Sales → Invoices → Mark paid), the member's subscription expiry date is automatically updated to the date on the invoice, and an audit entry is written to the History tab.</p>
+
+      <h3 id="mem-renewal">Annual renewal &amp; auto-lapse</h3>
+      <div class="step-flow">
+        <div class="step"><span class="num">1</span>Subscription expires</div><span class="arrow">→</span>
+        <div class="step"><span class="num">2</span>Auto-lapsed overnight</div><span class="arrow">→</span>
+        <div class="step"><span class="num">3</span>Generate renewal invoice</div><span class="arrow">→</span>
+        <div class="step"><span class="num">4</span>Member pays</div><span class="arrow">→</span>
+        <div class="step"><span class="num">5</span>Mark paid → expiry advances</div>
+      </div>
+      <p>The <code>update_lapsed_members</code> management command runs nightly. It checks all Active members whose subscription expiry date has passed beyond the configured grace period (Settings → Membership → Grace period). Anyone overdue is moved to Lapsed: their standing changes, a history entry is written, and their login is disabled — they can no longer book or log in. To manually run the check without waiting for the overnight job, use the "Run auto-lapse now" button in Settings → Membership.</p>
+      <p>Members on roles without <em>Renewal required</em> checked are never auto-lapsed (e.g. life members, non-member staff).</p>
+      <p><strong>Bulk renewal.</strong> Rather than generating invoices one by one, use Settings → Membership → <strong>Send renewal invoices</strong> to send the full-year subscription invoice to all currently Active members with renewal-required roles in one action. The page shows a preview of eligible members before you confirm. Each invoice uses the role's annual fee (not pro-rata — these are full FY renewals). Members who already have an outstanding subscription invoice are skipped automatically.</p>
+      <p>To renew an individual member: generate a new subscription invoice from their Membership tab (same flow as above). Marking it paid advances the expiry date to the new FY end.</p>
+
+      <h3 id="mem-standing">Standing reference</h3>
+      <p>Standing reflects where someone sits in the society's membership lifecycle. The ISA 2022 requires that your register accurately reflects this at all times.</p>
+      <div class="status-flow">
+        <span class="pill pending">Pending</span><span class="sarrow">→</span>
+        <span class="pill active">Active</span><span class="sarrow">→</span>
+        <span class="pill lapsed">Lapsed</span>
+        <span class="sarrow"> / </span><span class="pill suspended">Suspended</span>
+        <span class="sarrow"> / </span><span class="pill resigned">Resigned</span>
+      </div>
+      <table class="guide-table">
+        <thead><tr><th>Standing</th><th>What it means</th><th>Book flights</th><th>Log in</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill pending">Pending</span></td><td>Has been given an account but has not yet been ratified by the committee. Not a formal member of the society — cannot vote, cannot book. The ISA 2022 requires committee approval before membership takes effect. They can log in and see their profile.</td><td class="no">✗</td><td class="yes">✓</td></tr>
+          <tr><td><span class="pill active">Active</span></td><td>Ratified member in good standing with a current subscription. Full membership rights under the society's rules.</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+          <tr><td><span class="pill lapsed">Lapsed</span></td><td>Was an Active member but their subscription has expired past the grace period. No longer a member of the incorporated society — must reapply and be approved by the committee to rejoin. Login is disabled automatically.</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td><span class="pill suspended">Suspended</span></td><td>Membership suspended by committee action — typically a disciplinary matter under the society's rules. Requires a formal committee decision to lift. Login is disabled while suspended.</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td><span class="pill resigned">Resigned</span></td><td>Member has formally resigned from the society. Under ISA 2022 s26, the society must retain their record for 7 years. Account is deactivated but the record is never deleted.</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td><span class="pill non_member">Non-member</span></td><td>Has a system account but is not and has never been a member of the society — trial flight participants, Young Eagles, contracted staff. Exists purely so they can appear on flight records.</td><td class="no">✗</td><td class="yes">✓</td></tr>
+          <tr><td><span class="pill transferred">Transferred</span></td><td>Has moved their membership to another club. Historical record retained; no active access.</td><td class="no">✗</td><td class="no">✗</td></tr>
+        </tbody>
+      </table>
+
+      <h3 id="mem-block">Booking block</h3>
+      <p>The booking block is a financial gate separate from standing. It can block an Active member from booking if they have outstanding debts. Configure thresholds in Settings → Bookings.</p>
+      <table class="guide-table">
+        <thead><tr><th>Trigger</th><th>Setting</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>Unpaid flight charges</td><td>Unpaid flight days</td><td>Block if any uncharged/unpaid flight is older than N days</td></tr>
+          <tr><td>Overdue invoices</td><td>Invoice overdue days</td><td>Block if any Sent invoice is older than N days</td></tr>
+        </tbody>
+      </table>
+      <p>Members see a message (configurable in Settings → Bookings, or a default that includes contact details). The block lifts automatically once the condition clears. Instructors and admins are always exempt.</p>
+
+      <h3 id="mem-registrar">Member register (ISA register)</h3>
+      <p>The <strong>People → Members → Registrar report</strong> (also linked as the Registrar export) produces a point-in-time register of members as at any given date. This is the tool for meeting the Incorporated Societies Act 2022 obligation to maintain an up-to-date register of members.</p>
+      <p>Enter an "as at" date — defaulting to today — and the system returns all members who had active membership on that date: those who had joined on or before that date and had not yet resigned. The register includes name, email, role, standing, join date, resigned date, date of birth, address, and mobile number.</p>
+      <p>The report can be viewed on screen as an HTML table, or downloaded as a CSV (Excel-compatible, UTF-8 BOM) for attaching to committee meeting minutes or submitting to your society's Registrar. Run this before each Annual General Meeting and whenever a member joins or resigns, so your secretary has a current list.</p>
+      <p>Only admin can access the registrar export. Instructors do not see it.</p>
+    </div>
+
+    <!-- ════════════════ BOOKINGS -->
+    <div class="gsec" id="bookings">
+      <h2>Bookings</h2>
+
+      <h3 id="book-gantt">Gantt calendar</h3>
+      <p>The Gantt calendar (Operations → Bookings) is the primary working view for managing the club's flying programme. Each horizontal row represents one aircraft; the horizontal axis is time across the day. Bookings appear as coloured blocks — the colours correspond to the booking status colours configured in Settings → Appearance, so at a glance you can see which flights are Pending, Confirmed, Departed, Completed, and so on. Block-out periods appear as a colour band in the aircraft row, labelled with the block-out type.</p>
+      <p><strong>Navigation.</strong> Use the previous/next day arrows at the top to move one day at a time, or click the date to open a date picker. The day view is the only view currently available — it shows all bookings for a single day across all aircraft.</p>
+      <p><strong>Creating a booking from the Gantt.</strong> Staff with booking management access can click an empty slot in any aircraft row to open the new booking form directly. The aircraft and time are pre-filled from where you clicked. Members request bookings from the mobile app schedule view instead.</p>
+      <p><strong>Booking detail.</strong> Click any booking block to open the booking detail panel: member name, flight type, instructor (if dual), current status, and the available actions (Confirm, Depart, Complete, Cancel). From here you can also view the member's credential status and see any alerts attached to the booking.</p>
+      <p><strong>Credential alerts.</strong> If a member on an upcoming booking has an expired or expiring licence, medical, BFR, or type rating, a warning icon appears on the booking block on the Gantt. Staff can click through to the credential detail from the booking panel.</p>
+
+      <h3 id="book-attention">Attention page</h3>
+      <p>The Attention page (the badge count in the sidebar, or Operations → Attention) collects everything that needs a staff decision before flying proceeds. It is the recommended starting point at the beginning of each day.</p>
+      <p>Items surfaced on the Attention page include:</p>
+      <ul>
+        <li><strong>Maintenance clashes</strong> — an upcoming booking is on an aircraft with a Red maintenance item (overdue or past threshold). The booking should be cancelled or rescheduled, and a block-out created while maintenance is carried out.</li>
+        <li><strong>Expired credentials</strong> — a member on a confirmed or pending upcoming booking has an expired licence, medical, BFR, or required type rating. The booking cannot safely proceed until the credential is renewed or the booking is amended.</li>
+        <li><strong>Lapsed members with active bookings</strong> — a member's standing was moved to Lapsed after their booking was confirmed. They cannot book new flights but existing confirmed bookings are not automatically cancelled — a staff member must decide whether to honour or cancel them.</li>
+        <li><strong>Meter gaps</strong> — unexplained gaps in hobbs or tacho readings from recent completions. These affect maintenance hour calculations and need to be resolved (see <a href="#ac-hours">Hours tracking</a>).</li>
+        <li><strong>Unpaid charges</strong> — completed flights where charges have been calculated but not yet collected or invoiced.</li>
+      </ul>
+      <p>The sidebar badge count reflects the total number of open items across all categories. Resolving an item (completing payment, cancelling a booking, updating a credential) removes it from the list.</p>
+
+      <h3 id="book-blockouts">Block-outs</h3>
+      <p>A block-out marks a resource as unavailable for booking during a defined period. Block-outs can target <strong>aircraft</strong>, <strong>specific instructors</strong>, or <strong>all resources</strong> simultaneously. Each block-out type (configured in Settings → Types → Block-out types) carries a colour for the Gantt, a target resource category, and a hard/soft flag.</p>
+      <p><strong>Aircraft block-outs</strong> are always hard — they prevent any booking on the blocked aircraft in that window and appear as a coloured band in the aircraft's Gantt row. Use them for maintenance windows, 100-hour checks, annuals, or unscheduled downtime. The availability search (Find slots) will not offer blocked aircraft.</p>
+      <p><strong>Instructor block-outs</strong> target a specific instructor (or all instructors). They appear on the instructor's row in the Gantt. Instructor block-out types can be hard or soft: a hard instructor block prevents bookings being assigned to that instructor in the blocked window; a soft one is advisory — it shows on the calendar but does not prevent assignment. Use hard instructor blocks when an instructor is definitely unavailable (travel, sick leave). Use soft ones for scheduled preferences (e.g. "office admin morning" where they might still be available in an emergency).</p>
+      <p><strong>All-resource block-outs</strong> cover every aircraft and instructor simultaneously — for aerodrome closures, club events, or NOTAM periods where no flying should take place. These can be hard or soft depending on how absolute the restriction is.</p>
+      <p><strong>Creating a block-out.</strong> Go to Operations → Block-outs and click + Add block-out, or click an empty row in the Gantt to open the new block-out form pre-filled with the resource and date. Set the scope (which aircraft or instructor, or all), time window, and block-out type. Recurring block-outs can be set as weekly (e.g. every Wednesday afternoon) or daily, with optional active-from / active-until bounding dates.</p>
+      <p><strong>Existing bookings.</strong> Creating a block-out does not automatically cancel bookings already in that window. Clashes appear on the Attention page — you decide whether to cancel the affected booking or move the block-out. This avoids inadvertent cancellations for members who booked in good faith before the block-out was created.</p>
+      <p><strong>Removing a block-out.</strong> Delete from Operations → Block-outs. The blocked slots immediately become available again.</p>
+
+      <h3 id="book-roster">Instructor roster</h3>
+      <p>The instructor roster controls which instructors appear on the Gantt calendar as selectable rows, and which can be assigned to dual bookings. It is managed from <strong>People → Instructors</strong> in the management web app.</p>
+      <p><strong>On-roster flag.</strong> Each instructor-role member has an <em>On instructor roster</em> checkbox on their member record (People → Members → [instructor] → Membership tab). When ticked, the instructor appears as a named row in the Gantt calendar, can be selected when creating a dual or instruction booking, and is included in the booking assignment check. Untick this to archive an instructor from the active roster without deleting their record — their past bookings and flight history are preserved.</p>
+      <p><strong>People → Instructors page.</strong> This page shows all rostered instructors with a rolling 5-week calendar view. For each instructor you can see which days they are shown as available. From here you can also add a rostered instructor (from among members with an instructor-type role) or remove one from the roster. Adding/removing updates the On roster flag on the member record.</p>
+      <p><strong>Instructor availability windows.</strong> By default, an instructor with no availability windows configured is assumed available during all club operating hours on all days. To reflect a regular schedule — for example an instructor who only flies on Tuesdays and Saturdays — set up availability windows under People → Instructors → [instructor] → Availability. Windows can be:</p>
+      <ul>
+        <li><strong>Weekly recurring</strong> — e.g. every Tuesday all day, or every Saturday 09:00–13:00. The system uses this pattern when members search for available slots with a specific instructor.</li>
+        <li><strong>One-off (specific date)</strong> — e.g. available this particular Saturday for a check flight, outside their usual pattern.</li>
+      </ul>
+      <p>Availability windows drive the <a href="#book-findslots">Find slots</a> search when an instructor filter is applied. They do not hard-block bookings by themselves — a booking can still be created outside the window, but the mismatch will surface on the Attention page as a scheduling conflict.</p>
+      <p><strong>Removing an instructor from the roster.</strong> If an instructor is removed from the roster (or has the On roster flag unticked) after they have already been assigned to a booking, the system does not automatically cancel those bookings. The conflict appears on the Attention page under "Instructor off roster" and as a warning on the booking block in the Gantt. The assigned instructor must be changed or the bookings cancelled — they cannot proceed to Depart without resolution or a staff override.</p>
+      <p><strong>Instructor block-outs vs availability windows.</strong> These serve different purposes: <em>availability windows</em> say when an instructor is generally available (used by Find slots); <em>block-outs</em> say when they are specifically not available (prevents booking assignment). Use availability windows for regular patterns, and instructor block-outs for one-off or temporary unavailability.</p>
+
+      <h3 id="book-lifecycle">Booking lifecycle</h3>
+      <div class="step-flow">
+        <div class="step"><span class="num">1</span>Request booking</div><span class="arrow">→</span>
+        <div class="step"><span class="num">2</span>Pending</div><span class="arrow">→</span>
+        <div class="step"><span class="num">3</span>Confirmed</div><span class="arrow">→</span>
+        <div class="step"><span class="num">4</span>Departed</div><span class="arrow">→</span>
+        <div class="step"><span class="num">5</span>Completed</div><span class="arrow">→</span>
+        <div class="step"><span class="num">6</span>Charged</div>
+      </div>
+      <p><strong>1 — Request booking.</strong> Anyone with booking access can request a booking — a member via the mobile app (Schedule → + button), or an instructor or admin from the management web app Gantt calendar on behalf of any member. The booking block is checked first: if the requesting member has an active block, the + button is disabled and the configured block message is shown. Fields: aircraft, date, time, flight type, and (for dual types) instructor.</p>
+      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Member (mobile app), instructor or admin (Gantt calendar)</em></p>
+      <p><strong>2 — Pending.</strong> The booking appears in the Gantt calendar. The member can still edit the booking (change time, aircraft, flight type) or cancel it from the mobile app. Staff can modify or cancel it from the booking detail on the Gantt. If the flight type requires a departure declaration, the member can start completing it now — it doesn't have to wait until departure day. See <a href="#book-declarations">Departure declarations</a>.</p>
+      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Member can edit/cancel (mobile); admin/instructor can modify or cancel (Gantt)</em></p>
+      <p><strong>3 — Confirmed.</strong> An admin or instructor clicks Confirm on the booking detail. A push notification is sent to the booking member. On dual bookings, the assigned instructor is notified separately. Once confirmed, the member can no longer self-cancel from the mobile app — they need to contact staff. The booking also becomes visible to the member as "locked in."</p>
+      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
+      <p><strong>4 — Departed.</strong> Staff enter the meter start readings (Hobbs and/or Tacho, depending on which instruments the aircraft has) and click Depart. For solo bookings only, the member can depart themselves from the mobile app — no staff action required. Dual and instructor bookings always require staff. Before departure is allowed, the system checks: if the flight type <em>requires a declaration</em>, a submitted (non-draft) declaration must exist. If it doesn't, staff must provide a written override reason — this is recorded in the booking audit log. Once departed, if the aircraft has ADS-B configured (ICAO hex set on the aircraft record), it becomes visible on the <a href="#tools-map">Live Map</a>.</p>
+      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Solo — member (mobile) or admin; dual/instructor — admin or instructor (management web app)</em></p>
+      <p><strong>5 — Completed.</strong> After landing, staff enter: Hobbs/Tacho end readings, destination aerodrome, outcome, and any passengers. The system calculates flight time from the meter delta using the aircraft's billing instrument. The same readings advance the aircraft's maintenance hours using the configured maintenance instrument (which may differ — see <a href="#ac-hours">Hours tracking</a>). For flights requiring a training declaration, the instructor completes it at this point (not at departure).</p>
+      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
+      <p><strong>6 — Charged.</strong> Review the calculated charge items (aircraft hire, instructor fee, surcharges, landing fees), adjust if needed, then apply payment. See <a href="#book-charging">Charging</a>.</p>
+      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin (management web app)</em></p>
+
+      <div class="callout info">
+        <strong>Scheduling conflicts:</strong> When a booking is created, the system checks for clashes (same aircraft, overlapping time). Conflicts that slip through — or arise later when block-outs are created after the booking, or when an instructor is removed from the roster after being assigned to a booking — surface on the <a href="#book-attention">Attention page</a>.
+      </div>
+
+      <h4>Rescheduling a booking</h4>
+      <p>From the booking detail panel (click the booking block on the Gantt), staff can reschedule a confirmed or pending booking to a new time. The reschedule form shows available alternative slots for the same aircraft and checks for block-out conflicts before saving. The booking member is notified of the new time via push notification. Use this rather than cancel-and-rebook when the time change is small — it preserves the booking record and audit trail.</p>
+
+      <h4>Rejecting / cancelling a booking</h4>
+      <p>Either the member (from the mobile app, while the booking is still Pending) or staff (from the booking detail on the Gantt at any status) can cancel a booking. When staff cancel, they can choose whether to <em>release the slot</em> — if released, members watching that booking slot receive a push notification that the time is now free. This is useful when a popular slot opens up and staff want to let waiting members know quickly.</p>
+
+      <h4 id="book-slotwatch">Slot watch</h4>
+      <p>Any staff member (or member from their profile) can "watch" a booking they didn't create. When the booking is subsequently cancelled by staff with the release flag set, all watchers receive a "slot freed" push notification. To watch a booking, click the watch icon on the booking detail panel. To stop watching, unwatch from the same panel or from your Profile → Notifications tab.</p>
+      <p>This is particularly useful when a member asks whether a slot might come free — instead of having to check back manually, they can set a watch and be notified automatically. Slot watch is opt-in per booking; there is no club-wide "notify me when any slot opens" option (to avoid notification overload).</p>
+
+      <h3 id="book-credentials">Credentials</h3>
+      <p>ClubHangar tracks each member's pilot credentials — licences, ratings, medicals, Flight Reviews (BFR), and certificates. Credential records live on the member record under <strong>People → Members → [member] → Credentials tab</strong>. Members can also view (but not edit) their own credentials in the mobile app.</p>
+
+      <p><strong>Credential types.</strong> The system uses NZ CAA categories — these are fixed, not club-configurable:</p>
+      <ul>
+        <li><strong>Licences</strong> — PPL, CPL, ATPL</li>
+        <li><strong>Ratings &amp; endorsements</strong> — Cross Country, Night VFR, Instrument Rating (IR), Multi-Engine, Type Rating, Tailwheel, Aerobatic, Seaplane</li>
+        <li><strong>Instructor certificates</strong> — C-Cat, B-Cat, A-Cat, Flight Examiner</li>
+        <li><strong>Medical certificates</strong> — Class 1, Class 2, Class 3, DLR9</li>
+        <li><strong>Flight Review (BFR)</strong> — required every 24 months for PPL/CPL/ATPL holders</li>
+        <li><strong>Other</strong> — free-text name for anything not covered above</li>
+      </ul>
+
+      <p><strong>Adding credentials.</strong> Go to People → Members → [member] → Credentials tab → + Add credential. Select the type, enter the issue date, expiry date, and certificate number. For Type Ratings, link the record to the aircraft type (from the list in Settings → Types → Aircraft types) — this is how the system knows which aircraft the member is rated for. You can also attach a scanned copy (photo or PDF) of the certificate. A member can have multiple records of the same type — useful for multiple type ratings or overlapping medical renewals.</p>
+
+      <p><strong>Expiry monitoring.</strong> The system marks a credential as <em>expiring soon</em> when it reaches 60 days from expiry, and <em>expired</em> after the expiry date has passed. Members receive push notifications as credentials approach expiry (configurable in Settings → Notifications). Staff see the same warnings on the Gantt and Attention page.</p>
+
+      <p><strong>Where credential warnings appear:</strong></p>
+      <ul>
+        <li><strong>Booking block on the Gantt</strong> — warning icon on the booking block if the member has an expiring or expired credential relevant to the aircraft type</li>
+        <li><strong>Booking detail panel</strong> — credential status listed with expiry dates and current state</li>
+        <li><strong>Attention page</strong> — bookings with expired credentials, prompting staff to decide whether to proceed</li>
+        <li><strong>Member detail page</strong> — Credentials tab shows the full credential record with expiry status</li>
+      </ul>
+
+      <p><strong>Credential checks do not hard-block departure.</strong> A credential warning does not prevent the Depart action — staff decide whether to proceed and accept responsibility. The correct response is to contact the member, confirm they have renewed (and update the record accordingly), or cancel the booking. Type ratings are checked against the aircraft type on the booking — a member without a type rating for the booked aircraft generates a warning regardless of what other ratings they hold.</p>
+
+      <h3 id="book-declarations">Departure declarations</h3>
+      <p>A departure declaration is a pre-flight safety record completed by the pilot before departing. It records: intended route, destination, estimated return time, SAR time, next-of-kin contact, passenger details (with next-of-kin for each), and a series of pre-flight checks (AIP consulted, weather briefed, fuel checked, maps, fuel card, AFM carried, flight plan filed).</p>
+      <p><strong>Which flights require a declaration?</strong> This is configured per flight type in Settings → Types → Flight types → <em>Requires declaration</em> flag. Your club decides which flight types are declaration-obligatory — typically cross-country, private hire, or any flight where a SAR time is operationally important. Training flights (dual) don't usually require one in the departure-declaration sense, because the instructor is present and accountable; instead, they get a training declaration at completion (see below).</p>
+      <p><strong>When to complete it.</strong> The declaration can be filled in any time before departure — while the booking is Pending, Confirmed, or right before the aircraft departs. Access it from the booking detail: click "Declaration." The member can complete it themselves from the management web app or (for solo flights) be directed to it before departing. Declarations remain in Draft until submitted; only a submitted (non-draft) declaration satisfies the departure gate.</p>
+      <p><strong>Departure gate and override.</strong> If the flight type requires a declaration and none has been submitted, the Depart button will prompt for an override reason rather than silently blocking. Providing a reason allows departure to proceed but records the override and who authorised it — this appears in the booking audit log and on the Attention page. An override should only be used when there's a good operational reason (e.g. member already filed a flight plan externally and the system declaration is duplicative).</p>
+      <p><strong>Training declaration (dual flights).</strong> This is distinct from the departure declaration. On a dual flight, the instructor completes a training declaration at completion — not before departure. It records learning objectives achieved and the instructor's sign-off. This is required for any flight type with the <em>Training</em> flag set. Training declarations are accessed from the booking detail during or after completion.</p>
+
+      <h4>Authorising instructor</h4>
+      <p>The declaration includes an optional <strong>Authorising instructor</strong> field — the instructor who verbally cleared the flight. This is a record-only field: the system does not send an approval request to the named instructor and does not require their confirmation in the system. It simply records who the pilot says authorised the flight.</p>
+      <p>The key use case is an <strong>early-morning private hire departure</strong> before club operating hours. The pilot and instructor agree on the flight the day before; the pilot completes and submits the declaration in advance, naming the instructor in the Authorising instructor field. On the morning of the flight, with no instructor physically on site, the pilot departs themselves from the mobile app. The submitted declaration satisfies the departure gate. If the declaration was completed more than 6 hours earlier, the system prompts the pilot to acknowledge that they have re-checked weather and NOTAMs before self-departing — this acknowledgement is recorded in the declaration. The flight proceeds entirely within the system with a full audit trail: who flew, who authorised, when the declaration was submitted, and when the staleness check was confirmed.</p>
+
+      <h4>Passengers on declarations</h4>
+      <p>Passengers are recorded on the departure declaration, not directly on the flight completion. Each passenger entry can include next-of-kin name and phone. If the same person regularly flies with the club, their details can be saved as a frequent passenger and auto-populated on future declarations for that member — reducing data entry and ensuring completeness.</p>
+
+      <h3 id="book-findslots">Availability search (Find slots)</h3>
+      <p>The availability search (Operations → Find slots, or the Search tab in the mobile app) lets you — or a member — quickly find available time windows without scrolling through the Gantt day by day. Enter an aircraft type, desired duration, and a date range; the system returns a list of windows where a matching aircraft is free, not blocked out, and within operating hours.</p>
+      <p>This is particularly useful at the start of a busy period when members are trying to book cross-country flights requiring several hours, or when staff are trying to find a gap for a maintenance slot. From the results, clicking a window pre-fills the booking request form.</p>
+
+      <h3 id="book-completion">Flight completion</h3>
+      <p>After landing, complete the flight record:</p>
+      <ul>
+        <li><strong>Meter readings</strong> — hobbs end / tacho end. The system checks for gaps against the previous flight on that aircraft; unexplained gaps are flagged on Reporting → Integrity.</li>
+        <li><strong>Outcome</strong> — completed, training, check flight, etc.</li>
+        <li><strong>Destination aerodrome</strong></li>
+        <li><strong>Passengers</strong> — non-member passenger names (required for the flight record)</li>
+        <li><strong>Training declaration</strong> — for dual flights, the instructor signs off learning objectives</li>
+      </ul>
+
+      <details class="dblock">
+        <summary>Meter gaps — what they mean and how to handle them</summary>
+        <div class="dbody">
+          <p>When you enter a hobbs/tacho start reading that doesn't match the previous flight's end reading on that aircraft, the system asks for a gap explanation. This is not an error — gaps are legitimate (ground run, maintenance, ferry flight by another pilot). You must record a note explaining the discrepancy.</p>
+          <p>Unexplained gaps appear on Reporting → Integrity. Resolve them by adding the missing flight record or explaining the gap in the note field on the affected completion.</p>
+          <p>Accumulating unexplained meter gaps makes your maintenance hours calculations unreliable, since maintenance hours are derived from the same meter readings.</p>
+        </div>
+      </details>
+
+      <h3 id="book-charging">Charging &amp; split flights</h3>
+      <p>After completing the flight record, review the calculated charges. Charges come from your configured rates (aircraft hourly rate × hours, instructor rate if dual, surcharges, landing fees). You can add, edit, or remove line items before applying.</p>
+
+      <h4>Single member — payment method</h4>
+      <table class="guide-table">
+        <thead><tr><th>Method</th><th>When to use</th><th>Effect</th></tr></thead>
+        <tbody>
+          <tr><td>Account credit</td><td>Member has pre-paid credit</td><td>Immediately deducted from account balance. No invoice.</td></tr>
+          <tr><td>EFTPOS / Cash</td><td>Payment at point of sale</td><td>Records payment immediately against the flight.</td></tr>
+          <tr><td>Invoice</td><td>Formal billing, deferred payment</td><td>Creates a tax invoice (sent). Member pays by bank transfer.</td></tr>
+        </tbody>
+      </table>
+
+      <h4>Split flights — multiple pilots or shared costs</h4>
+      <p>A single flight booking can be split between two or more members. Two splitting scenarios exist:</p>
+
+      <details class="dblock">
+        <summary>Scenario A — Two pilots fly in sequence (e.g. student A then student B on the same aircraft)</summary>
+        <div class="dbody">
+          <p>Use <strong>flight segments</strong>. Each segment records a pilot and their own contiguous meter readings: segment 1 end = segment 2 start. The hours per segment are calculated from the meter delta.</p>
+          <ol>
+            <li>On the flight completion, add a segment for each pilot with their start/end readings.</li>
+            <li>Each segment generates its own charge items based on the hours flown by that pilot.</li>
+            <li>Each pilot then pays for their own segment independently — different payment methods are fine (e.g., pilot A pays by account credit, pilot B by invoice).</li>
+          </ol>
+          <p>The system stores the payment as a <code>FlightPayment</code> row per payee. The completion's overall payment_method shows as "Split" when multiple payment methods are used.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Scenario B — Two members share the cost of a single flight (e.g. two members share a hire)</summary>
+        <div class="dbody">
+          <p>Use <strong>split payment</strong>. The flight is completed as a single block of hours, but the cost is divided between two members.</p>
+          <ol>
+            <li>Complete the flight normally (single set of meter readings).</li>
+            <li>On the charge screen, use the split payment option to allocate portions of the total to each member.</li>
+            <li>Each member's portion can use a different payment method.</li>
+          </ol>
+          <p>Both members' accounts or invoices are updated independently. The completion record links to both <code>FlightPayment</code> rows.</p>
+        </div>
+      </details>
+
+      <div class="callout info">
+        <strong>Instructor fees vs instructor charges:</strong> The <em>instructor fee</em> charge item (from the instructor's grade rate) is billed to the booking member — the student pays for the instruction. A separate question is whether the instructor themselves pays for aircraft hire if they book for personal flying — that depends on your club's arrangement and is controlled by adjusting or deleting the hire charge item before applying payment. See <a href="#people-access">Instructors and flight charges</a>.
+      </div>
+    </div>
+
+    <!-- ════════════════ SALES -->
+    <div class="gsec" id="sales">
+      <h2>Sales &amp; invoicing</h2>
+
+      <h3 id="sales-account">Account balance</h3>
+      <p>Each member has a pre-paid credit account. Members top up by bank transfer (outside the app); charges are deducted as flights are completed.</p>
+      <ul>
+        <li><strong>Add credit:</strong> Member detail → Account tab → + Add credit. Enter amount and reference (e.g. "Bank transfer ref 12345").</li>
+        <li>The balance can go negative up to a per-member credit limit (set on the Account tab). Below the limit, the booking block triggers.</li>
+        <li>All transactions are visible to the member on their mobile profile.</li>
+      </ul>
+
+      <h3 id="sales-invoices">Invoices</h3>
+      <table class="guide-table">
+        <thead><tr><th>Invoice type</th><th>Created from</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Flight invoice</td><td>Flight completion → Invoice payment method</td><td>Charges a flight to formal invoice rather than account balance</td></tr>
+          <tr><td>Subscription invoice</td><td>Member detail → Membership tab → Generate subscription invoice</td><td>Annual membership fee; paying it auto-sets subscription expiry</td></tr>
+          <tr><td>Sundry invoice</td><td>Sales → Invoices → Create</td><td>Manual billing: exam fees, training materials, ad-hoc items</td></tr>
+          <tr><td>Sundry sale</td><td>Sales → Sundry</td><td>Quick point-of-sale; creates a charge without a formal invoice</td></tr>
+        </tbody>
+      </table>
+
+      <p><strong>Invoice states:</strong></p>
+      <div class="status-flow">
+        <span class="pill draft">Draft</span><span class="sarrow">→</span>
+        <span class="pill sent">Sent</span><span class="sarrow">→</span>
+        <span class="pill paid">Paid</span>
+        <span class="sarrow"> &nbsp;&nbsp; </span>
+        <span class="pill void">Void</span><span class="sarrow">(from Draft or Sent)</span>
+      </div>
+
+      <details class="dblock">
+        <summary>Partial payments</summary>
+        <div class="dbody">
+          <p>You can record multiple payments against a single sent invoice. Each time you record a payment (Sales → Invoices → invoice → Mark paid), enter the amount received. The invoice stays as Sent and shows the outstanding balance until fully settled. Only when the total payments equal or exceed the invoice total is it marked Paid.</p>
+          <p>This is useful when a member pays in instalments or when a bank transfer is received in parts due to a bank error.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Printing or emailing an invoice</summary>
+        <div class="dbody">
+          <p>Every invoice has a print view: Sales → Invoices → [invoice] → Print. This renders the invoice as a clean, printable page with the club's billing details, member name, line items, GST breakdown, payment instructions, and bank account number. Use this to print for post, or save as PDF (using your browser's Print → Save as PDF) and attach to an email. There is no automatic email-sending from ClubHangar — sending the invoice to the member is done manually via email or post.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Correcting an invoice (void and re-issue)</summary>
+        <div class="dbody">
+          <p>Once an invoice is Sent, you cannot edit it — this protects the financial record. To correct it:</p>
+          <ol>
+            <li>Sales → Invoices → find the invoice → Void.</li>
+            <li>Create a new invoice with the correct amounts.</li>
+            <li>Send the new invoice to the member.</li>
+          </ol>
+          <p>Voided invoices are retained in the system for audit purposes. They have no financial effect.</p>
+        </div>
+      </details>
+
+      <h3 id="sales-sundry">Sundry sales (Sales → Sundry)</h3>
+      <p>A sundry sale is a quick debit to a member's account balance for a non-flight transaction — logbooks, aeronautical charts, headsets, exam fees, club merchandise. No formal invoice is generated: the charge goes directly into the member's account ledger as a debit, reducing their balance.</p>
+      <p>Enter the member, a description, amount, and an optional reference. The transaction appears immediately in the member's account history. Use sundry sales for small point-of-sale items where the overhead of creating and marking paid a full invoice isn't warranted. For larger items or anything that requires a formal tax invoice, use Sales → Invoices → Create instead.</p>
+      <p>The Sundry page also shows a searchable history of all past sundry transactions, filterable by member name or description.</p>
+
+      <h3 id="sales-vouchers">Vouchers (Sales → Vouchers)</h3>
+      <p>Vouchers are pre-created credit codes that can be redeemed against a member's account balance. Typical uses: trial flight vouchers sold to the public, prize vouchers awarded at airshows, gift vouchers for members.</p>
+      <p><strong>Creating a voucher.</strong> Go to Sales → Vouchers → + Create voucher. Enter a code (e.g. GIFT-2025-001), the dollar value, and an optional description. The voucher is immediately listed as pending.</p>
+      <p><strong>Redeeming a voucher.</strong> When a voucher holder presents their code, go to Sales → Vouchers → find the code → Redeem → select the member. The voucher value is credited to that member's account balance as a top-up transaction. The voucher is then marked as redeemed and cannot be used again. The member's account balance increases immediately, so they can book flights against the credit.</p>
+      <p>Vouchers cannot be partially redeemed — the full face value is credited on redemption. The pending and redeemed voucher lists can be filtered to show only one category at a time.</p>
+
+      <h3 id="sales-rates">Rates</h3>
+      <p>There is no single "Rates" management screen — rates are configured in several places depending on type:</p>
+      <ul>
+        <li><strong>Aircraft hire rates</strong> — configured per aircraft on the aircraft detail page (Fleet → Aircraft → [aircraft] → Rates tab). Each rate links an aircraft to a flight type and a time method (Hobbs, Tacho, or Air Switch), with an hourly amount. This gives full flexibility: the same aircraft can have different rates for solo, dual, and cross-country flight types.</li>
+        <li><strong>Instructor grade rates</strong> — configured in Settings → Types → Instructor grades. The grade (C-Cat, B-Cat, etc.) carries the hourly rate. Each instructor is assigned a grade on their member record; the grade rate is snapshotted into the flight completion at the time of check-in, so a rate change mid-year does not affect completed flights.</li>
+        <li><strong>Aircraft surcharges</strong> — configured in Settings → Types → Surcharge types (name and amount per flight), then assigned to specific aircraft in the aircraft record. The surcharge applies to every flight on that aircraft regardless of flight type.</li>
+        <li><strong>Landing fees</strong> — configured per aerodrome under Manage → Aerodromes (see <a href="#setup-aerodromes">Aerodromes setup</a>). Applied per destination aerodrome at flight completion.</li>
+        <li><strong>Fuel surcharge</strong> — some aircraft use a dated fuel surcharge rate ($/hr), set on the aircraft record. This rate is snapshotted at departure time so that fuel-cost changes don't retroactively alter completed charges.</li>
+      </ul>
+      <p>When a rate needs to change — for example, before running the annual bulk renewal or changing the C-Cat instructor rate — update it in the relevant place before the affected flights or invoices are generated. Changes take effect for future transactions only; past completions retain their snapshotted rates.</p>
+
+      <h3 id="sales-reconcile">Payment reconciliation (outside ClubHangar)</h3>
+      <p>ClubHangar does not process payments directly — there is no payment gateway integration. The reconciliation process is:</p>
+      <ol>
+        <li>Member pays by bank transfer, using the invoice number as the reference.</li>
+        <li>Bookkeeper reviews the bank statement and matches each transfer to an invoice.</li>
+        <li>Bookkeeper notifies admin of received payments.</li>
+        <li>Admin records each payment in ClubHangar: Sales → Invoices → [invoice] → Mark paid.</li>
+        <li>For subscription invoices: marking paid automatically sets the member's subscription expiry date.</li>
+      </ol>
+      <div class="callout info">
+        <strong>Why it works this way:</strong> Most small clubs use a single club bank account managed by a treasurer or bookkeeper. Keeping payment processing outside the app avoids PCI compliance issues and lets the bookkeeper use their existing accounting software (Xero, MYOB) for the ledger while ClubHangar tracks the membership and operational side.
+      </div>
+    </div>
+
+    <!-- ════════════════ AIRCRAFT & MAINTENANCE -->
+    <div class="gsec" id="aircraft">
+      <h2>Aircraft &amp; maintenance</h2>
+
+      <h3 id="ac-setup">Aircraft setup</h3>
+      <p>Fleet → Aircraft → + Add aircraft. Key fields:</p>
+      <ul>
+        <li><strong>Registration</strong> and <strong>type</strong> (links to the aircraft type list for rates and type ratings)</li>
+        <li><strong>Instruments</strong> — which meters the aircraft has: Hobbs, Tacho, and/or Air Switch. Each can be enabled independently. An aircraft might have all three, or only one.</li>
+        <li><strong>Billing method</strong> — which instrument drives the flight charge calculation. If set to Hobbs, the hire fee = Hobbs hours flown × hourly rate.</li>
+        <li><strong>Maintenance source</strong> — which instrument accumulates maintenance hours. This can differ from billing: you might bill members on Hobbs time but run maintenance intervals on Tacho because your maintenance manual requires it.</li>
+        <li><strong>Maintenance fraction</strong> — a multiplier applied to the raw maintenance reading. If your tacho runs at 0.83 hours per Hobbs hour (common on fixed-pitch propeller aircraft), set this to 0.83 so that maintenance hours are correctly scaled rather than over- or under-counted.</li>
+        <li><strong>Initial maintenance hours</strong> — the accumulated hours already on the aircraft when it was entered into ClubHangar. The system adds all subsequent flight hours on top of this figure when tracking due-hours for maintenance items.</li>
+        <li><strong>Status</strong> — Online (available for hire), Offline (in maintenance, bookings blocked), Retired (permanently removed from service)</li>
+        <li><strong>Available for hire</strong> — uncheck to hide the aircraft from the booking calendar without changing its status</li>
+      </ul>
+
+      <div class="callout tip">
+        <strong>Instruments, billing, and maintenance are connected.</strong> The billing method determines what members are charged; the maintenance source and fraction determine when maintenance items fall due. At every flight completion, staff enter readings for all enabled instruments. The system uses the billing instrument reading to calculate the hire charge, and the maintenance instrument reading to advance the aircraft's accumulated hours — which in turn determines when each maintenance item triggers an alert. Entering readings accurately at completion is therefore not just a billing step; it keeps your maintenance records current. See <a href="#ac-hours">Hours tracking</a>.
+      </div>
+
+      <div class="callout tip" style="margin-top:.6rem;">
+        <strong>Initial hours matter.</strong> Get the initial maintenance hours right when you first add an aircraft, or your due-hour calculations will be wrong from day one. Check the aircraft's last maintenance release for the meter reading at the last service.
+      </div>
+
+      <h3 id="ac-maint">Maintenance items</h3>
+      <p>Each aircraft has a list of recurring maintenance items — tasks that come due on a schedule. Common examples: 100-hour check, oil change, annual inspection, pitot-static check, ELT battery. Each item is configured independently.</p>
+      <p>An item can have <strong>either or both</strong> of two scheduling methods:</p>
+
+      <table class="guide-table">
+        <thead><tr><th>Method</th><th>Fields</th><th>How it works</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Hours-based</strong></td>
+            <td>Due hours, Interval hours</td>
+            <td>Item is due when accumulated maintenance hours reach the <em>due hours</em> value. After completing, set the next <em>due hours</em> = current hours + interval. E.g. next 100-hour check at 1,234.5h.</td>
+          </tr>
+          <tr>
+            <td><strong>Calendar-based</strong></td>
+            <td>Due date, Interval days</td>
+            <td>Item is due on a fixed date. After completing, advance the due date by the interval. E.g. annual inspection due 15 Oct 2026, interval 365 days → next due 15 Oct 2027.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p>When both are set, whichever limit is reached first triggers the alert. This is the standard approach for items like the 100-hour / annual inspection (whichever comes first).</p>
+
+      <details class="dblock">
+        <summary>Setting up a 100-hour / annual (whichever first)</summary>
+        <div class="dbody">
+          <p>Create one maintenance item called "100-hour / Annual inspection" with:</p>
+          <ul>
+            <li><strong>Due hours</strong> = current maintenance hours + 100 (e.g., 1,234.5 if aircraft is now at 1,134.5h)</li>
+            <li><strong>Interval hours</strong> = 100</li>
+            <li><strong>Due date</strong> = date of next annual (e.g., 15 Oct 2026)</li>
+            <li><strong>Interval days</strong> = 365</li>
+          </ul>
+          <p>When either limit is reached, the urgency turns Amber then Red. After completing the inspection, update <em>both</em> the due hours (current + 100) and the due date (completed date + 365) to reset the clock.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Alert thresholds — per item and global defaults</summary>
+        <div class="dbody">
+          <p>Each maintenance item has optional per-item alert thresholds. If left blank, the global defaults from Settings → Billing are used:</p>
+          <ul>
+            <li><strong>Warn hours</strong> (amber) — turns amber when this many maintenance hours remain before due. Default: 5 hours.</li>
+            <li><strong>Alert hours</strong> (red) — turns red when this few maintenance hours remain. Default: set per item (e.g. 0 = only red when overdue).</li>
+            <li><strong>Warn days</strong> (amber) — turns amber when this many days remain before due date. Default: 14 days.</li>
+            <li><strong>Alert days</strong> (red) — turns red when this few days remain.</li>
+          </ul>
+          <p>Set tighter thresholds on items that need more lead time to organise (e.g. a pitot-static recheck that requires booking an avionics shop weeks in advance).</p>
+        </div>
+      </details>
+
+      <h3 id="ac-hours">How maintenance hours are calculated</h3>
+      <p>Every time a flight completion is entered, the system calculates the maintenance hours flown and adds them to the aircraft's accumulated total:</p>
+      <ol>
+        <li>Read the end and start values from the configured <strong>maintenance source instrument</strong> (hobbs, tacho, or air switch).</li>
+        <li>Multiply the delta by the <strong>maintenance fraction</strong> (usually 1.00 unless your tachometer reads differently from calendar hours).</li>
+        <li>Add to the aircraft's running maintenance hours total (starting from <em>initial maintenance hours</em>).</li>
+        <li>Compare against all maintenance items' <em>due hours</em> and recalculate urgency.</li>
+      </ol>
+      <p>This means maintenance hours are only as accurate as your meter readings. Unexplained meter gaps (entries where start ≠ previous end) introduce error — resolve them promptly on Reporting → Integrity.</p>
+
+      <h3 id="ac-alerts">Alerts and how they surface</h3>
+      <p>Maintenance urgency appears in three places:</p>
+      <table class="guide-table">
+        <thead><tr><th>Location</th><th>What you see</th></tr></thead>
+        <tbody>
+          <tr><td>Fleet → Aircraft list</td><td>Urgency indicator (<span class="urg"><span class="dot green"></span>Green</span> / <span class="urg"><span class="dot amber"></span>Amber</span> / <span class="urg"><span class="dot red"></span>Red</span>) beside each aircraft</td></tr>
+          <tr><td>Aircraft detail → Maintenance tab</td><td>Full list of items with hours/date remaining and urgency per item</td></tr>
+          <tr><td>Operations → Attention</td><td>Any aircraft with a Red maintenance item appears here — review daily</td></tr>
+        </tbody>
+      </table>
+
+      <p>A Red maintenance item does not automatically prevent booking — it is an alert, not a lock. To prevent booking during maintenance, create a <strong>block-out</strong> (Operations → Block-outs) for the aircraft covering the maintenance period. The block-out prevents all bookings and shows on the Gantt calendar.</p>
+
+      <div class="callout danger">
+        <strong>Red = grounded in practice.</strong> If an aircraft has a Red maintenance alert, it should be taken offline (set status to Offline or add a block-out) until the work is done. The system surfaces the alert but does not automatically ground the aircraft — that decision rests with the CFI or duty instructor.
+      </div>
+
+      <h3 id="ac-log">Logging completed maintenance work</h3>
+      <p>When maintenance is done, record it in Fleet → Aircraft → [aircraft] → Maintenance → Log entry:</p>
+      <ul>
+        <li><strong>Maintenance item</strong> — link to the scheduled item being completed (or free-text for unscheduled work)</li>
+        <li><strong>Date completed</strong></li>
+        <li><strong>Meter reading at completion</strong> — hobbs or tacho reading at the time of the service</li>
+        <li><strong>Description of work</strong> — what was done, by whom, reference to maintenance release</li>
+        <li><strong>Next due</strong> — update the maintenance item's <em>due hours</em> and/or <em>due date</em> to reset the schedule</li>
+      </ul>
+
+      <details class="dblock">
+        <summary>Unscheduled work — snags and ad-hoc maintenance</summary>
+        <div class="dbody">
+          <p>Not all maintenance follows the recurring schedule. For unscheduled work triggered by a snag:</p>
+          <ol>
+            <li>Log the snag against the aircraft (from the flight completion record or directly from Fleet → Aircraft → Snags).</li>
+            <li>If the snag grounds the aircraft, create a block-out to prevent bookings.</li>
+            <li>Assign an action item if follow-up is required. Open action items appear on Safety → Action items and are counted in the sidebar Attention badge.</li>
+            <li>When work is complete, log a maintenance entry against the snag, resolve the action item, and remove the block-out.</li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Meter integrity and maintenance accuracy</summary>
+        <div class="dbody">
+          <p>Maintenance hours accumulate from hobbs/tacho readings entered on flight completions. The Reporting → Integrity page runs a cross-check after each completion and flags:</p>
+          <ul>
+            <li>Start reading ≠ previous flight's end reading (gap or overlap)</li>
+            <li>Unreasonably large or small readings (possible typo)</li>
+          </ul>
+          <p>Each flagged gap requires a note explaining the discrepancy (e.g., "ground run for maintenance check: 1134.2–1134.5"). Unresolved gaps mean your maintenance due-hours calculation may be understating or overstating actual hours flown. For airworthiness purposes, this is a significant risk.</p>
+        </div>
+      </details>
+
+    </div><!-- /aircraft -->
+
+    <!-- ════════════════ OTHER TOOLS -->
+    <div class="gsec" id="tools">
+      <h2>Other tools</h2>
+
+      <h3 id="tools-notifications">Push notifications</h3>
+      <p>ClubHangar sends push notifications to the mobile app for key events in the booking and billing lifecycle. Members must opt in to notifications the first time they open the mobile app — a browser prompt asks for permission. Once subscribed, they receive notifications on their phone even when the app is not open.</p>
+      <p>Events that trigger notifications, and who is notified:</p>
+      <table class="guide-table">
+        <thead><tr><th>Event</th><th>Who is notified</th></tr></thead>
+        <tbody>
+          <tr><td>Booking confirmed by staff</td><td>Booking member</td></tr>
+          <tr><td>Booking declined / cancelled by staff</td><td>Booking member</td></tr>
+          <tr><td>Booking assigned an instructor</td><td>Assigned instructor</td></tr>
+          <tr><td>Invoice raised (subscription or flight)</td><td>Invoice recipient (member)</td></tr>
+          <tr><td>Announcement published</td><td>All subscribed members</td></tr>
+        </tbody>
+      </table>
+      <p>Notifications are delivered via the web push API to whichever device the member last used to subscribe. If a member reports not receiving notifications, ask them to open the mobile app and check that notifications are enabled in their browser settings, then re-subscribe via the Profile → Notifications option.</p>
+      <p>From the admin side, you can see which members have push subscriptions under People → Members → member detail → Profile tab. There is no way to force a re-subscription on behalf of a member — they must do it from their own device.</p>
+
+      <h3 id="tools-weather">Weather</h3>
+      <p>The Weather screen (accessible from the sidebar) shows the current METAR for your club's home aerodrome, refreshed automatically. It includes wind speed and direction, visibility, ceiling, temperature, dew point, and QNH. This is pulled from the AVWX API using the ICAO code of your home aerodrome (set under Manage → Aerodromes).</p>
+      <p>The weather screen is visible to all staff and is intended as a quick reference before confirming flights or assessing whether a departure should proceed. It is not a substitute for a full pre-flight weather brief — members should use the appropriate official meteorological services for flight planning.</p>
+
+      <h3 id="tools-map">Live map / ADS-B</h3>
+      <p>The Live map (Map, in the sidebar) shows real-time positions of aircraft in flight using ADS-B data. For an aircraft to appear on the map, its ADS-B hex code (ICAO 24-bit address, six hex digits) must be entered on its aircraft record in Fleet → Aircraft. Without the hex code, the aircraft will not be visible on the map even if it is airborne and transmitting.</p>
+      <p>The map is useful for monitoring aircraft that are on cross-country flights or overdue from a local training area. It is a live view — positions update automatically without refreshing the page. Aircraft that have landed and are stationary may continue to appear briefly before their transponder is switched off.</p>
+      <p>Note that ADS-B reception is dependent on ground station coverage. Aircraft at low altitude or in terrain-shadowed areas may not be visible even when airborne and equipped with a transponder.</p>
+
+      <h3 id="tools-announcements">Announcements</h3>
+      <p>Announcements (Operations → Announcements) allow admin to post messages that appear on the mobile app home screen. Use these for operational notices — runway closures, club meetings, temporary airspace restrictions, weather warnings, or any time-sensitive information that all members should see when they open the app.</p>
+      <p>An announcement can be set with an expiry date; after that date it stops appearing in the app automatically. There is no length limit, but shorter, direct messages are more likely to be read. Members are sent a push notification when a new announcement is published.</p>
+
+      <h3 id="tools-reports">Reports</h3>
+      <p>Reports (Reports in the sidebar) gives admin and instructors a view of the club's flying and financial activity for the current financial year. All figures are scoped to the FY configured in Settings → Membership. Available views:</p>
+      <ul>
+        <li><strong>Dashboard KPIs</strong> — at the top: total flight hours, number of flights (solo vs dual), revenue charged, revenue collected, active member count, and total outstanding account debt. A quick pulse check for the secretary or CFI at the start of each week.</li>
+        <li><strong>Hours by aircraft</strong> — a bar chart showing how many hours each aircraft flew each month of the FY. Filter by owned fleet, leased fleet, or all. Useful for seeing which aircraft are being fully utilised and which are underused.</li>
+        <li><strong>Hours by instructor</strong> — a chart showing dual hours per instructor per month. Helps the CFI track each instructor's contribution and workload across the year.</li>
+        <li><strong>Member activity</strong> — a table listing every member who flew during the FY, with their total flight count and total hours, sorted by highest hours. Useful for identifying the club's most active flyers and those who haven't flown recently.</li>
+        <li><strong>Payment summary</strong> — a month-by-month table of flights completed, total charged, and total collected. The difference (charged minus collected) is outstanding for that month. Useful for the treasurer to track how well charges are being collected and where arrears are building.</li>
+        <li><strong>Pivot table</strong> (Reports → Pivot) — a fully filterable flight log. Filter by date range, aircraft, member, flight type, instructor; sort and group as needed. Useful for ad-hoc analysis: "how many hours did ZK-ABC fly in July with training flights?" The pivot exports are available via the <a href="#tools-data">Data export</a> page for spreadsheet analysis.</li>
+        <li><strong>Members export</strong> — download a spreadsheet of all member data including standing, role, subscription expiry, account balance, and contact details. Used by the secretary for AGM preparation or mail-merges.</li>
+        <li><strong>AI Ask</strong> (where enabled) — a natural language query interface over your club's flight and member data. Ask questions like "how many hours did we fly last month?" or "which members haven't flown in six months?" Useful for committee reporting without needing to know SQL or the pivot filter syntax.</li>
+        <li><strong>Integrity</strong> — meter gap report: flight completions where Hobbs start doesn't match the previous flight's Hobbs end on that aircraft. Helps track down data entry errors before they compound into maintenance hour drift. See also the <a href="#tools-health">Health check</a> for the financial equivalent.</li>
+      </ul>
+      <p>Reports are read-only — no records are changed. Quality depends on completeness of flight completions, charge records, and maintenance entries. If flight completions are missing meter readings or charges, the revenue and hours figures will be understated.</p>
+
+      <h3 id="tools-events">Safety events (occurrences)</h3>
+      <p>Safety → Events is the occurrence reporting system. Any member or staff can submit a report covering anything from a minor snag to a significant near-miss. Reports are categorised by the event types defined in Settings → Types → Event types.</p>
+      <p><strong>Submitting a report.</strong> From Safety → Events → Submit, the reporter selects an event type, describes what happened (what was observed, what conditions applied, what action was taken), and optionally links it to a specific aircraft or booking. Reports can be submitted anonymously if the club's settings allow it.</p>
+      <p><strong>Review and action.</strong> Submitted reports go to a review queue. Admin (or anyone with Safety access) can open a report, add observations, assign action items to named people with due dates, and mark the report as resolved once all items are closed. Action items that are overdue or approaching their due date surface in the sidebar Attention badge — so open items don't get forgotten between committee meetings.</p>
+      <p><strong>Safety → Action items.</strong> In addition to viewing actions within each report, the Action items page shows all open action items across every report in one consolidated list. This is the view to use at the start of a safety review or committee meeting — it shows what's outstanding, who it's assigned to, and when it's due, without having to open each report individually.</p>
+      <p><strong>Export.</strong> The occurrence list can be exported (Safety → Events → Export) for committee review, minutes attachment, or CAA submission. The export includes event type, date, description, status, and action summary.</p>
+      <p><strong>Link to maintenance.</strong> Aircraft snags logged at flight completion are linked to the occurrence system and appear in the aircraft's maintenance history — creating a traceable chain from snag report → action item → maintenance log entry → resolution.</p>
+
+      <h3 id="tools-data">Data export (Settings → Data)</h3>
+      <p>The Data page (Settings → Data, admin only) provides bulk exports of your club's data as downloadable CSV files. Available datasets:</p>
+      <ul>
+        <li><strong>Members</strong> — name, email, role, standing, CAA number, phone, account balance, subscription expiry</li>
+        <li><strong>Flight history</strong> — all completed flights: date, aircraft, pilot, instructor, flight type, hours, charges, payment method</li>
+        <li><strong>Aircraft</strong> — fleet list with current status, maintenance items, and maintenance log entries</li>
+        <li><strong>Financial</strong> — account transactions, invoice payments, outstanding balances</li>
+        <li><strong>Maintenance log</strong> — per-aircraft maintenance hour log and all scheduled maintenance items</li>
+      </ul>
+      <p>All exports are UTF-8 with BOM (compatible with Excel on Windows and Mac without encoding issues). Use these exports for long-term archiving, importing into Xero or your accounting software, or when your committee wants a full data extract for auditing purposes. The data page also provides an <strong>import template</strong> — a pre-formatted CSV you can fill in and use for bulk-loading aircraft records or member records when setting up the club for the first time.</p>
+
+      <h3 id="tools-health">System health check (Manage → Health)</h3>
+      <p>The Health check (Manage → Health, admin only) runs a set of integrity checks across three areas and reports any discrepancies:</p>
+      <ul>
+        <li><strong>Financial integrity</strong> — compares each member's stored account balance against the sum of their ledger transactions. A drift means the displayed balance doesn't match the underlying records. This can occur after manual database changes or in rare edge cases. The page offers a one-click <em>Recompute all balances</em> action that recalculates every balance from scratch using the transaction ledger as the source of truth. Run this if a member reports their balance looks wrong.</li>
+        <li><strong>Operations integrity</strong> — checks for unexplained Hobbs meter gaps across all aircraft. Same information as the Integrity report under Reports, but shown here alongside the financial checks for a single-screen audit view.</li>
+        <li><strong>Member standing</strong> — identifies Active members whose subscription expiry date has already passed but who have not yet been lapsed by the nightly job. This can flag members who slipped through, or highlight that the cron job hasn't run. Reviewing this before running bulk renewal or the registrar export ensures the member list is clean.</li>
+      </ul>
+      <p>Run the health check before committee meetings, before bulk renewal season, and whenever you suspect a financial discrepancy. It does not change any data unless you explicitly click the recompute action.</p>
+
+    </div><!-- /tools -->
+
+  </article>
+</div>
+
+<script>
+(function(){
+  const links = document.querySelectorAll('.guide-nav a[href^="#"]');
+  const ids = Array.from(links).map(l => l.getAttribute('href').slice(1));
+  const els = ids.map(id => document.getElementById(id)).filter(Boolean);
+  function onScroll(){
+    let active = null;
+    els.forEach(el => { if(el.getBoundingClientRect().top <= 90) active = el; });
+    links.forEach(l => l.classList.toggle('act', active && l.getAttribute('href') === '#'+active.id));
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+})();
+</script>
+{% endblock %}

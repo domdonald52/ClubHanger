@@ -3,23 +3,41 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1.2rem;">Manage</h1>
-
-  {% include "core/_manage_nav.html" with active_section="members" %}
-
-  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
-    <h2 class="sh2" style="margin:0;">Members <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ members|length }})</span></h2>
-    <form method="get" style="flex:1;min-width:200px;max-width:340px;margin:0;">
-      <div style="position:relative;">
-        <input type="search" name="q" value="{{ q }}" placeholder="Search name or email…"
-               class="finput" style="padding-left:2rem;">
-        <svg style="position:absolute;left:.5rem;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none;" width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
-      </div>
-    </form>
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;">
+    <h1 class="sh2" style="margin:0;">Members <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ total_count }})</span></h1>
     {% if club_member.is_admin %}
-    <button type="button" class="cbtn-add" onclick="document.getElementById('add-member-modal').hidden=false">+ Add member</button>
+    <button type="button" class="cbtn-add" onclick="document.getElementById('add-member-modal').hidden=false" style="margin-left:auto;">+ Add member</button>
+    <button type="button" class="cbtn" onclick="document.getElementById('registrar-modal').hidden=false">Registrar export</button>
     {% endif %}
   </div>
+  <form method="get" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">
+    <div style="position:relative;flex:1;min-width:180px;max-width:300px;">
+      <input type="search" name="q" value="{{ q }}" placeholder="Search name or email…"
+             class="finput" style="padding-left:2rem;">
+      <svg style="position:absolute;left:.5rem;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none;" width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
+    </div>
+    <select name="standing" class="finput" style="width:160px;" onchange="this.form.submit()">
+      <option value="">All standings</option>
+      {% for val, label in standing_choices %}
+      <option value="{{ val }}" {% if f_standing == val %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="role" class="finput" style="width:160px;" onchange="this.form.submit()">
+      <option value="">All roles</option>
+      <option value="__none__" {% if f_role == '__none__' %}selected{% endif %}>No role</option>
+      {% for r in roles %}
+      <option value="{{ r.id }}" {% if f_role == r.id|stringformat:'s' %}selected{% endif %}>{{ r.name }}</option>
+      {% endfor %}
+    </select>
+    <label class="flabel" style="margin:0;font-size:.8rem;">Expires from
+      <input type="date" name="exp_from" value="{{ f_exp_from }}" class="finput" style="width:130px;">
+    </label>
+    <label class="flabel" style="margin:0;font-size:.8rem;">to
+      <input type="date" name="exp_to" value="{{ f_exp_to }}" class="finput" style="width:130px;">
+    </label>
+    <button type="submit" class="cbtn-sm" style="align-self:flex-end;">Search</button>
+    {% if q or f_standing or f_role or f_exp_from or f_exp_to %}<a href="{% url 'core:manage_members' club.slug %}" class="cbtn-sm" style="align-self:flex-end;">Clear</a>{% endif %}
+  </form>
 
   <table class="mg-table">
     <thead>
@@ -34,7 +52,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for m in members %}
+      {% for m in members_page %}
       <tr class="{% if not m.is_current %}row-dim{% endif %}">
         <td>
           {% if m.avatar %}
@@ -50,33 +68,23 @@
           {% if m == club_member %}<span class="badge badge-you">you</span>{% endif %}
           <div style="font-size:.75rem;color:#8a93a0;">{{ m.user.email }}</div>
         </td>
-        <td>
-          <form method="post" style="display:inline;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="set_standing">
-            <input type="hidden" name="cm_id" value="{{ m.id }}">
-            <select name="standing" class="inline-sel" onchange="this.form.submit()">
-              {% for val, label in standing_choices %}
-              <option value="{{ val }}" {% if m.standing == val %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </form>
+        <td><span class="standing-chip standing-{{ m.standing }}">{{ m.get_standing_display }}</span></td>
+        <td style="font-size:.83rem;color:#5b6573;">
+          {{ m.role.name|default:"—" }}
+          {% if m.has_admin_access %}<span title="Settings &amp; Rates access override" style="display:inline-block;margin-left:.3rem;font-size:.68rem;font-weight:600;padding:.1rem .35rem;border-radius:4px;background:#fdf2cd;color:#7c5000;border:1px solid #e9c46a;vertical-align:middle;">S&amp;R</span>{% endif %}
         </td>
-        <td>
-          <form method="post" style="display:inline;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="set_role">
-            <input type="hidden" name="cm_id" value="{{ m.id }}">
-            <select name="role_id" class="inline-sel" onchange="this.form.submit()">
-              <option value="">— no role —</option>
-              {% for r in roles %}
-              <option value="{{ r.id }}" {% if m.role_id == r.id %}selected{% endif %}>{{ r.name }}</option>
-              {% endfor %}
-            </select>
-          </form>
-        </td>
-        <td style="font-size:.83rem;" class="{% if not m.is_current and m.subscription_expires %}expired{% endif %}">
-          {% if m.subscription_expires %}{{ m.subscription_expires }}{% else %}—{% endif %}
+        <td style="font-size:.83rem;">
+          {% if m.subscription_expires %}
+            {% if m.standing == 'active' and m.subscription_expires < today and m.subscription_expires >= lapse_cutoff %}
+              <span class="expiry-badge expiry-grace" title="Expired — within grace period">{{ m.subscription_expires|date:"j M Y" }} · grace</span>
+            {% elif m.standing == 'active' and m.subscription_expires < today %}
+              <span class="expiry-badge expiry-overdue" title="Expired past grace period — needs lapsing">{{ m.subscription_expires|date:"j M Y" }} ⚠</span>
+            {% elif m.subscription_expires <= warn_cutoff %}
+              <span class="expiry-badge expiry-soon" title="Expiring within 30 days">{{ m.subscription_expires|date:"j M Y" }}</span>
+            {% else %}
+              {{ m.subscription_expires|date:"j M Y" }}
+            {% endif %}
+          {% else %}—{% endif %}
         </td>
         <td style="font-size:.83rem;color:#8a93a0;">{{ m.join_date }}</td>
         <td>
@@ -88,6 +96,14 @@
       {% endfor %}
     </tbody>
   </table>
+
+  {% if members_page.paginator.num_pages > 1 %}
+  <div style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.85rem;flex-wrap:wrap;">
+    <span style="color:#8a93a0;">Page {{ members_page.number }} of {{ members_page.paginator.num_pages }}</span>
+    {% if members_page.has_previous %}<a href="?{{ filter_qs }}&page={{ members_page.previous_page_number }}" class="cbtn-sm">‹ Prev</a>{% endif %}
+    {% if members_page.has_next %}<a href="?{{ filter_qs }}&page={{ members_page.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
+  </div>
+  {% endif %}
 </div>
 
 <style>
@@ -123,6 +139,18 @@
   .cbtn:hover{background:#f3f5f7;}
   .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+  .standing-chip{display:inline-block;font-size:.72rem;font-weight:650;padding:.18rem .5rem;border-radius:20px;border:1px solid currentColor;white-space:nowrap;}
+  .standing-active   {color:#216c2a;background:#eaf6ec;border-color:#a3d9a5;}
+  .standing-pending  {color:#92400e;background:#fffbeb;border-color:#fcd34d;}
+  .standing-suspended{color:#b45309;background:#fff7ed;border-color:#fed7aa;}
+  .standing-lapsed   {color:#6b7280;background:#f3f5f7;border-color:#d1d5db;}
+  .standing-resigned {color:#6b7280;background:#f3f5f7;border-color:#d1d5db;}
+  .standing-transferred{color:#6366f1;background:#eef2ff;border-color:#c7d2fe;}
+  .standing-non_member{color:#8a93a0;background:#f9fafb;border-color:#e5e7eb;}
+  .expiry-badge{display:inline-block;font-size:.75rem;font-weight:600;padding:.15rem .45rem;border-radius:6px;white-space:nowrap;}
+  .expiry-soon  {background:#fffbeb;color:#92400e;}
+  .expiry-grace {background:#fff7ed;color:#c2410c;}
+  .expiry-overdue{background:#fff0f0;color:#c0392b;}
 </style>
 
 <!-- Add member modal -->
@@ -147,15 +175,84 @@
         <input type="password" name="password" class="finput" autocomplete="new-password">
       </label>
       <div class="modal-actions">
-        <button type="button" class="cbtn" onclick="document.getElementById('add-member-modal').hidden=true">Cancel</button>
+        <button type="button" class="cbtn" onclick="document.getElementById('add-member-modal').hidden=true">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Create member</button>
       </div>
     </form>
   </div>
 </div>
+<!-- Registrar export modal -->
+<div id="registrar-modal" class="modal-back" hidden>
+  <div class="modal" style="max-width:520px;">
+    <h2>Registrar export</h2>
+    <p style="font-size:.85rem;color:#5b6573;margin:0 0 1rem;">Generates a point-in-time list of all members active on a chosen date.</p>
+    <label class="flabel">As at date
+      <input type="date" id="reg-as-of" class="finput" value="{{ today_iso }}">
+    </label>
+    <div id="reg-result" style="margin-top:.9rem;font-size:.84rem;color:#5b6573;"></div>
+    <div id="reg-table-wrap" style="margin-top:.7rem;max-height:320px;overflow-y:auto;display:none;">
+      <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
+        <thead id="reg-thead" style="position:sticky;top:0;background:#fff;"></thead>
+        <tbody id="reg-tbody"></tbody>
+      </table>
+    </div>
+    <div class="modal-actions" style="margin-top:1rem;">
+      <button type="button" class="cbtn" onclick="document.getElementById('registrar-modal').hidden=true">✕ Close</button>
+      <span style="flex:1"></span>
+      <button type="button" class="cbtn" id="reg-preview-btn" onclick="regPreview()">Preview</button>
+      <a id="reg-csv-btn" class="cbtn primary" style="display:none;text-decoration:none;" href="#">Download CSV</a>
+    </div>
+  </div>
+</div>
+
 <script>
 document.getElementById('add-member-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
-document.addEventListener('keydown', function(e){ if(e.key==='Escape') document.getElementById('add-member-modal').hidden=true; });
+document.getElementById('registrar-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape') {
+  document.getElementById('add-member-modal').hidden=true;
+  document.getElementById('registrar-modal').hidden=true;
+}});
+
+(function(){
+  const input = document.querySelector('input[name="q"]');
+  if (!input) return;
+  let _t;
+  input.addEventListener('input', function(){
+    clearTimeout(_t);
+    _t = setTimeout(() => input.closest('form').submit(), 350);
+  });
+})();
+
+const REG_URL = '{% url "core:registrar_export" club.slug %}';
+const REG_LABELS = {name:'Name',email:'Email',role:'Role',standing:'Standing',join_date:'Joined',resigned_at:'Resigned',date_of_birth:'DOB',address:'Address',phone_mobile:'Mobile'};
+
+function regPreview() {
+  const asOf = document.getElementById('reg-as-of').value;
+  document.getElementById('reg-result').textContent = 'Loading…';
+  document.getElementById('reg-table-wrap').style.display = 'none';
+  document.getElementById('reg-csv-btn').style.display = 'none';
+  fetch(REG_URL + '?as_of=' + encodeURIComponent(asOf) + '&fmt=html', {
+    headers: {'X-Requested-With': 'XMLHttpRequest'}
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('reg-result').textContent = data.count + ' member' + (data.count === 1 ? '' : 's') + ' active as at ' + data.as_of;
+    const thead = document.getElementById('reg-thead');
+    const tbody = document.getElementById('reg-tbody');
+    const cols = Object.keys(REG_LABELS);
+    thead.innerHTML = '<tr>' + cols.map(c => `<th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;border-bottom:1px solid #e3e6ea;">${REG_LABELS[c]}</th>`).join('') + '</tr>';
+    tbody.innerHTML = data.rows.map(r =>
+      '<tr style="border-bottom:1px solid #f4f6f8;">' +
+      cols.map(c => `<td style="padding:.35rem .5rem;white-space:nowrap;">${r[c] || '—'}</td>`).join('') +
+      '</tr>'
+    ).join('');
+    document.getElementById('reg-table-wrap').style.display = data.count > 0 ? '' : 'none';
+    const csvBtn = document.getElementById('reg-csv-btn');
+    csvBtn.href = REG_URL + '?as_of=' + encodeURIComponent(asOf) + '&fmt=csv';
+    csvBtn.style.display = data.count > 0 ? '' : 'none';
+  })
+  .catch(() => { document.getElementById('reg-result').textContent = 'Error loading data.'; });
+}
 </script>
 {% endblock %}

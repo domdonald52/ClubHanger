@@ -3,9 +3,8 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1.2rem;">Manage</h1>
+  <h1 style="margin-bottom:1.2rem;">Block-outs</h1>
 
-  {% include "core/_manage_nav.html" with active_section="blockouts" %}
 
   <div class="bo-page-header">
     <div>
@@ -63,12 +62,11 @@
                       '{{ bo.start_time|time:'H:i'|default:'' }}',
                       '{{ bo.end_time|time:'H:i'|default:'' }}'
                     )">Edit</button>
-            <form method="post" style="display:inline;"
-                  onsubmit="return confirm('Delete this block-out?')">
+            <form method="post" style="display:inline;" class="bo-delete-form">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_blockout">
               <input type="hidden" name="bo_id" value="{{ bo.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+              <button type="button" class="cbtn-sm cbtn-danger" onclick="confirmDeleteBo(this.closest('form'))">Delete</button>
             </form>
           </div>
         </td>
@@ -139,7 +137,7 @@
       </div>
 
       <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="add-bo-cancel">Cancel</button>
+        <button type="button" class="cbtn" id="add-bo-cancel">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add block-out</button>
       </div>
@@ -200,11 +198,24 @@
       </div>
 
       <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="edit-bo-cancel">Cancel</button>
+        <button type="button" class="cbtn" id="edit-bo-cancel">✕ Close</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Save changes</button>
+        <button type="submit" class="cbtn primary">Save</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div id="del-bo-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(360px,96vw);">
+    <h2>Delete block-out?</h2>
+    <p style="font-size:.88rem;color:#4a5568;margin:0 0 1.1rem;">This cannot be undone.</p>
+    <div class="modal-actions">
+      <button type="button" class="cbtn" id="del-bo-cancel">Cancel</button>
+      <span style="flex:1"></span>
+      <button type="button" class="cbtn primary" style="background:#e03131;border-color:#e03131;" id="del-bo-confirm">Delete</button>
+    </div>
   </div>
 </div>
 
@@ -231,8 +242,6 @@
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
   .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
 
-  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;font-weight:600;}
-  .btn:hover{filter:brightness(1.07);}
 .cbtn-sm
 .cbtn-sm
 .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
@@ -259,8 +268,15 @@
   document.getElementById('edit-bo-cancel').addEventListener('click', () => { editModal.hidden = true; });
   editModal.addEventListener('click', e => { if (e.target === editModal) editModal.hidden = true; });
 
+  const delModal = document.getElementById('del-bo-modal');
+  let _pendingDeleteForm = null;
+  document.getElementById('del-bo-cancel').addEventListener('click', () => { delModal.hidden = true; _pendingDeleteForm = null; });
+  document.getElementById('del-bo-confirm').addEventListener('click', () => { if (_pendingDeleteForm) _pendingDeleteForm.submit(); });
+  delModal.addEventListener('click', e => { if (e.target === delModal) { delModal.hidden = true; _pendingDeleteForm = null; } });
+  window.confirmDeleteBo = function(form) { _pendingDeleteForm = form; delModal.hidden = false; };
+
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { addModal.hidden = true; editModal.hidden = true; }
+    if (e.key === 'Escape') { addModal.hidden = true; editModal.hidden = true; delModal.hidden = true; _pendingDeleteForm = null; }
   });
 
   window.openEditBo = function(id, typeId, label, recur, date, weekday, allDay, start, end) {

@@ -1,36 +1,73 @@
 {% extends "core/base.html" %}
 {% block title %}Notifications · {{ club.name }}{% endblock %}
 {% block content %}
-<div style="max-width:720px;margin:0 auto;padding:2rem;">
-  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.5rem;">
-    <h1 style="font-size:1.25rem;font-weight:700;margin:0;">Notifications</h1>
-    {% if notifications %}
-    <form method="post" style="display:inline;">{% csrf_token %}
-      <input type="hidden" name="action" value="mark_all_read">
-      <button type="submit" class="cbtn" style="font-size:.8rem;">Mark all read</button>
-    </form>
-    {% endif %}
+<div style="max-width:720px;margin:0 auto;padding:1.5rem 2rem;">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.6rem;">
+    <h1 style="font-size:1.2rem;font-weight:700;margin:0;">
+      Notifications
+      {% if unread_count %}<span style="font-size:.75rem;font-weight:700;background:var(--primary);color:#fff;border-radius:10px;padding:.1rem .5rem;margin-left:.5rem;vertical-align:middle;">{{ unread_count }}</span>{% endif %}
+    </h1>
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      {% if tab == 'unread' and notifications %}
+      <form method="post">{% csrf_token %}
+        <input type="hidden" name="action" value="mark_all_read">
+        <button type="submit" class="cbtn" style="font-size:.8rem;">Mark all read</button>
+      </form>
+      {% endif %}
+      {% if tab == 'all' and notifications %}
+      <form method="post">{% csrf_token %}
+        <input type="hidden" name="action" value="delete_all_read">
+        <button type="submit" class="cbtn cbtn-danger" style="font-size:.8rem;">Clear read</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="mnav">
+    <a href="?tab=unread" class="mnav-link{% if tab == 'unread' %} active{% endif %}">
+      Unread{% if unread_count %} <span class="conflict-badge">{{ unread_count }}</span>{% endif %}
+    </a>
+    <a href="?tab=all" class="mnav-link{% if tab == 'all' %} active{% endif %}">All</a>
   </div>
 
   {% if notifications %}
-  <div style="display:flex;flex-direction:column;gap:.5rem;">
+  <div style="display:flex;flex-direction:column;gap:.35rem;">
     {% for n in notifications %}
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:8px;padding:.8rem 1rem;display:flex;gap:.8rem;align-items:flex-start;{% if not n.is_read %}border-left:3px solid var(--primary);{% endif %}">
+    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:8px;padding:.7rem 1rem;display:flex;gap:.7rem;align-items:flex-start;{% if not n.is_read %}border-left:3px solid var(--primary);background:#fafbff;{% endif %}">
+      <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:.4rem;{% if not n.is_read %}background:var(--primary);{% else %}background:transparent;{% endif %}display:block;"></span>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:.88rem;font-weight:{% if not n.is_read %}650{% else %}500{% endif %};margin-bottom:.15rem;">
-          {% if n.action_url %}<a href="{{ n.action_url }}" style="color:inherit;text-decoration:none;">{{ n.subject }}</a>{% else %}{{ n.subject }}{% endif %}
+        <div style="font-size:.88rem;font-weight:{% if not n.is_read %}650{% else %}400{% endif %};color:{% if n.is_read %}#8a93a0{% else %}#1f2933{% endif %};">
+          {% if n.action_url %}<a href="{{ n.action_url }}" style="color:inherit;text-decoration:none;">{{ n.subject }} ↗</a>{% else %}{{ n.subject }}{% endif %}
         </div>
-        {% if n.body %}<div style="font-size:.81rem;color:#5b6573;">{{ n.body }}</div>{% endif %}
-        <div style="font-size:.75rem;color:#adb5bd;margin-top:.25rem;">{{ n.created_at|timesince }} ago</div>
+        {% if n.body %}<div style="font-size:.81rem;color:#8a93a0;margin-top:.1rem;">{{ n.body }}</div>{% endif %}
+        <div style="font-size:.73rem;color:#adb5bd;margin-top:.2rem;">{{ n.created_at|date:"j M Y, H:i" }}</div>
+      </div>
+      <div style="display:flex;gap:.25rem;flex-shrink:0;margin-top:.05rem;">
+        {% if not n.is_read %}
+        <form method="post">{% csrf_token %}
+          <input type="hidden" name="action" value="mark_read">
+          <input type="hidden" name="id" value="{{ n.id }}">
+          <button type="submit" class="cbtn-sm" title="Mark read" style="padding:.18rem .38rem;">✓</button>
+        </form>
+        {% endif %}
+        <form method="post" onsubmit="return confirm('Delete this notification?')">{% csrf_token %}
+          <input type="hidden" name="action" value="delete">
+          <input type="hidden" name="id" value="{{ n.id }}">
+          <button type="submit" class="cbtn-sm cbtn-danger" title="Delete" style="padding:.18rem .38rem;">✕</button>
+        </form>
       </div>
     </div>
     {% endfor %}
   </div>
+
   {% else %}
-  <div style="text-align:center;padding:3rem 1rem;color:#8a93a0;">
-    <svg width="32" height="32" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:.75rem;opacity:.4;display:block;margin-inline:auto;"><path d="M9 2a5 5 0 0 1 5 5c0 3 1 4 1.5 4.5H2.5C3 11 4 10 4 7a5 5 0 0 1 5-5z"/><path d="M7.5 14.5a1.5 1.5 0 0 0 3 0"/></svg>
-    No notifications yet.
+  <div style="text-align:center;padding:3rem 1rem;color:#8a93a0;font-size:.88rem;">
+    <svg width="30" height="30" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:.6rem;opacity:.35;display:block;margin-inline:auto;"><path d="M9 2a5 5 0 0 1 5 5c0 3 1 4 1.5 4.5H2.5C3 11 4 10 4 7a5 5 0 0 1 5-5z"/><path d="M7.5 14.5a1.5 1.5 0 0 0 3 0"/></svg>
+    {% if tab == 'unread' %}All caught up.{% else %}No notifications.{% endif %}
   </div>
   {% endif %}
+
+  <p style="font-size:.73rem;color:#d6dae0;margin-top:1.2rem;text-align:center;">Notifications older than 90 days are removed automatically.</p>
 </div>
 {% endblock %}

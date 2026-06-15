@@ -1,0 +1,118 @@
+{% extends "core/app/base.html" %}
+{% block title %}Request Booking · {{ club.name }}{% endblock %}
+{% block page_title %}Request Booking{% endblock %}
+
+{% block app_bar_brand %}{% endblock %}
+{% block app_bar %}
+<a href="javascript:history.back()" class="app-bar-action" style="margin-left:-.2rem;">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</a>
+<span class="app-bar-title">Request Booking</span>
+{% endblock %}
+
+{% block extra_style %}
+<style>
+.confirm-summary {
+  background:var(--banner); color:#fff;
+  border-radius:14px; margin:.75rem; padding:1.1rem;
+}
+.confirm-summary-row { display:flex; gap:.5rem; align-items:baseline; margin-top:.5rem; }
+.confirm-summary-label { font-size:.68rem; opacity:.65; font-weight:600; min-width:64px; }
+.confirm-summary-val { font-size:.92rem; font-weight:700; }
+.confirm-field { margin-bottom:1rem; }
+.confirm-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#8a93a0; margin-bottom:.35rem; }
+.confirm-select, .confirm-textarea {
+  display:block; width:100%; padding:.75rem .9rem;
+  border:1.5px solid #d5d9e0; border-radius:10px;
+  font-size:.9rem; background:#fff; color:#1f2933;
+  -webkit-appearance:none;
+}
+.confirm-select:focus, .confirm-textarea:focus { outline:none; border-color:var(--primary); }
+.confirm-textarea { min-height:80px; resize:vertical; }
+.error-banner { background:#fee2e2; color:#b91c1c; border-radius:10px; padding:.75rem 1rem; margin:.75rem; font-size:.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if errors %}
+<div class="error-banner">
+  {% for e in errors %}{{ e }}{% if not forloop.last %}<br>{% endif %}{% endfor %}
+</div>
+{% endif %}
+
+<!-- Booking summary card -->
+<div class="confirm-summary">
+  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;opacity:.6;margin-bottom:.3rem;">
+    {% if mode == 'dual' %}Dual flight{% else %}Solo flight{% endif %}
+  </div>
+  <div class="confirm-summary-row">
+    <span class="confirm-summary-label">Date</span>
+    <span class="confirm-summary-val">{{ sel_date|date:"l, j F Y" }}</span>
+  </div>
+  <div class="confirm-summary-row">
+    <span class="confirm-summary-label">Time</span>
+    <span class="confirm-summary-val">{{ start }} – {{ end }}</span>
+  </div>
+</div>
+
+<form method="post" action="{% url 'core:app_book_confirm' club.slug %}" style="padding:0 .75rem 1rem;">
+  {% csrf_token %}
+  <input type="hidden" name="mode"  value="{{ mode }}">
+  <input type="hidden" name="date"  value="{{ date_str }}">
+  <input type="hidden" name="start" value="{{ start }}">
+  <input type="hidden" name="end"   value="{{ end }}">
+
+  <!-- Aircraft -->
+  <div class="confirm-field" style="margin-top:.75rem;">
+    <div class="confirm-label">Aircraft</div>
+    <select name="ac_id" class="confirm-select">
+      {% if not aircraft_list %}<option value="">— No aircraft available —</option>{% endif %}
+      {% for a in aircraft_list %}
+      <option value="{{ a.id }}"{% if a.id|stringformat:"s" == ac_id %} selected{% endif %}>
+        {{ a.registration }}{% if a.aircraft_type %} — {{ a.aircraft_type.name }}{% endif %}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Flight type -->
+  <div class="confirm-field" style="margin-top:.75rem;">
+    <div class="confirm-label">Flight type</div>
+    <select name="flight_type" class="confirm-select">
+      {% for ft in flight_types %}
+      <option value="{{ ft.id }}"{% if default_ft and ft.id == default_ft.id %} selected{% endif %}{% if ft_id and ft.id|stringformat:"s" == ft_id %} selected{% endif %}>
+        {{ ft.name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Instructor (dual only) -->
+  {% if mode == 'dual' %}
+  <div class="confirm-field">
+    <div class="confirm-label">Instructor <span style="font-weight:400;font-size:.68rem;color:#6b7280;">(optional — leave blank if not yet confirmed)</span></div>
+    <select name="instructor" class="confirm-select">
+      <option value="">— No preference —</option>
+      {% for inst in instructors %}
+      <option value="{{ inst.id }}"{% if inst_id and inst.id|stringformat:"s" == inst_id %} selected{% endif %}>
+        {{ inst.user.get_full_name }}
+      </option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+
+  <!-- Note -->
+  <div class="confirm-field">
+    <div class="confirm-label">Note <span style="font-weight:400;font-size:.68rem;color:#6b7280;">(optional)</span></div>
+    <textarea name="note" class="confirm-textarea" placeholder="e.g. circuit training, navigation exercise…">{{ note|default:'' }}</textarea>
+  </div>
+
+  <button type="submit" class="app-btn" style="margin-top:.25rem;">
+    Request booking
+  </button>
+  <div style="text-align:center;margin-top:.75rem;font-size:.75rem;color:#9ca3af;">
+    Booking submitted as <strong>pending</strong>. An instructor will confirm it.
+  </div>
+</form>
+{% endblock %}

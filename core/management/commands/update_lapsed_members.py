@@ -1,12 +1,13 @@
-from datetime import date
+from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from core.models import ClubMember
+from core.models import Club, ClubMember, MembershipHistoryEntry
 
 
 class Command(BaseCommand):
     help = (
-        "Mark active members whose subscription has expired as lapsed. "
+        "Mark active members whose subscription has expired past the grace period as lapsed. "
+        "Grace period is read from ClubConfig.lapse_grace_days (default 60). "
         "Run nightly via cron: 0 6 * * * python manage.py update_lapsed_members"
     )
 
@@ -16,39 +17,70 @@ class Command(BaseCommand):
             help="Show who would be lapsed without making changes."
         )
         parser.add_argument(
-            '--grace-days', type=int, default=0,
-            help="Number of days after subscription_expires before lapsing (default 0)."
+            '--grace-days', type=int, default=None,
+            help="Override grace days from ClubConfig. Defaults to ClubConfig.lapse_grace_days per club."
+        )
+        parser.add_argument(
+            '--club', type=str, default=None,
+            help="Only process one club (by slug)."
         )
 
     @transaction.atomic
     def handle(self, *args, **options):
-        dry_run = options['dry_run']
-        grace = options['grace_days']
-        cutoff = date.today()
+        dry_run   = options['dry_run']
+        grace_override = options['grace_days']
+        club_slug = options['club']
 
-        candidates = ClubMember.objects.filter(
-            standing='active',
-            subscription_expires__lt=cutoff,
-        ).select_related('user', 'club')
+        clubs = Club.objects.all()
+        if club_slug:
+            clubs = clubs.filter(slug=club_slug)
 
-        if not candidates.exists():
+        total = 0
+        today = date.today()
+
+        for club in clubs:
+            grace = grace_override
+            if grace is None:
+                try:
+                    grace = club.config.lapse_grace_days
+                except Exception:
+                    grace = 60
+            cutoff = today - timedelta(days=grace)
+
+            candidates = ClubMember.objects.filter(
+                club=club,
+                standing='active',
+                subscription_expires__lt=cutoff,
+            ).select_related('user')
+
+            for m in candidates:
+                name = m.user.get_full_name() if m.user else '—'
+                days_over = (today - m.subscription_expires).days
+                self.stdout.write(
+                    f"  {'[DRY RUN] Would lapse' if dry_run else 'Lapsing'}: "
+                    f"{name} @ {club.name} "
+                    f"(expired {m.subscription_expires}, {days_over}d ago)"
+                )
+                if not dry_run:
+                    m.standing   = 'lapsed'
+                    m.resigned_at = m.resigned_at or today
+                    m.save(update_fields=['standing', 'resigned_at'])
+                    if m.user and m.user.is_active:
+                        m.user.is_active = False
+                        m.user.save(update_fields=['is_active'])
+                    MembershipHistoryEntry.objects.create(
+                        club_member=m,
+                        event_type='standing_change',
+                        old_value='active',
+                        new_value='lapsed',
+                        note=f'Auto-lapsed — subscription expired {m.subscription_expires} '
+                             f'({days_over} days ago, grace period {grace} days)',
+                    )
+                total += 1
+
+        if total == 0:
             self.stdout.write(self.style.SUCCESS("No members to lapse."))
-            return
-
-        count = 0
-        for m in candidates:
-            name = m.user.get_full_name() if m.user else '—'
-            self.stdout.write(
-                f"  {'[DRY RUN] Would lapse' if dry_run else 'Lapsing'}: "
-                f"{name} @ {m.club.name} "
-                f"(subscription_expires={m.subscription_expires})"
-            )
-            if not dry_run:
-                m.standing = 'lapsed'
-                m.save(update_fields=['standing'])
-            count += 1
-
-        if dry_run:
-            self.stdout.write(self.style.WARNING(f"{count} member(s) would be lapsed."))
+        elif dry_run:
+            self.stdout.write(self.style.WARNING(f"{total} member(s) would be lapsed."))
         else:
-            self.stdout.write(self.style.SUCCESS(f"{count} member(s) lapsed."))
+            self.stdout.write(self.style.SUCCESS(f"{total} member(s) lapsed."))

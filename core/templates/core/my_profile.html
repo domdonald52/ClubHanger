@@ -37,16 +37,17 @@
     </div>
   </div>
 
-  <div class="stab-bar">
+  <div class="stab-bar" data-managed="1">
     <button class="stab-btn" data-tab="contact">My details</button>
     <button class="stab-btn" data-tab="account">Account</button>
     <button class="stab-btn" data-tab="bookings">Bookings</button>
+    <button class="stab-btn" data-tab="payments">Payments</button>
     <button class="stab-btn" data-tab="notifications">Notifications</button>
+    {% if my_actions %}<button class="stab-btn" data-tab="actions">My actions <span class="conflict-badge" style="margin-left:.3rem;">{{ my_actions|length }}</span></button>{% endif %}
   </div>
 
   <!-- ── CONTACT ── -->
   <section id="contact" class="detail-section stab-panel">
-    <h2 class="section-title">My details</h2>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       <div class="field-grid">
@@ -55,6 +56,14 @@
         <label class="flabel">Email<input type="email" name="email" value="{{ member.user.email }}" class="finput"></label>
         <label class="flabel">Mobile<input type="text" name="phone_mobile" value="{{ member.phone_mobile }}" class="finput"></label>
         <label class="flabel">Home phone<input type="text" name="phone_home" value="{{ member.phone_home }}" class="finput"></label>
+        <label class="flabel">Date of birth<input type="date" name="date_of_birth" value="{{ member.date_of_birth|date:'Y-m-d'|default:'' }}" class="finput"></label>
+        <label class="flabel">Sex <span style="font-weight:400;color:#aaa;">(optional)</span>
+          <select name="sex" class="finput">
+            <option value="">— not specified —</option>
+            <option value="M" {% if member.sex == 'M' %}selected{% endif %}>Male</option>
+            <option value="F" {% if member.sex == 'F' %}selected{% endif %}>Female</option>
+          </select>
+        </label>
         <label class="flabel" style="grid-column:1/-1;">Address<input type="text" name="address_line1" value="{{ member.address_line1 }}" class="finput"></label>
         <label class="flabel">Suburb<input type="text" name="suburb" value="{{ member.suburb }}" class="finput"></label>
         <label class="flabel">Postcode<input type="text" name="postcode" value="{{ member.postcode }}" class="finput"></label>
@@ -65,12 +74,11 @@
 
   <!-- ── ACCOUNT ── -->
   <section id="account" class="detail-section stab-panel">
-    <h2 class="section-title">Account</h2>
     {% if account %}
     <div class="field-grid" style="grid-template-columns:repeat(2,1fr);">
       <div class="ro-field">
         <span class="ro-label">Balance</span>
-        <span style="font-size:1.3rem;font-weight:700;color:{% if account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">${{ account.balance }}</span>
+        <span style="font-size:1.3rem;font-weight:700;color:{% if account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">${{ account.balance|currency }}</span>
       </div>
       <div class="ro-field">
         <span class="ro-label">Status</span>
@@ -100,11 +108,11 @@
               {% if b.flight_type.requires_declaration %}
               <a href="{% url 'core:booking_declaration' club.slug b.id %}" class="action-link">Declaration</a>
               {% endif %}
-              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link depart-link">Check out →</a>
+              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link depart-link" data-overlay>Check out →</a>
             {% elif b.status == 'departed' %}
-              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link">Check in →</a>
+              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link" data-overlay>Check in →</a>
             {% elif b.status == 'completed' %}
-              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link">View →</a>
+              <a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link" data-overlay>View →</a>
             {% endif %}
           </td>
         </tr>
@@ -141,7 +149,7 @@
           <td>{{ b.aircraft.registration|default:"—" }}</td>
           <td>{{ b.member.user.get_full_name|default:"—" }}</td>
           <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
-          <td><a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link">View →</a></td>
+          <td><a href="{% url 'core:booking_detail' club.slug b.id %}" class="action-link" data-overlay>View →</a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -149,9 +157,48 @@
     {% endif %}
   </section>
 
+  <!-- ── PAYMENTS ── -->
+  <section id="payments" class="detail-section stab-panel">
+    {% if paid_flights %}
+    <table class="bk-table">
+      <thead><tr>
+        <th>Date</th>
+        <th>Aircraft</th>
+        <th>Flight type</th>
+        <th style="text-align:right;">Hours</th>
+        <th style="text-align:right;">Charged</th>
+        <th style="text-align:right;">Paid</th>
+        <th>Method</th>
+        <th>Status</th>
+      </tr></thead>
+      <tbody>
+        {% for fc in paid_flights %}
+        <tr>
+          <td style="white-space:nowrap;">{{ fc.booking.scheduled_start|date:"j M Y" }}</td>
+          <td>{{ fc.booking.aircraft.registration }}</td>
+          <td style="color:#8a93a0;font-size:.82rem;">{{ fc.booking.flight_type.name }}</td>
+          <td style="text-align:right;">{% if fc.actual_flight_hours %}{{ fc.actual_flight_hours }}h{% else %}—{% endif %}</td>
+          <td style="text-align:right;">${{ fc.total_charge|currency }}</td>
+          <td style="text-align:right;font-weight:600;">${{ fc.amount_paid|currency }}</td>
+          <td style="font-size:.82rem;color:#8a93a0;">{{ fc.get_payment_method_display }}</td>
+          <td>
+            {% if fc.is_paid %}
+              <span style="color:#2a7a3b;font-size:.82rem;">Settled</span>
+            {% elif fc.is_partially_paid %}
+              <span style="color:#b06800;font-size:.82rem;">Partial</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;">No payments recorded yet.</p>
+    {% endif %}
+  </section>
+
   <!-- ── NOTIFICATIONS ── -->
   <section id="notifications" class="detail-section stab-panel">
-    <h2 class="section-title">Notification preferences</h2>
     <p style="font-size:.83rem;color:#5b6573;margin-bottom:1.2rem;">
       Choose which alerts appear in your <a href="{% url 'core:notifications' club.slug %}">notifications inbox</a>.
       All are on by default except slot releases (opt-in).
@@ -226,6 +273,39 @@
       <button type="submit" class="btn">Save</button>
     </form>
     {% endwith %}
+
+    {% if watched_slots %}
+    <h3 style="font-size:.9rem;font-weight:650;margin:1.4rem 0 .5rem;">Active slot watches</h3>
+    <p style="font-size:.82rem;color:#5b6573;margin-bottom:.8rem;">You'll be notified if any of these slots are released.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+      <thead><tr style="border-bottom:2px solid #e3e6ea;">
+        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Flight</th>
+        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">When</th>
+        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Watching since</th>
+        <th style="padding:.35rem .5rem;"></th>
+      </tr></thead>
+      <tbody>
+        {% for sw in watched_slots %}
+        <tr style="border-bottom:1px solid #f0f2f4;">
+          <td style="padding:.4rem .5rem;">
+            {{ sw.booking.member.user.get_full_name }} · {{ sw.booking.aircraft.registration }}
+            <span style="font-size:.75rem;color:#8a93a0;margin-left:.3rem;">{{ sw.booking.flight_type.name }}</span>
+          </td>
+          <td style="padding:.4rem .5rem;color:#5b6573;">{{ sw.booking.scheduled_start|date:"D j M, H:i" }}</td>
+          <td style="padding:.4rem .5rem;color:#8a93a0;font-size:.8rem;">{{ sw.created_at|date:"j M Y" }}</td>
+          <td style="padding:.4rem .5rem;text-align:right;">
+            <form method="post" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="unwatch_slot">
+              <input type="hidden" name="booking_id" value="{{ sw.booking_id }}">
+              <button type="submit" class="cbtn-sm cbtn-danger" style="font-size:.75rem;">Unwatch</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
   </section>
 
 </div>
@@ -259,12 +339,30 @@
   .bk-table tr:last-child td{border-bottom:0;}
   .status-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
   /* status-chip colours defined in base.html */
-  .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
-  .btn:hover{filter:brightness(1.07);}
 </style>
+
+{% if my_actions %}
+<section id="actions" class="detail-section stab-panel" style="max-width:860px;">
+  <table class="bk-table">
+    <thead><tr><th>Event date</th><th>Type</th><th>Action required</th><th>Due</th><th></th></tr></thead>
+    <tbody>
+    {% for a in my_actions %}
+    <tr>
+      <td>{{ a.report.date_of_occurrence|date:"j M Y" }}</td>
+      <td>{{ a.report.occurrence_type.name }}</td>
+      <td>{{ a.description }}</td>
+      <td style="color:#8a93a0;font-size:.83rem;">{% if a.due_date %}{{ a.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
+      <td><a href="{% url 'core:occurrence_detail' club.slug a.report_id %}" class="cbtn-sm" data-overlay>View</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
 <script>
 (function(){
-  const TABS = ['contact', 'account', 'bookings', 'notifications'];
+  const TABS = ['contact', 'account', 'bookings', 'notifications'{% if my_actions %},'actions'{% endif %}];
 
   function activateTab(id) {
     if (!TABS.includes(id)) id = 'contact';

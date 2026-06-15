@@ -1,0 +1,387 @@
+{% extends "core/base.html" %}
+{% load humanize %}
+{% block title %}Weather · {{ club.name }}{% endblock %}
+{% block content %}
+<div class="container" style="padding:2rem;max-width:1100px;">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.4rem;">
+    <div>
+      <h1 style="margin:0;">Weather</h1>
+      {% if home_ae %}
+      <p style="margin:.2rem 0 0;font-size:.85rem;color:#8a93a0;">Home aerodrome: <strong>{{ home_ae.icao_code }}</strong> — {{ home_ae.name }}</p>
+      {% endif %}
+    </div>
+    {% if home_ae and not metar_err %}
+    <a href="?refresh=1" class="cbtn-sm" style="align-self:flex-start;">↻ Refresh</a>
+    {% endif %}
+  </div>
+
+  <!-- ── METAR + TAF ── -->
+  {% if metar_err and taf_err or metar_err and not home_ae %}
+  <div class="wx-notice">{{ metar_err }}</div>
+  {% else %}
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.6rem;">
+
+    <!-- METAR -->
+    <div class="wx-card">
+      <div class="wx-card-head">
+        <span>{% if home_ae %}{{ home_ae.icao_code }} · {% endif %}METAR</span>
+        {% if metar_data %}
+        <span class="wx-fr wx-fr-{{ metar_data.flight_rules|lower }}">{{ metar_data.flight_rules }}</span>
+        {% endif %}
+      </div>
+      {% if metar_err %}
+      <div style="padding:1rem;font-size:.85rem;color:#8a93a0;">{{ metar_err }}</div>
+      {% else %}
+      <div class="wx-raw">{{ metar_data.raw }}</div>
+      <div class="wx-decoded">
+        <div class="wx-row">
+          <span class="wx-lbl">Wind</span>
+          <span class="wx-val">
+            {% if metar_data.wind_dir_repr == 'VRB' %}Variable
+            {% elif metar_data.wind_dir %}{{ metar_data.wind_dir }}° /
+            {% endif %}
+            {{ metar_data.wind_speed }} kt
+            {% if metar_data.wind_gust %}gusting {{ metar_data.wind_gust }} kt{% endif %}
+          </span>
+        </div>
+        <div class="wx-row">
+          <span class="wx-lbl">Visibility</span>
+          <span class="wx-val">
+            {% if metar_data.visibility >= 9999 %}&gt;10 km
+            {% else %}{{ metar_data.visibility }} m{% endif %}
+          </span>
+        </div>
+        <div class="wx-row">
+          <span class="wx-lbl">Ceiling</span>
+          <span class="wx-val">
+            {% if metar_data.ceiling %}{{ metar_data.ceiling|intcomma }} ft
+              {% for c in metar_data.clouds %}{% if c.altitude == metar_data.ceiling %}({{ c.type }}){% endif %}{% endfor %}
+            {% else %}
+              {% if metar_data.clouds %}
+                {% for c in metar_data.clouds %}{{ c.type }} {{ c.altitude|intcomma }} ft{% if not forloop.last %}, {% endif %}{% endfor %}
+              {% else %}CAVOK / clear{% endif %}
+            {% endif %}
+          </span>
+        </div>
+        <div class="wx-row">
+          <span class="wx-lbl">Temp / Dew</span>
+          <span class="wx-val">{{ metar_data.temp }}° / {{ metar_data.dew }}°C</span>
+        </div>
+        <div class="wx-row">
+          <span class="wx-lbl">QNH</span>
+          <span class="wx-val">{{ metar_data.qnh_repr }}</span>
+        </div>
+      </div>
+      <div class="wx-footer">
+        {% if metar_data.issued_local %}
+        Issued {{ metar_data.issued_local|date:"H:i T" }}
+        {% if metar_data.age_minutes is not None %}
+        · <span class="wx-age {% if metar_data.age_minutes >= 120 %}wx-age-old{% elif metar_data.age_minutes >= 60 %}wx-age-stale{% endif %}">
+          {% if metar_data.age_minutes < 60 %}{{ metar_data.age_minutes }} min ago
+          {% else %}{{ metar_data.age_minutes|floatformat:"-2" }}…
+            {# simple hour display #}
+            {% widthratio metar_data.age_minutes 60 1 %} hr ago
+          {% endif %}
+          {% if metar_data.age_minutes >= 120 %} ⚠{% endif %}
+        </span>
+        {% endif %}
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- TAF -->
+    <div class="wx-card">
+      <div class="wx-card-head">
+        <span>{% if home_ae %}{{ home_ae.icao_code }} · {% endif %}TAF</span>
+      </div>
+      {% if taf_err %}
+      <div style="padding:1rem;font-size:.85rem;color:#8a93a0;">{{ taf_err }}</div>
+      {% else %}
+      <div class="wx-raw">{{ taf_data.raw }}</div>
+      {% if taf_data.forecast %}
+      <div class="wx-decoded">
+        {% for period in taf_data.forecast %}
+        <div class="wx-taf-period">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.2rem;">
+            <span class="wx-taf-type">{{ period.type|default:"FM" }}</span>
+            {% if period.flight_rules %}
+            <span class="wx-fr wx-fr-{{ period.flight_rules|lower }}" style="font-size:.7rem;padding:.1rem .35rem;">{{ period.flight_rules }}</span>
+            {% endif %}
+            {% if period.start_local %}
+            <span style="font-size:.75rem;color:#8a93a0;">
+              {{ period.start_local|date:"D H:i T" }}{% if period.end_local %} – {{ period.end_local|date:"H:i" }}{% endif %}
+            </span>
+            {% endif %}
+          </div>
+          <div style="font-size:.8rem;color:#1f2933;padding-left:.5rem;">
+            {% with wd=period.wind_direction ws=period.wind_speed wg=period.wind_gust %}
+            {% if ws %}{% if wd %}{{ wd.repr }}°/{% endif %}{{ ws.value }} kt{% if wg %} G{{ wg.value }}{% endif %}{% endif %}
+            {% if period.visibility %}{% if ws %} · {% endif %}{{ period.visibility.repr }}{% endif %}
+            {% for wx in period.wx_human %}{% if ws or period.visibility or not forloop.first %} · {% endif %}{{ wx }}{% endfor %}
+            {% for c in period.clouds %}{% if ws or period.visibility or period.wx_human or not forloop.first %} · {% endif %}{{ c.type }} {{ c.altitude|intcomma }} ft{% endfor %}
+            {% endwith %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="wx-footer">
+        {% if taf_data.issued_local %}Issued {{ taf_data.issued_local|date:"H:i T" }}
+          {% if taf_data.age_minutes is not None %}· <span class="wx-age {% if taf_data.age_minutes >= 420 %}wx-age-old{% elif taf_data.age_minutes >= 240 %}wx-age-stale{% endif %}">{{ taf_data.age_minutes }} min ago{% if taf_data.age_minutes >= 420 %} ⚠{% endif %}</span>{% endif %}
+        {% endif %}
+        {% if taf_data.start_local and taf_data.end_local %}
+          · Valid {{ taf_data.start_local|date:"j M H:i T" }} – {{ taf_data.end_local|date:"j M H:i" }}
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+  {% endif %}
+
+  <!-- ── WEBCAMS ── -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1rem;">
+    <h2 style="font-size:1rem;font-weight:650;margin:0;">Webcams</h2>
+    {% if club_member.is_staff %}
+    <button type="button" class="cbtn-add" id="add-wc-btn">+ Add webcam</button>
+    {% endif %}
+  </div>
+
+  {% if webcams %}
+  <div class="wc-grid">
+    {% for wc in webcams %}
+    <div class="wc-card">
+      <div class="wc-img-wrap">
+        {% if wc.embed_code %}
+        <div class="wc-embed">{{ wc.embed_code|safe }}</div>
+        {% else %}
+        <img src="{{ wc.url }}" alt="{{ wc.name }}" class="wc-img"
+             onerror="this.closest('.wc-img-wrap').classList.add('wc-img-fail')">
+        <div class="wc-img-fallback">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#c0c8d0" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          <span>Image not embeddable — use Open ↗</span>
+        </div>
+        <button type="button" class="wc-refresh" onclick="refreshWcImg(this)" title="Reload image">↻</button>
+        {% endif %}
+      </div>
+      <div class="wc-body">
+        <div class="wc-name">{{ wc.name }}</div>
+        {% if wc.description %}<div class="wc-desc">{{ wc.description }}</div>{% endif %}
+        <div class="wc-actions">
+          <a href="{{ wc.url }}" target="_blank" rel="noopener" class="cbtn-sm">Open ↗</a>
+          {% if club_member.is_staff %}
+          <button type="button" class="cbtn-sm"
+                  onclick="openEditWc({{ wc.id }}, '{{ wc.name|escapejs }}', '{{ wc.url|escapejs }}', '{{ wc.embed_code|escapejs }}', '{{ wc.description|escapejs }}')">Edit</button>
+          <button type="button" class="cbtn-sm cbtn-danger"
+                  onclick="confirmRemoveWc({{ wc.id }}, '{{ wc.name|escapejs }}')">Remove</button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div style="padding:2.5rem 1rem;text-align:center;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;">
+    <p style="margin:.5rem 0;font-size:.9rem;">No webcams configured yet.</p>
+  </div>
+  {% endif %}
+
+</div>
+
+<!-- Add webcam modal -->
+<div id="add-wc-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(520px,95vw);">
+    <h2>Add webcam</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add_webcam">
+      <label class="flabel">Name
+        <input type="text" name="name" class="finput" required placeholder="e.g. Remutaka Pass">
+      </label>
+      <label class="flabel" style="margin-top:.6rem;">Page URL <span style="font-weight:400;color:#8a93a0;">(used for Open ↗ button)</span>
+        <input type="url" name="url" class="finput" required placeholder="https://…">
+      </label>
+      <label class="flabel" style="margin-top:.6rem;">Embed code <span style="font-weight:400;color:#8a93a0;">(optional — paste iframe code to embed live view)</span>
+        <textarea name="embed_code" class="finput" rows="3" placeholder="&lt;iframe src=&quot;https://…&quot;&gt;&lt;/iframe&gt;" style="font-family:monospace;font-size:.78rem;resize:vertical;"></textarea>
+      </label>
+      <label class="flabel" style="margin-top:.6rem;">Description <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+        <input type="text" name="description" class="finput" placeholder="e.g. Remutaka Pass — east approach">
+      </label>
+      <div class="modal-actions" style="margin-top:.9rem;">
+        <button type="button" class="cbtn" id="add-wc-cancel">✕ Close</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn primary">Add</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Remove webcam confirmation modal -->
+<div id="remove-wc-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(400px,95vw);">
+    <h2>Remove webcam</h2>
+    <p style="margin:.4rem 0 1.2rem;color:#4a5568;font-size:.9rem;">Remove <strong id="rwc-name"></strong>? This cannot be undone.</p>
+    <form method="post" id="remove-wc-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete_webcam">
+      <input type="hidden" name="wc_id" id="rwc-id">
+      <div class="modal-actions">
+        <button type="button" class="cbtn" id="rwc-cancel">Cancel</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn cbtn-danger">Remove</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit webcam modal -->
+<div id="edit-wc-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(520px,95vw);">
+    <h2>Edit webcam</h2>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="edit_webcam">
+      <input type="hidden" name="wc_id" id="ewc-id">
+      <label class="flabel">Name
+        <input type="text" name="name" id="ewc-name" class="finput" required>
+      </label>
+      <label class="flabel" style="margin-top:.6rem;">Page URL
+        <input type="url" name="url" id="ewc-url" class="finput" required>
+      </label>
+      <label class="flabel" style="margin-top:.6rem;">Embed code <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+        <textarea name="embed_code" id="ewc-embed" class="finput" rows="3" style="font-family:monospace;font-size:.78rem;resize:vertical;"></textarea>
+      </label>
+      <label class="flabel" style="margin-top:.6rem;">Description
+        <input type="text" name="description" id="ewc-desc" class="finput">
+      </label>
+      <div class="modal-actions" style="margin-top:.9rem;">
+        <button type="button" class="cbtn" id="ewc-cancel">✕ Close</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn" data-dirty-save>Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  /* Flight rules badges */
+  .wx-fr{font-size:.75rem;font-weight:700;padding:.2rem .5rem;border-radius:10px;letter-spacing:.03em;}
+  .wx-fr-vfr{background:#dcfce7;color:#166534;}
+  .wx-fr-mvfr{background:#dbeafe;color:#1d4ed8;}
+  .wx-fr-ifr{background:#fee2e2;color:#991b1b;}
+  .wx-fr-lifr{background:#f3e8ff;color:#6b21a8;}
+
+  /* METAR / TAF cards */
+  .wx-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+  .wx-card-head{display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;background:#fafbfc;border-bottom:1px solid #eef1f4;font-size:.85rem;font-weight:650;}
+  .wx-raw{font-family:monospace;font-size:.78rem;padding:.7rem .9rem;background:#f7f9fb;border-bottom:1px solid #eef1f4;color:#2b333d;line-height:1.5;word-break:break-all;}
+  .wx-decoded{padding:.6rem .9rem;flex:1;}
+  .wx-row{display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid #f4f6f8;font-size:.84rem;}
+  .wx-row:last-child{border-bottom:none;}
+  .wx-lbl{color:#8a93a0;min-width:90px;flex-shrink:0;}
+  .wx-val{color:#1f2933;font-weight:500;}
+  .wx-footer{padding:.5rem .9rem;font-size:.76rem;color:#8a93a0;border-top:1px solid #eef1f4;margin-top:auto;}
+  .wx-age-stale{color:#d97706;}
+  .wx-age-old{color:#dc2626;font-weight:600;}
+  .wx-notice{background:#fef3cd;border:1px solid #fde68a;border-radius:8px;padding:.8rem 1rem;font-size:.85rem;color:#7c5000;margin-bottom:1.4rem;}
+
+  /* TAF periods */
+  .wx-taf-period{padding:.4rem 0;border-bottom:1px solid #f4f6f8;}
+  .wx-taf-period:last-child{border-bottom:none;}
+  .wx-taf-type{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;background:#f3f5f7;padding:.1rem .35rem;border-radius:4px;}
+
+  /* Webcam grid */
+  .wc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:2rem;}
+  .wc-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+  .wc-img-wrap{position:relative;background:#f3f5f7;aspect-ratio:16/9;overflow:hidden;}
+  .wc-img{width:100%;height:100%;object-fit:cover;display:block;}
+  .wc-img-fallback{display:none;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;height:100%;color:#8a93a0;font-size:.78rem;}
+  .wc-img-wrap.wc-img-fail .wc-img{display:none;}
+  .wc-img-wrap.wc-img-fail .wc-img-fallback{display:flex;}
+  .wc-embed{width:100%;height:100%;overflow:hidden;}
+  .wc-embed iframe{width:100%;height:100%;border:none;display:block;}
+  .wc-refresh{position:absolute;top:.4rem;right:.4rem;background:rgba(255,255,255,.8);border:1px solid #e3e6ea;border-radius:5px;padding:.2rem .4rem;font-size:.78rem;cursor:pointer;color:#5b6573;}
+  .wc-refresh:hover{background:#fff;}
+  .wc-body{padding:.7rem .9rem;flex:1;display:flex;flex-direction:column;gap:.3rem;}
+  .wc-name{font-weight:600;font-size:.88rem;}
+  .wc-desc{font-size:.78rem;color:#8a93a0;flex:1;}
+  .wc-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem;}
+
+  @media(max-width:700px){
+    div[style*="grid-template-columns:1fr 1fr"]{grid-template-columns:1fr!important;}
+  }
+</style>
+
+<script>
+(function(){
+  // Modal wiring
+  var addModal = document.getElementById('add-wc-modal');
+  var editModal = document.getElementById('edit-wc-modal');
+
+  function openAdd(){ addModal.hidden = false; }
+  var addBtn = document.getElementById('add-wc-btn');
+  if (addBtn) addBtn.addEventListener('click', openAdd);
+  document.getElementById('add-wc-cancel').addEventListener('click', function(){ addModal.hidden = true; });
+  addModal.addEventListener('click', function(e){ if(e.target===addModal) addModal.hidden=true; });
+
+  document.getElementById('ewc-cancel').addEventListener('click', function(){ editModal.hidden = true; });
+  editModal.addEventListener('click', function(e){ if(e.target===editModal) editModal.hidden=true; });
+
+  var removeModal = document.getElementById('remove-wc-modal');
+  document.getElementById('rwc-cancel').addEventListener('click', function(){ removeModal.hidden = true; });
+  removeModal.addEventListener('click', function(e){ if(e.target===removeModal) removeModal.hidden=true; });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key==='Escape'){ addModal.hidden=true; editModal.hidden=true; removeModal.hidden=true; }
+  });
+
+  window.openEditWc = function(id, name, url, embed, desc){
+    document.getElementById('ewc-id').value = id;
+    document.getElementById('ewc-name').value = name;
+    document.getElementById('ewc-url').value = url;
+    document.getElementById('ewc-embed').value = embed;
+    document.getElementById('ewc-desc').value = desc;
+    editModal.hidden = false;
+  };
+})();
+
+window.confirmRemoveWc = function(id, name){
+  document.getElementById('rwc-id').value = id;
+  document.getElementById('rwc-name').textContent = name;
+  document.getElementById('remove-wc-modal').hidden = false;
+};
+
+// Add autoplay+mute to YouTube live stream iframes on page load
+(function(){
+  document.querySelectorAll('.wc-embed iframe').forEach(function(fr){
+    var src = fr.getAttribute('src') || '';
+    if(/youtube\.com\/embed|youtu\.be/.test(src)){
+      var sep = src.includes('?') ? '&' : '?';
+      fr.setAttribute('src', src + sep + 'autoplay=1&mute=1');
+      var allow = fr.getAttribute('allow') || '';
+      if(!allow.includes('autoplay')) fr.setAttribute('allow', allow ? allow + '; autoplay' : 'autoplay; encrypted-media');
+    }
+  });
+})();
+
+function refreshWcImg(btn){
+  var img = btn.closest('.wc-img-wrap').querySelector('.wc-img');
+  var wrap = btn.closest('.wc-img-wrap');
+  wrap.classList.remove('wc-img-fail');
+  img.style.display = '';
+  var base = img.src.split('?')[0];
+  img.src = base + '?t=' + Date.now();
+}
+
+// Clear AVWX cache on manual refresh
+{% if request.GET.refresh %}
+(function(){
+  var url = window.location.href.replace(/[?&]refresh=1/,'');
+  window.history.replaceState({}, '', url);
+})();
+{% endif %}
+</script>
+{% endblock %}

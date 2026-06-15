@@ -68,6 +68,14 @@ class ClubConfig(models.Model):
         help_text="Comma-separated minutes offered in the booking/search duration picker"
     )
 
+    # Explicit booking slots — HH:MM-HH:MM pairs defining the standard booking windows.
+    # Replaces the old typical_hours_start/end approach with fully configurable slot definitions.
+    # If blank, falls back to computing from default_booking_duration + time_slot_interval + operating hours.
+    booking_slots = models.TextField(
+        blank=True, default='',
+        help_text="Comma-separated HH:MM-HH:MM slot pairs, e.g. 08:30-10:00, 10:00-11:30, 12:30-14:00"
+    )
+
     def duration_choices(self):
         """Parsed, sorted, de-duplicated list of duration options (ints)."""
         out = []
@@ -78,7 +86,33 @@ class ClubConfig(models.Model):
         if self.default_booking_duration not in out:
             out.append(self.default_booking_duration)
         return sorted(set(out))
-    
+
+    def parsed_booking_slots(self):
+        """Return list of (start_str, end_str, sh, sm, eh, em) from booking_slots text."""
+        result = []
+        for part in (self.booking_slots or '').split(','):
+            part = part.strip()
+            if not part or '-' not in part:
+                continue
+            try:
+                start, end = part.split('-', 1)
+                start, end = start.strip(), end.strip()
+                sh, sm = int(start[0:2]), int(start[3:5])
+                eh, em = int(end[0:2]),   int(end[3:5])
+                result.append((start, end, sh, sm, eh, em))
+            except (ValueError, IndexError):
+                pass
+        return result
+
+    def slot_window(self):
+        """Returns (start_time, end_time) for the standard booking window.
+        Uses first/last slot if defined, otherwise falls back to typical_hours_start/end."""
+        from datetime import time as _t
+        slots = self.parsed_booking_slots()
+        if slots:
+            return _t(slots[0][2], slots[0][3]), _t(slots[-1][4], slots[-1][5])
+        return self.typical_hours_start, self.typical_hours_end
+
     # Operating hours (the full window the calendar spans)
     operating_hours_start = models.TimeField(default='07:00')
     operating_hours_end = models.TimeField(default='21:00')
@@ -112,6 +146,61 @@ class ClubConfig(models.Model):
     theme_completed_paid = models.CharField(max_length=7, default='#7c3aed', help_text="Completed & paid booking pills")
     theme_weekend = models.CharField(max_length=7, default='#fdf0e6', help_text="Weekend shading in search")
     theme_atypical = models.CharField(max_length=7, default='#f0f0f0', help_text="Outside-typical-hours shading")
+    chart_colors = models.JSONField(
+        default=list,
+        help_text="Ordered list of hex colours used in charts. Should have 8–10 distinct colours that complement the primary theme."
+    )
+
+    FONT_SYSTEM  = 'system'
+    FONT_INTER   = 'inter'
+    FONT_LORA    = 'lora'
+    FONT_POPPINS = 'poppins'
+    FONT_NUNITO  = 'nunito'
+    FONT_CHOICES = [
+        (FONT_SYSTEM,  'System default'),
+        (FONT_INTER,   'Inter (modern sans-serif)'),
+        (FONT_POPPINS, 'Poppins (geometric sans-serif)'),
+        (FONT_NUNITO,  'Nunito (rounded, friendly)'),
+        (FONT_LORA,    'Lora (elegant serif)'),
+    ]
+    font_choice = models.CharField(
+        max_length=20, default=FONT_SYSTEM, choices=FONT_CHOICES,
+        help_text="Body font used across all pages."
+    )
+
+    FONT_STACKS = {
+        FONT_SYSTEM:  ("system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif", None),
+        FONT_INTER:   ("'Inter',sans-serif",   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"),
+        FONT_POPPINS: ("'Poppins',sans-serif", "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap"),
+        FONT_NUNITO:  ("'Nunito',sans-serif",  "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700&display=swap"),
+        FONT_LORA:    ("'Lora',Georgia,serif", "https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap"),
+    }
+
+    def get_font(self):
+        return self.FONT_STACKS.get(self.font_choice, self.FONT_STACKS[self.FONT_SYSTEM])
+
+    _DEFAULT_CHART_COLORS = [
+        '#ae3708',  # Rust — burnt orange-red
+        '#173d3c',  # Tiber — deep dark teal
+        '#f89d08',  # Orange Peel — warm amber
+        '#e64301',  # Persimmon — red-orange
+        '#7d7268',  # warm taupe-grey
+        '#fb8007',  # Tangerine — bright orange
+        '#c4a882',  # warm sand
+        '#4a4540',  # dark warm charcoal
+        '#d4824a',  # mid burnt orange
+        '#9b8b7a',  # medium warm taupe
+    ]
+
+    def get_chart_colors(self):
+        """Return chart palette, falling back to the built-in burnt-orange defaults."""
+        colors = self.chart_colors
+        if not colors or not isinstance(colors, list):
+            return self._DEFAULT_CHART_COLORS
+        # Pad with defaults if fewer than 4 defined
+        if len(colors) < 4:
+            colors = colors + self._DEFAULT_CHART_COLORS[len(colors):]
+        return colors
 
     # ── Compliance / eligibility ─────────────────────────────────────────────
     bfr_interval_months   = models.PositiveIntegerField(default=24,
@@ -150,6 +239,34 @@ class ClubConfig(models.Model):
 
     fy_start_month = models.PositiveSmallIntegerField(
         default=4, help_text="Month the financial year starts (1=Jan … 12=Dec). NZ default: April (4)")
+
+    lapse_grace_days = models.PositiveIntegerField(
+        default=60,
+        help_text="Days after subscription_expires before a member is auto-lapsed. "
+                  "Run manage.py update_lapsed_members (or use Settings) to apply."
+    )
+
+    # ── Booking blocks (financial) ────────────────────────────────────────────
+    booking_block_enabled = models.BooleanField(
+        default=False,
+        help_text="Enable financial booking blocks. Individual conditions below must also be configured."
+    )
+    booking_block_credit_limit = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Block when account balance goes below negative this amount (e.g. 200 = block at −$200). Leave blank to disable."
+    )
+    booking_block_unpaid_flight_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Block when a flight charge has been unpaid for more than this many days. Leave blank to disable."
+    )
+    booking_block_invoice_days = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Block when an invoice is older than this many days and still unpaid. Leave blank to disable."
+    )
+    booking_block_message = models.TextField(
+        blank=True,
+        help_text="Message shown to a blocked member. If blank, auto-generated from billing phone/email."
+    )
 
     # ── Maintenance alert thresholds (defaults; can be overridden per item) ────
     maint_warn_hours  = models.DecimalField(max_digits=6, decimal_places=1, default=20,
@@ -407,6 +524,62 @@ class MembershipHistoryEntry(models.Model):
 
 
 # ============================================================================
+# ANNOUNCEMENTS
+# ============================================================================
+
+class Announcement(models.Model):
+    TYPE_CHOICES = [
+        ('announcement', 'Announcement'),
+        ('info',         'Information'),
+        ('safety',       'Safety Notice'),
+        ('event',        'Event'),
+        ('flyaway',      'Fly-Away'),
+    ]
+    club       = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='announcements')
+    type       = models.CharField(max_length=20, choices=TYPE_CHOICES, default='announcement')
+    title      = models.CharField(max_length=200)
+    body       = models.TextField(blank=True)
+    event_date = models.DateField(null=True, blank=True,
+                                  help_text="Optional date — appears on calendar on that day")
+    expires_at = models.DateField(null=True, blank=True,
+                                  help_text="Hide from home screen after this date (blank = always show)")
+    is_pinned  = models.BooleanField(default=False)
+    created_by = models.ForeignKey('User', on_delete=models.SET_NULL,
+                                   null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    TYPE_COLOR = {
+        'announcement': '#2f7dd1',
+        'info':         '#0891b2',
+        'safety':       '#d97706',
+        'event':        '#16a34a',
+        'flyaway':      '#7c3aed',
+    }
+    TYPE_BG = {
+        'announcement': '#eff6ff',
+        'info':         '#ecfeff',
+        'safety':       '#fffbeb',
+        'event':        '#f0fdf4',
+        'flyaway':      '#f5f3ff',
+    }
+
+    class Meta:
+        ordering = ['-is_pinned', '-created_at']
+
+    def __str__(self):
+        return f"[{self.get_type_display()}] {self.title}"
+
+    @property
+    def color(self):
+        return self.TYPE_COLOR.get(self.type, '#2f7dd1')
+
+    @property
+    def bg(self):
+        return self.TYPE_BG.get(self.type, '#eff6ff')
+
+
+# ============================================================================
 # REGULATORY TRACKING
 # ============================================================================
 
@@ -464,8 +637,8 @@ class MemberCredential(models.Model):
     certificate_number = models.CharField(max_length=50, blank=True)
     notes = models.TextField(blank=True)
 
-    # Photo evidence (scanned licence, medical cert, etc.)
-    evidence = models.ImageField(upload_to='credentials/', null=True, blank=True)
+    # Photo/scan evidence (licence, medical cert, etc.) — FileField to allow PDFs
+    evidence = models.FileField(upload_to='credentials/', null=True, blank=True)
 
     # Who recorded it
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True,
@@ -527,7 +700,7 @@ class AircraftType(models.Model):
 class AircraftStatus(models.TextChoices):
     """Aircraft operational status. Temporary unavailability (maintenance, grounding) is
     managed via block-outs rather than status changes."""
-    ONLINE = 'online', 'Online'
+    ONLINE = 'online', 'Active'
     RETIRED = 'retired', 'Retired'
 
 
@@ -554,10 +727,9 @@ class Aircraft(models.Model):
     
     # Time calculation
     TOTAL_TIME_METHOD_CHOICES = [
-        ('hobbs',        'Hobbs Meter'),
-        ('tacho',        'Tachometer'),
-        ('tacho_less_5', 'Tachometer (legacy — now treated as plain Tacho for billing)'),
-        ('airswitch',    'Air Switch'),
+        ('hobbs',      'Hobbs Meter'),
+        ('tacho',      'Tachometer'),
+        ('airswitch',  'Air Switch'),
     ]
     total_time_method = models.CharField(max_length=20, choices=TOTAL_TIME_METHOD_CHOICES, default='hobbs')
     
@@ -942,6 +1114,8 @@ class Account(models.Model):
 
     def apply_transaction(self, amount, direction):
         """Update balance in-place. Call inside an atomic block."""
+        from decimal import Decimal
+        amount = Decimal(str(amount))
         if direction == 'credit':
             self.balance += amount
         else:
@@ -1037,6 +1211,22 @@ class VoucherType(models.Model):
 
     def __str__(self):
         return f"{self.name} (${self.default_value})"
+
+
+class FlyingBudget(models.Model):
+    """Budgeted hours per aircraft per month for a given FY start year."""
+    club    = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='flying_budgets')
+    aircraft = models.ForeignKey('Aircraft', on_delete=models.CASCADE, related_name='budgets')
+    fy_year  = models.PositiveSmallIntegerField(help_text="Year the FY starts (e.g. 2025 for Jul 2025–Jun 2026)")
+    month    = models.PositiveSmallIntegerField(help_text="Month number 1–12")
+    budgeted_hours = models.DecimalField(max_digits=6, decimal_places=1, default=0)
+
+    class Meta:
+        unique_together = [('club', 'aircraft', 'fy_year', 'month')]
+        ordering = ['aircraft__registration', 'fy_year', 'month']
+
+    def __str__(self):
+        return f"{self.aircraft.registration} FY{self.fy_year} m{self.month}: {self.budgeted_hours}h"
 
 
 class Voucher(models.Model):
@@ -1252,7 +1442,7 @@ class Booking(models.Model):
         """Human label that distinguishes returned-unpaid from completed-paid."""
         if self.status == 'completed':
             try:
-                if self.flight_completion.paid_at:
+                if self.flight_completion.is_paid:
                     return 'Completed'
             except Exception:
                 pass
@@ -1264,7 +1454,7 @@ class Booking(models.Model):
         """CSS class key for display_status."""
         if self.status == 'completed':
             try:
-                if self.flight_completion.paid_at:
+                if self.flight_completion.is_paid:
                     return 'completed'
             except Exception:
                 pass
@@ -1415,7 +1605,9 @@ class FlightCompletion(models.Model):
 
     @property
     def is_paid(self):
-        """Fully settled."""
+        """Fully settled (zero-charge flights are always settled)."""
+        if not self.total_charge:
+            return True
         return self.paid_at is not None and self.amount_paid >= self.total_charge
 
     @property
@@ -1513,6 +1705,7 @@ class Aerodrome(models.Model):
     icao_code = models.CharField(max_length=4, help_text="4-letter ICAO code, e.g. NZMS")
     name = models.CharField(max_length=200, help_text="e.g. Masterton")
     is_active = models.BooleanField(default=True)
+    is_home = models.BooleanField(default=False, help_text="Home aerodrome for this club")
     notes = models.TextField(
         blank=True,
         help_text="Agreement terms, billing cycle, contact info, anything instructors need to know"
@@ -1524,6 +1717,22 @@ class Aerodrome(models.Model):
 
     def __str__(self):
         return f"{self.icao_code} — {self.name}"
+
+
+class WeatherWebcam(models.Model):
+    club         = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='webcams')
+    name         = models.CharField(max_length=100)
+    url          = models.URLField(max_length=500, help_text="Webcam page link (used for 'Open' button)")
+    embed_code   = models.TextField(blank=True, help_text="Optional iframe embed code — overrides image embed")
+    description  = models.CharField(max_length=200, blank=True)
+    display_order= models.PositiveIntegerField(default=0)
+    is_active    = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['display_order', 'name']
+
+    def __str__(self):
+        return f"{self.name} ({self.club})"
 
 
 class AerodromeFeeType(models.Model):
@@ -2396,6 +2605,9 @@ class Invoice(models.Model):
     # Payments reconciled against this invoice by the accountant
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
+    # Set on subscription invoices — copied to member.subscription_expires when invoice is marked paid
+    subscription_expiry_date = models.DateField(null=True, blank=True)
+
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='invoices_created')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -2589,3 +2801,25 @@ class OccurrenceAuditEntry(models.Model):
 
     class Meta:
         ordering = ['timestamp']
+
+
+# ============================================================================
+# WEB PUSH SUBSCRIPTIONS
+# ============================================================================
+
+class PushSubscription(models.Model):
+    """
+    Browser-level Web Push subscription for a club member.
+    One member can have multiple subscriptions (different devices/browsers).
+    """
+    club_member = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='push_subscriptions')
+    endpoint    = models.TextField(unique=True)
+    p256dh      = models.TextField()     # browser public key
+    auth        = models.TextField()     # auth secret
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Push sub for {self.club_member} ({self.endpoint[:60]}…)"
+
+    class Meta:
+        ordering = ['-created_at']

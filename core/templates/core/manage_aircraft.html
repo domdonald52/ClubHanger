@@ -3,9 +3,8 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1.2rem;">Manage</h1>
+  <h1 style="margin-bottom:1.2rem;">Aircraft</h1>
 
-  {% include "core/_manage_nav.html" with active_section="aircraft" %}
   {% if retire_error %}
   <div class="notice warn" style="margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
     <span>{{ retire_error.msg }}</span>
@@ -20,7 +19,7 @@
   {% endif %}
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-    <h2 class="sh2" style="margin:0;">Fleet <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ online_aircraft|length }} online{% if retired_aircraft %}, {{ retired_aircraft|length }} retired{% endif %})</span></h2>
+    <h2 class="sh2" style="margin:0;">Fleet <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ online_aircraft|length }} active{% if retired_aircraft %}, {{ retired_aircraft|length }} retired{% endif %})</span></h2>
     {% if club_member.is_admin %}<button type="button" class="cbtn-add" id="add-ac-btn">+ Add aircraft</button>{% endif %}
   </div>
 
@@ -37,20 +36,7 @@
         <td style="color:#8a93a0;">{{ ac.seats }}</td>
         <td style="color:#8a93a0;font-size:.82rem;">{{ ac.get_total_time_method_display }}</td>
         <td>
-          {% if club_member.is_admin %}
-          <form method="post" style="display:inline;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="set_status">
-            <input type="hidden" name="ac_id" value="{{ ac.id }}">
-            <select name="status" class="inline-sel" onchange="this.form.submit()" data-val="{{ ac.status }}">
-              {% for val, label in status_choices %}
-              <option value="{{ val }}" {% if ac.status == val %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </form>
-          {% else %}
-          <span class="status-badge status-online">Online</span>
-          {% endif %}
+          <span class="status-badge status-online">Active</span>
         </td>
         <td style="text-align:right;">
           <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}" class="row-action-btn" data-overlay>Manage →</a>
@@ -69,20 +55,7 @@
         <td style="color:#8a93a0;">{{ ac.seats }}</td>
         <td style="color:#8a93a0;font-size:.82rem;">{{ ac.get_total_time_method_display }}</td>
         <td>
-          {% if club_member.is_admin %}
-          <form method="post" style="display:inline;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="set_status">
-            <input type="hidden" name="ac_id" value="{{ ac.id }}">
-            <select name="status" class="inline-sel" onchange="this.form.submit()" data-val="{{ ac.status }}">
-              {% for val, label in status_choices %}
-              <option value="{{ val }}" {% if ac.status == val %}selected{% endif %}>{{ label }}</option>
-              {% endfor %}
-            </select>
-          </form>
-          {% else %}
           <span class="status-badge status-retired">Retired</span>
-          {% endif %}
         </td>
         <td style="text-align:right;">
           <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}" class="row-action-btn" data-overlay>Manage →</a>
@@ -120,7 +93,7 @@
         {% endif %}
       </label>
       <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="add-ac-cancel">Cancel</button>
+        <button type="button" class="cbtn" id="add-ac-cancel">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add aircraft</button>
       </div>
