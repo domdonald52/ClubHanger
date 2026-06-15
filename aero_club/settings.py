@@ -170,7 +170,7 @@ MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'media')))
 # ── Security ──────────────────────────────────────────────────────────────────
 # Gate on HTTPS env var so local dev is unaffected.
 if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('SECURE_SITE'):
-    SECURE_SSL_REDIRECT          = True
+    # Railway's reverse proxy handles HTTP→HTTPS at the edge; no SSL redirect needed here
     SECURE_HSTS_SECONDS          = 31536000   # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_PROXY_SSL_HEADER      = ('HTTP_X_FORWARDED_PROTO', 'https')
