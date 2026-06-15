@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,9 +6,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="{{ club.name }}">
 <meta name="theme-color" content="{{ theme.banner|default:'#1d3a5f' }}">
 <meta name="vapid-public-key" content="{{ vapid_public_key }}">
 <title>{% block title %}ClubHangar{% endblock %}</title>
+{% if theme.logo %}
+<link rel="icon" href="{{ theme.logo.url }}" type="image/png">
+<link rel="apple-touch-icon" href="{{ theme.logo.url }}">
+{% else %}
+<link rel="icon" href="{% static 'core/img/clubhangar-mark.svg' %}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{% static 'core/img/clubhangar-mark.svg' %}">
+{% endif %}
+<link rel="manifest" href="{% url 'core:pwa_manifest' club.slug %}">
 <style>
   :root {
     --banner:  {{ theme.banner|default:'#1d3a5f' }};

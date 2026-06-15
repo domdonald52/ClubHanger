@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Aero Club Booking{% endblock %}</title>
+    {% load static %}
+    {% if theme.logo %}
+    <link rel="icon" href="{{ theme.logo.url }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ theme.logo.url }}">
+    {% else %}
+    <link rel="icon" href="{% static 'core/img/clubhangar-mark.svg' %}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{% static 'core/img/clubhangar-mark.svg' %}">
+    {% endif %}
+    {% if club %}<link rel="manifest" href="{% url 'core:pwa_manifest_manage' club.slug %}">{% endif %}
     {% if theme.font_url %}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="{{ theme.font_url }}" rel="stylesheet">{% endif %}
     {% block extra_head %}{% endblock %}
     <style>
@@ -311,6 +320,19 @@
                 </a>
               </div>
             </div>
+        </div>
+
+        <!-- ── Sidebar footer: copyright, feedback, brand ── -->
+        <div class="sidenav-foot">
+          <button class="sidenav-foot-link" onclick="document.getElementById('feedback-modal-backdrop').classList.add('open')" type="button">
+            <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 9.5a5.5 5.5 0 0 1-5.5 5.5H2l-.5-3L4 10a5.5 5.5 0 0 1 0-11h1A5.5 5.5 0 0 1 13 4.5v5Z"/></svg>
+            Send feedback
+          </button>
+          <div class="sidenav-foot-brand">
+            <svg width="12" height="12" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="49" fill="#1a2f4a"/><circle cx="50" cy="50" r="42" fill="none" stroke="#4a78cc" stroke-width="3.5"/><path d="M50 20 L67 72 L50 59 L33 72 Z" fill="white"/></svg>
+            Powered by ClubHangar
+          </div>
+          <div class="sidenav-foot-copy">© 2026 Dominic Donald</div>
         </div>
     </nav>
     {% endif %}
@@ -1028,22 +1050,19 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 {% if user.is_authenticated and club %}
-<!-- ── Site footer ─────────────────────────────────────────────────────── -->
+<!-- ── Feedback modal + sidebar footer styles ───────────────────────── -->
 <style>
-.site-footer{border-top:1px solid #eef1f4;padding:.6rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;font-size:.72rem;color:#9aa3ad;background:#fafbfc;}
-@media(min-width:900px){.site-footer{margin-left:270px;}}
-.site-footer a{color:#9aa3ad;text-decoration:underline dotted;cursor:pointer;}
-.site-footer a:hover{color:#5b6573;}
+.sidenav-foot{border-top:1px solid rgba(255,255,255,.08);padding:.6rem .7rem .7rem;flex-shrink:0;}
+.sidenav-foot-link{display:flex;align-items:center;gap:.45rem;width:100%;background:none;border:none;font-family:inherit;font-size:.72rem;color:rgba(255,255,255,.45);padding:.3rem .4rem;border-radius:5px;cursor:pointer;text-align:left;transition:color .12s;}
+.sidenav-foot-link:hover{color:rgba(255,255,255,.75);}
+.sidenav-foot-brand{display:flex;align-items:center;gap:.35rem;font-size:.66rem;color:rgba(255,255,255,.3);padding:.25rem .4rem;margin-top:.1rem;letter-spacing:.02em;}
+.sidenav-foot-copy{font-size:.62rem;color:rgba(255,255,255,.22);padding:.1rem .4rem .2rem;letter-spacing:.01em;}
 /* Feedback modal */
 #feedback-modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:600;align-items:center;justify-content:center;}
 #feedback-modal-backdrop.open{display:flex;}
 #feedback-modal{background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:1.4rem 1.6rem;width:min(420px,92vw);max-height:90vh;overflow-y:auto;}
 #feedback-modal h3{font-size:.95rem;font-weight:700;margin:0 0 1rem;color:#1f2933;}
 </style>
-<footer class="site-footer">
-  <span>© 2026 Dominic Donald. ClubHangar is made available under licence to {{ club.name }}. All rights reserved under the Copyright Act 1994 (NZ).</span>
-  <a onclick="document.getElementById('feedback-modal-backdrop').classList.add('open')">Send feedback</a>
-</footer>
 
 <div id="feedback-modal-backdrop" onclick="if(event.target===this)this.classList.remove('open')">
   <div id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">

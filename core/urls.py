@@ -85,6 +85,9 @@ urlpatterns = [
     path('app/<slug:club_slug>/push/unsubscribe/',                         views.push_unsubscribe,       name='push_unsubscribe'),
     # Feedback / contact form
     path('manage/<slug:club_slug>/feedback/',                              views.submit_feedback,        name='submit_feedback'),
+    # PWA manifest (served for both main app and mobile app routes)
+    path('app/<slug:club_slug>/manifest.webmanifest',                     views.pwa_manifest,           name='pwa_manifest'),
+    path('manage/<slug:club_slug>/manifest.webmanifest',                  views.pwa_manifest,           name='pwa_manifest_manage'),
     # Service worker served at root scope
     path('sw.js', views.sw_js, name='sw_js'),
 ]
