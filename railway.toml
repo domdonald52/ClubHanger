@@ -3,4 +3,6 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "python manage.py migrate && python manage.py collectstatic --noinput && gunicorn aero_club.wsgi --workers 2 --timeout 120"
+healthcheckPath = "/admin/login/"
+healthcheckTimeout = 60
 restartPolicyType = "on_failure"

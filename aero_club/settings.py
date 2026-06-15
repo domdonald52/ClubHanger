@@ -38,6 +38,7 @@ VAPID_CLAIMS_EMAIL = os.environ.get('VAPID_CLAIMS_EMAIL', 'admin@example.com')
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost,192.168.86.198').split(',')
+ALLOWED_HOSTS += ['healthcheck.railway.app']
 
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/'
