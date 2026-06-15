@@ -102,7 +102,7 @@ FLIGHT_TYPES = [
 
 PEOPLE = [
     # Admins
-    ("dominic","Dominic","Hales",     "Admin",      "Full Member",         "active", "2027-03-31",None, "credit",  Decimal("1500")),
+    ("dominic","Dominic","Donald",    "Admin",      "Full Member",         "active", "2027-03-31",None, "credit",  Decimal("1500")),
     ("alex",   "Alex",   "Reed",      "Admin",      "Commercial Pilot",    "active", "2027-03-31",None, "credit",  Decimal("0")),
     # Instructors (always exempt from credit limit)
     ("sean",   "Sean",   "Kemp",      "Instructor", "Instructor",          "active", "2027-03-31",None, "credit",  Decimal("0")),
@@ -915,7 +915,7 @@ class Command(BaseCommand):
                 club=club, member=dom, invoice_number=inv_num,
                 issue_date=today - timedelta(days=18),
                 due_date=today + timedelta(days=12),
-                description=f"May/Jun 2026 flight hire — Dominic Hales",
+                description=f"May/Jun 2026 flight hire — Dominic Donald",
                 status="sent", gst_rate=Decimal("15"), amount_paid=Decimal("0"),
                 sent_at=datetime(today.year, today.month, today.day,
                                  9, 0, tzinfo=NZ) - timedelta(days=18),
