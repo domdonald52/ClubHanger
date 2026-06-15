@@ -105,9 +105,6 @@
 
     <!-- ── BOOKINGS tab ── -->
     <div id="tab-bookings" class="stab-panel">
-      <form method="post" id="bookings-form">
-        {% csrf_token %}
-        <input type="hidden" name="_tab" value="bookings">
 
         <h2 class="sh2">Operating hours</h2>
         <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .8rem;">
@@ -166,9 +163,8 @@
         </div>
 
         <div style="margin-top:1.6rem;">
-          <button type="submit" class="btn">Save</button>
+          <button type="submit" name="_tab" value="bookings" class="btn">Save</button>
         </div>
-      </form>
     </div><!-- /tab-bookings -->
 
   <script>
@@ -1671,7 +1667,7 @@
   const _qs = new URLSearchParams(location.search);
   if (_qs.get('tab') && TABS.includes(_qs.get('tab'))) initial = _qs.get('tab');
   activateTab(initial);
-
+  if (_qs.get('saved') === '1' && window.toast) window.toast('Settings saved');
 
   // ── Palette-based appearance tab ──────────────────────────────────────────
   const PALETTES = [

@@ -34,6 +34,7 @@ from core.models import (
     Booking, BookingStatus, FlightCompletion, FlightChargeItem, FlightPayment,
     Invoice, InvoiceLineItem, BlockOutType, BlockOut, OccurrenceReport,
     Aerodrome, AerodromeFeeType, MemberCredential,
+    AircraftMaintenanceItem,
 )
 
 User = get_user_model()
@@ -55,13 +56,16 @@ CLUB = {
 AIRCRAFT_FLEET = [
     dict(registration="ZK-WAC", type_name="PA38 Tomahawk", seats=2,
          total_time_method="tacho", records_tacho=True,  records_hobbs=False,
-         fuel_consumption_per_hour="22.0", hobbs_initial="4210.3"),
+         fuel_consumption_per_hour="22.0", hobbs_initial="4210.3",
+         maint_hours_initial="4210.3"),
     dict(registration="ZK-TAW", type_name="Cessna 152",    seats=2,
          total_time_method="hobbs", records_tacho=False, records_hobbs=True,
-         fuel_consumption_per_hour="19.0", hobbs_initial="6831.7"),
+         fuel_consumption_per_hour="19.0", hobbs_initial="6831.7",
+         maint_hours_initial="6831.7"),
     dict(registration="ZK-BCX", type_name="Cessna 172S",   seats=4,
          total_time_method="hobbs", records_tacho=False, records_hobbs=True,
-         fuel_consumption_per_hour="34.0", hobbs_initial="2941.6"),
+         fuel_consumption_per_hour="34.0", hobbs_initial="2941.6",
+         maint_hours_initial="2941.6"),
 ]
 
 # Hire rate per aircraft (NZD/hr, applied to actual flight hours)
@@ -188,6 +192,7 @@ class Command(BaseCommand):
             FlightCompletion.objects.filter(booking__club=club).delete()
             Invoice.objects.filter(club=club).delete()
             Booking.objects.filter(club=club).delete()
+            AircraftMaintenanceItem.objects.filter(aircraft__club=club).delete()
             ChargeRate.objects.filter(aircraft__club=club).delete()
             Aircraft.objects.filter(club=club).delete()
             AircraftType.objects.filter(club=club).delete()
@@ -232,6 +237,9 @@ class Command(BaseCommand):
             self.stdout.write("  Block-outs exist — skipping")
         else:
             self._setup_blockouts(club, aircraft, members, admin_user)
+
+        # ── Maintenance items ──────────────────────────────────────────────────
+        self._setup_maintenance(club, aircraft)
 
         # ── Instructor credentials ─────────────────────────────────────────────
         self._setup_instructor_credentials(club, members)
@@ -708,17 +716,18 @@ class Command(BaseCommand):
                     amount=instr_amt,
                 ))
 
-            # Payment record
-            pay_method_str = "credit" if pay_method == "credit" else "invoice"
-            payment_rows.append(FlightPayment(
-                completion=fc_obj,
-                member=booking.member,
-                amount=amount_paid if amount_paid > 0 else total,
-                method=pay_method_str,
-                paid_at=booking.arrived_at if pay_method == "credit" else (
-                    booking.arrived_at if partial else None),
-                recorded_by=admin_user,
-            ))
+            # Payment record — only if something was actually paid
+            if amount_paid > 0:
+                pay_method_str = "credit" if pay_method == "credit" else "invoice"
+                payment_rows.append(FlightPayment(
+                    completion=fc_obj,
+                    member=booking.member,
+                    amount=amount_paid,
+                    method=pay_method_str,
+                    paid_at=booking.arrived_at if pay_method == "credit" else (
+                        booking.arrived_at if partial else None),
+                    recorded_by=admin_user,
+                ))
 
             # Debit account transaction for credit payers
             if pay_method == "credit":
@@ -871,6 +880,87 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(f"  Invoices: {invoices_created} created")
+
+    # ── Maintenance items ─────────────────────────────────────────────────────
+
+    def _setup_maintenance(self, club, aircraft):
+        today = date.today()
+        AircraftMaintenanceItem.objects.filter(aircraft__club=club).delete()
+        ac = {a.registration: a for a in aircraft}
+
+        items = [
+            # ── ZK-WAC: annual GREEN, 100-hr GREEN, oil AMBER ──────────────────
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-WAC"], name="Annual inspection",
+                due_date=today + timedelta(days=240), interval_days=365,
+                last_completed_date=today - timedelta(days=125),
+                warn_days=14, alert_days=7, urgency="green",
+            ),
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-WAC"], name="100-hour check",
+                due_hours=Decimal("4300"), interval_hours=Decimal("100"),
+                last_completed_hours=Decimal("4200"),
+                warn_hours=Decimal("20"), alert_hours=Decimal("5"),
+                urgency="green",   # ≈90h remaining
+            ),
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-WAC"], name="Oil & filter change",
+                due_hours=Decimal("4238"), interval_hours=Decimal("50"),
+                last_completed_hours=Decimal("4188"),
+                warn_hours=Decimal("20"), alert_hours=Decimal("5"),
+                urgency="amber",   # ≈28h remaining
+            ),
+            # ── ZK-TAW: annual RED, 100-hr RED, oil GREEN ─────────────────────
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-TAW"], name="Annual inspection",
+                due_date=today + timedelta(days=4), interval_days=365,
+                last_completed_date=today - timedelta(days=361),
+                warn_days=14, alert_days=7, urgency="red",  # 4 days → RED
+            ),
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-TAW"], name="100-hour check",
+                due_hours=Decimal("6838"), interval_hours=Decimal("100"),
+                last_completed_hours=Decimal("6738"),
+                warn_hours=Decimal("20"), alert_hours=Decimal("5"),
+                urgency="red",   # ≈6h remaining
+            ),
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-TAW"], name="Oil & filter change",
+                due_hours=Decimal("6880"), interval_hours=Decimal("50"),
+                last_completed_hours=Decimal("6830"),
+                warn_hours=Decimal("20"), alert_hours=Decimal("5"),
+                urgency="green",  # ≈48h remaining
+            ),
+            # ── ZK-BCX: annual GREEN, 100-hr GREEN, oil AMBER, ELT AMBER ──────
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-BCX"], name="Annual inspection",
+                due_date=today + timedelta(days=120), interval_days=365,
+                last_completed_date=today - timedelta(days=245),
+                warn_days=14, alert_days=7, urgency="green",
+            ),
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-BCX"], name="100-hour check",
+                due_hours=Decimal("2980"), interval_hours=Decimal("100"),
+                last_completed_hours=Decimal("2880"),
+                warn_hours=Decimal("20"), alert_hours=Decimal("5"),
+                urgency="green",  # ≈38h remaining
+            ),
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-BCX"], name="Oil & filter change",
+                due_hours=Decimal("2958"), interval_hours=Decimal("50"),
+                last_completed_hours=Decimal("2908"),
+                warn_hours=Decimal("20"), alert_hours=Decimal("5"),
+                urgency="amber",  # ≈16h remaining
+            ),
+            AircraftMaintenanceItem(
+                aircraft=ac["ZK-BCX"], name="ELT battery replacement",
+                due_date=today + timedelta(days=11), interval_days=365,
+                last_completed_date=today - timedelta(days=354),
+                warn_days=14, alert_days=7, urgency="amber",  # 11 days → AMBER
+            ),
+        ]
+        AircraftMaintenanceItem.objects.bulk_create(items)
+        self.stdout.write(f"  Maintenance items: {len(items)} across {len(aircraft)} aircraft")
 
     # ── Block-outs ────────────────────────────────────────────────────────────
 

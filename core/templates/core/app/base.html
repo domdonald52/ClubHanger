@@ -150,8 +150,6 @@
   {% block app_bar_brand %}
   {% if theme.logo %}
   <img src="{{ theme.logo.url }}" alt="{{ club.name }}" style="flex-shrink:0;height:20px;width:auto;max-width:72px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.1rem;">
-  {% elif club.name %}
-  <span style="flex-shrink:0;font-size:.62rem;font-weight:700;letter-spacing:.04em;color:rgba(255,255,255,.75);white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;pointer-events:none;">{{ club.name }}</span>
   {% endif %}
   {% endblock %}
   {% block app_bar %}
