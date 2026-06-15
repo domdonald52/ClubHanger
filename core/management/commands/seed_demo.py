@@ -261,18 +261,24 @@ class Command(BaseCommand):
 
     def _setup_taxonomy(self, club):
         roles = {n: Role.objects.get_or_create(club=club, name=n)[0] for n in ROLES}
-        # Ensure permission flags are set correctly on each role
+        # Ensure system_role_type and permission flags are correct
         Role.objects.filter(club=club, name="Admin").update(
-            is_superadmin=True, can_access_manage=True, can_access_fleet=True,
-            can_access_safety=True, can_access_settings=True, can_access_reports=True,
+            system_role_type='admin', is_superadmin=True,
+            can_access_manage=True, can_access_fleet=True, can_access_safety=True,
+            can_access_settings=True, can_access_reports=True,
+            bookings_access='manage_all',
         )
         Role.objects.filter(club=club, name="Instructor").update(
-            is_superadmin=False, can_access_manage=True, can_access_fleet=False,
-            can_access_safety=True, can_access_settings=False, can_access_reports=False,
+            system_role_type='instructor', is_superadmin=False,
+            can_access_manage=True, can_access_fleet=False, can_access_safety=True,
+            can_access_settings=False, can_access_reports=False,
+            bookings_access='manage_all',
         )
         Role.objects.filter(club=club, name="Member").update(
-            is_superadmin=False, can_access_manage=False, can_access_fleet=False,
-            can_access_safety=False, can_access_settings=False, can_access_reports=False,
+            system_role_type='member', is_superadmin=False,
+            can_access_manage=False, can_access_fleet=False, can_access_safety=False,
+            can_access_settings=False, can_access_reports=False,
+            bookings_access='manage_own',
         )
         roles = {n: Role.objects.get(club=club, name=n) for n in ROLES}
         cats  = {
