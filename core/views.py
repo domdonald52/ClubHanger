@@ -9596,16 +9596,20 @@ def pwa_manifest(request, club_slug):
     cfg  = get_config(club)
     site = getattr(settings, 'SITE_URL', '').rstrip('/')
 
-    icons = []
+    from django.contrib.staticfiles.storage import staticfiles_storage
+    mark_svg = request.build_absolute_uri(staticfiles_storage.url('core/img/clubhangar-mark.svg'))
+    mark_png = request.build_absolute_uri(staticfiles_storage.url('core/img/clubhangar-icon-512.png'))
+
     if cfg.logo:
         logo_url = (site + cfg.logo.url) if site else cfg.logo.url
         icons = [
             {'src': logo_url, 'sizes': 'any', 'type': 'image/png', 'purpose': 'any maskable'},
+            {'src': mark_png, 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},
         ]
     else:
-        mark_url = request.build_absolute_uri('/static/core/img/clubhangar-mark.svg')
         icons = [
-            {'src': mark_url, 'sizes': 'any', 'type': 'image/svg+xml', 'purpose': 'any'},
+            {'src': mark_png, 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any maskable'},
+            {'src': mark_svg, 'sizes': 'any', 'type': 'image/svg+xml', 'purpose': 'any'},
         ]
 
     manifest = {
