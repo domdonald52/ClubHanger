@@ -332,12 +332,12 @@ class Command(BaseCommand):
                 username=username,
                 defaults={"first_name": first, "last_name": last},
             )
+            user.first_name, user.last_name = first, last
             if u_created:
-                user.first_name, user.last_name = first, last
                 user.set_password(DEFAULT_PASSWORD)
-                if role_name == "Admin":
-                    user.is_staff = user.is_superuser = True
-                user.save()
+            if role_name == "Admin":
+                user.is_staff = user.is_superuser = True
+            user.save()
             exp  = date.fromisoformat(exp_str) if exp_str else None
             res  = date.fromisoformat(res_str) if res_str else None
             m, _ = ClubMember.objects.get_or_create(
