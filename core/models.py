@@ -2199,7 +2199,10 @@ def recompute_blockout_conflict(booking, save=True):
     if save and (booking.blockout_conflict != new_flag or booking.blockout_conflict_reason != reason):
         booking.blockout_conflict = new_flag
         booking.blockout_conflict_reason = reason
-        booking.save(update_fields=['blockout_conflict', 'blockout_conflict_reason'])
+        Booking.objects.filter(pk=booking.pk).update(
+            blockout_conflict=new_flag,
+            blockout_conflict_reason=reason,
+        )
     else:
         booking.blockout_conflict = new_flag
         booking.blockout_conflict_reason = reason
