@@ -190,8 +190,13 @@ class Command(BaseCommand):
             ChargeRate.objects.filter(aircraft__club=club).delete()
             Aircraft.objects.filter(club=club).delete()
             AircraftType.objects.filter(club=club).delete()
+            # Delete ALL club members (not just PEOPLE list) so stale users from
+            # previous seed versions don't survive as ghost instructors
+            stale_user_ids = list(
+                ClubMember.objects.filter(club=club).values_list('user_id', flat=True)
+            )
             ClubMember.objects.filter(club=club).delete()
-            User.objects.filter(username__in=[p[0] for p in PEOPLE]).delete()
+            User.objects.filter(id__in=stale_user_ids, is_superuser=False).delete()
 
         roles, cats = self._setup_taxonomy(club)
         aircraft    = self._setup_fleet(club)
