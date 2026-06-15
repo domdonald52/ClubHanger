@@ -6906,7 +6906,7 @@ def health_check(request, club_slug):
         return redirect('login')
     if err := require_admin(actor, club, request): return err
 
-    # ── Fix-drift action ─────────────────────────────────────────────────────
+    # ── Fix-drift actions ─────────────────────────────────────────────────────
     if request.method == 'POST' and request.POST.get('action') == 'fix_balance_drift':
         from .models import Account as _Acct
         fixed = 0
@@ -6915,6 +6915,17 @@ def health_check(request, club_slug):
             if abs(computed - _acc.balance) > _D('0.01'):
                 _acc.balance = computed
                 _acc.save(update_fields=['balance', 'updated_at'])
+                fixed += 1
+        return redirect(request.path + '?fixed=' + str(fixed))
+
+    if request.method == 'POST' and request.POST.get('action') == 'fix_payment_drift':
+        from .models import FlightPayment as _FP2
+        fixed = 0
+        for _fc in FlightCompletion.objects.filter(booking__club=club):
+            _computed = (_FP2.objects.filter(completion=_fc, paid_at__isnull=False)
+                         .aggregate(t=Sum('amount'))['t'] or _D('0'))
+            if abs(_computed - _fc.amount_paid) > _D('0.01'):
+                _fc._sync_payment_cache()
                 fixed += 1
         return redirect(request.path + '?fixed=' + str(fixed))
 
@@ -6997,18 +7008,22 @@ def health_check(request, club_slug):
         _ok('financial', 'Flight charges')
 
     # ── 3. FlightCompletion payment drift ────────────────────────────────────
+    # Only count payments where paid_at IS NOT NULL (money actually received),
+    # matching _sync_payment_cache() semantics. Allocated-but-not-collected
+    # invoice payments (paid_at=None) do not count as received.
     from .models import FlightPayment as _FP
     payment_drifts = []
     for fc in (FlightCompletion.objects
                .filter(booking__club=club)
                .select_related('booking__aircraft')):
-        computed = _FP.objects.filter(completion=fc).aggregate(t=Sum('amount'))['t'] or _D('0')
+        computed = (_FP.objects.filter(completion=fc, paid_at__isnull=False)
+                    .aggregate(t=Sum('amount'))['t'] or _D('0'))
         if abs(computed - fc.amount_paid) > _D('0.01'):
             payment_drifts.append({
                 'text': (
                     f"FC #{fc.id} ({fc.booking.aircraft.registration if fc.booking.aircraft else '?'} "
                     f"{fc.booking.scheduled_start.strftime('%d %b %y') if fc.booking.scheduled_start else '?'}): "
-                    f"stored ${fc.amount_paid}, payments sum ${computed:.2f}"
+                    f"stored ${fc.amount_paid}, received payments sum ${computed:.2f}"
                 ),
                 'url': _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': fc.booking.id}),
             })
