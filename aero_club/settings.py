@@ -167,6 +167,19 @@ STORAGES = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', str(BASE_DIR / 'media')))
 
+# ── Media storage — use Railway Bucket (S3-compatible) when credentials present
+_s3_key = os.environ.get('AWS_ACCESS_KEY_ID')
+if _s3_key:
+    STORAGES['default'] = {'BACKEND': 'storages.backends.s3.S3Storage'}
+    AWS_ACCESS_KEY_ID       = _s3_key
+    AWS_SECRET_ACCESS_KEY   = os.environ['AWS_SECRET_ACCESS_KEY']
+    AWS_STORAGE_BUCKET_NAME = os.environ['AWS_BUCKET_NAME']
+    AWS_S3_ENDPOINT_URL     = os.environ['AWS_ENDPOINT_URL']
+    AWS_S3_REGION_NAME      = os.environ.get('AWS_DEFAULT_REGION', 'auto')
+    AWS_S3_FILE_OVERWRITE   = False
+    AWS_DEFAULT_ACL         = None
+    MEDIA_URL               = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/"
+
 # ── Security ──────────────────────────────────────────────────────────────────
 # Gate on HTTPS env var so local dev is unaffected.
 if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('SECURE_SITE'):
