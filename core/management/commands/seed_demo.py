@@ -33,6 +33,7 @@ from core.models import (
     AccountTransaction, Aircraft, AircraftType, ChargeRate, FlightType,
     Booking, BookingStatus, FlightCompletion, FlightChargeItem, FlightPayment,
     Invoice, InvoiceLineItem, BlockOutType, BlockOut, OccurrenceReport,
+    Aerodrome, AerodromeFeeType,
 )
 
 User = get_user_model()
@@ -200,6 +201,8 @@ class Command(BaseCommand):
             FlightPayment.objects.filter(member__club=club).delete()
             ClubMember.objects.filter(club=club).delete()
             User.objects.filter(id__in=stale_user_ids, is_superuser=False).delete()
+            AerodromeFeeType.objects.filter(aerodrome__club=club).delete()
+            Aerodrome.objects.filter(club=club).delete()
 
         roles, cats = self._setup_taxonomy(club)
         aircraft    = self._setup_fleet(club)
@@ -207,6 +210,7 @@ class Command(BaseCommand):
         members     = self._setup_people(club, roles, cats)
         admin_user  = User.objects.filter(is_superuser=True).first()
 
+        self._setup_aerodromes(club)
         self._setup_charge_rates(club, aircraft, ft)
 
         # ── Bookings ──────────────────────────────────────────────────────────
@@ -286,6 +290,36 @@ class Command(BaseCommand):
                 club=club, code=spec["code"], defaults=spec)
             ft_map[spec["code"]] = ft
         return ft_map
+
+    def _setup_aerodromes(self, club):
+        AERODROMES = [
+            dict(icao_code="NZWN", name="Wellington International", is_home=True,
+                 notes="Home base. No landing fees for club aircraft."),
+            dict(icao_code="NZPP", name="Paraparaumu", is_home=False,
+                 notes="Common training area. Full stop $15, T&G $8."),
+            dict(icao_code="NZMS", name="Masterton (Hood)", is_home=False,
+                 notes="Cross-country destination. Full stop $20."),
+            dict(icao_code="NZOH", name="Ohakea", is_home=False,
+                 notes="Military — prior permission required. PPR: 04 498 2000."),
+        ]
+        created = 0
+        for spec in AERODROMES:
+            ad, c = Aerodrome.objects.get_or_create(
+                club=club, icao_code=spec["icao_code"], defaults=spec)
+            if c:
+                created += 1
+                if spec["icao_code"] == "NZPP":
+                    AerodromeFeeType.objects.get_or_create(
+                        aerodrome=ad, name="Full stop",
+                        defaults={"default_amount": "15.00"})
+                    AerodromeFeeType.objects.get_or_create(
+                        aerodrome=ad, name="Touch & go",
+                        defaults={"default_amount": "8.00"})
+                elif spec["icao_code"] == "NZMS":
+                    AerodromeFeeType.objects.get_or_create(
+                        aerodrome=ad, name="Full stop",
+                        defaults={"default_amount": "20.00"})
+        self.stdout.write(f"  Aerodromes: {created} created")
 
     def _setup_people(self, club, roles, cats):
         members = []
