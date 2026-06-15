@@ -159,7 +159,6 @@
     {% if instructor_cred_issues %}
     <div class="notice err" style="margin-bottom:1.4rem;">
       <strong>⚠ Instructor credential issue{{ instructor_cred_issues|length|pluralize }} — {{ instructor_cred_issues|length }} instructor{{ instructor_cred_issues|length|pluralize }} flying today with lapsed credentials.</strong>
-      <p style="margin:.4rem 0 .5rem;font-size:.83rem;">These instructors should not conduct flights until their credentials are confirmed current. Contact them before their first booking departs.</p>
       <table style="width:100%;border-collapse:collapse;font-size:.84rem;margin-top:.5rem;">
         {% for row in instructor_cred_issues %}
         <tr style="border-top:1px solid #fca5a5;">
