@@ -5553,7 +5553,7 @@ def reports(request, club_slug):
     dash_debtor_count     = _debt_agg['cnt'] or 0
 
     _inv_agg = (Invoice.objects.filter(club=club, status='sent')
-                .aggregate(total=_DSum('total'), cnt=_DCnt('id')))
+                .aggregate(total=_DSum('line_items__amount'), cnt=_DCnt('id')))
     dash_unpaid_invoices     = round(float(_inv_agg['total'] or 0), 2)
     dash_overdue_invoice_count = _inv_agg['cnt'] or 0
 
