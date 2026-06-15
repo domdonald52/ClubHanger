@@ -1400,11 +1400,11 @@ def _next_fy_end(config):
     if fy_end_month >= fy_start:
         fy_end_year -= 1
     fy_end_day = _cal.monthrange(fy_end_year, fy_end_month)[1]
-    fy_end = _date(fy_end_year, fy_end_month, fy_end_day)
+    fy_end = date(fy_end_year, fy_end_month, fy_end_day)
     if fy_end < today:
         fy_end_year += 1
         fy_end_day = _cal.monthrange(fy_end_year, fy_end_month)[1]
-        fy_end = _date(fy_end_year, fy_end_month, fy_end_day)
+        fy_end = date(fy_end_year, fy_end_month, fy_end_day)
     return fy_end
 
 
