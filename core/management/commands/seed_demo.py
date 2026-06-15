@@ -376,6 +376,7 @@ class Command(BaseCommand):
                 standing=standing,
                 subscription_expires=exp,
                 resigned_at=res,
+                is_on_instructor_roster=(role_name == "Instructor"),
             )
             members.append(m)
         self.stdout.write(f"  People: {len(members)}")
