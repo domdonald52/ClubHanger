@@ -90,7 +90,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     bookings = Booking.objects.filter(
         club=club,
         scheduled_start__gte=day_start,
-        scheduled_start__lt=day_end + timedelta(days=1)
+        scheduled_start__lt=day_end
     ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'flight_completion')
     
     # Pixel geometry for absolute-positioned pills
@@ -156,7 +156,8 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             else b.scheduled_end
         )
         start_min = max(0, int((b.scheduled_start - day_start).total_seconds() // 60))
-        dur_min = max(slot_minutes, int((effective_end - b.scheduled_start).total_seconds() // 60))
+        end_min = min(total_minutes, int((effective_end - day_start).total_seconds() // 60))
+        dur_min = max(slot_minutes, end_min - start_min)
         left = int(start_min * px_per_min)
         width = int(dur_min * px_per_min)
         local_start = timezone.localtime(b.scheduled_start)
