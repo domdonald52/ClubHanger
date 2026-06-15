@@ -1838,6 +1838,8 @@ class NotificationPreference(models.Model):
     maintenance_alert           = models.BooleanField(default=True)
     lapsed_credentials          = models.BooleanField(default=True)
     slot_released               = models.BooleanField(default=False)
+    payment_reminder            = models.BooleanField(default=True)
+    invoice_sent                = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

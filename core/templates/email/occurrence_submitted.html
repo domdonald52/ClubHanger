@@ -1,0 +1,44 @@
+{% extends "email/_base.html" %}
+{% block title %}New occurrence report — {{ report.occurrence_type.name }}{% endblock %}
+{% block content %}
+<p style="margin:0 0 18px;">Hi {{ admin.user.first_name }},</p>
+<p style="margin:0 0 22px;font-size:15px;">
+  A new occurrence report has been submitted and requires your attention.
+</p>
+
+<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#f6f8fa;border-radius:8px;border:1px solid #e3e6ea;margin-bottom:20px;">
+  <tr>
+    <td style="padding:14px 18px;">
+      <table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#6b7785;width:120px;vertical-align:top;">Type</td>
+          <td style="padding:4px 0;font-size:14px;font-weight:600;color:#1a2332;">{{ report.occurrence_type.name }}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#6b7785;vertical-align:top;">Date</td>
+          <td style="padding:4px 0;font-size:14px;color:#1a2332;">{{ report.date_of_occurrence|date:"j F Y" }}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#6b7785;vertical-align:top;">Reported by</td>
+          <td style="padding:4px 0;font-size:14px;color:#1a2332;">{{ report.reported_by.user.get_full_name }}</td>
+        </tr>
+        {% if report.aircraft %}
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#6b7785;vertical-align:top;">Aircraft</td>
+          <td style="padding:4px 0;font-size:14px;color:#1a2332;">{{ report.aircraft.registration }}</td>
+        </tr>
+        {% endif %}
+      </table>
+    </td>
+  </tr>
+</table>
+
+{% if report.description %}
+<div style="background:#fff8f0;border-radius:6px;border-left:3px solid {{ primary_color }};padding:12px 16px;margin-bottom:20px;">
+  <p style="margin:0;font-size:14px;color:#1a2332;line-height:1.6;">{{ report.description|truncatechars:400 }}</p>
+</div>
+{% endif %}
+
+<p style="margin:0 0 6px;font-size:14px;color:#1a2332;">Log in to review this report and add any action items.</p>
+<p style="margin:0;font-size:13px;color:#6b7785;">{{ club_name }}</p>
+{% endblock %}

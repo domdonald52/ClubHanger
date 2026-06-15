@@ -7,10 +7,12 @@ raised to the caller.
 
 SMTP is configured via environment variables (see settings.py).
 Set EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend for dev.
+Set EMAIL_OVERRIDE_TO to redirect all outgoing email to one address (testing).
 """
 
 import logging
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.conf import settings
 
 log = logging.getLogger(__name__)
@@ -30,7 +32,6 @@ def _from_addr(club):
 
 
 def _prefs(club_member):
-    """Return NotificationPreference for this member, or None."""
     try:
         return club_member.notification_prefs
     except Exception:
@@ -42,10 +43,43 @@ def _wants(club_member, flag):
     return getattr(p, flag, True) if p else True
 
 
-def _send(subject, body, to_email, from_email):
+def _email_context(club):
+    """Common template context for HTML emails."""
+    ctx = {
+        'club_name': club.name,
+        'banner_color': '#2b2b2b',
+        'primary_color': '#c0481c',
+        'logo_url': '',
+    }
     try:
-        send_mail(subject, body, from_email, [to_email], fail_silently=False)
-        log.info('Email sent: %s → %s', subject, to_email)
+        from .models import ClubConfig
+        cfg = ClubConfig.objects.filter(club=club).first()
+        if cfg:
+            ctx['banner_color'] = cfg.theme_banner
+            ctx['primary_color'] = cfg.theme_primary
+            if cfg.logo:
+                site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+                if site_url:
+                    ctx['logo_url'] = site_url + cfg.logo.url
+    except Exception:
+        pass
+    return ctx
+
+
+def _send(subject, body_text, to_email, from_email, body_html=None):
+    override = (getattr(settings, 'EMAIL_OVERRIDE_TO', '') or '').strip()
+    recipient = override if override else to_email
+    try:
+        if body_html:
+            msg = EmailMultiAlternatives(subject, body_text, from_email, [recipient])
+            msg.attach_alternative(body_html, 'text/html')
+            msg.send()
+        else:
+            send_mail(subject, body_text, from_email, [recipient], fail_silently=False)
+        if recipient != to_email:
+            log.info('Email sent (→ override %s): %s', recipient, subject)
+        else:
+            log.info('Email sent: %s → %s', subject, to_email)
     except Exception as e:
         log.warning('Email failed: %s → %s: %s', subject, to_email, e)
 
@@ -72,7 +106,9 @@ def booking_confirmed(booking):
     if booking.instructor:
         body += f'  Instructor: {booking.instructor.get_full_name()}\n'
     body += f'\n{booking.club.name}\n'
-    _send(subject, body, email, from_email)
+    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member}
+    body_html = render_to_string('email/booking_confirmed.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
 
 
 def booking_cancelled(booking, reason=''):
@@ -94,7 +130,9 @@ def booking_cancelled(booking, reason=''):
     if reason:
         body += f'  Reason:    {reason}\n'
     body += f'\nContact the club if you have questions.\n\n{booking.club.name}\n'
-    _send(subject, body, email, from_email)
+    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member, 'reason': reason}
+    body_html = render_to_string('email/booking_cancelled.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
 
 
 def occurrence_submitted(report):
@@ -107,17 +145,20 @@ def occurrence_submitted(report):
               .select_related('user')
               .exclude(user__email=''))
     subject = f'New occurrence report — {report.occurrence_type.name} · {report.date_of_occurrence}'
-    body = (
-        f'A new occurrence report has been submitted.\n\n'
-        f'  Type:        {report.occurrence_type.name}\n'
-        f'  Date:        {report.date_of_occurrence}\n'
-        f'  Reported by: {report.reported_by.user.get_full_name()}\n'
-    )
-    if report.aircraft:
-        body += f'  Aircraft:    {report.aircraft.registration}\n'
-    body += f'\n  {report.description[:300]}\n\nLog in to review this report.\n\n{club.name}\n'
+    base_ctx = _email_context(club)
     for admin in admins:
-        _send(subject, body, admin.user.email, from_email)
+        body = (
+            f'A new occurrence report has been submitted.\n\n'
+            f'  Type:        {report.occurrence_type.name}\n'
+            f'  Date:        {report.date_of_occurrence}\n'
+            f'  Reported by: {report.reported_by.user.get_full_name()}\n'
+        )
+        if report.aircraft:
+            body += f'  Aircraft:    {report.aircraft.registration}\n'
+        body += f'\n  {report.description[:300]}\n\nLog in to review this report.\n\n{club.name}\n'
+        ctx = {**base_ctx, 'report': report, 'admin': admin}
+        body_html = render_to_string('email/occurrence_submitted.html', ctx)
+        _send(subject, body, admin.user.email, from_email, body_html=body_html)
 
 
 # ── Cron-triggered (called from management command) ───────────────────────────
@@ -142,7 +183,9 @@ def booking_reminder(booking):
     if booking.instructor:
         body += f'  Instructor: {booking.instructor.get_full_name()}\n'
     body += f'\n{booking.club.name}\n'
-    _send(subject, body, email, from_email)
+    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member}
+    body_html = render_to_string('email/booking_reminder.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
 
 
 def credential_expiry_warning(club_member, credential, days_until):
@@ -161,4 +204,90 @@ def credential_expiry_warning(club_member, credential, days_until):
         f'Please arrange renewal to maintain your flying currency.\n\n'
         f'{club_member.club.name}\n'
     )
-    _send(subject, body, email, from_email)
+    ctx = {**_email_context(club_member.club),
+           'club_member': club_member, 'credential': credential, 'days_until': days_until}
+    body_html = render_to_string('email/credential_expiry.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
+
+
+def subscription_expiry_warning(club_member, days_until):
+    """Warn member that their subscription expires soon. Called by cron command."""
+    if not _wants(club_member, 'subscription_expiring'):
+        return
+    email = club_member.user.email
+    if not email:
+        return
+    from_email = _from_addr(club_member.club)
+    exp = club_member.subscription_expires
+    subject = f'Subscription expiring in {days_until} days — {club_member.club.name}'
+    body = (
+        f'Hi {club_member.user.first_name},\n\n'
+        f'Your membership subscription expires in {days_until} days'
+        f' (on {exp.strftime("%-d %B %Y")}).\n\n'
+        f'Please contact the club to arrange renewal.\n\n'
+        f'{club_member.club.name}\n'
+    )
+    ctx = {**_email_context(club_member.club),
+           'club_member': club_member, 'days_until': days_until,
+           'expiry_date': exp}
+    body_html = render_to_string('email/subscription_expiry.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
+
+
+def payment_reminder(club_member):
+    """Nudge member with a negative account balance. Called by cron command."""
+    if not _wants(club_member, 'payment_reminder'):
+        return
+    email = club_member.user.email
+    if not email:
+        return
+    try:
+        account = club_member.account
+        balance = account.balance
+    except Exception:
+        return
+    if balance >= 0:
+        return
+    from_email = _from_addr(club_member.club)
+    subject = f'Account balance reminder — {club_member.club.name}'
+    body = (
+        f'Hi {club_member.user.first_name},\n\n'
+        f'Your account balance is currently ${balance:,.2f}.\n\n'
+        f'Please contact the club or make a payment to clear your outstanding balance.\n\n'
+        f'{club_member.club.name}\n'
+    )
+    ctx = {**_email_context(club_member.club),
+           'club_member': club_member, 'balance': balance}
+    body_html = render_to_string('email/payment_reminder.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
+
+
+def invoice_sent(invoice):
+    """Email member a copy of their invoice when it is marked sent. Called from view."""
+    if not invoice.member:
+        return
+    club_member = invoice.member
+    if not _wants(club_member, 'invoice_sent'):
+        return
+    email = club_member.user.email
+    if not email:
+        return
+    from_email = _from_addr(invoice.club)
+    status_label = 'PAID' if invoice.status == 'paid' else f'Due {invoice.due_date.strftime("%-d %b %Y")}'
+    subject = f'Invoice {invoice.display_number} — {invoice.club.name} — {status_label}'
+    body = (
+        f'Hi {club_member.user.first_name},\n\n'
+        f'Please find your invoice from {invoice.club.name}.\n\n'
+        f'  Invoice:  {invoice.display_number}\n'
+        f'  Amount:   ${invoice.total:,.2f}\n'
+        f'  Due:      {invoice.due_date.strftime("%-d %B %Y")}\n'
+    )
+    if invoice.balance_due > 0:
+        body += f'  Owing:    ${invoice.balance_due:,.2f}\n'
+    body += f'\n{invoice.club.name}\n'
+    line_items = list(invoice.line_items.all().order_by('sort_order'))
+    ctx = {**_email_context(invoice.club),
+           'invoice': invoice, 'club_member': club_member,
+           'line_items': line_items, 'status_label': status_label}
+    body_html = render_to_string('email/invoice_sent.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)

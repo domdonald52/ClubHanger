@@ -17,47 +17,64 @@
   <!-- ── DASHBOARD tab ── -->
   <div id="tab-dashboard" class="stab-panel">
 
-    <!-- KPI cards -->
-    <div class="dash-grid-3" style="margin-bottom:.8rem;">
+    <!-- KPI cards — 4 group columns -->
+    <div class="dash-grid-4" style="margin-bottom:1.2rem;">
+
+      <!-- Flying -->
       <div class="dash-kpi">
-        <div class="dash-kpi-lbl">Flight hours</div>
+        <div class="dash-kpi-sect">Flying</div>
+        <div class="dash-kpi-lbl">Hours this month</div>
         <div class="dash-kpi-val">{{ dash_month_hours }}<span class="dash-kpi-unit">hr</span></div>
         <div class="dash-kpi-sub">{{ dash_month_label }}{% if dash_month_budget %} · {{ dash_month_budget }} hr budgeted{% endif %}</div>
-        {% if dash_month_solo or dash_month_dual %}<div class="dash-kpi-sub">{{ dash_month_solo }} hr solo · {{ dash_month_dual }} hr dual</div>{% endif %}
+        {% if dash_month_solo or dash_month_dual %}<div class="dash-kpi-sub">{{ dash_month_solo }}hr solo · {{ dash_month_dual }}hr dual</div>{% endif %}
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">Flights ({{ fy_label }})</div>
+        <div class="dash-kpi-row-val">{{ dash_flights_count }}</div>
+        {% if dash_solo_count or dash_dual_count %}<div class="dash-kpi-sub">{{ dash_solo_count }} solo · {{ dash_dual_count }} dual</div>{% endif %}
       </div>
-      <div class="dash-kpi">
+
+      <!-- Financial -->
+      <div class="dash-kpi {% if dash_debtor_count or dash_overdue_invoice_count %}dash-kpi-warn{% endif %}">
+        <div class="dash-kpi-sect">Financial</div>
         <div class="dash-kpi-lbl">Revenue collected</div>
         <div class="dash-kpi-val">${{ dash_revenue_collected|currency }}</div>
         <div class="dash-kpi-sub">{{ fy_label }}{% if dash_revenue_charged > dash_revenue_collected %} · <span style="color:#c0392b;">${{ dash_revenue_charged|currency }} charged</span>{% endif %}</div>
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">Negative balances</div>
+        <div class="dash-kpi-row-val {% if dash_debtor_count %}dash-kpi-warn-val{% endif %}">${{ dash_outstanding_debt|currency }}</div>
+        <div class="dash-kpi-sub"><a href="{{ dash_debtor_url }}" style="color:inherit;text-decoration:underline dotted;">{{ dash_debtor_count }} member{{ dash_debtor_count|pluralize }}</a></div>
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">Unpaid invoices</div>
+        <div class="dash-kpi-row-val {% if dash_overdue_invoice_count %}dash-kpi-warn-val{% endif %}">${{ dash_unpaid_invoices|currency }}</div>
+        <div class="dash-kpi-sub"><a href="{% url 'core:manage_invoices' club.slug %}?status=sent" style="color:inherit;text-decoration:underline dotted;">{{ dash_overdue_invoice_count }} overdue</a></div>
       </div>
-      <div class="dash-kpi">
-        <div class="dash-kpi-lbl">Flights completed</div>
-        <div class="dash-kpi-val">{{ dash_flights_count }}</div>
-        <div class="dash-kpi-sub">{{ fy_label }}</div>
-        {% if dash_solo_count or dash_dual_count %}<div class="dash-kpi-sub">{{ dash_solo_count }} solo · {{ dash_dual_count }} dual</div>{% endif %}
+
+      <!-- Safety -->
+      <div class="dash-kpi {% if occ_open or occ_open_actions_count %}dash-kpi-warn{% endif %}">
+        <div class="dash-kpi-sect">Safety</div>
+        <div class="dash-kpi-lbl">Open events</div>
+        <div class="dash-kpi-row-val {% if occ_open %}dash-kpi-warn-val{% endif %}">{{ occ_open }}</div>
+        <div class="dash-kpi-sub"><a href="{{ occ_open_url }}" style="color:inherit;text-decoration:underline dotted;">View →</a></div>
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">Open actions</div>
+        <div class="dash-kpi-row-val {% if occ_open_actions_count %}dash-kpi-warn-val{% endif %}">{{ occ_open_actions_count }}</div>
+        <div class="dash-kpi-sub"><a href="{{ occ_actions_url }}" style="color:inherit;text-decoration:underline dotted;">View →</a></div>
+        {% if occ_safety_risk_total %}
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">Safety-risk events</div>
+        <div class="dash-kpi-row-val">{{ occ_safety_risk_total }}</div>
+        <div class="dash-kpi-sub">{{ occ_safety_risk_open }} open · {{ occ_safety_risk_open_actions }} actions open</div>
+        {% endif %}
       </div>
-    </div>
-    <div class="dash-grid-3" style="margin-bottom:1.2rem;">
+
+      <!-- Members -->
       <div class="dash-kpi">
+        <div class="dash-kpi-sect">Members</div>
         <div class="dash-kpi-lbl">Active members</div>
         <div class="dash-kpi-val">{{ active_members_count }}</div>
         <div class="dash-kpi-sub">Currently</div>
       </div>
-      <div class="dash-kpi {% if dash_debtor_count %}dash-kpi-warn{% endif %}">
-        <div class="dash-kpi-lbl">Negative balances</div>
-        <div class="dash-kpi-val">${{ dash_outstanding_debt|currency }}</div>
-        <div class="dash-kpi-sub"><a href="{{ dash_debtor_url }}" style="color:inherit;text-decoration:underline dotted;">{{ dash_debtor_count }} member{{ dash_debtor_count|pluralize }}</a></div>
-      </div>
-      <div class="dash-kpi {% if dash_overdue_invoice_count %}dash-kpi-warn{% endif %}">
-        <div class="dash-kpi-lbl">Unpaid invoices</div>
-        <div class="dash-kpi-val">${{ dash_unpaid_invoices|currency }}</div>
-        <div class="dash-kpi-sub"><a href="{% url 'core:manage_invoices' club.slug %}?status=sent" style="color:inherit;text-decoration:underline dotted;">{{ dash_overdue_invoice_count }} overdue</a></div>
-      </div>
-      <div class="dash-kpi {% if occ_fy_open %}dash-kpi-warn{% endif %}">
-        <div class="dash-kpi-lbl">Safety events</div>
-        <div class="dash-kpi-val">{{ occ_fy_total }}</div>
-        <div class="dash-kpi-sub">{{ fy_label }} · <a href="{{ occ_open_url }}" style="color:inherit;text-decoration:underline dotted;">{{ occ_fy_open }} open</a></div>
-      </div>
+
     </div>
 
     <!-- Owned/leased toggle (reuses same filter as Aircraft tab) -->
@@ -264,12 +281,12 @@
   <!-- ── OCCURRENCES tab ── -->
   <div id="tab-occurrences" class="stab-panel">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:1.2rem;">
-      <h2 style="font-size:1rem;font-weight:700;margin:0;">Occurrence reports</h2>
+      <h2 style="font-size:1rem;font-weight:700;margin:0;">Safety events</h2>
       <a href="{% url 'core:occurrence_export' club.slug %}" class="cbtn">Export CSV</a>
     </div>
 
-    <!-- Summary stats -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.4rem;">
+    <!-- Event status stats -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:.8rem;">
       {% for stat in occ_stats %}
       <a href="{{ stat.3 }}" style="text-decoration:none;">
         <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;" onmouseover="this.style.borderColor='#c0481c'" onmouseout="this.style.borderColor='#e3e6ea'">
@@ -280,23 +297,63 @@
       {% endfor %}
     </div>
 
+    <!-- Actions + safety risk stats -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.4rem;">
+      <a href="{{ occ_actions_url }}" style="text-decoration:none;">
+        <div style="background:#fff;border:1px solid {% if occ_open_actions_count %}#fca5a5{% else %}#e3e6ea{% endif %};background:{% if occ_open_actions_count %}#fff8f8{% else %}#fff{% endif %};border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Open actions</div>
+          <div style="font-size:1.5rem;font-weight:750;color:{% if occ_open_actions_count %}#c0392b{% else %}#1a1f2e{% endif %};">{{ occ_open_actions_count }}</div>
+        </div>
+      </a>
+      <a href="{{ occ_actions_url }}" style="text-decoration:none;">
+        <div style="background:#fff;border:1px solid {% if occ_safety_risk_open_actions %}#fca5a5{% else %}#e3e6ea{% endif %};background:{% if occ_safety_risk_open_actions %}#fff8f8{% else %}#fff{% endif %};border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Safety-risk actions open</div>
+          <div style="font-size:1.5rem;font-weight:750;color:{% if occ_safety_risk_open_actions %}#c0392b{% else %}#1a1f2e{% endif %};">{{ occ_safety_risk_open_actions }}</div>
+        </div>
+      </a>
+      <a href="{% url 'core:occurrence_list' club.slug %}?safety_risk=1" style="text-decoration:none;">
+        <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;" onmouseover="this.style.borderColor='#c0481c'" onmouseout="this.style.borderColor='#e3e6ea'">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Safety-risk events</div>
+          <div style="font-size:1.5rem;font-weight:750;color:#e67e22;">{{ occ_safety_risk_total }}</div>
+        </div>
+      </a>
+      {% if occ_top_owner %}
+      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Most actions (open)</div>
+        <div style="font-size:1.1rem;font-weight:700;color:#1a1f2e;line-height:1.2;margin-bottom:.15rem;">{{ occ_top_owner.name }}</div>
+        <div style="font-size:.78rem;color:#8a93a0;">{{ occ_top_owner.count }} open action{{ occ_top_owner.count|pluralize }}</div>
+      </div>
+      {% else %}
+      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Most actions (open)</div>
+        <div style="font-size:1.1rem;font-weight:700;color:#c0c8d4;">—</div>
+      </div>
+      {% endif %}
+    </div>
+
     {% if occ_total %}
-    <!-- By month (last 12 months) -->
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem;margin-bottom:1rem;">
-      <div style="font-size:.82rem;font-weight:600;margin-bottom:.8rem;">Reports per month (last 12 months)</div>
-      <canvas id="occ-month-chart" height="180"></canvas>
+    <!-- By month: events + actions raised (side by side) -->
+    <div class="dash-grid-2" style="margin-bottom:1rem;">
+      <div class="dash-card">
+        <div class="dash-card-h">Events reported <span class="dash-period">· last 12 months</span></div>
+        <canvas id="occ-month-chart" height="180"></canvas>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-h">Actions raised <span class="dash-period">· last 12 months</span></div>
+        <canvas id="occ-action-month-chart" height="180"></canvas>
+      </div>
     </div>
 
     <div style="display:grid;grid-template-columns:1fr{% if occ_ac_labels != '[]' %} 1fr{% endif %};gap:1rem;margin-bottom:1rem;">
       <!-- By type -->
-      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem;">
-        <div style="font-size:.82rem;font-weight:600;margin-bottom:.8rem;">By occurrence type</div>
+      <div class="dash-card">
+        <div class="dash-card-h">By occurrence type</div>
         <canvas id="occ-type-chart" height="220"></canvas>
       </div>
       {% if occ_ac_labels != '[]' %}
       <!-- By aircraft -->
-      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem;">
-        <div style="font-size:.82rem;font-weight:600;margin-bottom:.8rem;">By aircraft</div>
+      <div class="dash-card">
+        <div class="dash-card-h">By aircraft</div>
         <canvas id="occ-ac-chart" height="220"></canvas>
       </div>
       {% endif %}
@@ -305,8 +362,9 @@
     <div style="padding:3rem;text-align:center;color:#8a93a0;font-size:.88rem;">No occurrence reports on file.</div>
     {% endif %}
 
-    <div style="font-size:.82rem;margin-top:.5rem;">
+    <div style="font-size:.82rem;margin-top:.5rem;display:flex;gap:.6rem;flex-wrap:wrap;">
       <a href="{% url 'core:occurrence_list' club.slug %}" class="cbtn-sm">View all reports →</a>
+      <a href="{{ occ_actions_url }}" class="cbtn-sm">View all actions →</a>
     </div>
   </div>
 
@@ -387,15 +445,22 @@
 </div>
 
 <style>
+.dash-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
 .dash-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
 .dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
-@media(max-width:700px){.dash-grid-3,.dash-grid-2{grid-template-columns:1fr;}}
-.dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.7rem 1rem;}
+@media(max-width:900px){.dash-grid-4{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:700px){.dash-grid-4,.dash-grid-3,.dash-grid-2{grid-template-columns:1fr;}}
+.dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.75rem 1rem;}
 .dash-kpi-warn{border-color:#fca5a5;background:#fff8f8;}
-.dash-kpi-lbl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.15rem;}
-.dash-kpi-val{font-size:1.45rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.15rem;}
+.dash-kpi-sect{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#c0c8d4;margin-bottom:.45rem;}
+.dash-kpi-lbl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.1rem;}
+.dash-kpi-val{font-size:1.45rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.1rem;}
 .dash-kpi-unit{font-size:.9rem;font-weight:400;color:#5b6573;margin-left:.15rem;}
 .dash-kpi-sub{font-size:.72rem;color:#8a93a0;line-height:1.4;}
+.dash-kpi-hr{border:none;border-top:1px solid #edeef1;margin:.55rem 0;}
+.dash-kpi-row-lbl{font-size:.68rem;color:#8a93a0;margin-bottom:.05rem;text-transform:uppercase;letter-spacing:.04em;}
+.dash-kpi-row-val{font-size:1.05rem;font-weight:700;color:#1f2933;line-height:1.1;margin-bottom:.05rem;}
+.dash-kpi-warn-val{color:#c0392b;}
 .dash-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem 1.2rem;}
 .dash-card-h{font-size:.88rem;font-weight:650;margin:0 0 .8rem;color:#1f2933;}
 .dash-period{font-weight:400;color:#b8c0cc;font-size:.85em;}
@@ -703,15 +768,29 @@ const _stackedOpts = {
   };
   const _occOptsH = { ...JSON.parse(JSON.stringify(_occOpts)), indexAxis: 'y' };
 
-  // By month — bar chart
+  // By month — events bar chart
   const monthEl = document.getElementById('occ-month-chart');
   if (monthEl) {
     new Chart(monthEl, {
       type: 'bar',
       data: {
         labels: {{ occ_month_labels|safe }},
-        datasets: [{ label: 'Occurrences', data: {{ occ_month_data|safe }},
+        datasets: [{ label: 'Events', data: {{ occ_month_data|safe }},
           backgroundColor: CHART_PALETTE[0], borderRadius: 0 }]
+      },
+      options: _occOpts,
+    });
+  }
+
+  // By month — actions raised bar chart
+  const actionMonthEl = document.getElementById('occ-action-month-chart');
+  if (actionMonthEl) {
+    new Chart(actionMonthEl, {
+      type: 'bar',
+      data: {
+        labels: {{ occ_month_labels|safe }},
+        datasets: [{ label: 'Actions raised', data: {{ occ_action_month_data|safe }},
+          backgroundColor: CHART_PALETTE[2], borderRadius: 0 }]
       },
       options: _occOpts,
     });

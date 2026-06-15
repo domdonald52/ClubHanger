@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}{{ club_name }}{% endblock %}</title>
+</head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:system-ui,-apple-system,'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f0f2f5;padding:28px 12px;">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:580px;background:#ffffff;border-radius:10px;overflow:hidden;border:1px solid #dde0e6;">
+
+  <!-- Header -->
+  <tr>
+    <td style="background:{{ banner_color }};padding:18px 28px;">
+      {% if logo_url %}
+        <img src="{{ logo_url }}" alt="{{ club_name }}" height="36" style="display:block;max-height:36px;border:0;">
+      {% else %}
+        <span style="color:#ffffff;font-size:16px;font-weight:600;letter-spacing:.02em;">{{ club_name }}</span>
+      {% endif %}
+    </td>
+  </tr>
+
+  <!-- Body -->
+  <tr>
+    <td style="padding:30px 28px;color:#1a2332;font-size:15px;line-height:1.65;">
+      {% block content %}{% endblock %}
+    </td>
+  </tr>
+
+  <!-- Footer -->
+  <tr>
+    <td style="background:#f8f9fb;padding:14px 28px;border-top:1px solid #e8eaed;">
+      <p style="margin:0;font-size:12px;color:#8a93a0;line-height:1.5;">
+        {{ club_name }} &mdash; sent via ClubHangar<br>
+        <span style="font-size:11px;">To change notification settings, update your profile in the club app.</span>
+      </p>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{% extends "email/_base.html" %}
+{% block title %}Booking confirmed — {{ booking.aircraft.registration }}{% endblock %}
+{% block content %}
+<p style="margin:0 0 18px;">Hi {{ member.user.first_name }},</p>
+<p style="margin:0 0 22px;color:#2d6a2f;font-weight:600;font-size:16px;">Your booking has been confirmed.</p>
+
+<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#f6f8fa;border-radius:8px;border:1px solid #e3e6ea;margin-bottom:24px;">
+  <tr>
+    <td style="padding:14px 18px;">
+      <table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
+        <tr>
+          <td style="padding:5px 0;font-size:13px;color:#6b7785;width:110px;vertical-align:top;">Aircraft</td>
+          <td style="padding:5px 0;font-size:14px;font-weight:600;color:#1a2332;">{{ booking.aircraft.registration }}</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;font-size:13px;color:#6b7785;vertical-align:top;">Date</td>
+          <td style="padding:5px 0;font-size:14px;color:#1a2332;">{{ booking.scheduled_start|date:"l j F Y" }}</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;font-size:13px;color:#6b7785;vertical-align:top;">Time</td>
+          <td style="padding:5px 0;font-size:14px;color:#1a2332;">{{ booking.scheduled_start|date:"H:i" }} &ndash; {{ booking.scheduled_end|date:"H:i" }}</td>
+        </tr>
+        {% if booking.instructor %}
+        <tr>
+          <td style="padding:5px 0;font-size:13px;color:#6b7785;vertical-align:top;">Instructor</td>
+          <td style="padding:5px 0;font-size:14px;color:#1a2332;">{{ booking.instructor.get_full_name }}</td>
+        </tr>
+        {% endif %}
+        {% if booking.flight_type %}
+        <tr>
+          <td style="padding:5px 0;font-size:13px;color:#6b7785;vertical-align:top;">Flight type</td>
+          <td style="padding:5px 0;font-size:14px;color:#1a2332;">{{ booking.flight_type.name }}</td>
+        </tr>
+        {% endif %}
+      </table>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0;font-size:13px;color:#6b7785;">{{ club_name }}</p>
+{% endblock %}

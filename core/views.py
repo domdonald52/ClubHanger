@@ -3612,6 +3612,7 @@ def my_profile(request, club_slug):
                 'credential_expiring', 'subscription_expiring',
                 'instructor_booking_urgent', 'instructor_booking_upcoming',
                 'maintenance_alert', 'lapsed_credentials', 'slot_released',
+                'payment_reminder', 'invoice_sent',
             ]
             for f in _toggle_fields:
                 setattr(pref, f, request.POST.get(f) == 'on')
@@ -3704,6 +3705,8 @@ def my_profile(request, club_slug):
         ('maintenance_alert',           'Maintenance alert (amber/red items)',            True),
         ('lapsed_credentials',          'Member has lapsed credentials — flight today',   True),
         ('slot_released',               'Slot released by another member (opt-in)',       False),
+        ('payment_reminder',            'Account balance reminder',                        True),
+        ('invoice_sent',                'Invoice issued to me',                            True),
     ]
     _notif_toggles = [
         {'field': f, 'label': l,
@@ -5294,6 +5297,8 @@ def invoice_detail(request, club_slug, invoice_id):
             invoice.save(update_fields=['status', 'sent_at'])
             from .services import notification_service as _ns
             _ns.notify_invoice_issued(invoice)
+            from .email_notifications import invoice_sent as _email_invoice
+            _email_invoice(invoice)
             return redirect(_stay_url)
 
         elif action == 'mark_paid' and invoice.status == 'sent':
@@ -5659,6 +5664,37 @@ def reports(request, club_slug):
     occ_ac_labels = _json.dumps([r['aircraft__registration'] for r in by_aircraft])
     occ_ac_data   = _json.dumps([r['count'] for r in by_aircraft])
 
+    # Safety risk events & open actions
+    occ_safety_risk_total = occ_qs.filter(is_safety_risk=True).count()
+    occ_safety_risk_open  = occ_qs.filter(is_safety_risk=True,
+                                          status=OccurrenceReport.STATUS_SUBMITTED).count()
+    _action_qs_open = OccurrenceAction.objects.filter(report__club=club,
+                                                      status=OccurrenceAction.STATUS_OPEN)
+    occ_open_actions_count      = _action_qs_open.count()
+    occ_safety_risk_open_actions = _action_qs_open.filter(report__is_safety_risk=True).count()
+    # Person with most open actions
+    _top_owner_row = (_action_qs_open
+                      .filter(assigned_to__isnull=False)
+                      .values('assigned_to__user__first_name', 'assigned_to__user__last_name')
+                      .annotate(cnt=_OCount('id'))
+                      .order_by('-cnt')
+                      .first())
+    occ_top_owner = None
+    if _top_owner_row:
+        _fn = _top_owner_row['assigned_to__user__first_name']
+        _ln = _top_owner_row['assigned_to__user__last_name']
+        occ_top_owner = {'name': f'{_fn} {_ln}'.strip(), 'count': _top_owner_row['cnt']}
+    # Monthly actions raised (last 12 months, reuse occ_month_labels_list)
+    _action_month_qs = (OccurrenceAction.objects
+                        .filter(report__club=club, created_at__date__gte=twelve_months_ago)
+                        .annotate(m=_TrMonth('created_at'))
+                        .values('m')
+                        .annotate(count=_OCount('id'))
+                        .order_by('m'))
+    _action_monthly_map = {r['m'].strftime('%b %y'): r['count'] for r in _action_month_qs}
+    occ_action_month_data = _json.dumps([_action_monthly_map.get(lbl, 0)
+                                         for lbl in occ_month_labels_list])
+
     # ── Budget vs actual (monthly, FY scope) ──────────────────────────────────
     _bfy_year = fy_year
     _budget_qs = FlyingBudget.objects.filter(club=club, fy_year=_bfy_year)
@@ -5852,6 +5888,13 @@ def reports(request, club_slug):
         'occ_fy_total': occ_fy_total,
         'occ_fy_open':  occ_fy_open,
         'occ_open_url': _occ_url + '?status=submitted',
+        'occ_open_actions_count':       occ_open_actions_count,
+        'occ_safety_risk_total':        occ_safety_risk_total,
+        'occ_safety_risk_open':         occ_safety_risk_open,
+        'occ_safety_risk_open_actions': occ_safety_risk_open_actions,
+        'occ_top_owner':                occ_top_owner,
+        'occ_action_month_data':        occ_action_month_data,
+        'occ_actions_url': _rev('core:occurrence_actions', kwargs={'club_slug': club.slug}),
         'dash_budget_monthly': _json.dumps(_budget_by_month),
         'dash_actual_monthly': _json.dumps(_actual_by_month),
         'dash_cum_variance':   _json.dumps(_cum_var),
@@ -8932,6 +8975,7 @@ def app_profile(request, club_slug):
                 'credential_expiring', 'subscription_expiring',
                 'instructor_booking_urgent', 'instructor_booking_upcoming',
                 'maintenance_alert', 'lapsed_credentials', 'slot_released',
+                'payment_reminder', 'invoice_sent',
             ]
             for f in _toggle_fields:
                 setattr(pref, f, request.POST.get(f) == 'on')
@@ -8969,6 +9013,8 @@ def app_profile(request, club_slug):
         ('booking_reminder',      'Booking reminder (day before)',            True),
         ('credential_expiring',   'Credential expiring soon',                True),
         ('subscription_expiring', 'Subscription expiring',                   True),
+        ('payment_reminder',      'Account balance reminder',                  True),
+        ('invoice_sent',          'Invoice issued to me',                      True),
         ('slot_released',         'Slot freed up by another member (opt-in)', False),
     ]
     if actor.is_instructor:

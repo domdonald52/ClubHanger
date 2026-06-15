@@ -21,6 +21,7 @@ _PREF_FIELDS = {
     'credential_expiring', 'subscription_expiring',
     'instructor_booking_urgent', 'instructor_booking_upcoming',
     'maintenance_alert', 'lapsed_credentials', 'slot_released',
+    'payment_reminder', 'invoice_sent',
 }
 
 

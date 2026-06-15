@@ -106,6 +106,10 @@ EMAIL_HOST_USER    = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD= os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS      = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@aeroclub.example.com')
+# Override all outgoing email to this address for safe testing (dev only)
+EMAIL_OVERRIDE_TO  = os.environ.get('EMAIL_OVERRIDE_TO', '')
+# Absolute site URL used in emails (e.g. https://clubhangar.example.com)
+SITE_URL           = os.environ.get('SITE_URL', '')
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
