@@ -261,6 +261,20 @@ class Command(BaseCommand):
 
     def _setup_taxonomy(self, club):
         roles = {n: Role.objects.get_or_create(club=club, name=n)[0] for n in ROLES}
+        # Ensure permission flags are set correctly on each role
+        Role.objects.filter(club=club, name="Admin").update(
+            is_superadmin=True, can_access_manage=True, can_access_fleet=True,
+            can_access_safety=True, can_access_settings=True, can_access_reports=True,
+        )
+        Role.objects.filter(club=club, name="Instructor").update(
+            is_superadmin=False, can_access_manage=True, can_access_fleet=False,
+            can_access_safety=True, can_access_settings=False, can_access_reports=False,
+        )
+        Role.objects.filter(club=club, name="Member").update(
+            is_superadmin=False, can_access_manage=False, can_access_fleet=False,
+            can_access_safety=False, can_access_settings=False, can_access_reports=False,
+        )
+        roles = {n: Role.objects.get(club=club, name=n) for n in ROLES}
         cats  = {
             n: MembershipCategory.objects.get_or_create(
                 club=club, name=n, defaults={"is_member": m})[0]
