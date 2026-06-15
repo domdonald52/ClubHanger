@@ -11,6 +11,7 @@
       {% for val, label in status_choices %}
       <option value="{{ val }}" {% if f_status == val %}selected{% endif %}>{{ label }}</option>
       {% endfor %}
+      <option value="overdue" {% if f_status == 'overdue' %}selected{% endif %}>Overdue</option>
     </select>
     <select name="member" class="finput" style="width:auto;" onchange="this.form.submit()">
       <option value="">All members</option>
@@ -22,7 +23,7 @@
     <a href="?" class="cbtn cbtn-sm">Clear</a>
     {% endif %}
     {% if overdue_count %}
-    <span style="font-size:.82rem;color:#c0392b;font-weight:600;align-self:center;">⚠ {{ overdue_count }} overdue</span>
+    <a href="?status=overdue" style="font-size:.82rem;color:#c0392b;font-weight:600;align-self:center;text-decoration:none;">⚠ {{ overdue_count }} overdue</a>
     {% endif %}
   </form>
 

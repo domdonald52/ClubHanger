@@ -6337,7 +6337,12 @@ def manage_invoices(request, club_slug):
           .prefetch_related('line_items')
           .order_by('-invoice_number'))
 
-    if f_status:
+    from datetime import date as _date
+    today = _date.today()
+
+    if f_status == 'overdue':
+        qs = qs.filter(status='sent', due_date__lt=today)
+    elif f_status:
         qs = qs.filter(status=f_status)
     if f_member:
         qs = qs.filter(member__user_id=f_member)
@@ -6345,8 +6350,6 @@ def manage_invoices(request, club_slug):
     invoices = list(qs)
     members_qs = ClubMember.objects.filter(club=club).select_related('user').order_by('user__last_name')
 
-    from datetime import date as _date
-    today = _date.today()
     overdue_count = sum(1 for i in invoices if i.is_overdue)
 
     return render(request, 'core/manage_invoices.html', {
