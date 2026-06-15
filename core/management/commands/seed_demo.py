@@ -32,7 +32,7 @@ from core.models import (
     Club, ClubConfig, Role, MembershipCategory, ClubMember, Account,
     AccountTransaction, Aircraft, AircraftType, ChargeRate, FlightType,
     Booking, BookingStatus, FlightCompletion, FlightChargeItem, FlightPayment,
-    Invoice, InvoiceLineItem, BlockOutType, BlockOut,
+    Invoice, InvoiceLineItem, BlockOutType, BlockOut, OccurrenceReport,
 )
 
 User = get_user_model()
@@ -191,10 +191,13 @@ class Command(BaseCommand):
             Aircraft.objects.filter(club=club).delete()
             AircraftType.objects.filter(club=club).delete()
             # Delete ALL club members (not just PEOPLE list) so stale users from
-            # previous seed versions don't survive as ghost instructors
+            # previous seed versions don't survive as ghost instructors.
+            # Must delete PROTECT-referencing models first.
             stale_user_ids = list(
                 ClubMember.objects.filter(club=club).values_list('user_id', flat=True)
             )
+            OccurrenceReport.objects.filter(reported_by__club=club).delete()
+            FlightPayment.objects.filter(member__club=club).delete()
             ClubMember.objects.filter(club=club).delete()
             User.objects.filter(id__in=stale_user_ids, is_superuser=False).delete()
 
