@@ -2577,7 +2577,7 @@ class Invoice(models.Model):
     STATUS_VOID  = 'void'
     STATUS_CHOICES = [
         ('draft', 'Draft'),
-        ('sent',  'Sent — awaiting payment'),
+        ('sent',  'Sent / not paid'),
         ('paid',  'Paid'),
         ('void',  'Void'),
     ]
