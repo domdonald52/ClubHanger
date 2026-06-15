@@ -233,6 +233,9 @@ class Command(BaseCommand):
         else:
             self._setup_blockouts(club, aircraft, members, admin_user)
 
+        # ── Instructor credentials ─────────────────────────────────────────────
+        self._setup_instructor_credentials(club, members)
+
         # ── Dominic's personal demo data (always idempotent) ──────────────────
         self._setup_dominic(club, aircraft, members, ft, admin_user)
 
@@ -870,6 +873,60 @@ class Command(BaseCommand):
         self.stdout.write(f"  Invoices: {invoices_created} created")
 
     # ── Block-outs ────────────────────────────────────────────────────────────
+
+    def _setup_instructor_credentials(self, club, members):
+        today = date.today()
+        INSTR_CREDS = {
+            # (username, cert_type, name, issue_date, expiry_date, cert_number)
+            "sean":  [
+                ('instr_b',   'B-Cat Instructor Certificate', date(2018, 4, 10), None,                    'NZ-INSTR-B-2018-0342'),
+                ('medical_c2','Class 2 Medical',               date(2024, 9, 1),  date(2026, 9, 1),        'NZ-MED2-2024-1187'),
+                ('type',      'Cessna 152',                    date(2015, 3, 20), None,                    ''),
+                ('type',      'Cessna 172S',                   date(2016, 6, 12), None,                    ''),
+                ('type',      'PA38 Tomahawk',                 date(2017, 11, 5), None,                    ''),
+            ],
+            "jane":  [
+                ('instr_c',   'C-Cat Instructor Certificate', date(2020, 7, 14), None,                    'NZ-INSTR-C-2020-0891'),
+                ('medical_c2','Class 2 Medical',               date(2025, 2, 1),  date(2027, 2, 1),        'NZ-MED2-2025-0334'),
+                ('type',      'Cessna 152',                    date(2019, 5, 8),  None,                    ''),
+                ('type',      'Cessna 172S',                   date(2020, 1, 22), None,                    ''),
+            ],
+            "mark":  [
+                ('instr_b',   'B-Cat Instructor Certificate', date(2016, 2, 28), None,                    'NZ-INSTR-B-2016-0217'),
+                ('medical_c2','Class 2 Medical',               date(2024, 6, 15), date(2026, 6, 15),       'NZ-MED2-2024-0782'),
+                ('type',      'Cessna 152',                    date(2014, 8, 3),  None,                    ''),
+                ('type',      'Cessna 172S',                   date(2015, 10, 17),None,                    ''),
+                ('type',      'PA38 Tomahawk',                 date(2016, 3, 9),  None,                    ''),
+                ('tailwheel', 'Tailwheel Endorsement',         date(2016, 3, 9),  None,                    ''),
+            ],
+            "kate":  [
+                ('instr_c',   'C-Cat Instructor Certificate', date(2022, 11, 3), None,                    'NZ-INSTR-C-2022-1204'),
+                ('medical_c2','Class 2 Medical',               date(2025, 5, 1),  date(2027, 5, 1),        'NZ-MED2-2025-0891'),
+                ('type',      'Cessna 152',                    date(2021, 4, 19), None,                    ''),
+                ('type',      'PA38 Tomahawk',                 date(2022, 8, 30), None,                    ''),
+            ],
+        }
+        ac_type_map = {}
+        for m in members:
+            pass  # built below
+        from core.models import AircraftType
+        ac_types = {t.name: t for t in AircraftType.objects.filter(club=club)}
+
+        created = 0
+        for username, creds in INSTR_CREDS.items():
+            member = next((m for m in members if m.user.username == username), None)
+            if not member:
+                continue
+            for cred_type, name, issue, expiry, cert_num in creds:
+                ac_type = ac_types.get(name) if cred_type == 'type' else None
+                lookup = dict(club_member=member, credential_type=cred_type, name=name)
+                defaults = dict(issue_date=issue, expiry_date=expiry, certificate_number=cert_num)
+                if ac_type:
+                    defaults['aircraft_type'] = ac_type
+                _, c = MemberCredential.objects.get_or_create(**lookup, defaults=defaults)
+                if c:
+                    created += 1
+        self.stdout.write(f"  Instructor credentials: {created} created")
 
     def _setup_dominic(self, club, aircraft, members, ft, admin_user):
         today = date.today()

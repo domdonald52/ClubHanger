@@ -291,14 +291,15 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         # could still have bookings to honour; resigned is definitive departure)
         is_active = instr.standing not in ('resigned',)
 
-        normal_show = is_active and on_roster is True
+        # None means no availability schedule declared → treat as always available
+        normal_show = is_active and on_roster is not False
         ghost = (not normal_show) and has_bookings
         if not normal_show and not ghost:
             continue
 
         if instr.standing in ('resigned', 'lapsed'):
             ghost_reason = 'inactive'
-        elif on_roster is not True:
+        elif on_roster is False:
             ghost_reason = 'off_roster'
         else:
             ghost_reason = None
