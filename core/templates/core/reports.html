@@ -31,13 +31,18 @@
         <div class="dash-kpi-row-lbl">Flights ({{ fy_label }})</div>
         <div class="dash-kpi-row-val">{{ dash_flights_count }}</div>
         {% if dash_solo_count or dash_dual_count %}<div class="dash-kpi-sub">{{ dash_solo_count }} solo · {{ dash_dual_count }} dual</div>{% endif %}
+        {% if dash_trial_count %}
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">Trial flights ({{ fy_label }})</div>
+        <div class="dash-kpi-row-val">{{ dash_trial_count }}</div>
+        {% endif %}
       </div>
 
       <!-- Financial -->
       <div class="dash-kpi {% if dash_debtor_count or dash_overdue_invoice_count %}dash-kpi-warn{% endif %}">
         <div class="dash-kpi-sect">Financial</div>
         <div class="dash-kpi-lbl">Revenue collected</div>
-        <div class="dash-kpi-val">${{ dash_revenue_collected|currency }}</div>
+        <div class="dash-kpi-val"><a href="{{ dash_charges_url }}" style="color:inherit;text-decoration:none;">${{ dash_revenue_collected|currency }}</a></div>
         <div class="dash-kpi-sub">{{ fy_label }}{% if dash_revenue_charged > dash_revenue_collected %} · <span style="color:#c0392b;">${{ dash_revenue_charged|currency }} charged</span>{% endif %}</div>
         <hr class="dash-kpi-hr">
         <div class="dash-kpi-row-lbl">Negative balances</div>
@@ -71,8 +76,26 @@
       <div class="dash-kpi">
         <div class="dash-kpi-sect">Members</div>
         <div class="dash-kpi-lbl">Active members</div>
-        <div class="dash-kpi-val">{{ active_members_count }}</div>
+        <div class="dash-kpi-val"><a href="{{ dash_members_url }}" style="color:inherit;text-decoration:none;">{{ active_members_count }}</a></div>
         <div class="dash-kpi-sub">Currently</div>
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">New this FY</div>
+        <div class="dash-kpi-row-val">{{ dash_new_members_count }}</div>
+        <div class="dash-kpi-sub">since {{ fy_start_date|date:"j M Y" }}</div>
+        {% if dash_sex_set %}
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">Gender (where set)</div>
+        <div class="dash-kpi-sub" style="font-size:.82rem;color:#5b6573;">{{ dash_sex_m }}M · {{ dash_sex_f }}F <span style="color:#c0c8d4;">of {{ active_members_count }}</span></div>
+        {% endif %}
+        {% if dash_top_categories %}
+        <hr class="dash-kpi-hr">
+        <div class="dash-kpi-row-lbl">By category</div>
+        {% for cat in dash_top_categories %}
+        <div class="dash-kpi-sub" style="display:flex;justify-content:space-between;font-size:.78rem;color:#5b6573;margin-top:.15rem;">
+          <span>{{ cat.name }}</span><span style="font-weight:600;color:#1f2933;">{{ cat.count }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
       </div>
 
     </div>
@@ -563,17 +586,19 @@ const _stackedOpts = {
 (function(){
   const el = document.getElementById('dash-flights-chart');
   if (!el) return;
-  const solo = {{ dash_solo_flights|safe }};
-  const dual = {{ dash_dual_flights|safe }};
+  const solo  = {{ dash_solo_flights|safe }};
+  const dual  = {{ dash_dual_flights|safe }};
+  const trial = {{ dash_trial_flights|safe }};
+  const datasets = [
+    { label: 'Solo',  data: solo,  backgroundColor: CHART_PALETTE[0], borderRadius: 0, borderSkipped: false },
+    { label: 'Dual',  data: dual,  backgroundColor: CHART_PALETTE[1], borderRadius: 0, borderSkipped: false },
+  ];
+  if (trial.some(v => v > 0)) {
+    datasets.push({ label: 'Trial', data: trial, backgroundColor: CHART_PALETTE[2], borderRadius: 0, borderSkipped: false });
+  }
   new Chart(el, {
     type: 'bar',
-    data: {
-      labels: {{ month_labels|safe }},
-      datasets: [
-        { label: 'Solo',  data: solo, backgroundColor: CHART_PALETTE[0], borderRadius: 0, borderSkipped: false },
-        { label: 'Dual',  data: dual, backgroundColor: CHART_PALETTE[1], borderRadius: 0, borderSkipped: false },
-      ],
-    },
+    data: { labels: {{ month_labels|safe }}, datasets },
     options: { ..._stackedOpts, scales: { ..._stackedOpts.scales,
       y: { ..._stackedOpts.scales.y, title: { display: true, text: 'Flights' } } } },
   });

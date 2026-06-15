@@ -369,7 +369,7 @@
 
     {% if flight_types %}
     <table class="ft-table">
-      <thead><tr><th>Name</th><th>Solo / Dual</th><th>Training</th><th>Declaration req.</th><th>Billable</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Solo / Dual</th><th>Training</th><th>Trial</th><th>Declaration req.</th><th>Billable</th><th></th></tr></thead>
       <tbody>
         {% for ft in flight_types %}
         <tr>
@@ -394,6 +394,14 @@
               <input type="hidden" name="ft_id" value="{{ ft.id }}">
               <input type="hidden" name="ft_flag" value="is_training">
               <button type="submit" name="ft_value" value="{% if ft.is_training %}0{% else %}1{% endif %}" class="ft-pill {% if ft.is_training %}ft-pill-active{% endif %}" style="min-width:28px;">{% if ft.is_training %}✓{% else %}–{% endif %}</button>
+            </form>
+          </td>
+          <td style="text-align:center;">
+            <form method="post" style="display:inline-flex;gap:2px;">{% csrf_token %}
+              <input type="hidden" name="action" value="set_flight_type_flag">
+              <input type="hidden" name="ft_id" value="{{ ft.id }}">
+              <input type="hidden" name="ft_flag" value="is_trial">
+              <button type="submit" name="ft_value" value="{% if ft.is_trial %}0{% else %}1{% endif %}" class="ft-pill {% if ft.is_trial %}ft-pill-active{% endif %}" style="min-width:28px;">{% if ft.is_trial %}✓{% else %}–{% endif %}</button>
             </form>
           </td>
           <td style="text-align:center;">
@@ -1361,6 +1369,9 @@
         </label>
         <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
           <input type="checkbox" name="ft_is_training"> Training
+        </label>
+        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
+          <input type="checkbox" name="ft_is_trial"> Trial flight
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">

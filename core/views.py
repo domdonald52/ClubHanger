@@ -12,7 +12,7 @@ from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, Fl
                      FlightLandingEntry, AccountTransaction, ClubConfig,
                      OccurrenceReport, OccurrenceType, OccurrenceAction, OccurrenceAuditEntry,
                      ContactType, MembershipHistoryEntry, VoucherType,
-                     create_maint_log_entry, FlyingBudget)
+                     create_maint_log_entry, FlyingBudget, FeedbackMessage)
 from .availability import find_available_slots, get_date_range
 from .services import booking_service
 from .services import availability_service
@@ -1457,8 +1457,9 @@ def club_settings(request, club_slug, mode='settings'):
 
         elif action == 'add_flight_type':
             ft_name = request.POST.get('ft_name', '').strip()
-            ft_is_solo = request.POST.get('ft_is_solo') == 'on'
+            ft_is_solo     = request.POST.get('ft_is_solo') == 'on'
             ft_is_training = request.POST.get('ft_is_training') == 'on'
+            ft_is_trial    = request.POST.get('ft_is_trial') == 'on'
             if ft_name:
                 from django.utils.text import slugify
                 code = slugify(ft_name).replace('-', '_')[:20]
@@ -1466,7 +1467,7 @@ def club_settings(request, club_slug, mode='settings'):
                     code = code[:18] + '_2'
                 FlightType.objects.create(
                     club=club, name=ft_name, code=code,
-                    is_solo=ft_is_solo, is_training=ft_is_training,
+                    is_solo=ft_is_solo, is_training=ft_is_training, is_trial=ft_is_trial,
                 )
             else:
                 ft_error = "Name is required."
@@ -1485,7 +1486,7 @@ def club_settings(request, club_slug, mode='settings'):
             ft_id = request.POST.get('ft_id')
             flag = request.POST.get('ft_flag')
             value = request.POST.get('ft_value') == '1'
-            allowed = {'is_training', 'is_billable', 'requires_declaration', 'is_solo'}
+            allowed = {'is_training', 'is_billable', 'requires_declaration', 'is_solo', 'is_trial'}
             ft = FlightType.objects.filter(club=club, id=ft_id).first()
             if ft and flag in allowed:
                 setattr(ft, flag, value)
@@ -5553,6 +5554,37 @@ def reports(request, club_slug):
     dash_dual_count        = sum(1 for fc in all_qs if fc.booking.instructor_id)
     active_members_count   = ClubMember.objects.filter(club=club, standing='active').count()
 
+    # Members card extras
+    from django.db.models import Count as _MCount
+    dash_new_members_count = ClubMember.objects.filter(club=club, join_date__gte=fy_start_date).count()
+    _sex_active = ClubMember.objects.filter(club=club, standing='active').exclude(sex='')
+    dash_sex_m   = _sex_active.filter(sex='M').count()
+    dash_sex_f   = _sex_active.filter(sex='F').count()
+    dash_sex_set = dash_sex_m + dash_sex_f
+    _cat_qs = (ClubMember.objects
+               .filter(club=club, standing='active', membership_category__isnull=False)
+               .values('membership_category__name')
+               .annotate(cnt=_MCount('id'))
+               .order_by('-cnt')[:4])
+    dash_top_categories = [{'name': r['membership_category__name'], 'count': r['cnt']} for r in _cat_qs]
+
+    # Trial flights (FY)
+    _trial_qs = (FlightCompletion.objects
+                 .filter(booking__club=club,
+                         booking__arrived_at__date__gte=fy_start_date,
+                         booking__arrived_at__date__lte=fy_end_date,
+                         booking__flight_type__is_trial=True)
+                 .select_related('booking'))
+    dash_trial_count = _trial_qs.count()
+    _dash_trial_flights = [0] * 12
+    for _fc in _trial_qs:
+        if _fc.booking.arrived_at:
+            _tidx = next((i for i, d in enumerate(months)
+                          if d.year == _fc.booking.arrived_at.year
+                          and d.month == _fc.booking.arrived_at.month), None)
+            if _tidx is not None:
+                _dash_trial_flights[_tidx] += 1
+
     _debt_agg = (_DAcct.objects.filter(club_member__club=club, balance__lt=0)
                  .aggregate(total=_DSum('balance'), cnt=_DCnt('id')))
     dash_outstanding_debt = abs(round(float(_debt_agg['total'] or 0), 2))
@@ -5733,8 +5765,9 @@ def reports(request, club_slug):
                     _dash_solo_flights[_fidx] += 1
 
     from django.urls import reverse as _rev
-    _occ_url = _rev('core:occurrence_list', kwargs={'club_slug': club.slug})
-    _mbr_url = _rev('core:manage_members',  kwargs={'club_slug': club.slug})
+    _occ_url     = _rev('core:occurrence_list',  kwargs={'club_slug': club.slug})
+    _mbr_url     = _rev('core:manage_members',   kwargs={'club_slug': club.slug})
+    _charges_url = _rev('core:manage_charges',   kwargs={'club_slug': club.slug})
     fy_label = f"{fy_start_date.strftime('%b %Y')} – {fy_end_date.strftime('%b %Y')}"
 
     # ── Historical monthly comparison (last 4 FYs) ────────────────────────────
@@ -5874,8 +5907,15 @@ def reports(request, club_slug):
         'dash_solo_count':    dash_solo_count,
         'dash_dual_count':    dash_dual_count,
         'active_members_count': active_members_count,
+        'dash_new_members_count': dash_new_members_count,
+        'dash_sex_m': dash_sex_m, 'dash_sex_f': dash_sex_f, 'dash_sex_set': dash_sex_set,
+        'dash_top_categories': dash_top_categories,
+        'dash_trial_count': dash_trial_count,
+        'dash_trial_flights': _json.dumps(_dash_trial_flights),
+        'dash_charges_url': _charges_url,
         'dash_outstanding_debt': dash_outstanding_debt,
         'dash_debtor_count':     dash_debtor_count,
+        'dash_members_url': _mbr_url,
         'dash_debtor_url': _mbr_url + '?debt=1',
         'dash_unpaid_invoices':       dash_unpaid_invoices,
         'dash_overdue_invoice_count': dash_overdue_invoice_count,
@@ -5887,6 +5927,7 @@ def reports(request, club_slug):
         'top_members_dash':  top_members_dash,
         'occ_fy_total': occ_fy_total,
         'occ_fy_open':  occ_fy_open,
+        'occ_open':     occ_open,
         'occ_open_url': _occ_url + '?status=submitted',
         'occ_open_actions_count':       occ_open_actions_count,
         'occ_safety_risk_total':        occ_safety_risk_total,
@@ -9605,3 +9646,22 @@ def push_unsubscribe(request, club_slug):
     if endpoint:
         PushSubscription.objects.filter(club_member=actor, endpoint=endpoint).delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+def submit_feedback(request, club_slug):
+    club = get_object_or_404(Club, slug=club_slug)
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    msg_type = request.POST.get('message_type', FeedbackMessage.TYPE_FEEDBACK)
+    if msg_type not in {FeedbackMessage.TYPE_FEEDBACK, FeedbackMessage.TYPE_FEATURE, FeedbackMessage.TYPE_BUG}:
+        msg_type = FeedbackMessage.TYPE_FEEDBACK
+    message = request.POST.get('message', '').strip()
+    if message:
+        FeedbackMessage.objects.create(
+            club=club,
+            sender=request.user,
+            message_type=msg_type,
+            message=message,
+        )
+    return redirect(request.META.get('HTTP_REFERER', '/') + '?saved=1')

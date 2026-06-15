@@ -83,6 +83,8 @@ urlpatterns = [
     path('app/<slug:club_slug>/book/confirm/',                             views.app_book_confirm,      name='app_book_confirm'),
     path('app/<slug:club_slug>/push/subscribe/',                           views.push_subscribe,         name='push_subscribe'),
     path('app/<slug:club_slug>/push/unsubscribe/',                         views.push_unsubscribe,       name='push_unsubscribe'),
+    # Feedback / contact form
+    path('manage/<slug:club_slug>/feedback/',                              views.submit_feedback,        name='submit_feedback'),
     # Service worker served at root scope
     path('sw.js', views.sw_js, name='sw_js'),
 ]

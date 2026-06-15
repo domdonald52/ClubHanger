@@ -5,6 +5,7 @@ from .models import (
     FlightType, ChargeRate, Account,
     Booking, BookingAuditLog, FlightCompletion,
     BlockOutType, BlockOut, InstructorAvailability,
+    FeedbackMessage,
 )
 
 @admin.register(User)
@@ -88,3 +89,11 @@ class InstructorAvailabilityAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'recurrence', 'weekday', 'date', 'all_day', 'start_time', 'end_time')
     list_filter = ('recurrence', 'club_member__club')
     search_fields = ('club_member__user__last_name',)
+
+@admin.register(FeedbackMessage)
+class FeedbackMessageAdmin(admin.ModelAdmin):
+    list_display  = ('submitted_at', 'message_type', 'sender', 'club', 'is_read')
+    list_filter   = ('message_type', 'is_read', 'club')
+    search_fields = ('sender__username', 'sender__last_name', 'message')
+    readonly_fields = ('club', 'sender', 'message_type', 'message', 'submitted_at')
+    list_editable = ('is_read',)

@@ -1006,6 +1006,7 @@ class FlightType(models.Model):
     # Flags
     is_billable = models.BooleanField(default=True)
     is_training = models.BooleanField(default=False)
+    is_trial    = models.BooleanField(default=False, help_text="Trial/introductory flights — tracked separately in reports")
     is_solo = models.BooleanField(default=False, help_text="Solo flights — instructor is not required")
     requires_declaration = models.BooleanField(
         default=False,
@@ -2828,3 +2829,27 @@ class PushSubscription(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+class FeedbackMessage(models.Model):
+    TYPE_FEEDBACK = 'feedback'
+    TYPE_FEATURE  = 'feature'
+    TYPE_BUG      = 'bug'
+    TYPE_CHOICES  = [
+        (TYPE_FEEDBACK, 'General feedback'),
+        (TYPE_FEATURE,  'Feature request'),
+        (TYPE_BUG,      'Bug report'),
+    ]
+
+    club         = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='feedback_messages')
+    sender       = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='feedback_messages')
+    message_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default=TYPE_FEEDBACK)
+    message      = models.TextField()
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    is_read      = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.get_message_type_display()} from {self.sender} ({self.submitted_at:%Y-%m-%d})"
+
+    class Meta:
+        ordering = ['-submitted_at']

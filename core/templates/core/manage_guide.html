@@ -114,7 +114,7 @@
           <ul class="sub"><li><a href="#ac-setup">Aircraft setup</a></li><li><a href="#ac-maint">Maintenance items</a></li><li><a href="#ac-hours">Hours tracking</a></li><li><a href="#ac-alerts">Alerts &amp; grounding</a></li><li><a href="#ac-log">Logging work done</a></li></ul>
         </li>
         <li><a href="#tools">Other tools</a>
-          <ul class="sub"><li><a href="#tools-notifications">Notifications</a></li><li><a href="#tools-weather">Weather</a></li><li><a href="#tools-map">Live map</a></li><li><a href="#tools-announcements">Announcements</a></li><li><a href="#tools-reports">Reports</a></li><li><a href="#tools-events">Safety events</a></li><li><a href="#tools-data">Data export</a></li><li><a href="#tools-health">Health check</a></li></ul>
+          <ul class="sub"><li><a href="#tools-notifications">Notifications</a></li><li><a href="#tools-weather">Weather</a></li><li><a href="#tools-map">Live map</a></li><li><a href="#tools-announcements">Announcements</a></li><li><a href="#tools-reports">Reports</a></li><li><a href="#tools-events">Safety events</a></li><li><a href="#tools-data">Data export</a></li><li><a href="#tools-integrity">Integrity</a></li></ul>
         </li>
       </ul>
     </div>
@@ -384,12 +384,12 @@
       <h3 id="mem-renewal">Annual renewal &amp; auto-lapse</h3>
       <div class="step-flow">
         <div class="step"><span class="num">1</span>Subscription expires</div><span class="arrow">→</span>
-        <div class="step"><span class="num">2</span>Auto-lapsed overnight</div><span class="arrow">→</span>
+        <div class="step"><span class="num">2</span>Auto-lapsed</div><span class="arrow">→</span>
         <div class="step"><span class="num">3</span>Generate renewal invoice</div><span class="arrow">→</span>
         <div class="step"><span class="num">4</span>Member pays</div><span class="arrow">→</span>
         <div class="step"><span class="num">5</span>Mark paid → expiry advances</div>
       </div>
-      <p>The <code>update_lapsed_members</code> management command runs nightly. It checks all Active members whose subscription expiry date has passed beyond the configured grace period (Settings → Membership → Grace period). Anyone overdue is moved to Lapsed: their standing changes, a history entry is written, and their login is disabled — they can no longer book or log in. To manually run the check without waiting for the overnight job, use the "Run auto-lapse now" button in Settings → Membership.</p>
+      <p>ClubHangar automatically checks for overdue subscriptions and lapses members whose expiry date has passed beyond the configured grace period (Settings → Membership → Grace period). Anyone overdue is moved to Lapsed: their standing changes, a membership history entry is written, and their access is suspended — they can no longer make bookings or log in. To run the check immediately (for example, after updating an expiry date or at the start of a renewal season), use the <strong>Run auto-lapse now</strong> button in Settings → Membership.</p>
       <p>Members on roles without <em>Renewal required</em> checked are never auto-lapsed (e.g. life members, non-member staff).</p>
       <p><strong>Bulk renewal.</strong> Rather than generating invoices one by one, use Settings → Membership → <strong>Send renewal invoices</strong> to send the full-year subscription invoice to all currently Active members with renewal-required roles in one action. The page shows a preview of eligible members before you confirm. Each invoice uses the role's annual fee (not pro-rata — these are full FY renewals). Members who already have an outstanding subscription invoice are skipped automatically.</p>
       <p>To renew an individual member: generate a new subscription invoice from their Membership tab (same flow as above). Marking it paid advances the expiry date to the new FY end.</p>
@@ -563,7 +563,7 @@
       <h3 id="book-completion">Flight completion</h3>
       <p>After landing, complete the flight record:</p>
       <ul>
-        <li><strong>Meter readings</strong> — hobbs end / tacho end. The system checks for gaps against the previous flight on that aircraft; unexplained gaps are flagged on Reporting → Integrity.</li>
+        <li><strong>Meter readings</strong> — hobbs end / tacho end. The system checks for gaps against the previous flight on that aircraft; unexplained gaps are flagged on the <a href="#tools-integrity">Integrity</a> page (Manage → Integrity).</li>
         <li><strong>Outcome</strong> — completed, training, check flight, etc.</li>
         <li><strong>Destination aerodrome</strong></li>
         <li><strong>Passengers</strong> — non-member passenger names (required for the flight record)</li>
@@ -574,7 +574,7 @@
         <summary>Meter gaps — what they mean and how to handle them</summary>
         <div class="dbody">
           <p>When you enter a hobbs/tacho start reading that doesn't match the previous flight's end reading on that aircraft, the system asks for a gap explanation. This is not an error — gaps are legitimate (ground run, maintenance, ferry flight by another pilot). You must record a note explaining the discrepancy.</p>
-          <p>Unexplained gaps appear on Reporting → Integrity. Resolve them by adding the missing flight record or explaining the gap in the note field on the affected completion.</p>
+          <p>Unexplained gaps appear on Manage → Integrity. To resolve them: open the flagged flight completion (the link on the Integrity page takes you directly there) and enter a note explaining the discrepancy in the gap explanation field — for example, "ground run for maintenance check: 1134.2–1134.5". If the gap represents a genuinely missing flight, add the missing flight record first.</p>
           <p>Accumulating unexplained meter gaps makes your maintenance hours calculations unreliable, since maintenance hours are derived from the same meter readings.</p>
         </div>
       </details>
@@ -805,7 +805,7 @@
         <li>Add to the aircraft's running maintenance hours total (starting from <em>initial maintenance hours</em>).</li>
         <li>Compare against all maintenance items' <em>due hours</em> and recalculate urgency.</li>
       </ol>
-      <p>This means maintenance hours are only as accurate as your meter readings. Unexplained meter gaps (entries where start ≠ previous end) introduce error — resolve them promptly on Reporting → Integrity.</p>
+      <p>This means maintenance hours are only as accurate as your meter readings. Unexplained meter gaps (entries where start ≠ previous end) introduce error — resolve them promptly via Manage → Integrity.</p>
 
       <h3 id="ac-alerts">Alerts and how they surface</h3>
       <p>Maintenance urgency appears in three places:</p>
@@ -850,7 +850,7 @@
       <details class="dblock">
         <summary>Meter integrity and maintenance accuracy</summary>
         <div class="dbody">
-          <p>Maintenance hours accumulate from hobbs/tacho readings entered on flight completions. The Reporting → Integrity page runs a cross-check after each completion and flags:</p>
+          <p>Maintenance hours accumulate from hobbs/tacho readings entered on flight completions. Manage → Integrity runs a cross-check across all completions and flags:</p>
           <ul>
             <li>Start reading ≠ previous flight's end reading (gap or overlap)</li>
             <li>Unreasonably large or small readings (possible typo)</li>
@@ -905,7 +905,6 @@
         <li><strong>Pivot table</strong> (Reports → Pivot) — a fully filterable flight log. Filter by date range, aircraft, member, flight type, instructor; sort and group as needed. Useful for ad-hoc analysis: "how many hours did ZK-ABC fly in July with training flights?" The pivot exports are available via the <a href="#tools-data">Data export</a> page for spreadsheet analysis.</li>
         <li><strong>Members export</strong> — download a spreadsheet of all member data including standing, role, subscription expiry, account balance, and contact details. Used by the secretary for AGM preparation or mail-merges.</li>
         <li><strong>AI Ask</strong> (where enabled) — a natural language query interface over your club's flight and member data. Ask questions like "how many hours did we fly last month?" or "which members haven't flown in six months?" Useful for committee reporting without needing to know SQL or the pivot filter syntax.</li>
-        <li><strong>Integrity</strong> — meter gap report: flight completions where Hobbs start doesn't match the previous flight's Hobbs end on that aircraft. Helps track down data entry errors before they compound into maintenance hour drift. See also the <a href="#tools-health">Health check</a> for the financial equivalent.</li>
       </ul>
       <p>Reports are read-only — no records are changed. Quality depends on completeness of flight completions, charge records, and maintenance entries. If flight completions are missing meter readings or charges, the revenue and hours figures will be understated.</p>
 
@@ -928,14 +927,27 @@
       </ul>
       <p>All exports are UTF-8 with BOM (compatible with Excel on Windows and Mac without encoding issues). Use these exports for long-term archiving, importing into Xero or your accounting software, or when your committee wants a full data extract for auditing purposes. The data page also provides an <strong>import template</strong> — a pre-formatted CSV you can fill in and use for bulk-loading aircraft records or member records when setting up the club for the first time.</p>
 
-      <h3 id="tools-health">System health check (Manage → Health)</h3>
-      <p>The Health check (Manage → Health, admin only) runs a set of integrity checks across three areas and reports any discrepancies:</p>
+      <h3 id="tools-integrity">Integrity (Manage → Integrity)</h3>
+      <p>The Integrity page (Manage → Integrity, admin only) cross-checks the database for internal consistency across three areas. If the sidebar shows a red badge on Integrity, there are issues requiring attention. The page does not change any data unless you explicitly use a correction action.</p>
+
+      <p><strong>Financial tab</strong></p>
+      <p>Runs four checks across your financial records:</p>
       <ul>
-        <li><strong>Financial integrity</strong> — compares each member's stored account balance against the sum of their ledger transactions. A drift means the displayed balance doesn't match the underlying records. This can occur after manual database changes or in rare edge cases. The page offers a one-click <em>Recompute all balances</em> action that recalculates every balance from scratch using the transaction ledger as the source of truth. Run this if a member reports their balance looks wrong.</li>
-        <li><strong>Operations integrity</strong> — checks for unexplained Hobbs meter gaps across all aircraft. Same information as the Integrity report under Reports, but shown here alongside the financial checks for a single-screen audit view.</li>
-        <li><strong>Member standing</strong> — identifies Active members whose subscription expiry date has already passed but who have not yet been lapsed by the nightly job. This can flag members who slipped through, or highlight that the cron job hasn't run. Reviewing this before running bulk renewal or the registrar export ensures the member list is clean.</li>
+        <li><strong>Account balance drift</strong> — compares each member's stored account balance against the sum of their individual ledger transactions. A mismatch means the displayed balance is out of sync with the actual transaction history. To fix: use the <em>Fix balance drift</em> button that appears when issues are found — it recomputes every balance from the transaction ledger and saves the corrected values. The transaction ledger is always the source of truth. Run this if a member reports their balance looks incorrect.</li>
+        <li><strong>Flight charge drift</strong> — checks that the total stored on each flight completion matches the sum of its individual charge line items. A mismatch typically results from a line item being added or removed without the total being recalculated. To fix: open the flagged flight completion (use the View link), review the charge items, and re-apply the charges. If a line item was incorrectly added or deleted, correct it and save.</li>
+        <li><strong>Flight payment drift</strong> — checks that the amount-paid figure on each flight completion matches the sum of its recorded payments. A mismatch can occur if a payment record was edited outside the normal workflow. To fix: open the flagged flight completion, review the payment records, and correct or remove any erroneous entries.</li>
+        <li><strong>Invoice/FC payment sync</strong> — identifies invoices marked as paid where the linked flight completion still shows a balance owing. To fix: open the invoice and confirm the payment was applied correctly; if it was, re-mark the flight completion as paid from the booking detail page.</li>
       </ul>
-      <p>Run the health check before committee meetings, before bulk renewal season, and whenever you suspect a financial discrepancy. It does not change any data unless you explicitly click the recompute action.</p>
+
+      <p><strong>Operations tab</strong></p>
+      <p>Checks for Hobbs meter gaps between consecutive flights on each aircraft — where the start reading on one flight does not match the end reading of the previous flight. A positive gap means unaccounted flight time; a negative gap means entries may be out of order or a reading was entered incorrectly.</p>
+      <p>To fix a flagged gap: click View next to the affected flight completion and enter a gap explanation note (for example: "ferry flight by third party", or "ground run: 1134.2–1134.5"). If the gap represents a missing flight record, add that flight first, then the gap should clear. Unresolved meter gaps cause maintenance hour calculations to drift — resolve them promptly to maintain airworthiness accuracy.</p>
+
+      <p><strong>Members tab</strong></p>
+      <p>Identifies members whose standing is still Active but whose subscription has expired. This can happen if a member's expiry date was updated manually without triggering the standing check, or if the auto-lapse has not been run since the expiry date passed.</p>
+      <p>To fix: for each flagged member, either run <strong>Run auto-lapse now</strong> (Settings → Membership) to process all overdue members in one go, or update an individual member's standing manually from their membership tab (Members → [member] → Membership → Edit standing). Check this page before bulk renewal season to ensure the member list is accurate before generating invoices.</p>
+
+      <p>Run the Integrity check before committee meetings, before any bulk renewal action, and any time a member reports that their balance or flight record looks wrong.</p>
 
     </div><!-- /tools -->
 

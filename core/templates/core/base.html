@@ -1026,5 +1026,47 @@ document.addEventListener('DOMContentLoaded', function() {
   if (new URLSearchParams(location.search).has('saved')) window.showSavedToast();
 })();
 </script>
+
+{% if user.is_authenticated and club %}
+<!-- ── Site footer ─────────────────────────────────────────────────────── -->
+<style>
+.site-footer{border-top:1px solid #eef1f4;padding:.6rem 1.2rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;font-size:.72rem;color:#9aa3ad;background:#fafbfc;}
+@media(min-width:900px){.site-footer{margin-left:270px;}}
+.site-footer a{color:#9aa3ad;text-decoration:underline dotted;cursor:pointer;}
+.site-footer a:hover{color:#5b6573;}
+/* Feedback modal */
+#feedback-modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:600;align-items:center;justify-content:center;}
+#feedback-modal-backdrop.open{display:flex;}
+#feedback-modal{background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.18);padding:1.4rem 1.6rem;width:min(420px,92vw);max-height:90vh;overflow-y:auto;}
+#feedback-modal h3{font-size:.95rem;font-weight:700;margin:0 0 1rem;color:#1f2933;}
+</style>
+<footer class="site-footer">
+  <span>© 2026 Dominic Donald. ClubHangar is made available under licence to {{ club.name }}. All rights reserved under the Copyright Act 1994 (NZ).</span>
+  <a onclick="document.getElementById('feedback-modal-backdrop').classList.add('open')">Send feedback</a>
+</footer>
+
+<div id="feedback-modal-backdrop" onclick="if(event.target===this)this.classList.remove('open')">
+  <div id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-modal-title">
+    <h3 id="feedback-modal-title">Feedback &amp; feature requests</h3>
+    <form method="post" action="{% url 'core:submit_feedback' club.slug %}">
+      {% csrf_token %}
+      <label class="flabel">Type
+        <select name="message_type" class="finput" style="margin-top:.25rem;">
+          <option value="feedback">General feedback</option>
+          <option value="feature">Feature request</option>
+          <option value="bug">Bug report</option>
+        </select>
+      </label>
+      <label class="flabel" style="margin-top:.75rem;">Message
+        <textarea name="message" class="finput" rows="5" placeholder="Describe your feedback, idea, or issue…" required style="margin-top:.25rem;"></textarea>
+      </label>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;">
+        <button type="button" class="cbtn cbtn-sm" style="background:#f0f4ff;color:#2b333d;" onclick="document.getElementById('feedback-modal-backdrop').classList.remove('open')">Cancel</button>
+        <button type="submit" class="cbtn cbtn-sm">Send</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
 </body>
 </html>
