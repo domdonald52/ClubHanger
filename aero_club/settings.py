@@ -40,6 +40,11 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost,192.168.86.198').split(',')
 ALLOWED_HOSTS += ['healthcheck.railway.app']
 
+CSRF_TRUSTED_ORIGINS = [
+    f'https://{h}' for h in ALLOWED_HOSTS
+    if h not in ('127.0.0.1', 'localhost', '192.168.86.198', 'healthcheck.railway.app')
+]
+
 LOGIN_URL = '/admin/login/'
 LOGIN_REDIRECT_URL = '/'
 
