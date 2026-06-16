@@ -43,11 +43,11 @@
     <thead>
       <tr>
         <th style="width:36px;"></th>
-        <th>Name</th>
-        <th>Standing</th>
-        <th>Role</th>
-        <th>Subscription expires</th>
-        <th>Joined</th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=name&dir={% if sort == 'name' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'name' %}sort-active{% endif %}">Name{% if sort == 'name' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=standing&dir={% if sort == 'standing' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'standing' %}sort-active{% endif %}">Standing{% if sort == 'standing' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=role&dir={% if sort == 'role' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'role' %}sort-active{% endif %}">Role{% if sort == 'role' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=expires&dir={% if sort == 'expires' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'expires' %}sort-active{% endif %}">Subscription expires{% if sort == 'expires' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=joined&dir={% if sort == 'joined' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'joined' %}sort-active{% endif %}">Joined{% if sort == 'joined' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th></th>
       </tr>
     </thead>
@@ -118,6 +118,10 @@
   .mg-table th{padding:.4rem .7rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
   .mg-table td{padding:.5rem .7rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .mg-table tr:last-child td{border-bottom:0;}
+  .sort-th{color:inherit;text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center;gap:.25rem;}
+  .sort-th:hover{color:#5b6573;}
+  .sort-active{color:#1f2933;}
+  .sort-arrow{color:var(--primary);font-size:.85em;}
   .row-dim td{color:#adb5bd;}
   .row-dim td strong{color:#adb5bd;}
   .expired{color:#c0392b !important;}

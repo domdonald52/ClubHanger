@@ -3957,15 +3957,33 @@ def manage_members(request, club_slug):
             return redirect('core:manage_members', club_slug=club_slug)
 
     from django.core.paginator import Paginator as _Pag
+    from urllib.parse import urlencode as _ue
     q           = request.GET.get('q', '').strip()
     f_standing  = request.GET.get('standing', '')
     f_role      = request.GET.get('role', '')
     debt_filter = request.GET.get('debt', '')
+    sort        = request.GET.get('sort', 'name')
+    sort_dir    = request.GET.get('dir', 'asc')
+
+    _SORT_MAP = {
+        'name':    ('user__last_name', 'user__first_name'),
+        'standing': ('standing', 'user__last_name'),
+        'role':    ('role__name', 'user__last_name'),
+        'expires': ('subscription_expires', 'user__last_name'),
+        'joined':  ('join_date', 'user__last_name'),
+    }
+    if sort not in _SORT_MAP:
+        sort = 'name'
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
+    _order = _SORT_MAP[sort]
+    if sort_dir == 'desc':
+        _order = tuple('-' + f for f in _order)
 
     members = (ClubMember.objects
                .filter(club=club)
                .select_related('user', 'role', 'membership_category')
-               .order_by('user__last_name', 'user__first_name'))
+               .order_by(*_order))
     if q:
         from django.db.models import Q as _Q
         members = members.filter(
@@ -3999,7 +4017,8 @@ def manage_members(request, club_slug):
     _paginator   = _Pag(members, 25)
     members_page = _paginator.get_page(request.GET.get('page'))
 
-    from urllib.parse import urlencode as _ue
+    # base_qs preserves filters but not sort/page — template appends sort params per column
+    _base_qs   = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir') and v})
     _filter_qs = _ue({k: v for k, v in request.GET.items() if k != 'page' and v})
 
     roles = Role.objects.filter(club=club).order_by('name')
@@ -4016,6 +4035,9 @@ def manage_members(request, club_slug):
         'f_role': f_role,
         'f_exp_from': f_exp_from,
         'f_exp_to': f_exp_to,
+        'sort': sort,
+        'sort_dir': sort_dir,
+        'base_qs': _base_qs,
         'modal_error': modal_error,
         'modal_error_id': modal_error_id,
         'modal_error_values': modal_error_values,
