@@ -4513,11 +4513,13 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
     flight_types = FlightType.objects.filter(club=club, is_billable=True)
     aircraft_blockout_types = BlockOutType.objects.filter(club=club, target='aircraft')
 
-    flight_history = (Booking.objects
-                      .filter(club=club, aircraft=ac)
-                      .exclude(status='cancelled')
-                      .select_related('member__user', 'instructor', 'flight_type', 'flight_completion')
-                      .order_by('-scheduled_start')[:100])
+    from django.core.paginator import Paginator as _FHPag
+    _fh_qs = (Booking.objects
+              .filter(club=club, aircraft=ac)
+              .exclude(status='cancelled')
+              .select_related('member__user', 'instructor', 'flight_type', 'flight_completion')
+              .order_by('-scheduled_start'))
+    flight_history = _FHPag(_fh_qs, 25).get_page(request.GET.get('fh_page'))
 
     from .models import MaintenanceLogEntry
     maint_log = (MaintenanceLogEntry.objects

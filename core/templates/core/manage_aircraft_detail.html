@@ -882,6 +882,13 @@
         {% endfor %}
       </tbody>
     </table>
+    {% if flight_history.paginator.num_pages > 1 %}
+    <div style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.85rem;flex-wrap:wrap;">
+      <span style="color:#8a93a0;">Page {{ flight_history.number }} of {{ flight_history.paginator.num_pages }} &nbsp;({{ flight_history.paginator.count }} flights)</span>
+      {% if flight_history.has_previous %}<a href="?tab=history&fh_page={{ flight_history.previous_page_number }}" class="cbtn-sm">‹ Prev</a>{% endif %}
+      {% if flight_history.has_next %}<a href="?tab=history&fh_page={{ flight_history.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
+    </div>
+    {% endif %}
     {% else %}
     <p style="color:#8a93a0;font-size:.85rem;">No flight history yet.</p>
     {% endif %}
@@ -990,9 +997,9 @@
     try { localStorage.setItem('acDetailTab', id); } catch(e){}
   }
   TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
-  let init = 'details';
-  try { init = localStorage.getItem('acDetailTab') || 'details'; } catch(e){}
-  activate(init);
+  let init = new URLSearchParams(location.search).get('tab');
+  if (!init) { try { init = localStorage.getItem('acDetailTab'); } catch(e){} }
+  activate(init || 'details');
 })();
 
 // Close all modals on backdrop click or Escape

@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
+    'axes',
     'core',
 ]
 
@@ -72,6 +73,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'axes.middleware.AxesMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -197,3 +199,57 @@ if os.environ.get('RAILWAY_ENVIRONMENT') or os.environ.get('SECURE_SITE'):
 # Session timeout — 8 hours idle, expire on browser close
 SESSION_COOKIE_AGE             = 28800
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# ── Brute-force protection (django-axes) ──────────────────────────────────────
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+AXES_FAILURE_LIMIT      = 5       # lock after 5 failed attempts
+AXES_COOLOFF_TIME       = 1       # unlock after 1 hour
+AXES_RESET_ON_SUCCESS   = True    # reset count on successful login
+AXES_LOCKOUT_PARAMETERS = ['ip_address']  # lock by IP (not username, to avoid DoS)
+
+# ── Structured logging ────────────────────────────────────────────────────────
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '{asctime} {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.environ.get('DJANGO_LOG_LEVEL', 'WARNING'),
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+        'axes': {
+            'handlers': ['console'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'core': {
+            'handlers': ['console'],
+            'level': os.environ.get('APP_LOG_LEVEL', 'WARNING'),
+            'propagate': False,
+        },
+    },
+}

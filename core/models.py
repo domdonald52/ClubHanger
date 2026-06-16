@@ -1368,7 +1368,7 @@ class Booking(models.Model):
     flight_type = models.ForeignKey(FlightType, on_delete=models.PROTECT)
     instructor = models.ForeignKey(
         User,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='flights_instructed'
