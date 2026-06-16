@@ -5549,6 +5549,13 @@ def reports(request, club_slug):
     from django.db.models.functions import TruncMonth
     import json as _json
 
+    def _sjson(obj):
+        """JSON-encode and escape <, >, & so strings can't break out of <script> blocks."""
+        return (_json.dumps(obj)
+                .replace('&', '\\u0026')
+                .replace('<', '\\u003c')
+                .replace('>', '\\u003e'))
+
     club = get_object_or_404(Club, slug=club_slug)
     try:
         actor = ClubMember.objects.get(user=request.user, club=club)
@@ -5848,7 +5855,7 @@ def reports(request, club_slug):
         .annotate(count=_OCount('id'))
         .order_by('-count')
     )
-    occ_type_labels = _json.dumps([r['occurrence_type__name'] for r in by_type])
+    occ_type_labels = _sjson([r['occurrence_type__name'] for r in by_type])
     occ_type_data   = _json.dumps([r['count'] for r in by_type])
 
     # By month (last 12 months, rolling)
@@ -5880,7 +5887,7 @@ def reports(request, club_slug):
         .annotate(count=_OCount('id'))
         .order_by('-count')[:10]
     )
-    occ_ac_labels = _json.dumps([r['aircraft__registration'] for r in by_aircraft])
+    occ_ac_labels = _sjson([r['aircraft__registration'] for r in by_aircraft])
     occ_ac_data   = _json.dumps([r['count'] for r in by_aircraft])
 
     # Safety risk events & open actions
@@ -6061,7 +6068,7 @@ def reports(request, club_slug):
     ann_all_hrs     = _json.dumps(_ann_all_hrs)
     ann_leased_hrs  = _json.dumps(_ann_leased_hrs)
     ann_owned_hrs   = _json.dumps(_ann_owned_hrs)
-    ann_ft_datasets = _json.dumps(_ann_ft_datasets)
+    ann_ft_datasets = _sjson(_ann_ft_datasets)
 
     # FY short-label helper (already defined above as _fy_short_label)
     _fy_months_for_tmpl = [(d.strftime('%Y-%m'), d.strftime('%B %Y')) for d in months]
@@ -6069,8 +6076,8 @@ def reports(request, club_slug):
     return render(request, 'core/reports.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'month_labels': _json.dumps(month_labels),
-        'datasets': _json.dumps(datasets),
-        'instr_datasets': _json.dumps(instr_datasets),
+        'datasets': _sjson(datasets),
+        'instr_datasets': _sjson(instr_datasets),
         'leased_filter': leased_filter,
         'fy_label': fy_label,
         'fy_start_date': fy_start_date,
