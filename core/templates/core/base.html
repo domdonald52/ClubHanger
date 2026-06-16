@@ -213,7 +213,7 @@
     <div class="sidenav-overlay" id="sidenav-overlay"></div>
     <nav class="sidenav" id="sidenav" aria-label="Main navigation" aria-hidden="true">
         <div class="sidenav-head">
-            <span class="sidenav-club">{% if theme.logo %}<img src="{{ theme.logo.url }}" alt="" style="height:24px;object-fit:contain;vertical-align:middle;margin-right:.4rem;">{% endif %}{{ club.name }}</span>
+            <span class="sidenav-club">{% if theme.logo %}<img src="{{ theme.logo.url }}" alt="" style="height:24px;object-fit:contain;vertical-align:middle;margin-right:.4rem;background:var(--banner);padding:2px 4px;border-radius:3px;">{% endif %}{{ club.name }}</span>
             <button class="sidenav-close" id="sidenav-close" aria-label="Close menu">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13"/></svg>
             </button>

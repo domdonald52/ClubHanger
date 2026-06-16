@@ -4454,10 +4454,21 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                  .select_related('flight_completion__booking__member__user')
                  .order_by('-date', '-id')[:100])
 
+    _at = ac.aircraft_type
+    _designator = (_at.icao_designator or '').upper() if _at else ''
+    _engine_count = ac.engine_count or 1
+    if _engine_count >= 2:
+        _ac_icon_type = 'twin'
+    elif any(_designator.startswith(p) for p in ('C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9')):
+        _ac_icon_type = 'high_wing'
+    else:
+        _ac_icon_type = 'low_wing'
+
     _is_inline = request.GET.get('inline') == '1'
     return render(request, 'core/manage_aircraft_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'ac': ac,
+        'ac_icon_type': _ac_icon_type,
         'hire_rates': hire_rates,
         'fuel_rates': fuel_rates,
         'all_surcharge_types': all_surcharge_types,

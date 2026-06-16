@@ -197,7 +197,7 @@
     const msgs = [];
     if (m.badge === 'lapsed')      msgs.push("Member is not current (lapsed or suspended).");
     if (m.badge === 'non_member')  msgs.push("Non-member record — confirm booking is appropriate.");
-    if (m.acct_warning)            msgs.push("Account balance is negative. Check with CFI before confirming this booking.");
+    if (m.acct_warning)            msgs.push("This member has a negative account balance.");
     if (msgs.length) {
       memberNotice.textContent = msgs.join(' ');
       memberNotice.style.display = 'block';
@@ -731,7 +731,7 @@
             askConfirm(confirmMsg, () => submit(true), () => {});
             return;
           }
-          toast(res.data.error || "Could not save booking");
+          toast(res.data.error || "Could not save booking", 'err');
         });
       };
       submit(false);
@@ -780,7 +780,7 @@
     cancelChoiceModal.hidden = true;
     post(`/api/booking/${id}/reject/`, { release, reason, reason_other }).then((res) => {
       if (res.ok && res.data.success) location.reload();
-      else toast(res.data.error || "Could not cancel");
+      else toast(res.data.error || "Could not cancel", 'err');
     });
   });
 
@@ -797,7 +797,7 @@
     post(`/api/booking/${id}/confirm/`, {}).then((res) => {
       if (credCheckModal) credCheckModal.hidden = true;
       if (res.ok && res.data.success) location.reload();
-      else toast(res.data.error || "Could not confirm booking");
+      else toast(res.data.error || "Could not confirm booking", 'err');
     });
   }
 
@@ -805,7 +805,7 @@
     post(`/api/booking/${id}/depart/`, body || {}).then(res => {
       if (!res.ok) {
         if (dvConfirm) { dvConfirm.disabled = false; dvConfirm.textContent = "Confirm check out"; }
-        showToast(res.data && res.data.error ? res.data.error : "Could not depart");
+        showToast(res.data && res.data.error ? res.data.error : "Could not depart", 'err');
         return;
       }
       document.querySelectorAll(`.pill[data-id="${id}"]`).forEach(pill => {
