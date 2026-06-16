@@ -46,16 +46,16 @@
       {% for inv in invoices_page %}
       <tr class="{% if inv.is_overdue %}row-conflict{% endif %}">
         <td style="white-space:nowrap;"><strong>{{ inv.display_number }}</strong></td>
-        <td>{{ inv.member.user.get_full_name|default:"—" }}</td>
-        <td style="color:#5b6573;font-size:.82rem;">{{ inv.description|default:"—" }}</td>
+        <td style="white-space:nowrap;">{{ inv.member.user.get_full_name|default:"—" }}</td>
+        <td style="color:#5b6573;font-size:.82rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ inv.description|default:'' }}">{{ inv.description|truncatechars:22|default:"—" }}</td>
         <td style="white-space:nowrap;color:#8a93a0;">{{ inv.issue_date|date:"j M Y" }}</td>
-        <td style="white-space:nowrap;{% if inv.is_overdue %}color:#c0392b;font-weight:600;{% else %}color:#8a93a0;{% endif %}">
+        <td style="white-space:nowrap;{% if inv.is_overdue %}color:#c0392b;{% else %}color:#8a93a0;{% endif %}">
           {{ inv.due_date|date:"j M Y" }}
           {% if inv.is_overdue %}<span style="display:inline-block;margin-left:.35rem;font-size:.7rem;font-weight:700;background:#fdecea;color:#c0392b;border-radius:8px;padding:.1rem .4rem;vertical-align:middle;">{{ inv.days_overdue }}d</span>{% endif %}
         </td>
         <td style="text-align:right;">${{ inv.total|currency }}</td>
-        <td style="text-align:right;{% if inv.balance_due %}font-weight:600;{% endif %}">
-          {% if inv.balance_due %}<span style="color:{% if inv.is_overdue %}#c0392b{% else %}#1f2933{% endif %};">${{ inv.balance_due|currency }}</span>{% else %}<span style="color:#216c2a;">—</span>{% endif %}
+        <td style="text-align:right;">
+          {% if inv.balance_due %}<span style="color:{% if inv.is_overdue %}#c0392b{% else %}#8a93a0{% endif %};">${{ inv.balance_due|currency }}</span>{% else %}<span style="color:#216c2a;">—</span>{% endif %}
         </td>
         <td>
           <span class="inv-badge inv-{{ inv.status }}">{{ inv.get_status_display }}</span>
@@ -86,9 +86,7 @@
   .bk-table td{padding:.55rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .bk-table tr:last-child td{border-bottom:0;}
   .row-conflict td:first-child{border-left:3px solid #e03131;}
-  .row-action-btn{display:inline-flex;align-items:center;font-size:.78rem;color:#5b6573;text-decoration:none;padding:.2rem .5rem;border:1px solid #d6dae0;border-radius:5px;background:#fff;}
-  .row-action-btn:hover{background:#f3f5f7;}
-  .inv-badge{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
+.inv-badge{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
   .inv-draft{background:#f3f5f7;color:#5b6573;}
   .inv-sent{background:#dbeafe;color:#1d4ed8;}
   .inv-paid{background:#dcfce7;color:#166534;}
