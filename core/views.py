@@ -7431,15 +7431,21 @@ def data_page(request, club_slug):
     _ico = 'width="20" height="20" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"'
     export_types = [
         ('members',     f'<svg {_ico}><circle cx="7.5" cy="5" r="3"/><path d="M1.5 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>',
-                        'Members',       'Name, email, role, credentials, account balance'),
+                        'Members',        'Name, email, role, standing, account balance, subscription expiry'),
+        ('credentials', f'<svg {_ico}><rect x="2" y="2" width="11" height="11" rx="1.5"/><line x1="4.5" y1="5.5" x2="10.5" y2="5.5"/><line x1="4.5" y1="7.5" x2="10.5" y2="7.5"/><line x1="4.5" y1="9.5" x2="7.5" y2="9.5"/></svg>',
+                        'Credentials',    'Member licences, ratings, medicals, flight reviews — type, issue/expiry dates'),
         ('flights',     f'<svg {_ico}><path d="M13.5 1.5 1.5 6.5l4.5 2 1.5 4.5 2.5-2.5z"/><line x1="6" y1="8.5" x2="13.5" y2="1.5"/></svg>',
-                        'Flight history','All completed flights — dates, aircraft, pilot, instructor, hours, charges'),
+                        'Flight history', 'All completed flights — dates, aircraft, pilot, instructor, hours, charges'),
         ('aircraft',    f'<svg {_ico}><path d="M7.5 1.5 6 5.5 1 9l1 1 5-2 -.5 4-2 1 .5 1 3-1.5 3 1.5.5-1-2-1L9.5 9l5 2 1-1-5-3.5z"/></svg>',
-                        'Aircraft',      'Fleet list, maintenance items and log'),
+                        'Aircraft',       'Fleet list with type, serial, seats, billing method, initial meters'),
         ('financial',   f'<svg {_ico}><rect x="1.5" y="3.5" width="12" height="8.5" rx="1.5"/><line x1="1.5" y1="7" x2="13.5" y2="7"/><line x1="4" y1="10.5" x2="6.5" y2="10.5"/></svg>',
-                        'Financial',     'Account transactions, payments, outstanding balances'),
+                        'Financial',      'Account transactions, payments, outstanding balances'),
+        ('invoices',    f'<svg {_ico}><rect x="2.5" y="1.5" width="10" height="12" rx="1"/><line x1="5" y1="5" x2="10" y2="5"/><line x1="5" y1="7.5" x2="10" y2="7.5"/><line x1="5" y1="10" x2="8" y2="10"/></svg>',
+                        'Invoices',       'All invoices with status, amounts, and line items'),
         ('maintenance', f'<svg {_ico}><path d="M13 2.5a3 3 0 0 0-4.2 4.2L4 11.5a1 1 0 1 0 1.4 1.4l4.8-4.8A3 3 0 0 0 13 2.5z"/><line x1="11" y1="4" x2="12.5" y2="5.5"/></svg>',
-                        'Maintenance log','Per-aircraft maintenance hour log and scheduled items'),
+                        'Maintenance',    'Per-aircraft maintenance hour log and scheduled items'),
+        ('occurrences', f'<svg {_ico}><path d="M7.5 2 2 12.5h11z"/><line x1="7.5" y1="6" x2="7.5" y2="9"/><circle cx="7.5" cy="11" r=".5" fill="currentColor"/></svg>',
+                        'Occurrences',    'Safety occurrence reports — type, date, description, status, review notes'),
     ]
     return render(request, 'core/data_page.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
@@ -7461,7 +7467,8 @@ def export_data(request, club_slug, export_type):
         return redirect('login')
     if err := require_admin(actor, club, request): return err
 
-    ALLOWED = {'members', 'flights', 'aircraft', 'maintenance', 'financial', 'all'}
+    ALLOWED = {'members', 'flights', 'aircraft', 'maintenance', 'financial',
+               'credentials', 'invoices', 'occurrences', 'all'}
     if export_type not in ALLOWED:
         return HttpResponse('Unknown export type', status=400)
 
@@ -7476,7 +7483,7 @@ def export_data(request, club_slug, export_type):
     def members_csv():
         hdrs = ['last_name', 'first_name', 'email', 'role', 'standing',
                 'caa_number', 'phone_mobile', 'phone_home',
-                'account_balance', 'membership_expires']
+                'account_balance', 'subscription_expires']
         rows = []
         for m in (ClubMember.objects.filter(club=club)
                   .select_related('user', 'role')
@@ -7491,7 +7498,7 @@ def export_data(request, club_slug, export_type):
                 m.user.last_name, m.user.first_name, m.user.email,
                 m.role.name if m.role else '', m.standing,
                 m.caa_number, m.phone_mobile, m.phone_home,
-                bal, '',
+                bal, m.subscription_expires or '',
             ])
         return csv_bytes(rows, hdrs)
 
@@ -7641,7 +7648,7 @@ def export_data(request, club_slug, export_type):
 
     def members_data():
         hdrs = ['Last name', 'First name', 'Email', 'Role', 'Standing',
-                'CAA number', 'Mobile', 'Home phone', 'Account balance']
+                'CAA number', 'Mobile', 'Home phone', 'Account balance', 'Subscription expires']
         rows = []
         for m in (ClubMember.objects.filter(club=club)
                   .select_related('user', 'role').prefetch_related('account')
@@ -7651,7 +7658,8 @@ def export_data(request, club_slug, export_type):
             except Exception: pass
             rows.append([m.user.last_name, m.user.first_name, m.user.email,
                          m.role.name if m.role else '', m.standing,
-                         m.caa_number, m.phone_mobile, m.phone_home, bal])
+                         m.caa_number, m.phone_mobile, m.phone_home, bal,
+                         m.subscription_expires or ''])
         return hdrs, rows
 
     def flights_data():
@@ -7721,6 +7729,78 @@ def export_data(request, club_slug, export_type):
                          tx.description, tx.payment_method, tx.reference])
         return hdrs, rows
 
+    def credentials_data():
+        from .models import MemberCredential
+        hdrs = ['Member', 'Type', 'Name / Aircraft type', 'Issue date',
+                'Expiry date', 'Certificate number', 'Notes']
+        rows = []
+        for c in (MemberCredential.objects
+                  .filter(club_member__club=club)
+                  .select_related('club_member__user', 'aircraft_type')
+                  .order_by('club_member__user__last_name', 'credential_type')):
+            name = c.name or (c.aircraft_type.name if c.aircraft_type else '')
+            rows.append([c.club_member.user.get_full_name(),
+                         c.get_credential_type_display(), name,
+                         c.issue_date or '', c.expiry_date or '',
+                         c.certificate_number, c.notes])
+        return hdrs, rows
+
+    def invoices_data():
+        from .models import Invoice, InvoiceLineItem
+        inv_hdrs = ['Invoice #', 'Member', 'Description', 'Status',
+                    'Issue date', 'Due date', 'GST rate', 'Total', 'Paid', 'Notes']
+        inv_rows = []
+        for inv in (Invoice.objects.filter(club=club)
+                    .select_related('member__user')
+                    .order_by('invoice_number')):
+            inv_rows.append([inv.display_number,
+                             inv.member.user.get_full_name() if inv.member else '',
+                             inv.description, inv.get_status_display(),
+                             inv.issue_date, inv.due_date, inv.gst_rate,
+                             inv.total, inv.amount_paid, inv.notes])
+        line_hdrs = ['Invoice #', 'Description', 'Quantity', 'Unit price', 'Total']
+        line_rows = []
+        for li in (InvoiceLineItem.objects.filter(invoice__club=club)
+                   .select_related('invoice')
+                   .order_by('invoice__invoice_number', 'id')):
+            line_rows.append([li.invoice.display_number, li.description,
+                              li.quantity, li.unit_price, li.total_price])
+        return (inv_hdrs, inv_rows), (line_hdrs, line_rows)
+
+    def occurrences_data():
+        hdrs = ['ID', 'Type', 'Date', 'Time', 'Location', 'Aircraft',
+                'Reported by', 'Status', 'Reported at', 'Description',
+                'Immediate action', 'Review notes']
+        rows = []
+        for r in (OccurrenceReport.objects.filter(club=club)
+                  .select_related('occurrence_type', 'reported_by__user', 'aircraft')
+                  .order_by('date_of_occurrence')):
+            rows.append([r.id, r.occurrence_type.name,
+                         r.date_of_occurrence.isoformat(),
+                         r.time_of_occurrence.strftime('%H:%M') if r.time_of_occurrence else '',
+                         r.location,
+                         r.aircraft.registration if r.aircraft else '',
+                         r.reported_by.user.get_full_name(),
+                         r.get_status_display(),
+                         r.reported_at.strftime('%Y-%m-%d %H:%M'),
+                         r.description, r.immediate_action, r.review_notes])
+        return hdrs, rows
+
+    def membership_history_data():
+        from .models import MembershipHistoryEntry
+        hdrs = ['Member', 'Event', 'Date', 'Changed by', 'From', 'To', 'Note']
+        rows = []
+        for e in (MembershipHistoryEntry.objects
+                  .filter(club_member__club=club)
+                  .select_related('club_member__user', 'changed_by')
+                  .order_by('club_member__user__last_name', 'changed_at')):
+            rows.append([e.club_member.user.get_full_name(),
+                         e.get_event_type_display(),
+                         e.changed_at.strftime('%Y-%m-%d %H:%M'),
+                         e.changed_by.get_full_name() if e.changed_by else '',
+                         e.old_value, e.new_value, e.note])
+        return hdrs, rows
+
     # ── Dispatch ──────────────────────────────────────────────────────────────
     slug = club.slug
     ts = timezone.localdate().strftime('%Y%m%d')
@@ -7728,18 +7808,27 @@ def export_data(request, club_slug, export_type):
 
     if export_type == 'all':
         if fmt == 'xlsx':
-            m_hdrs, m_rows = members_data()
-            f_hdrs, f_rows = flights_data()
-            a_hdrs, a_rows = aircraft_data()
+            m_hdrs, m_rows       = members_data()
+            f_hdrs, f_rows       = flights_data()
+            a_hdrs, a_rows       = aircraft_data()
             (mi_hdrs, mi_rows), (ml_hdrs, ml_rows) = maintenance_data()
-            fi_hdrs, fi_rows = financial_data()
+            fi_hdrs, fi_rows     = financial_data()
+            cr_hdrs, cr_rows     = credentials_data()
+            (iv_hdrs, iv_rows), (li_hdrs, li_rows) = invoices_data()
+            oc_hdrs, oc_rows     = occurrences_data()
+            mh_hdrs, mh_rows     = membership_history_data()
             xlsx = make_xlsx([
-                ('Members',           m_hdrs, m_rows),
-                ('Flights',           f_hdrs, f_rows),
-                ('Aircraft',          a_hdrs, a_rows),
-                ('Maintenance Items', mi_hdrs, mi_rows),
-                ('Maintenance Log',   ml_hdrs, ml_rows),
-                ('Financial',         fi_hdrs, fi_rows),
+                ('Members',            m_hdrs,  m_rows),
+                ('Membership History', mh_hdrs, mh_rows),
+                ('Credentials',        cr_hdrs, cr_rows),
+                ('Flights',            f_hdrs,  f_rows),
+                ('Aircraft',           a_hdrs,  a_rows),
+                ('Maintenance Items',  mi_hdrs, mi_rows),
+                ('Maintenance Log',    ml_hdrs, ml_rows),
+                ('Financial',          fi_hdrs, fi_rows),
+                ('Invoices',           iv_hdrs, iv_rows),
+                ('Invoice Line Items', li_hdrs, li_rows),
+                ('Occurrences',        oc_hdrs, oc_rows),
             ])
             resp = HttpResponse(xlsx,
                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
@@ -7754,13 +7843,19 @@ def export_data(request, club_slug, export_type):
             w.writerows(rows)
             return b.getvalue().encode('utf-8-sig')
         (mi_hdrs, mi_rows), (ml_hdrs, ml_rows) = maintenance_data()
+        (iv_hdrs, iv_rows), (li_hdrs, li_rows) = invoices_data()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(f'{slug}_members_{ts}.csv',      _csv(*members_data()))
-            zf.writestr(f'{slug}_flights_{ts}.csv',      _csv(*flights_data()))
-            zf.writestr(f'{slug}_aircraft_{ts}.csv',     _csv(*aircraft_data()))
-            zf.writestr(f'{slug}_maint_items_{ts}.csv',  _csv(mi_hdrs, mi_rows))
-            zf.writestr(f'{slug}_maint_log_{ts}.csv',    _csv(ml_hdrs, ml_rows))
-            zf.writestr(f'{slug}_financial_{ts}.csv',    _csv(*financial_data()))
+            zf.writestr(f'{slug}_members_{ts}.csv',            _csv(*members_data()))
+            zf.writestr(f'{slug}_membership_history_{ts}.csv', _csv(*membership_history_data()))
+            zf.writestr(f'{slug}_credentials_{ts}.csv',        _csv(*credentials_data()))
+            zf.writestr(f'{slug}_flights_{ts}.csv',            _csv(*flights_data()))
+            zf.writestr(f'{slug}_aircraft_{ts}.csv',           _csv(*aircraft_data()))
+            zf.writestr(f'{slug}_maint_items_{ts}.csv',        _csv(mi_hdrs, mi_rows))
+            zf.writestr(f'{slug}_maint_log_{ts}.csv',          _csv(ml_hdrs, ml_rows))
+            zf.writestr(f'{slug}_financial_{ts}.csv',          _csv(*financial_data()))
+            zf.writestr(f'{slug}_invoices_{ts}.csv',           _csv(iv_hdrs, iv_rows))
+            zf.writestr(f'{slug}_invoice_lines_{ts}.csv',      _csv(li_hdrs, li_rows))
+            zf.writestr(f'{slug}_occurrences_{ts}.csv',        _csv(*occurrences_data()))
         buf.seek(0)
         resp = HttpResponse(buf.read(), content_type='application/zip')
         resp['Content-Disposition'] = f'attachment; filename="{slug}_export_{ts}.zip"'
@@ -7779,7 +7874,25 @@ def export_data(request, club_slug, export_type):
         'flights':     (flights_data,     f'{slug}_flights_{ts}'),
         'aircraft':    (aircraft_data,    f'{slug}_aircraft_{ts}'),
         'financial':   (financial_data,   f'{slug}_financial_{ts}'),
+        'credentials': (credentials_data, f'{slug}_credentials_{ts}'),
+        'occurrences': (occurrences_data, f'{slug}_occurrences_{ts}'),
     }
+    if export_type == 'invoices':
+        (iv_hdrs, iv_rows), (li_hdrs, li_rows) = invoices_data()
+        if fmt == 'xlsx':
+            xlsx = make_xlsx([('Invoices', iv_hdrs, iv_rows),
+                              ('Invoice Line Items', li_hdrs, li_rows)])
+            resp = HttpResponse(xlsx,
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            resp['Content-Disposition'] = f'attachment; filename="{slug}_invoices_{ts}.xlsx"'
+            return resp
+        buf = io.StringIO()
+        w2 = csv.writer(buf)
+        w2.writerow(['=== INVOICES ===']); w2.writerow(iv_hdrs); w2.writerows(iv_rows)
+        w2.writerow([]); w2.writerow(['=== LINE ITEMS ===']); w2.writerow(li_hdrs); w2.writerows(li_rows)
+        resp = HttpResponse(buf.getvalue().encode('utf-8-sig'), content_type='text/csv; charset=utf-8')
+        resp['Content-Disposition'] = f'attachment; filename="{slug}_invoices_{ts}.csv"'
+        return resp
     if export_type == 'maintenance':
         (mi_hdrs, mi_rows), (ml_hdrs, ml_rows) = maintenance_data()
         if fmt == 'xlsx':
