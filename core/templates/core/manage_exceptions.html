@@ -63,8 +63,12 @@
     {% if unpaid_flights %}
     <table class="exc-table">
       <thead><tr>
-        <th>Member</th><th>Aircraft</th><th>Flight type</th>
-        <th>Date</th><th style="text-align:right;">Total</th><th style="text-align:right;">Paid</th><th></th>
+        <th><a href="?tab=flights{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&uf_sort=member&uf_dir={% if uf_sort == 'member' and uf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if uf_sort == 'member' %}sort-active{% endif %}">Member{% if uf_sort == 'member' %} <span class="sort-arrow">{% if uf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=flights{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&uf_sort=aircraft&uf_dir={% if uf_sort == 'aircraft' and uf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if uf_sort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if uf_sort == 'aircraft' %} <span class="sort-arrow">{% if uf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=flights{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&uf_sort=type&uf_dir={% if uf_sort == 'type' and uf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if uf_sort == 'type' %}sort-active{% endif %}">Flight type{% if uf_sort == 'type' %} <span class="sort-arrow">{% if uf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=flights{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&uf_sort=date&uf_dir={% if uf_sort == 'date' and uf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if uf_sort == 'date' %}sort-active{% endif %}">Date{% if uf_sort == 'date' %} <span class="sort-arrow">{% if uf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th style="text-align:right;"><a href="?tab=flights{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&uf_sort=total&uf_dir={% if uf_sort == 'total' and uf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if uf_sort == 'total' %}sort-active{% endif %}">Total{% if uf_sort == 'total' %} <span class="sort-arrow">{% if uf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th style="text-align:right;">Paid</th><th></th>
       </tr></thead>
       <tbody>
         {% for b in unpaid_flights %}
@@ -97,7 +101,11 @@
     {% if conflicts_data %}
     <table class="exc-table">
       <thead><tr>
-        <th>Member</th><th>Aircraft</th><th>Scheduled</th><th>Status</th><th>Issue</th><th></th>
+        <th><a href="?tab=conflicts{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cf_sort=member&cf_dir={% if cf_sort == 'member' and cf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cf_sort == 'member' %}sort-active{% endif %}">Member{% if cf_sort == 'member' %} <span class="sort-arrow">{% if cf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=conflicts{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cf_sort=aircraft&cf_dir={% if cf_sort == 'aircraft' and cf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cf_sort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if cf_sort == 'aircraft' %} <span class="sort-arrow">{% if cf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=conflicts{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cf_sort=date&cf_dir={% if cf_sort == 'date' and cf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cf_sort == 'date' %}sort-active{% endif %}">Scheduled{% if cf_sort == 'date' %} <span class="sort-arrow">{% if cf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=conflicts{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cf_sort=status&cf_dir={% if cf_sort == 'status' and cf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cf_sort == 'status' %}sort-active{% endif %}">Status{% if cf_sort == 'status' %} <span class="sort-arrow">{% if cf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th>Issue</th><th></th>
       </tr></thead>
       <tbody>
         {% for row in conflicts_data %}
@@ -128,8 +136,14 @@
     {% if unpaid_invoices %}
     <table class="exc-table">
       <thead><tr>
-        <th>Invoice #</th><th>Member</th><th>Description</th>
-        <th>Status</th><th>Issued</th><th>Due</th><th style="text-align:right;">Total</th><th></th>
+        <th><a href="?tab=invoices{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&ui_sort=number&ui_dir={% if ui_sort == 'number' and ui_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if ui_sort == 'number' %}sort-active{% endif %}">Invoice #{% if ui_sort == 'number' %} <span class="sort-arrow">{% if ui_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=invoices{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&ui_sort=member&ui_dir={% if ui_sort == 'member' and ui_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if ui_sort == 'member' %}sort-active{% endif %}">Member{% if ui_sort == 'member' %} <span class="sort-arrow">{% if ui_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th>Description</th>
+        <th><a href="?tab=invoices{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&ui_sort=status&ui_dir={% if ui_sort == 'status' and ui_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if ui_sort == 'status' %}sort-active{% endif %}">Status{% if ui_sort == 'status' %} <span class="sort-arrow">{% if ui_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=invoices{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&ui_sort=issued&ui_dir={% if ui_sort == 'issued' and ui_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if ui_sort == 'issued' %}sort-active{% endif %}">Issued{% if ui_sort == 'issued' %} <span class="sort-arrow">{% if ui_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=invoices{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&ui_sort=due&ui_dir={% if ui_sort == 'due' and ui_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if ui_sort == 'due' %}sort-active{% endif %}">Due{% if ui_sort == 'due' %} <span class="sort-arrow">{% if ui_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th style="text-align:right;"><a href="?tab=invoices{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&ui_sort=total&ui_dir={% if ui_sort == 'total' and ui_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if ui_sort == 'total' %}sort-active{% endif %}">Total{% if ui_sort == 'total' %} <span class="sort-arrow">{% if ui_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th></th>
       </tr></thead>
       <tbody>
         {% for inv in unpaid_invoices %}
@@ -188,7 +202,10 @@
     {% if lapsed_creds_data %}
     <table class="exc-table">
       <thead><tr>
-        <th>Member</th><th>Expired credentials</th><th>Next booking</th><th></th>
+        <th><a href="?tab=credentials{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cr_sort=member&cr_dir={% if cr_sort == 'member' and cr_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cr_sort == 'member' %}sort-active{% endif %}">Member{% if cr_sort == 'member' %} <span class="sort-arrow">{% if cr_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th>Expired credentials</th>
+        <th><a href="?tab=credentials{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cr_sort=next_booking&cr_dir={% if cr_sort == 'next_booking' and cr_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cr_sort == 'next_booking' %}sort-active{% endif %}">Next booking{% if cr_sort == 'next_booking' %} <span class="sort-arrow">{% if cr_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th></th>
       </tr></thead>
       <tbody>
         {% for row in lapsed_creds_data %}
@@ -229,16 +246,21 @@
     {% if maint_items %}
     <table class="exc-table">
       <thead><tr>
-        <th>Aircraft</th><th>Item</th><th>Urgency</th><th>Due hours</th><th>Due date</th><th></th>
+        <th><a href="?tab=maintenance{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&mt_sort=aircraft&mt_dir={% if mt_sort == 'aircraft' and mt_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if mt_sort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if mt_sort == 'aircraft' %} <span class="sort-arrow">{% if mt_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=maintenance{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&mt_sort=name&mt_dir={% if mt_sort == 'name' and mt_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if mt_sort == 'name' %}sort-active{% endif %}">Item{% if mt_sort == 'name' %} <span class="sort-arrow">{% if mt_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=maintenance{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&mt_sort=urgency&mt_dir={% if mt_sort == 'urgency' and mt_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if mt_sort == 'urgency' %}sort-active{% endif %}">Urgency{% if mt_sort == 'urgency' %} <span class="sort-arrow">{% if mt_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=maintenance{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&mt_sort=due_hours&mt_dir={% if mt_sort == 'due_hours' and mt_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if mt_sort == 'due_hours' %}sort-active{% endif %}">Due hrs{% if mt_sort == 'due_hours' %} <span class="sort-arrow">{% if mt_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?tab=maintenance{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&mt_sort=due_date&mt_dir={% if mt_sort == 'due_date' and mt_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if mt_sort == 'due_date' %}sort-active{% endif %}">Due date{% if mt_sort == 'due_date' %} <span class="sort-arrow">{% if mt_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th></th>
       </tr></thead>
       <tbody>
         {% for item in maint_items %}
         <tr>
-          <td><strong>{{ item.aircraft.registration }}</strong></td>
+          <td style="white-space:nowrap;"><strong>{{ item.aircraft.registration }}</strong></td>
           <td>{{ item.name }}</td>
           <td><span class="urg-badge urg-{{ item.urgency }}">{{ item.get_urgency_display }}</span></td>
-          <td style="color:#5b6573;">{% if item.due_hours %}{{ item.due_hours }} hr{% else %}—{% endif %}</td>
-          <td style="color:#5b6573;">{% if item.due_date %}{{ item.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
+          <td style="color:#5b6573;white-space:nowrap;">{% if item.due_hours %}{{ item.due_hours }} hr{% else %}—{% endif %}</td>
+          <td style="color:#5b6573;white-space:nowrap;">{% if item.due_date %}{{ item.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
           <td><a href="{% url 'core:manage_aircraft_detail' club.slug item.aircraft_id %}" class="row-action-btn" data-overlay>Aircraft →</a></td>
         </tr>
         {% endfor %}

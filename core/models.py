@@ -799,9 +799,9 @@ class Aircraft(models.Model):
 
 class MaintenanceUrgency(models.TextChoices):
     """Visual indicator for maintenance urgency."""
-    GREEN = 'green', 'Within limits'
+    GREEN = 'green', 'OK'
     AMBER = 'amber', 'Due soon'
-    RED = 'red', 'Overdue/grounded'
+    RED = 'red', 'Due / Overdue'
 
 
 class AircraftMaintenanceItem(models.Model):

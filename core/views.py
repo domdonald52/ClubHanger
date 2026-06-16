@@ -6877,11 +6877,95 @@ def manage_exceptions(request, club_slug):
     # 6. Instructor credential issues for today
     instructor_cred_issues = _instructor_cred_issues(club, today)
 
+    # ── Sorting for each Attention tab ────────────────────────────────────
+    from urllib.parse import urlencode as _ue
+    _exc_sort_keys = ('uf_sort','uf_dir','cf_sort','cf_dir','ui_sort','ui_dir',
+                      'cr_sort','cr_dir','mt_sort','mt_dir','tab')
+    exc_base_qs = _ue({k: v for k, v in request.GET.items()
+                       if k not in _exc_sort_keys and v})
+
+    # Unpaid flights
+    uf_sort = request.GET.get('uf_sort', 'date')
+    uf_dir  = request.GET.get('uf_dir',  'asc')
+    _UF_SORT = {
+        'member':   ('member__user__last_name', 'member__user__first_name'),
+        'aircraft': ('aircraft__registration',),
+        'type':     ('flight_type__name',),
+        'date':     ('arrived_at',),
+        'total':    ('flight_completion__total_charge',),
+    }
+    if uf_sort not in _UF_SORT: uf_sort = 'date'
+    if uf_dir not in ('asc', 'desc'): uf_dir = 'asc'
+    _uf_order = _UF_SORT[uf_sort]
+    if uf_dir == 'desc': _uf_order = tuple('-'+f for f in _uf_order)
+    unpaid_flights = list(unpaid_flights.order_by(*_uf_order))
+
+    # Booking conflicts
+    cf_sort = request.GET.get('cf_sort', 'date')
+    cf_dir  = request.GET.get('cf_dir',  'asc')
+    _CF_KEYS = {
+        'member':   lambda d: d['b'].member.user.last_name.lower() if d['b'].member and d['b'].member.user else '',
+        'aircraft': lambda d: d['b'].aircraft.registration if d['b'].aircraft else '',
+        'date':     lambda d: d['b'].scheduled_start,
+        'status':   lambda d: d['b'].status,
+    }
+    if cf_sort not in _CF_KEYS: cf_sort = 'date'
+    if cf_dir not in ('asc', 'desc'): cf_dir = 'asc'
+    conflicts_data.sort(key=_CF_KEYS[cf_sort], reverse=(cf_dir == 'desc'))
+
+    # Unpaid invoices
+    ui_sort = request.GET.get('ui_sort', 'due')
+    ui_dir  = request.GET.get('ui_dir',  'asc')
+    _UI_SORT = {
+        'number':  ('invoice_number',),
+        'member':  ('member__user__last_name', 'member__user__first_name'),
+        'issued':  ('issue_date',),
+        'due':     ('due_date',),
+        'total':   ('total',),
+        'status':  ('status',),
+    }
+    if ui_sort not in _UI_SORT: ui_sort = 'due'
+    if ui_dir not in ('asc', 'desc'): ui_dir = 'asc'
+    _ui_order = _UI_SORT[ui_sort]
+    if ui_dir == 'desc': _ui_order = tuple('-'+f for f in _ui_order)
+    unpaid_invoices = list(unpaid_invoices.order_by(*_ui_order))
+
+    # Credentials (both sub-tables share cr_sort/cr_dir)
+    cr_sort = request.GET.get('cr_sort', 'member')
+    cr_dir  = request.GET.get('cr_dir',  'asc')
+    if cr_sort not in ('member', 'next_booking'): cr_sort = 'member'
+    if cr_dir not in ('asc', 'desc'): cr_dir = 'asc'
+    from datetime import date as _date
+    _CR_KEYS = {
+        'member':       lambda d: d['cm'].user.last_name.lower() if d['cm'].user else '',
+        'next_booking': lambda d: d['next_booking'].scheduled_start if d['next_booking'] else _date.max,
+    }
+    lapsed_creds_data.sort(key=_CR_KEYS[cr_sort], reverse=(cr_dir == 'desc'))
+    instructor_cred_issues.sort(
+        key=lambda d: d['cm'].user.last_name.lower() if d['cm'].user else '',
+        reverse=(cr_dir == 'desc')
+    )
+
+    # Maintenance
+    mt_sort = request.GET.get('mt_sort', 'urgency')
+    mt_dir  = request.GET.get('mt_dir',  'asc')
+    _URGENCY_ORDER = {'red': 0, 'amber': 1, 'green': 2}
+    _MT_KEYS = {
+        'aircraft': lambda d: d.aircraft.registration,
+        'name':     lambda d: d.name.lower(),
+        'urgency':  lambda d: _URGENCY_ORDER.get(d.urgency, 9),
+        'due_hours':lambda d: d.due_hours or 999999,
+        'due_date': lambda d: d.due_date or _date.max,
+    }
+    if mt_sort not in _MT_KEYS: mt_sort = 'urgency'
+    if mt_dir not in ('asc', 'desc'): mt_dir = 'asc'
+    maint_list = sorted(list(maint_items), key=_MT_KEYS[mt_sort], reverse=(mt_dir == 'desc'))
+
     total_issues = (
         len(overdue_departures) +
-        unpaid_flights.count() + len(conflicts_data) +
-        len(lapsed_creds_data) + maint_items.count() +
-        unpaid_invoices.count() +
+        len(unpaid_flights) + len(conflicts_data) +
+        len(lapsed_creds_data) + len(maint_list) +
+        len(unpaid_invoices) +
         len(instructor_cred_issues)
     )
 
@@ -6893,13 +6977,19 @@ def manage_exceptions(request, club_slug):
         'unpaid_flights': unpaid_flights,
         'conflicts_data': conflicts_data,
         'lapsed_creds_data': lapsed_creds_data,
-        'maint_items': maint_items,
+        'maint_items': maint_list,
         'unpaid_invoices': unpaid_invoices,
         'overdue_departures': overdue_departures,
         'instructor_cred_issues': instructor_cred_issues,
         'cred_count': cred_count,
         'total_issues': total_issues,
         'today': today,
+        'exc_base_qs': exc_base_qs,
+        'uf_sort': uf_sort, 'uf_dir': uf_dir,
+        'cf_sort': cf_sort, 'cf_dir': cf_dir,
+        'ui_sort': ui_sort, 'ui_dir': ui_dir,
+        'cr_sort': cr_sort, 'cr_dir': cr_dir,
+        'mt_sort': mt_sort, 'mt_dir': mt_dir,
     })
 
 

@@ -324,7 +324,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_fuel_rate">
                 <input type="hidden" name="rate_id" value="{{ r.id }}">
-                <button type="submit" class="ft-del">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
               </form>
               {% endif %}
             </td>
@@ -339,7 +339,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="delete_fuel_rate">
       <input type="hidden" name="rate_id" value="{{ fuel_rates.0.id }}">
-      <button type="submit" class="ft-del" style="font-size:.78rem;" onsubmit="return confirm('Delete current rate?')">Delete current rate</button>
+      <button type="submit" class="cbtn-sm cbtn-danger" style="font-size:.78rem;" onsubmit="return confirm('Delete current rate?')">Delete current rate</button>
     </form>
     {% endif %}
     {% else %}
@@ -404,20 +404,20 @@
 
     {% if maintenance_items %}
     <table class="ft-table">
-      <thead><tr><th>Item</th><th>Due date</th><th>Due hours</th><th>Last done</th><th style="min-width:140px;">Progress</th><th></th></tr></thead>
+      <thead><tr><th>Item</th><th style="white-space:nowrap;">Due date</th><th style="white-space:nowrap;">Due hrs</th><th style="white-space:nowrap;">Last done</th><th style="min-width:120px;">Status</th><th></th></tr></thead>
       <tbody>
         {% for m in maintenance_items %}
         <tr>
           <td><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:#8a93a0;font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
-          <td style="font-size:.85rem;">{{ m.due_date|default:"—" }}</td>
-          <td style="font-size:.85rem;">{{ m.due_hours|default:"—" }}</td>
-          <td style="font-size:.82rem;color:#8a93a0;">{{ m.last_completed_date|default:"—" }}</td>
+          <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_date|default:"—" }}</td>
+          <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_hours|default:"—" }}</td>
+          <td style="font-size:.82rem;color:#8a93a0;white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
           <td>
             {% if m.progress_pct is not None %}
-            <div class="maint-bar-wrap" title="{{ m.progress_pct }}% complete">
+            <div class="maint-bar-wrap">
               <div class="maint-bar maint-bar-{{ m.urgency }}" style="width:{{ m.progress_pct }}%;"></div>
             </div>
-            <span class="urg-badge urg-{{ m.urgency }}" style="margin-top:.25rem;display:inline-block;">{{ m.get_urgency_display }} · {{ m.progress_pct }}%</span>
+            <span class="urg-badge urg-{{ m.urgency }}" style="margin-top:.25rem;display:inline-block;">{{ m.get_urgency_display }}</span>
             {% else %}
             <span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span>
             {% endif %}
@@ -506,7 +506,7 @@
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_blockout">
               <input type="hidden" name="bo_id" value="{{ bo.id }}">
-              <button type="submit" class="ft-del">Delete</button>
+              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
             </form>
           </td>
         </tr>
@@ -915,8 +915,7 @@
   .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
   .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .ft-table tr:last-child td{border-bottom:0;}
-  .ft-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;padding:.2rem .4rem;}
-  .ft-del:hover{text-decoration:underline;}
+
 
   .maint-bar-wrap{height:8px;background:#eef1f4;border-radius:4px;overflow:hidden;margin-bottom:.15rem;}
   .maint-bar{height:100%;border-radius:4px;transition:width .3s;}
