@@ -159,12 +159,6 @@ def check_in(
 
     if booking.status != 'departed':
         return ServiceResult(ok=False, error='Booking has not departed')
-    if booking.scheduled_end > timezone.now():
-        return ServiceResult(
-            ok=False,
-            error='Cannot check in a flight that has not yet finished — '
-                  'wait until the scheduled end time has passed',
-        )
 
     ac = booking.aircraft
     if ac.records_hobbs and (not hobbs_start or not hobbs_end):
