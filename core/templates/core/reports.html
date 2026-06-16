@@ -100,13 +100,26 @@
 
     </div>
 
-    <!-- Owned/leased toggle (reuses same filter as Aircraft tab) -->
-    <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem;">
-      <span style="font-size:.8rem;color:#8a93a0;">Hours filter:</span>
-      <div class="seg-ctrl">
-        <a href="?leased=all#dashboard"    class="seg-btn {% if leased_filter == 'all' %}active{% endif %}">All</a>
-        <a href="?leased=owned#dashboard"  class="seg-btn {% if leased_filter == 'owned' %}active{% endif %}">Owned</a>
-        <a href="?leased=leased#dashboard" class="seg-btn {% if leased_filter == 'leased' %}active{% endif %}">Leased</a>
+    <!-- FY selector + Owned/leased toggle -->
+    <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;">
+      {% if available_fys|length > 1 %}
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.8rem;color:#8a93a0;">Financial year:</span>
+        <select id="fy-select" onchange="window.location.href='?fy='+this.value+'&leased={{ leased_filter }}{% if selected_month_str %}&month={{ selected_month_str }}{% endif %}#dashboard'"
+                style="font-size:.82rem;padding:.25rem .5rem;border:1px solid #d0d4db;border-radius:6px;background:#fff;cursor:pointer;">
+          {% for yr, lbl in available_fys %}
+          <option value="{{ yr }}" {% if yr == fy_year %}selected{% endif %}>{{ lbl }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div style="display:flex;align-items:center;gap:.5rem;">
+        <span style="font-size:.8rem;color:#8a93a0;">Hours filter:</span>
+        <div class="seg-ctrl">
+          <a href="?fy={{ fy_year }}&leased=all#dashboard"    class="seg-btn {% if leased_filter == 'all' %}active{% endif %}">All</a>
+          <a href="?fy={{ fy_year }}&leased=owned#dashboard"  class="seg-btn {% if leased_filter == 'owned' %}active{% endif %}">Owned</a>
+          <a href="?fy={{ fy_year }}&leased=leased#dashboard" class="seg-btn {% if leased_filter == 'leased' %}active{% endif %}">Leased</a>
+        </div>
       </div>
     </div>
 
@@ -246,10 +259,29 @@
   <!-- ── MEMBERS tab ── -->
   <div id="tab-members" class="stab-panel">
     <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <div style="margin-bottom:.4rem;">
-        <h2 style="font-size:.95rem;font-weight:650;margin:0;">Member activity <span class="dash-period">· {{ fy_label }}</span></h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:.6rem;">
+        <h2 style="font-size:.95rem;font-weight:650;margin:0;">Member activity
+          <span class="dash-period">· {% if member_filter_label %}{{ member_filter_label }}{% else %}{{ fy_label }}{% endif %}</span>
+        </h2>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+          {% if available_fys|length > 1 %}
+          <select onchange="window.location.href='?fy='+this.value+'&leased={{ leased_filter }}#members'"
+                  style="font-size:.82rem;padding:.25rem .5rem;border:1px solid #d0d4db;border-radius:6px;background:#fff;cursor:pointer;">
+            {% for yr, lbl in available_fys %}
+            <option value="{{ yr }}" {% if yr == fy_year %}selected{% endif %}>{{ lbl }}</option>
+            {% endfor %}
+          </select>
+          {% endif %}
+          <select onchange="let v=this.value; window.location.href='?fy={{ fy_year }}&leased={{ leased_filter }}'+(v?'&month='+v:'')+'#members'"
+                  style="font-size:.82rem;padding:.25rem .5rem;border:1px solid #d0d4db;border-radius:6px;background:#fff;cursor:pointer;">
+            <option value="">All months</option>
+            {% for val, lbl in fy_months %}
+            <option value="{{ val }}" {% if val == selected_month_str %}selected{% endif %}>{{ lbl }}</option>
+            {% endfor %}
+          </select>
+        </div>
       </div>
-      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Flight hours and booking counts for this financial year.</p>
+      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Flight hours and booking counts for the selected period.</p>
       {% if member_rows %}
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
         <thead>
@@ -257,6 +289,8 @@
             <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Member</th>
             <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
             <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Hours</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Solo</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Dual</th>
           </tr>
         </thead>
         <tbody>
@@ -265,6 +299,8 @@
             <td style="padding:.5rem .6rem;">{{ row.name }}</td>
             <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ row.flight_count }}</td>
             <td style="padding:.5rem .6rem;text-align:right;font-weight:600;">{{ row.total_hours }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{% if row.solo_hours %}{{ row.solo_hours }}{% endif %}</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{% if row.dual_hours %}{{ row.dual_hours }}{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>

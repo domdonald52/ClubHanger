@@ -1,5 +1,5 @@
 {% extends "core/base.html" %}
-{% block title %}Staff Guide — {{ club.name }}{% endblock %}
+{% block title %}User Guide — {{ club.name }}{% endblock %}
 
 {% block content %}
 <style>
@@ -122,7 +122,17 @@
 
   <!-- ── Body ── -->
   <article class="guide-body">
-    <h1>ClubHangar staff guide</h1>
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.6rem;padding:1.2rem 1.4rem;background:var(--banner,#1d3a5f);border-radius:10px;">
+      <svg width="42" height="42" viewBox="0 0 200 200" aria-hidden="true" style="flex-shrink:0;">
+        <circle cx="100" cy="100" r="95" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.4)" stroke-width="8"/>
+        <path d="M100 45 L130 115 L100 100 L70 115 Z" fill="#fff"/>
+      </svg>
+      <div>
+        <div style="font-size:1.2rem;font-weight:750;color:#fff;letter-spacing:-.01em;line-height:1.2;">ClubHangar</div>
+        <div style="font-size:.78rem;font-weight:500;color:rgba(255,255,255,.65);margin-top:.15rem;letter-spacing:.03em;">Aero Club Management</div>
+      </div>
+    </div>
+    <h1>User guide</h1>
     <p class="lead">ClubHangar is a management system for flying clubs — it handles members, bookings, invoicing, aircraft maintenance, and safety from one place. This guide is a process and role reference for admins and instructors, not a button-by-button manual. It covers what the system does for you, what still happens outside it, and how the four main areas connect.</p>
 
     <!-- ════════════════ OVERVIEW -->
@@ -486,7 +496,8 @@
         <div class="step"><span class="num">3</span>Confirmed</div><span class="arrow">→</span>
         <div class="step"><span class="num">4</span>Departed</div><span class="arrow">→</span>
         <div class="step"><span class="num">5</span>Completed</div><span class="arrow">→</span>
-        <div class="step"><span class="num">6</span>Charged</div>
+        <div class="step"><span class="num">6</span>Charged</div><span class="arrow" style="font-size:.75rem;color:#c0c8d4;">→ (if invoiced)</span>
+        <div class="step" style="background:#fff8f0;border-color:#f5c47a;color:#7c4a00;"><span class="num" style="background:#c07a1c;">7</span>Invoice paid</div>
       </div>
       <p><strong>1 — Request booking.</strong> Anyone with booking access can request a booking — a member via the mobile app (Schedule → + button), or an instructor or admin from the management web app Gantt calendar on behalf of any member. The booking block is checked first: if the requesting member has an active block, the + button is disabled and the configured block message is shown. Fields: aircraft, date, time, flight type, and (for dual types) instructor.</p>
       <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Member (mobile app), instructor or admin (Gantt calendar)</em></p>
@@ -498,7 +509,7 @@
       <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Solo — member (mobile) or admin; dual/instructor — admin or instructor (management web app)</em></p>
       <p><strong>5 — Completed.</strong> After landing, staff enter: Hobbs/Tacho end readings, destination aerodrome, outcome, and any passengers. The system calculates flight time from the meter delta using the aircraft's billing instrument. The same readings advance the aircraft's maintenance hours using the configured maintenance instrument (which may differ — see <a href="#ac-hours">Hours tracking</a>). For flights requiring a training declaration, the instructor completes it at this point (not at departure).</p>
       <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
-      <p><strong>6 — Charged.</strong> Review the calculated charge items (aircraft hire, instructor fee, surcharges, landing fees), adjust if needed, then apply payment. See <a href="#book-charging">Charging</a>.</p>
+      <p><strong>6 — Charged.</strong> Review the calculated charge items (aircraft hire, instructor fee, surcharges, landing fees), adjust if needed, then apply payment. See <a href="#book-charging">Charging</a>. If the payment method is <em>Account credit</em> or <em>EFTPOS / Cash</em>, the booking cycle is complete. If the payment method is <em>Invoice</em>, the booking is marked complete but a tax invoice is created in <strong>Sent</strong> status — it remains open under <a href="#sales-invoices">Sales → Invoices</a> until the member pays and the invoice is marked paid.</p>
       <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin (management web app)</em></p>
 
       <div class="callout info">
@@ -586,17 +597,21 @@
       <table class="guide-table">
         <thead><tr><th>Method</th><th>When to use</th><th>Effect</th></tr></thead>
         <tbody>
-          <tr><td>Account credit</td><td>Member has pre-paid credit</td><td>Immediately deducted from account balance. No invoice.</td></tr>
-          <tr><td>EFTPOS / Cash</td><td>Payment at point of sale</td><td>Records payment immediately against the flight.</td></tr>
-          <tr><td>Invoice</td><td>Formal billing, deferred payment</td><td>Creates a tax invoice (sent). Member pays by bank transfer.</td></tr>
+          <tr><td>Account credit</td><td>Member has pre-paid credit</td><td>Immediately deducted from account balance. No invoice created.</td></tr>
+          <tr><td>EFTPOS / Cash</td><td>Payment at point of sale</td><td>Records payment immediately against the flight. No invoice created.</td></tr>
+          <tr><td>Invoice</td><td>Formal billing, deferred payment</td><td>Creates a tax invoice in <strong>Sent</strong> status. Member pays by bank transfer. The invoice remains open under <a href="#sales-invoices">Sales → Invoices</a> until it is marked paid.</td></tr>
         </tbody>
       </table>
+
+      <div class="callout info">
+        <strong>Invoices live on after the flight is complete.</strong> Selecting <em>Invoice</em> as the payment method does not close the loop — it opens one. The booking is marked complete, but the resulting invoice stays in <strong>Sent</strong> status under Sales → Invoices until the bookkeeper marks it paid after receiving the bank transfer. This is by design: the flight record and the payment record are separate. You can track all outstanding flight invoices at any time from Sales → Invoices, filtering by status.
+      </div>
 
       <h4>Split flights — multiple pilots or shared costs</h4>
       <p>A single flight booking can be split between two or more members. Two splitting scenarios exist:</p>
 
       <details class="dblock">
-        <summary>Scenario A — Two pilots fly in sequence (e.g. student A then student B on the same aircraft)</summary>
+        <summary>Scenario A — Two pilots fly in sequence (e.g. pilot A then pilot B on the same aircraft)</summary>
         <div class="dbody">
           <p>Use <strong>flight segments</strong>. Each segment records a pilot and their own contiguous meter readings: segment 1 end = segment 2 start. The hours per segment are calculated from the meter delta.</p>
           <ol>

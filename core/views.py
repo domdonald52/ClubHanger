@@ -5560,13 +5560,32 @@ def reports(request, club_slug):
     fy_start = config.fy_start_month
 
     today = timezone.localdate()
-    # Determine current FY start date
-    fy_year = today.year if today.month >= fy_start else today.year - 1
-    fy_start_date = date(fy_year, fy_start, 1)
     import calendar as _cal
+    current_fy_year = today.year if today.month >= fy_start else today.year - 1
+
+    # Selected FY — may be any past year when ?fy= param is set
+    try:
+        _req_fy = int(request.GET.get('fy', 0))
+        fy_year = _req_fy if 2000 <= _req_fy <= current_fy_year else current_fy_year
+    except (ValueError, TypeError):
+        fy_year = current_fy_year
+
+    fy_start_date = date(fy_year, fy_start, 1)
     fy_end_month = ((fy_start - 2) % 12) + 1
     fy_end_year = fy_year + 1 if fy_end_month < fy_start else fy_year
     fy_end_date = date(fy_end_year, fy_end_month, _cal.monthrange(fy_end_year, fy_end_month)[1])
+
+    # Available FYs for selector dropdown — from first flight data to current
+    _first_arr = (FlightCompletion.objects
+                  .filter(booking__club=club, booking__arrived_at__isnull=False)
+                  .order_by('booking__arrived_at')
+                  .values_list('booking__arrived_at', flat=True)
+                  .first())
+    if _first_arr:
+        _first_fy_avail = _first_arr.year if _first_arr.month >= fy_start else _first_arr.year - 1
+    else:
+        _first_fy_avail = current_fy_year
+    available_fys = list(range(_first_fy_avail, current_fy_year + 1))
 
     leased_filter = request.GET.get('leased', 'all')  # 'all' | 'owned' | 'leased'
 
@@ -5646,17 +5665,45 @@ def reports(request, club_slug):
                       booking__arrived_at__date__gte=fy_start_date,
                       booking__arrived_at__date__lte=fy_end_date,
                       actual_flight_hours__isnull=False)
-              .select_related('booking__member__user'))
+              .select_related('booking__member__user', 'booking__instructor'))
+
+    # Optional month filter — scopes member activity table only
+    selected_month_str = request.GET.get('month', '')
+    member_filter_label = None
+    if selected_month_str:
+        try:
+            _sm_year, _sm_mon = [int(x) for x in selected_month_str.split('-')]
+            _sm_date = date(_sm_year, _sm_mon, 1)
+            if fy_start_date <= _sm_date <= fy_end_date:
+                _sm_end = date(_sm_year, _sm_mon, _cal.monthrange(_sm_year, _sm_mon)[1])
+                member_qs = all_qs.filter(booking__arrived_at__date__gte=_sm_date,
+                                          booking__arrived_at__date__lte=_sm_end)
+                member_filter_label = _sm_date.strftime('%B %Y')
+            else:
+                selected_month_str = ''
+                member_qs = all_qs
+        except (ValueError, AttributeError):
+            selected_month_str = ''
+            member_qs = all_qs
+    else:
+        member_qs = all_qs
+
     member_stats = {}
-    for fc in all_qs:
+    for fc in member_qs:
         m = fc.booking.member
         if m not in member_stats:
-            member_stats[m] = {'count': 0, 'hours': 0.0}
+            member_stats[m] = {'count': 0, 'hours': 0.0, 'solo': 0.0, 'dual': 0.0}
         member_stats[m]['count'] += 1
-        member_stats[m]['hours'] += float(fc.actual_flight_hours)
+        _fh = float(fc.actual_flight_hours)
+        member_stats[m]['hours'] += _fh
+        if fc.booking.instructor_id:
+            member_stats[m]['dual'] += _fh
+        else:
+            member_stats[m]['solo'] += _fh
     member_rows = sorted(
         [{'name': m.user.get_full_name(), 'flight_count': v['count'],
-          'total_hours': round(v['hours'], 1)}
+          'total_hours': round(v['hours'], 1),
+          'solo_hours': round(v['solo'], 1), 'dual_hours': round(v['dual'], 1)}
          for m, v in member_stats.items()],
         key=lambda r: -r['total_hours']
     )
@@ -5911,7 +5958,7 @@ def reports(request, club_slug):
     fy_label = f"{fy_start_date.strftime('%b %Y')} – {fy_end_date.strftime('%b %Y')}"
 
     # ── Historical monthly comparison (last 4 FYs) ────────────────────────────
-    _hist_fy_years = [fy_year - 3, fy_year - 2, fy_year - 1, fy_year]
+    _hist_fy_years = [current_fy_year - 3, current_fy_year - 2, current_fy_year - 1, current_fy_year]
     # Months in FY order (e.g. [4,5,6,7,8,9,10,11,12,1,2,3] for Apr start)
     _hist_month_order = [(fy_start + i - 1) % 12 + 1 for i in range(12)]
 
@@ -5964,12 +6011,12 @@ def reports(request, club_slug):
                  .filter(booking__club=club, actual_flight_hours__isnull=False,
                          booking__arrived_at__isnull=False)
                  .order_by('booking__arrived_at').first())
-    _first_fy = fy_year  # fallback: current FY only
+    _first_fy = current_fy_year  # fallback: current FY only
     if _first_fc:
         _fd = _first_fc.booking.arrived_at.date()
         _first_fy = _fd.year if _fd.month >= fy_start else _fd.year - 1
 
-    _all_fy_years = list(range(_first_fy, fy_year + 1))
+    _all_fy_years = list(range(_first_fy, current_fy_year + 1))
 
     def _date_to_fy(d):
         return d.year if d.month >= fy_start else d.year - 1
@@ -6016,6 +6063,9 @@ def reports(request, club_slug):
     ann_owned_hrs   = _json.dumps(_ann_owned_hrs)
     ann_ft_datasets = _json.dumps(_ann_ft_datasets)
 
+    # FY short-label helper (already defined above as _fy_short_label)
+    _fy_months_for_tmpl = [(d.strftime('%Y-%m'), d.strftime('%B %Y')) for d in months]
+
     return render(request, 'core/reports.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'month_labels': _json.dumps(month_labels),
@@ -6023,6 +6073,13 @@ def reports(request, club_slug):
         'instr_datasets': _json.dumps(instr_datasets),
         'leased_filter': leased_filter,
         'fy_label': fy_label,
+        'fy_start_date': fy_start_date,
+        'fy_year': fy_year,
+        'current_fy_year': current_fy_year,
+        'available_fys': [(yr, _fy_short_label(yr)) for yr in available_fys],
+        'selected_month_str': selected_month_str,
+        'member_filter_label': member_filter_label,
+        'fy_months': _fy_months_for_tmpl,
         'member_rows': member_rows,
         'occ_total': occ_total,
         'occ_stats': [
