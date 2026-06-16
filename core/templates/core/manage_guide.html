@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load static %}
 {% block title %}User Guide — {{ club.name }}{% endblock %}
 
 {% block content %}
@@ -122,14 +123,11 @@
 
   <!-- ── Body ── -->
   <article class="guide-body">
-    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.6rem;padding:1.2rem 1.4rem;background:var(--banner,#1d3a5f);border-radius:10px;">
-      <svg width="42" height="42" viewBox="0 0 200 200" aria-hidden="true" style="flex-shrink:0;">
-        <circle cx="100" cy="100" r="95" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.4)" stroke-width="8"/>
-        <path d="M100 45 L130 115 L100 100 L70 115 Z" fill="#fff"/>
-      </svg>
+    <div style="display:flex;align-items:center;gap:1.1rem;margin-bottom:1.6rem;padding:1.1rem 1.4rem;background:#111827;border-radius:12px;">
+      <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="Club Hangar" width="52" height="52" style="flex-shrink:0;">
       <div>
-        <div style="font-size:1.2rem;font-weight:750;color:#fff;letter-spacing:-.01em;line-height:1.2;">ClubHangar</div>
-        <div style="font-size:.78rem;font-weight:500;color:rgba(255,255,255,.65);margin-top:.15rem;letter-spacing:.03em;">Aero Club Management</div>
+        <div style="font-size:1.25rem;font-weight:800;color:#fff;letter-spacing:.06em;line-height:1.15;">CLUB HANGAR</div>
+        <div style="font-size:.7rem;font-weight:600;color:#9aa8b8;margin-top:.3rem;letter-spacing:.12em;">FLY · LOG · MANAGE</div>
       </div>
     </div>
     <h1>User guide</h1>
