@@ -78,6 +78,9 @@
         .nav-alert-dot { display:none; width:7px; height:7px; background:#e53e3e; border-radius:50%; flex-shrink:0; }
         .nav-section.closed .nav-alert-dot { display:block; }
         .user-info { font-size: .8rem; color: rgba(255,255,255,.75); display: flex; align-items: center; gap: .55rem; white-space: nowrap; }
+        .ch-brand { display: flex; align-items: center; gap: .35rem; border-left: 1px solid rgba(255,255,255,.15); padding-left: .65rem; margin-left: .1rem; flex-shrink: 0; opacity: .75; }
+        .ch-brand-text { font-size: .72rem; font-weight: 650; color: rgba(255,255,255,.85); letter-spacing: .04em; }
+        @media (max-width: 600px) { .ch-brand-text { display: none; } }
         .role-badge { font-size: .7rem; font-weight: 600; padding: .15rem .45rem; border-radius: 4px; background: rgba(255,255,255,.18); color: #fff; letter-spacing: .02em; }
         .user-menu { position: relative; }
         .user-btn { display: flex; align-items: center; gap: .4rem; background: none; border: none; color: rgba(255,255,255,.8); cursor: pointer; padding: .3rem .4rem; border-radius: 6px; font-size: .82rem; transition: background .15s; }
@@ -205,6 +208,13 @@
                     </div>
                 </div>
                 {% endif %}
+                <div class="ch-brand" title="Powered by ClubHangar">
+                    <svg width="20" height="20" viewBox="0 0 200 200" aria-hidden="true">
+                        <circle cx="100" cy="100" r="95" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.35)" stroke-width="8"/>
+                        <path d="M100 45 L130 115 L100 100 L70 115 Z" fill="#fff"/>
+                    </svg>
+                    <span class="ch-brand-text">ClubHangar</span>
+                </div>
             </div>
         </div>
     </header>
@@ -328,11 +338,7 @@
             <svg width="12" height="12" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 9.5a5.5 5.5 0 0 1-5.5 5.5H2l-.5-3L4 10a5.5 5.5 0 0 1 0-11h1A5.5 5.5 0 0 1 13 4.5v5Z"/></svg>
             Send feedback
           </button>
-          <div class="sidenav-foot-brand">
-            <svg width="12" height="12" viewBox="0 0 200 200" aria-hidden="true"><circle cx="100" cy="100" r="100" fill="#0E2A47"/><circle cx="100" cy="100" r="80" fill="none" stroke="#5B8DEF" stroke-width="3.75"/><path d="M100 45 L130 115 L100 100 L70 115 Z" fill="#FFFFFF"/></svg>
-            Powered by ClubHangar
-          </div>
-          <div class="sidenav-foot-copy">© 2026 Dominic Donald</div>
+          <div class="sidenav-foot-copy">© 2026 Dominic Donald · ClubHangar</div>
         </div>
     </nav>
     {% endif %}

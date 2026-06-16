@@ -460,16 +460,40 @@
         const el = document.getElementById(id); if (el) el.style.borderColor = '';
       });
 
-      // Pre-fill start values from last recorded end for this aircraft
+      // Pre-fill start values from last recorded end for this aircraft.
+      // If no previous reading exists for a field, unlock it so the user can type directly
+      // rather than leaving it locked-empty (which blocks submission).
       fetch(`/api/booking/${pill.dataset.id}/prev-readings/`, { credentials: "same-origin" })
         .then(r => r.ok ? r.json() : null)
         .then(data => {
-          if (!data) return;
-          if (data.hobbs_end     && document.getElementById("m-hobbs-start"))     document.getElementById("m-hobbs-start").value     = data.hobbs_end;
-          if (data.tacho_end     && document.getElementById("m-tacho-start"))     document.getElementById("m-tacho-start").value     = data.tacho_end;
-          if (data.airswitch_end && document.getElementById("m-airswitch-start")) document.getElementById("m-airswitch-start").value = data.airswitch_end;
+          function unlockIfEmpty(fieldId) {
+            const inp = document.getElementById(fieldId);
+            const lnk = document.getElementById(fieldId + '-amend');
+            if (inp && inp.readOnly && !inp.value) {
+              inp.readOnly = false; inp.style.background = ''; inp.style.cursor = '';
+              if (lnk) lnk.style.display = 'none';
+            }
+          }
+          if (!data) {
+            unlockIfEmpty('m-hobbs-start'); unlockIfEmpty('m-tacho-start'); unlockIfEmpty('m-airswitch-start');
+            return;
+          }
+          if (data.hobbs_end)     { const el = document.getElementById("m-hobbs-start");     if (el) el.value = data.hobbs_end; }
+          else unlockIfEmpty('m-hobbs-start');
+          if (data.tacho_end)     { const el = document.getElementById("m-tacho-start");     if (el) el.value = data.tacho_end; }
+          else unlockIfEmpty('m-tacho-start');
+          if (data.airswitch_end) { const el = document.getElementById("m-airswitch-start"); if (el) el.value = data.airswitch_end; }
+          else unlockIfEmpty('m-airswitch-start');
         })
-        .catch(() => {});
+        .catch(() => {
+          // Network error — unlock all start fields so check-in is still possible
+          ['m-hobbs-start', 'm-tacho-start', 'm-airswitch-start'].forEach(id => {
+            const inp = document.getElementById(id);
+            const lnk = document.getElementById(id + '-amend');
+            if (inp && inp.readOnly) { inp.readOnly = false; inp.style.background = ''; inp.style.cursor = ''; }
+            if (lnk) lnk.style.display = 'none';
+          });
+        });
     }
 
     // Watch button: show for staff viewing someone else's active booking
