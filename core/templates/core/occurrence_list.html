@@ -41,7 +41,14 @@
   {% if page_obj %}
   <table class="ft-table">
     <thead>
-      <tr><th>Date</th><th>Type</th><th>Reported by</th><th>Aircraft</th><th>Status</th><th>Actions</th><th></th></tr>
+      <tr>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=type&dir={% if sort == 'type' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'type' %}sort-active{% endif %}">Type{% if sort == 'type' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th>Reported by</th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=aircraft&dir={% if sort == 'aircraft' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if sort == 'aircraft' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th>Actions</th><th></th>
+      </tr>
     </thead>
     <tbody>
       {% for r in page_obj %}

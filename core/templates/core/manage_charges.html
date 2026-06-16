@@ -17,7 +17,10 @@
   {% if unpaid %}
   <table class="ct">
     <thead><tr>
-      <th>Member</th><th>Aircraft</th><th>Date</th><th>Flight type</th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}usort=member&udir={% if usort == 'member' and usort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if usort == 'member' %}sort-active{% endif %}">Member{% if usort == 'member' %} <span class="sort-arrow">{% if usort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}usort=aircraft&udir={% if usort == 'aircraft' and usort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if usort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if usort == 'aircraft' %} <span class="sort-arrow">{% if usort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}usort=date&udir={% if usort == 'date' and usort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if usort == 'date' %}sort-active{% endif %}">Date{% if usort == 'date' %} <span class="sort-arrow">{% if usort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th>Flight type</th>
       <th>Hours</th><th>Outcome</th><th style="text-align:right;">Total</th><th></th>
     </tr></thead>
     <tbody>
@@ -60,8 +63,11 @@
   {% if tx_page.object_list %}
   <table class="ct">
     <thead><tr>
-      <th>Member</th><th>Type</th><th>Description</th><th>Payment</th>
-      <th style="text-align:right;">Amount</th><th>Date</th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=member&dir={% if sort == 'member' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'member' %}sort-active{% endif %}">Member{% if sort == 'member' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=type&dir={% if sort == 'type' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'type' %}sort-active{% endif %}">Type{% if sort == 'type' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th>Description</th><th>Payment</th>
+      <th style="text-align:right;"><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=amount&dir={% if sort == 'amount' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'amount' %}sort-active{% endif %}">Amount{% if sort == 'amount' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
     </tr></thead>
     <tbody>
       {% for tx in tx_page %}

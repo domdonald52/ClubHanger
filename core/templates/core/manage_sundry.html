@@ -28,11 +28,11 @@
   {% if sales_page.object_list %}
   <table class="ct">
     <thead><tr>
-      <th>Member</th>
-      <th>Description</th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=member&dir={% if sort == 'member' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'member' %}sort-active{% endif %}">Member{% if sort == 'member' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=description&dir={% if sort == 'description' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'description' %}sort-active{% endif %}">Description{% if sort == 'description' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
       <th>Reference</th>
-      <th>Date</th>
-      <th style="text-align:right;">Amount</th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th style="text-align:right;"><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=amount&dir={% if sort == 'amount' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'amount' %}sort-active{% endif %}">Amount{% if sort == 'amount' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
       <th>Recorded by</th>
     </tr></thead>
     <tbody>

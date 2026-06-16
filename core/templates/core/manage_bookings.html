@@ -124,8 +124,12 @@
       <thead>
         <tr>
           <th><input type="checkbox" id="select-all-list" title="Select all"></th>
-          <th>Member</th><th>Aircraft</th><th>Instructor</th>
-          <th>Date &amp; time</th><th>Status</th><th>Issues</th><th></th>
+          <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=member&dir={% if sort == 'member' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'member' %}sort-active{% endif %}">Member{% if sort == 'member' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+          <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=aircraft&dir={% if sort == 'aircraft' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if sort == 'aircraft' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+          <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=instructor&dir={% if sort == 'instructor' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'instructor' %}sort-active{% endif %}">Instructor{% if sort == 'instructor' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+          <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date &amp; time{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+          <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+          <th>Issues</th><th></th>
         </tr>
       </thead>
       <tbody>

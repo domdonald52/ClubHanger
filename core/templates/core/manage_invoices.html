@@ -27,23 +27,23 @@
     {% endif %}
   </form>
 
-  {% if invoices %}
+  {% if invoices_page %}
   <table class="bk-table">
     <thead>
       <tr>
-        <th>Invoice</th>
-        <th>Member</th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=number&dir={% if sort == 'number' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'number' %}sort-active{% endif %}">Invoice{% if sort == 'number' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=member&dir={% if sort == 'member' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'member' %}sort-active{% endif %}">Member{% if sort == 'member' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th>Description</th>
-        <th>Issued</th>
-        <th>Due</th>
-        <th>Total</th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=issued&dir={% if sort == 'issued' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'issued' %}sort-active{% endif %}">Issued{% if sort == 'issued' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=due&dir={% if sort == 'due' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'due' %}sort-active{% endif %}">Due{% if sort == 'due' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=amount&dir={% if sort == 'amount' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'amount' %}sort-active{% endif %}">Total{% if sort == 'amount' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th>Outstanding</th>
-        <th>Status</th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th></th>
       </tr>
     </thead>
     <tbody>
-      {% for inv in invoices %}
+      {% for inv in invoices_page %}
       <tr class="{% if inv.is_overdue %}row-conflict{% endif %}">
         <td style="white-space:nowrap;"><strong>{{ inv.display_number }}</strong></td>
         <td>{{ inv.member.user.get_full_name|default:"—" }}</td>
@@ -68,6 +68,13 @@
       {% endfor %}
     </tbody>
   </table>
+  {% if invoices_page.paginator.num_pages > 1 %}
+  <div style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.85rem;flex-wrap:wrap;">
+    <span style="color:#8a93a0;">Page {{ invoices_page.number }} of {{ invoices_page.paginator.num_pages }} &nbsp;({{ invoices_page.paginator.count }} invoices)</span>
+    {% if invoices_page.has_previous %}<a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort={{ sort }}&dir={{ sort_dir }}&page={{ invoices_page.previous_page_number }}" class="cbtn-sm">‹ Prev</a>{% endif %}
+    {% if invoices_page.has_next %}<a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort={{ sort }}&dir={{ sort_dir }}&page={{ invoices_page.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
+  </div>
+  {% endif %}
   {% else %}
   <p style="color:#8a93a0;padding:2rem 0;text-align:center;">No invoices found.</p>
   {% endif %}

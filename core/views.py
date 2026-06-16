@@ -2104,12 +2104,31 @@ def manage_announcements(request, club_slug):
             Announcement.objects.filter(club=club, id=request.POST.get('ann_id')).delete()
         return redirect(f"{request.path}?saved=1")
 
-    saved = request.GET.get('saved') == '1'
-    announcements = Announcement.objects.filter(club=club)
+    from urllib.parse import urlencode as _ue
+    saved    = request.GET.get('saved') == '1'
+    sort     = request.GET.get('sort', 'date')
+    sort_dir = request.GET.get('dir', 'asc')
+    _ANN_SORT = {
+        'type':    ('type', 'title'),
+        'title':   ('title',),
+        'date':    ('event_date', 'title'),
+        'expires': ('expires_at', 'title'),
+        'pinned':  ('-is_pinned', 'title'),
+    }
+    if sort not in _ANN_SORT:
+        sort = 'date'
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
+    _ann_order = _ANN_SORT[sort]
+    if sort_dir == 'desc':
+        _ann_order = tuple(f[1:] if f.startswith('-') else '-'+f for f in _ann_order)
+    announcements = Announcement.objects.filter(club=club).order_by(*_ann_order)
+    _base_qs = _ue({k: v for k, v in request.GET.items() if k not in ('sort', 'dir') and v})
     return render(request, 'core/manage_announcements.html', {
         'club': club, 'club_member': actor,
         'announcements': announcements,
         'saved': saved,
+        'sort': sort, 'sort_dir': sort_dir, 'base_qs': _base_qs,
         'type_choices': [('announcement','Announcement'),('info','Information'),
                          ('safety','Safety Notice'),('event','Event'),('flyaway','Fly-Away')],
     })
@@ -2233,10 +2252,26 @@ def manage_bookings(request, club_slug):
     attention_data = [{'b': b, 'reasons': conflict_reasons(b)} for b in _attn_list]
 
     # ── Full bookings list (all filters apply) ──
+    _bk_sort     = request.GET.get('sort', 'date')
+    _bk_sort_dir = request.GET.get('dir', 'asc')
+    _BK_SORT = {
+        'date':       ('scheduled_start',),
+        'member':     ('member__user__last_name', 'member__user__first_name', 'scheduled_start'),
+        'aircraft':   ('aircraft__registration', 'scheduled_start'),
+        'instructor': ('instructor__last_name', 'scheduled_start'),
+        'status':     ('status', 'scheduled_start'),
+    }
+    if _bk_sort not in _BK_SORT:
+        _bk_sort = 'date'
+    if _bk_sort_dir not in ('asc', 'desc'):
+        _bk_sort_dir = 'asc'
+    _bk_order = _BK_SORT[_bk_sort]
+    if _bk_sort_dir == 'desc':
+        _bk_order = tuple('-'+f for f in _bk_order)
     _list_qs = _base_qs
     if f_status:
         _list_qs = _list_qs.filter(status=f_status)
-    qs = _list_qs.exclude(status='cancelled').order_by('scheduled_start')
+    qs = _list_qs.exclude(status='cancelled').order_by(*_bk_order)
 
     using_default_window = False
     if not (f_date_from or f_date_to or f_status or show_all_history):
@@ -2274,6 +2309,7 @@ def manage_bookings(request, club_slug):
 
     # Build a query-string for pagination links that preserves all filters except page
     _filter_qs = _ue({k: v for k, v in request.GET.items() if k != 'page' and v})
+    _bk_base_qs = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir') and v})
 
     return render(request, 'core/manage_bookings.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
@@ -2287,6 +2323,7 @@ def manage_bookings(request, club_slug):
         'aircraft_list': aircraft_list, 'instructors': instructors, 'members_qs': members_qs,
         'using_default_window': using_default_window,
         'filter_qs': _filter_qs,
+        'sort': _bk_sort, 'sort_dir': _bk_sort_dir, 'base_qs': _bk_base_qs,
     })
 
 
@@ -4807,10 +4844,25 @@ def manage_contacts(request, club_slug):
         qs = qs.filter(_Q(name__icontains=f_q) | _Q(organisation__icontains=f_q) | _Q(email__icontains=f_q))
     from django.core.paginator import Paginator as _Pag
     from urllib.parse import urlencode as _ue
-    qs = qs.annotate(booking_count=_Count('bookings')).order_by('name')
+    sort     = request.GET.get('sort', 'name')
+    sort_dir = request.GET.get('dir', 'asc')
+    _CT_SORT = {
+        'name':         ('name',),
+        'type':         ('contact_type__name', 'name'),
+        'organisation': ('organisation', 'name'),
+    }
+    if sort not in _CT_SORT:
+        sort = 'name'
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
+    _ct_order = _CT_SORT[sort]
+    if sort_dir == 'desc':
+        _ct_order = tuple('-'+f for f in _ct_order)
+    qs = qs.annotate(booking_count=_Count('bookings')).order_by(*_ct_order)
     _paginator    = _Pag(qs, 50)
     contacts_page = _paginator.get_page(request.GET.get('page'))
     _filter_qs    = _ue({k: v for k, v in request.GET.items() if k != 'page' and v})
+    _base_qs      = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir') and v})
 
     return render(request, 'core/manage_contacts.html', {
         'club': club, 'club_member': actor,
@@ -4819,6 +4871,7 @@ def manage_contacts(request, club_slug):
         'f_type': f_type, 'f_q': f_q,
         'contact_types': list(ContactType.objects.filter(club=club).order_by('sort_order','name')),
         'filter_qs': _filter_qs,
+        'sort': sort, 'sort_dir': sort_dir, 'base_qs': _base_qs,
     })
 
 
@@ -4969,23 +5022,60 @@ def manage_charges(request, club_slug):
         return redirect('login')
     if err := require_admin(actor, club, request): return err
 
+    from django.core.paginator import Paginator
+    from urllib.parse import urlencode as _ue
+
+    # Unpaid flights table sort
+    usort     = request.GET.get('usort', 'date')
+    usort_dir = request.GET.get('udir', 'desc')
+    _UP_SORT = {
+        'member':   ('booking__member__user__last_name', 'booking__member__user__first_name'),
+        'aircraft': ('booking__aircraft__registration',),
+        'date':     ('booking__scheduled_start',),
+    }
+    if usort not in _UP_SORT:
+        usort = 'date'
+    if usort_dir not in ('asc', 'desc'):
+        usort_dir = 'desc'
+    _up_order = _UP_SORT[usort]
+    if usort_dir == 'desc':
+        _up_order = tuple('-'+f for f in _up_order)
     unpaid = (FlightCompletion.objects
               .filter(booking__club=club, paid_at__isnull=True)
               .select_related('booking__member__user', 'booking__aircraft', 'booking__flight_type',
                               'booking__instructor')
-              .order_by('-booking__scheduled_start'))
+              .order_by(*_up_order))
 
-    from django.core.paginator import Paginator
+    # Transactions table sort
+    sort     = request.GET.get('sort', 'date')
+    sort_dir = request.GET.get('dir', 'desc')
+    _TX_SORT = {
+        'member': ('account__club_member__user__last_name', 'account__club_member__user__first_name'),
+        'type':   ('transaction_type', '-created_at'),
+        'date':   ('created_at',),
+        'amount': ('amount', '-created_at'),
+    }
+    if sort not in _TX_SORT:
+        sort = 'date'
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'desc'
+    _tx_order = _TX_SORT[sort]
+    if sort_dir == 'desc':
+        _tx_order = tuple(f[1:] if f.startswith('-') else '-'+f for f in _tx_order)
     tx_qs = (AccountTransaction.objects
              .filter(account__club_member__club=club)
              .select_related('account__club_member__user', 'flight_completion__booking__aircraft')
-             .order_by('-created_at'))
+             .order_by(*_tx_order))
     tx_page = Paginator(tx_qs, 50).get_page(request.GET.get('page'))
+    _base_qs = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir', 'usort', 'udir') and v})
 
     return render(request, 'core/manage_charges.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'unpaid': unpaid,
         'tx_page': tx_page,
+        'sort': sort, 'sort_dir': sort_dir,
+        'usort': usort, 'usort_dir': usort_dir,
+        'base_qs': _base_qs,
     })
 
 
@@ -6453,10 +6543,31 @@ def manage_invoices(request, club_slug):
     f_status = request.GET.get('status', '')
     f_member = request.GET.get('member', '')
 
+    from urllib.parse import urlencode as _ue
+    from django.core.paginator import Paginator as _Pag
+
+    sort     = request.GET.get('sort', 'number')
+    sort_dir = request.GET.get('dir', 'desc')
+    _INV_SORT = {
+        'number': ('invoice_number',),
+        'member': ('member__user__last_name', 'member__user__first_name'),
+        'issued': ('issue_date', 'invoice_number'),
+        'due':    ('due_date', 'invoice_number'),
+        'amount': ('total', 'invoice_number'),
+        'status': ('status', '-invoice_number'),
+    }
+    if sort not in _INV_SORT:
+        sort = 'number'
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'desc'
+    _inv_order = _INV_SORT[sort]
+    if sort_dir == 'desc':
+        _inv_order = tuple(f[1:] if f.startswith('-') else '-'+f for f in _inv_order)
+
     qs = (Invoice.objects.filter(club=club)
           .select_related('member__user', 'flight_completion__booking')
           .prefetch_related('line_items')
-          .order_by('-invoice_number'))
+          .order_by(*_inv_order))
 
     today = timezone.localdate()
 
@@ -6467,16 +6578,20 @@ def manage_invoices(request, club_slug):
     if f_member:
         qs = qs.filter(member__user_id=f_member)
 
-    invoices = list(qs)
     members_qs = ClubMember.objects.filter(club=club).select_related('user').order_by('user__last_name')
-
-    overdue_count = sum(1 for i in invoices if i.is_overdue)
+    overdue_count = Invoice.objects.filter(club=club, status='sent', due_date__lt=today).count()
+    _paginator  = _Pag(qs, 50)
+    invoices_page = _paginator.get_page(request.GET.get('page'))
+    _filter_qs  = _ue({k: v for k, v in request.GET.items() if k != 'page' and v})
+    _base_qs    = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir') and v})
 
     return render(request, 'core/manage_invoices.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
-        'invoices': invoices, 'f_status': f_status, 'f_member': f_member,
+        'invoices_page': invoices_page, 'f_status': f_status, 'f_member': f_member,
         'members_qs': members_qs, 'overdue_count': overdue_count,
         'status_choices': Invoice.STATUS_CHOICES,
+        'sort': sort, 'sort_dir': sort_dir, 'base_qs': _base_qs,
+        'filter_qs': _filter_qs, 'total_count': _paginator.count,
     })
 
 
@@ -6750,6 +6865,8 @@ def manage_exceptions(request, club_slug):
         len(instructor_cred_issues)
     )
 
+    cred_count = len(lapsed_creds_data) + len(instructor_cred_issues)
+
     return render(request, 'core/manage_exceptions.html', {
         'club': club,
         'club_member': actor,
@@ -6760,6 +6877,7 @@ def manage_exceptions(request, club_slug):
         'unpaid_invoices': unpaid_invoices,
         'overdue_departures': overdue_departures,
         'instructor_cred_issues': instructor_cred_issues,
+        'cred_count': cred_count,
         'total_issues': total_issues,
         'today': today,
     })
@@ -6894,11 +7012,27 @@ def manage_sundry(request, club_slug):
                .select_related('user')
                .order_by('user__last_name', 'user__first_name'))
 
-    q_sales = request.GET.get('q', '').strip()
+    from urllib.parse import urlencode as _ue
+    q_sales  = request.GET.get('q', '').strip()
+    sort     = request.GET.get('sort', 'date')
+    sort_dir = request.GET.get('dir', 'desc')
+    _SD_SORT = {
+        'member':      ('account__club_member__user__last_name', 'account__club_member__user__first_name'),
+        'description': ('description', '-created_at'),
+        'date':        ('created_at',),
+        'amount':      ('amount', '-created_at'),
+    }
+    if sort not in _SD_SORT:
+        sort = 'date'
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'desc'
+    _sd_order = _SD_SORT[sort]
+    if sort_dir == 'desc':
+        _sd_order = tuple(f[1:] if f.startswith('-') else '-'+f for f in _sd_order)
     sales_qs = (_AT.objects
                 .filter(account__club_member__club=club, transaction_type='sale')
                 .select_related('account__club_member__user', 'created_by')
-                .order_by('-created_at'))
+                .order_by(*_sd_order))
     if q_sales:
         from django.db.models import Q as _Q
         sales_qs = sales_qs.filter(
@@ -6909,12 +7043,14 @@ def manage_sundry(request, club_slug):
         )
     from django.core.paginator import Paginator
     sales_page = Paginator(sales_qs, 30).get_page(request.GET.get('page'))
+    _base_qs = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir') and v})
 
     return render(request, 'core/manage_sundry.html', {
         'club': club, 'club_member': actor,
         'members': members,
         'sales_page': sales_page,
         'q_sales': q_sales,
+        'sort': sort, 'sort_dir': sort_dir, 'base_qs': _base_qs,
         'modal_error': error,
         'modal_error_id': 'new-sale-modal' if error else None,
         'modal_error_values': {
@@ -8423,16 +8559,32 @@ def occurrence_list(request, club_slug):
         return redirect('login')
     if err := require_manage(actor, club, request): return err
 
+    from urllib.parse import urlencode as _ue
     f_status      = request.GET.get('status', '')
     f_type        = request.GET.get('type', '')
     f_safety_risk = request.GET.get('safety_risk', '')
+    sort          = request.GET.get('sort', 'date')
+    sort_dir      = request.GET.get('dir', 'desc')
+    _OCC_SORT = {
+        'date':     ('reported_at',),
+        'type':     ('occurrence_type__name', '-reported_at'),
+        'aircraft': ('aircraft__registration', '-reported_at'),
+        'status':   ('status', '-reported_at'),
+    }
+    if sort not in _OCC_SORT:
+        sort = 'date'
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'desc'
+    _occ_order = _OCC_SORT[sort]
+    if sort_dir == 'desc':
+        _occ_order = tuple(f[1:] if f.startswith('-') else '-'+f for f in _occ_order)
 
     qs = (OccurrenceReport.objects
           .filter(club=club)
           .select_related('occurrence_type', 'reported_by__user', 'aircraft', 'reviewed_by')
-          .order_by('-reported_at'))
+          .order_by(*_occ_order))
     if f_status == 'all':
-        pass  # show everything
+        pass
     elif f_status:
         qs = qs.filter(status=f_status)
     else:
@@ -8444,6 +8596,7 @@ def occurrence_list(request, club_slug):
 
     paginator = Paginator(qs, 50)
     page_obj  = paginator.get_page(request.GET.get('page'))
+    _base_qs  = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir') and v})
 
     occ_types = OccurrenceType.objects.filter(club=club, is_active=True)
     return render(request, 'core/occurrence_list.html', {
@@ -8453,6 +8606,7 @@ def occurrence_list(request, club_slug):
         'f_status': f_status, 'f_type': f_type, 'f_safety_risk': f_safety_risk,
         'status_choices': OccurrenceReport.STATUS_CHOICES,
         'open_count': OccurrenceReport.objects.filter(club=club, status=OccurrenceReport.STATUS_SUBMITTED).count(),
+        'sort': sort, 'sort_dir': sort_dir, 'base_qs': _base_qs,
     })
 
 

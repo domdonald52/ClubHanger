@@ -24,9 +24,9 @@
   {% if contacts_page %}
   <table class="ct">
     <thead><tr>
-      <th>Name</th>
-      <th>Type</th>
-      <th>Organisation</th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=name&dir={% if sort == 'name' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'name' %}sort-active{% endif %}">Name{% if sort == 'name' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=type&dir={% if sort == 'type' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'type' %}sort-active{% endif %}">Type{% if sort == 'type' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=organisation&dir={% if sort == 'organisation' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'organisation' %}sort-active{% endif %}">Organisation{% if sort == 'organisation' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
       <th>Phone</th>
       <th></th>
     </tr></thead>

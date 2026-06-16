@@ -46,9 +46,7 @@
     </button>
     <button class="stab-btn" id="tabBtn-credentials" data-tab="credentials">
       Credentials
-      {% with total_cred=lapsed_creds_data|length|add:instructor_cred_issues|length %}
-      <span class="attn-pill {% if instructor_cred_issues %}attn-red{% elif lapsed_creds_data %}attn-amber{% else %}attn-ok{% endif %}">{{ total_cred }}</span>
-      {% endwith %}
+      <span class="attn-pill {% if instructor_cred_issues %}attn-red{% elif lapsed_creds_data %}attn-amber{% else %}attn-ok{% endif %}">{{ cred_count }}</span>
     </button>
     <button class="stab-btn" id="tabBtn-maintenance" data-tab="maintenance">
       Maintenance
@@ -157,25 +155,27 @@
   <div id="tab-credentials" class="stab-panel">
 
     {% if instructor_cred_issues %}
-    <div class="notice err" style="margin-bottom:1.4rem;">
-      <strong>⚠ Instructor credential issue{{ instructor_cred_issues|length|pluralize }} — {{ instructor_cred_issues|length }} instructor{{ instructor_cred_issues|length|pluralize }} flying today with lapsed credentials.</strong>
-      <table style="width:100%;border-collapse:collapse;font-size:.84rem;margin-top:.5rem;">
+    <div style="margin-bottom:1.4rem;">
+      <p style="font-size:.84rem;color:#c0392b;font-weight:600;margin:0 0 .75rem;">
+        ⚠ Instructor credential issue{{ instructor_cred_issues|length|pluralize }} — {{ instructor_cred_issues|length }} instructor{{ instructor_cred_issues|length|pluralize }} flying today with lapsed credentials.
+      </p>
+      <table class="exc-table">
+        <tbody>
         {% for row in instructor_cred_issues %}
-        <tr style="border-top:1px solid #fca5a5;">
-          <td style="padding:.4rem .5rem 0 0;font-weight:600;white-space:nowrap;">{{ row.cm.user.get_full_name }}</td>
-          <td style="padding:.4rem .5rem 0 0;">
+        <tr>
+          <td style="font-weight:600;white-space:nowrap;">{{ row.cm.user.get_full_name }}</td>
+          <td>
             {% for issue in row.lapsed %}
-              <span style="display:inline-block;background:#fee2e2;color:#c0392b;border-radius:4px;padding:.1rem .45rem;font-size:.76rem;font-weight:600;margin:.1rem .2rem .1rem 0;">{{ issue }}</span>
+              <span class="exc-issue-tag exc-issue-red">{{ issue }}</span>
             {% endfor %}
           </td>
-          <td style="padding:.4rem .5rem 0 0;color:#7f1d1d;font-size:.83rem;">
+          <td style="font-size:.83rem;color:#5b6573;">
             {% for b in row.bookings %}{{ b.scheduled_start|date:"H:i" }} {{ b.aircraft.registration }}{% if not forloop.last %}, {% endif %}{% endfor %}
           </td>
-          <td style="padding:.4rem 0 0 0;white-space:nowrap;">
-            <a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}#credentials" class="cbtn-sm cbtn-danger" data-overlay>View →</a>
-          </td>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}#credentials" class="cbtn-sm" data-overlay>View →</a></td>
         </tr>
         {% endfor %}
+        </tbody>
       </table>
     </div>
     {% endif %}
@@ -258,7 +258,7 @@
     flights:     {{ unpaid_flights|length }},
     conflicts:   {{ conflicts_data|length }},
     invoices:    {{ unpaid_invoices|length }},
-    credentials: {{ lapsed_creds_data|length|add:instructor_cred_issues|length }},
+    credentials: {{ cred_count }},
     maintenance: {{ maint_items|length }},
   };
 
