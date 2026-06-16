@@ -105,7 +105,7 @@
   <div class="modal" style="width:min(460px,95vw);">
     <h2 style="margin:0 0 .5rem;font-size:1.05rem;">Convert to member</h2>
     <p style="font-size:.84rem;color:#5b6573;margin:0 0 .9rem;">
-      Creates a member account for {{ contact.name }}. They'll need to reset their password before logging in.
+      Creates a member account for {{ contact.name }}.
     </p>
     <form method="post">
       {% csrf_token %}
@@ -113,6 +113,10 @@
       <label class="flabel">Email address <span class="req">*</span>
         <input type="email" name="email" value="{{ contact.email }}" class="finput" required
                placeholder="Required to create login">
+      </label>
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:.86rem;margin-top:.6rem;cursor:pointer;">
+        <input type="checkbox" name="send_invite" checked>
+        Send invite email so they can set their own password
       </label>
       <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem;">
         <button type="button" class="cbtn" onclick="document.getElementById('convert-modal').hidden=true">✕ Close</button>

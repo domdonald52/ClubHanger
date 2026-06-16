@@ -160,6 +160,9 @@
       <p>Every member record has a <strong>standing</strong> and optionally a <strong>role</strong>.</p>
       <p><strong>Standing</strong> reflects the person's formal membership status within your incorporated society — whether they have been ratified by the committee, are pending that ratification, have let their subscription lapse, have been suspended, or have resigned. This is not just a system flag: under the Incorporated Societies Act 2022, only ratified (Active) members may vote at general meetings or stand for committee, and the society has specific record-keeping obligations for members who resign or are removed. ClubHangar tracks standing to mirror these real-world legal states. The practical system consequences — whether someone can book a flight, access the mobile app, or appear in membership reports — all flow from that underlying status.</p>
       <p><strong>Role</strong> represents the membership category as defined in your club rules — Full Member, Student Pilot, Life Member, and so on. It carries the annual subscription fee, any special conditions, and optionally grants extra system access. A person's role can change (e.g. a student graduates to full member) without affecting their standing.</p>
+      <div class="callout info">
+        <strong>"Pending Approval" is a standing, not a role.</strong> When a new member appears in the Members list, the Standing column shows "Pending Approval." This tells you their ISA ratification state — the committee hasn't formally voted them in yet. It has nothing to do with their role (e.g. "Full Member" or "Student Pilot"), which is the billing and access category set in Settings → Roles. You can — and usually should — assign a role to a Pending member, because you need one before you can generate their subscription invoice. Standalone, the standing "Pending Approval" just means: account created, not yet ratified.
+      </div>
 
       <h3 id="people-access">System access levels</h3>
       <p>Access level is separate from membership role. A person can be a Full Member (their billing role) AND an Admin (their system access). There are three levels:</p>
@@ -215,7 +218,7 @@
         <summary>Setting up an instructor account</summary>
         <div class="dbody">
           <ol>
-            <li>People → Members → + Add member. Enter name and email.</li>
+            <li>People → Members → <em>+ Add manually</em>. Enter their email (and optionally name) and send an invite email so they can set their own password, or set a temporary password yourself by unticking the invite option.</li>
             <li>On the Membership tab, assign a role that has the <em>Instructor role</em> flag checked (e.g. a role called "CFI" or "Instructor").</li>
             <li>Set <strong>Instructor grade</strong> if you use grade-based rates (this drives the instructor fee charged to students on dual flights).</li>
             <li>Tick <strong>On instructor roster</strong> — this makes them selectable when assigning instructors to bookings. Untick for instructors who are archived or inactive.</li>
@@ -228,7 +231,8 @@
 
       <h3 id="people-contacts">Contacts</h3>
       <p>A <strong>contact</strong> is someone who flies with the club — as a passenger, trial flight participant, or regular seat-sharer — but who is not a member of the incorporated society and has no membership subscription. They have no login account. Their name can be added to bookings and flight records, and costs can be attributed to them, but none of the membership lifecycle applies: no standing, no subscription, no ISA register entry.</p>
-      <p>Organisations (flying schools, companies) can also be added as contacts and marked accordingly. If a contact later joins as a member, they can be converted (People → Contacts → [contact] → Convert to member) and the link between the two records is preserved.</p>
+      <p>Organisations (flying schools, companies) can also be added as contacts and marked accordingly.</p>
+      <p><strong>Converting a contact to a member:</strong> If a contact later joins as a member, go to People → Contacts → [contact] → <em>Convert to member</em>. Enter their email address. By default, an invite email is sent so they can set their own password and log in — this is the recommended option. The contact and member records are linked; the contact's booking and flight history remains accessible from both records.</p>
 
       <h3 id="people-profile">Staff profile</h3>
       <p>Each staff member (admin or instructor) has a personal profile page accessible from the account menu in the top-right corner of the management web app. From here you can:</p>
@@ -359,7 +363,7 @@
       <p><strong>4 — Committee ratification (ISA 2022):</strong> The committee must formally vote to admit the member before membership takes effect. Record the meeting reference and date in your club minutes. This step happens outside ClubHangar.</p>
 
       <div class="callout tip">
-        <strong>Adding a member manually:</strong> If someone joins in person or you need to set up an account without sending an invite link, use <em>+ Add manually</em> instead. You enter their name, email, and a temporary password, then give them the password to log in. The invite flow is preferred — it lets the member set their own password.
+        <strong>Adding a member manually:</strong> Use <em>+ Add manually</em> for someone who joined in person or whose email you already have. By default the form sends them an invite email so they can set their own password — the same secure flow as the standard invite. Untick "Send invite email" only if you need to set a specific temporary password yourself (for example, to configure the account before they arrive). When untick is used, leave the password field blank to auto-generate one — note it immediately, as it won't be shown again.
       </div>
 
       <p><strong>5 — Assign role and send invoice (member still Pending):</strong> Member detail → Membership tab → assign the appropriate role if not pre-assigned from the invite (this sets the fee rate). Click <strong>Generate subscription invoice</strong>. The pro-rata amount pre-fills based on days remaining to FY end. Click <strong>Generate &amp; send</strong>. The invoice is created and the member receives a push notification — their standing remains Pending at this point.</p>

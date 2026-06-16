@@ -1,3 +1,4 @@
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
@@ -5,6 +6,8 @@ from django.views.decorators.http import require_POST
 from django.utils import timezone
 from django.db import transaction
 from datetime import datetime, timedelta, time, date
+
+logger = logging.getLogger('clubhangar.audit')
 from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem,
@@ -3935,18 +3938,35 @@ def manage_members(request, club_slug):
         action = request.POST.get('action', '')
         if action == 'add_member' and actor.is_admin:
             from django.contrib.auth import get_user_model as _get_user
+            from django.contrib import messages as _messages
             _User = _get_user()
+            send_invite = request.POST.get('send_invite') == 'on'
             first = request.POST.get('first_name', '').strip()
             last = request.POST.get('last_name', '').strip()
             email = request.POST.get('email', '').strip().lower()
             password = request.POST.get('password', '').strip()
-            if not (first and last and email):
-                modal_error = 'First name, last name, and email are required.'
+            if not email:
+                modal_error = 'Email address is required.'
+            elif not send_invite and not (first and last):
+                modal_error = 'First name and last name are required.'
             elif _User.objects.filter(email=email).exists():
                 modal_error = 'An account with that email address already exists.'
+            elif send_invite:
+                from .models import ClubInvite
+                from .email_notifications import club_invite as _email_invite
+                from datetime import timedelta as _td
+                ClubInvite.objects.filter(club=club, email=email, accepted_at__isnull=True).delete()
+                invite = ClubInvite.objects.create(
+                    club=club, email=email,
+                    invited_by=request.user,
+                    expires_at=timezone.now() + _td(days=7),
+                )
+                _email_invite(invite)
+                logger.info('invite_sent club=%s email=%s by=%s', club.slug, email, request.user.email)
+                _messages.success(request, f'Invite sent to {email}.')
+                return redirect('core:manage_members', club_slug=club_slug)
             else:
                 import secrets as _secrets
-                from django.contrib import messages as _messages
                 auto_generated = not password
                 pw = password or _secrets.token_urlsafe(12)
                 user = _User.objects.create_user(
@@ -4252,6 +4272,8 @@ def registrar_export(request, club_slug):
 
     as_of_str = request.GET.get('as_of', '').strip()
     fmt = request.GET.get('fmt', 'html')
+    if fmt == 'csv':
+        logger.info('export club=%s type=registrar as_of=%s by=%s', club.slug, as_of_str or 'today', request.user.email)
 
     from django.db.models import Q as _Q
 
@@ -5063,7 +5085,8 @@ def contact_detail(request, club_slug, contact_id):
             from django.contrib.auth.hashers import make_password
             import secrets
             _User = _gum()
-            email = contact.email or request.POST.get('email', '').strip()
+            email = request.POST.get('email', '').strip() or contact.email
+            send_invite = request.POST.get('send_invite') == 'on'
             if not email:
                 error = 'An email address is required to create a member account.'
             elif _User.objects.filter(email=email).exists():
@@ -5091,6 +5114,19 @@ def contact_detail(request, club_slug, contact_id):
                 )
                 contact.converted_to_member = new_member
                 contact.save(update_fields=['converted_to_member'])
+                if send_invite:
+                    from .models import ClubInvite
+                    from .email_notifications import club_invite as _email_invite
+                    from datetime import timedelta as _td
+                    ClubInvite.objects.filter(club=club, email=email, accepted_at__isnull=True).delete()
+                    invite = ClubInvite.objects.create(
+                        club=club, email=email,
+                        invited_by=request.user,
+                        expires_at=timezone.now() + _td(days=7),
+                        club_member=new_member,
+                    )
+                    _email_invite(invite)
+                    logger.info('invite_sent club=%s email=%s by=%s (contact conversion)', club.slug, email, request.user.email)
                 return redirect('core:manage_member_detail', club_slug=club_slug, member_id=new_member.id)
 
     bookings = (contact.bookings
@@ -7676,6 +7712,8 @@ def export_data(request, club_slug, export_type):
     if export_type not in ALLOWED:
         return HttpResponse('Unknown export type', status=400)
 
+    logger.info('export club=%s type=%s by=%s', club.slug, export_type, request.user.email)
+
     def csv_bytes(rows, headers):
         buf = io.StringIO()
         w = csv.writer(buf)
@@ -9184,6 +9222,7 @@ def occurrence_export(request, club_slug):
     except ClubMember.DoesNotExist:
         return redirect('login')
     if err := require_manage(actor, club, request): return err
+    logger.info('export club=%s type=occurrences by=%s', club.slug, request.user.email)
 
     from django.http import StreamingHttpResponse
 

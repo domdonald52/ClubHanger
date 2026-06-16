@@ -210,24 +210,32 @@
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_member">
-      <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-        <label class="flabel" style="flex:1;min-width:160px;">First name
-          <input type="text" name="first_name" required class="finput" autocomplete="off">
-        </label>
-        <label class="flabel" style="flex:1;min-width:160px;">Last name
-          <input type="text" name="last_name" required class="finput" autocomplete="off">
-        </label>
+      <label style="display:flex;align-items:center;gap:.5rem;font-size:.86rem;margin-bottom:.7rem;cursor:pointer;">
+        <input type="checkbox" name="send_invite" id="add-send-invite-chk" checked onchange="toggleAddInvite(this)">
+        Send invite email (they set their own password)
+      </label>
+      <div id="add-name-wrap">
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+          <label class="flabel" style="flex:1;min-width:160px;">First name
+            <input type="text" name="first_name" id="add-first" class="finput" autocomplete="off">
+          </label>
+          <label class="flabel" style="flex:1;min-width:160px;">Last name
+            <input type="text" name="last_name" id="add-last" class="finput" autocomplete="off">
+          </label>
+        </div>
       </div>
-      <label class="flabel" style="margin-top:.1rem;">Email address
+      <label class="flabel" style="margin-top:.1rem;">Email address <span class="req">*</span>
         <input type="email" name="email" required class="finput" autocomplete="off">
       </label>
-      <label class="flabel" style="margin-top:.1rem;">Initial password <span style="font-weight:400;color:#9aa3af;">(leave blank to auto-generate)</span>
-        <input type="password" name="password" class="finput" autocomplete="new-password">
-      </label>
+      <div id="add-pw-wrap" hidden>
+        <label class="flabel" style="margin-top:.1rem;">Initial password <span style="font-weight:400;color:#9aa3af;">(leave blank to auto-generate)</span>
+          <input type="password" name="password" class="finput" autocomplete="new-password">
+        </label>
+      </div>
       <div class="modal-actions">
         <button type="button" class="cbtn" onclick="document.getElementById('add-member-modal').hidden=true">✕ Close</button>
         <span style="flex:1"></span>
-        <button type="submit" class="cbtn primary">Create member</button>
+        <button type="submit" class="cbtn primary" id="add-submit-btn">Send invite</button>
       </div>
     </form>
   </div>
@@ -263,6 +271,19 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') {
   document.getElementById('add-member-modal').hidden=true;
   document.getElementById('registrar-modal').hidden=true;
 }});
+
+function toggleAddInvite(chk) {
+  var nameWrap = document.getElementById('add-name-wrap');
+  var pwWrap = document.getElementById('add-pw-wrap');
+  var btn = document.getElementById('add-submit-btn');
+  var inv = chk.checked;
+  nameWrap.hidden = inv;
+  pwWrap.hidden = inv;
+  document.getElementById('add-first').required = !inv;
+  document.getElementById('add-last').required = !inv;
+  btn.textContent = inv ? 'Send invite' : 'Create member';
+}
+toggleAddInvite(document.getElementById('add-send-invite-chk'));
 
 (function(){
   const input = document.querySelector('input[name="q"]');

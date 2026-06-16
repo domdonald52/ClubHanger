@@ -251,5 +251,10 @@ LOGGING = {
             'level': os.environ.get('APP_LOG_LEVEL', 'WARNING'),
             'propagate': False,
         },
+        'clubhangar.audit': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }

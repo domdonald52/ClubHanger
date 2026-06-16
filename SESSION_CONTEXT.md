@@ -1,4 +1,4 @@
-# ClubHanger — Session Context
+# ClubHangar — Session Context
 **Last updated:** 2026-06-06 (session 3) | **Reload this file at the start of every new session.**
 
 ---
@@ -7,7 +7,7 @@
 Django booking system for Wellington Aero Club (NZ). Replacing "Paper Aviator". Multi-club capable.
 - **Stack:** Django 6.0.5, Python 3.12, SQLite (dev)
 - **Run:** `cd ~/projects/aero_club && venv/bin/python manage.py runserver`
-- **GitHub:** https://github.com/domdonald52/ClubHanger
+- **GitHub:** https://github.com/domdonald52/ClubHangar
 - **Latest migration:** `0036_voucher`
 
 ---
