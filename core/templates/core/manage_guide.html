@@ -344,19 +344,27 @@
 
       <h3 id="mem-new">New member</h3>
       <div class="step-flow">
-        <div class="step"><span class="num">1</span>Create account</div><span class="arrow">→</span>
-        <div class="step"><span class="num">2</span>Pending</div><span class="arrow">→</span>
-        <div class="step"><span class="num">3</span>Committee vote</div><span class="arrow">→</span>
-        <div class="step"><span class="num">4</span>Assign role + send invoice</div><span class="arrow">→</span>
-        <div class="step"><span class="num">5</span>Member pays</div><span class="arrow">→</span>
-        <div class="step"><span class="num">6</span>Mark paid → Active + expiry</div>
+        <div class="step"><span class="num">1</span>Send invite</div><span class="arrow">→</span>
+        <div class="step"><span class="num">2</span>Member creates account</div><span class="arrow">→</span>
+        <div class="step"><span class="num">3</span>Pending</div><span class="arrow">→</span>
+        <div class="step"><span class="num">4</span>Committee vote</div><span class="arrow">→</span>
+        <div class="step"><span class="num">5</span>Send invoice</div><span class="arrow">→</span>
+        <div class="step"><span class="num">6</span>Member pays</div><span class="arrow">→</span>
+        <div class="step"><span class="num">7</span>Mark paid → Active</div>
       </div>
-      <p><strong>1 — Create account:</strong> People → Members → + Add member. Name, email, temporary password. New accounts default to Pending — the member can log in but cannot book.</p>
-      <p><strong>2 — Pending:</strong> Member can use the mobile app to see their account and profile but cannot request bookings or appear as an active member in reports.</p>
-      <p><strong>3 — Committee ratification (ISA 2022):</strong> The committee must formally vote to admit the member before membership takes effect. Record the meeting reference and date in your club minutes. This step happens outside ClubHangar.</p>
-      <p><strong>4 — Assign role and generate invoice (member still Pending):</strong> Member detail → Membership tab → assign the appropriate role (this sets the fee rate). Click <strong>Generate subscription invoice</strong> next to the Save button. The pro-rata amount pre-fills based on days remaining to FY end; the subscription valid-to date pre-fills to the FY end. Click <strong>Generate &amp; send</strong>. The invoice is created and the member receives a push notification — their standing remains Pending at this point.</p>
-      <p><strong>5 — Member pays:</strong> EFTPOS or cash — an instructor or admin marks the invoice paid at point of sale (Sales → Invoices). Bank transfer — the bookkeeper reconciles the payment at month end and marks it paid.</p>
-      <p><strong>6 — Mark paid → Active + expiry set:</strong> When the invoice is marked fully paid, the system automatically sets standing to Active and sets subscription_expires to the date on the invoice. Both changes are recorded in the audit log. The member can now book flights.</p>
+
+      <p><strong>1 — Send invite:</strong> Members → <em>Invite member</em>. Enter the prospective member's email and optionally pre-assign a role. A 7-day sign-up link is emailed to them automatically.</p>
+      <p><strong>2 — Member creates account:</strong> The recipient clicks the link and enters their name and a password. Their account and member record are created automatically — you don't need to do anything.</p>
+      <p><strong>3 — Pending:</strong> The new member appears on the Members page with standing Pending. They can use the mobile app to see their account and profile but cannot request bookings or appear as an active member in reports.</p>
+      <p><strong>4 — Committee ratification (ISA 2022):</strong> The committee must formally vote to admit the member before membership takes effect. Record the meeting reference and date in your club minutes. This step happens outside ClubHangar.</p>
+
+      <div class="callout tip">
+        <strong>Adding a member manually:</strong> If someone joins in person or you need to set up an account without sending an invite link, use <em>+ Add manually</em> instead. You enter their name, email, and a temporary password, then give them the password to log in. The invite flow is preferred — it lets the member set their own password.
+      </div>
+
+      <p><strong>5 — Assign role and send invoice (member still Pending):</strong> Member detail → Membership tab → assign the appropriate role if not pre-assigned from the invite (this sets the fee rate). Click <strong>Generate subscription invoice</strong>. The pro-rata amount pre-fills based on days remaining to FY end. Click <strong>Generate &amp; send</strong>. The invoice is created and the member receives a push notification — their standing remains Pending at this point.</p>
+      <p><strong>6 — Member pays:</strong> EFTPOS or cash — an instructor or admin marks the invoice paid at point of sale (Sales → Invoices). Bank transfer — the bookkeeper reconciles the payment at month end and marks it paid.</p>
+      <p><strong>7 — Mark paid → Active + expiry set:</strong> When the invoice is marked fully paid, the system automatically sets standing to Active and sets subscription_expires to the date on the invoice. Both changes are recorded in the audit log. The member can now book flights.</p>
 
       <div class="callout warn">
         <strong>ISA 2022:</strong> Generating the invoice before committee ratification is fine — standing stays Pending until payment. Do not manually set standing to Active before ratification, as the membership history audit log records every change with timestamp and who made it.
