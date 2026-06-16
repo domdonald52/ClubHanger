@@ -2268,6 +2268,18 @@ def manage_bookings(request, club_slug):
     _bk_order = _BK_SORT[_bk_sort]
     if _bk_sort_dir == 'desc':
         _bk_order = tuple('-'+f for f in _bk_order)
+
+    # Apply the same sort to the active-tab attention list
+    _ATTN_SORT_KEYS = {
+        'member':     lambda d: (d['b'].member.user.last_name.lower() if d['b'].member and d['b'].member.user else '', d['b'].scheduled_start),
+        'aircraft':   lambda d: (d['b'].aircraft.registration if d['b'].aircraft else '', d['b'].scheduled_start),
+        'instructor': lambda d: (d['b'].instructor.last_name.lower() if d['b'].instructor else '', d['b'].scheduled_start),
+        'date':       lambda d: d['b'].scheduled_start,
+        'status':     lambda d: (d['b'].status, d['b'].scheduled_start),
+    }
+    if _bk_sort in _ATTN_SORT_KEYS:
+        attention_data.sort(key=_ATTN_SORT_KEYS[_bk_sort], reverse=(_bk_sort_dir == 'desc'))
+
     _list_qs = _base_qs
     if f_status:
         _list_qs = _list_qs.filter(status=f_status)
