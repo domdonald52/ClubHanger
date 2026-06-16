@@ -5037,6 +5037,10 @@ def manage_charges(request, club_slug):
     from django.core.paginator import Paginator
     from urllib.parse import urlencode as _ue
 
+    tab = request.GET.get('tab', 'unpaid')
+    if tab not in ('unpaid', 'transactions'):
+        tab = 'unpaid'
+
     # Unpaid flights table sort
     usort     = request.GET.get('usort', 'date')
     usort_dir = request.GET.get('udir', 'desc')
@@ -5044,6 +5048,7 @@ def manage_charges(request, club_slug):
         'member':   ('booking__member__user__last_name', 'booking__member__user__first_name'),
         'aircraft': ('booking__aircraft__registration',),
         'date':     ('booking__scheduled_start',),
+        'type':     ('booking__flight_type__name',),
     }
     if usort not in _UP_SORT:
         usort = 'date'
@@ -5079,15 +5084,18 @@ def manage_charges(request, club_slug):
              .select_related('account__club_member__user', 'flight_completion__booking__aircraft')
              .order_by(*_tx_order))
     tx_page = Paginator(tx_qs, 50).get_page(request.GET.get('page'))
-    _base_qs = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir', 'usort', 'udir') and v})
+    _base_qs   = _ue({k: v for k, v in request.GET.items() if k not in ('page', 'sort', 'dir', 'usort', 'udir') and v})
+    _filter_qs = _ue({k: v for k, v in request.GET.items() if k != 'page' and v})
 
     return render(request, 'core/manage_charges.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'tab': tab,
         'unpaid': unpaid,
         'tx_page': tx_page,
         'sort': sort, 'sort_dir': sort_dir,
         'usort': usort, 'usort_dir': usort_dir,
         'base_qs': _base_qs,
+        'filter_qs': _filter_qs,
     })
 
 

@@ -1,16 +1,15 @@
 {% extends "core/base.html" %}
-{% block title %}Payments · {{ club.name }}{% endblock %}
+{% block title %}Sales · {{ club.name }}{% endblock %}
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
   <h1 style="margin-bottom:1rem;">Sales</h1>
-  {% include "core/_sales_tabs.html" with active_tab="payments" %}
+  {% include "core/_sales_tabs.html" with active_tab=tab %}
 
-
-  <!-- Unpaid completions -->
+  {% if tab == 'unpaid' %}
+  <!-- ── Awaiting payment ──────────────────────────────────────────────── -->
   <h2 class="sh2" style="margin-bottom:.6rem;">
     Awaiting payment
-
     <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ unpaid|length }})</span>
   </h2>
 
@@ -20,7 +19,7 @@
       <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}usort=member&udir={% if usort == 'member' and usort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if usort == 'member' %}sort-active{% endif %}">Member{% if usort == 'member' %} <span class="sort-arrow">{% if usort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
       <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}usort=aircraft&udir={% if usort == 'aircraft' and usort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if usort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if usort == 'aircraft' %} <span class="sort-arrow">{% if usort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
       <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}usort=date&udir={% if usort == 'date' and usort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if usort == 'date' %}sort-active{% endif %}">Date{% if usort == 'date' %} <span class="sort-arrow">{% if usort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
-      <th>Flight type</th>
+      <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}usort=type&udir={% if usort == 'type' and usort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if usort == 'type' %}sort-active{% endif %}">Flight type{% if usort == 'type' %} <span class="sort-arrow">{% if usort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
       <th>Hours</th><th>Outcome</th><th style="text-align:right;">Total</th><th></th>
     </tr></thead>
     <tbody>
@@ -38,7 +37,7 @@
         </td>
         <td style="text-align:right;font-weight:600;">${{ fc.total_charge|currency }}</td>
         <td style="text-align:right;">
-          <a href="{% url 'core:booking_detail' club.slug fc.booking.id %}" class="cbtn">Process →</a>
+          <a href="{% url 'core:booking_detail' club.slug fc.booking.id %}" class="row-action-btn">Process →</a>
         </td>
       </tr>
       {% endfor %}
@@ -48,9 +47,8 @@
   <p style="color:#8a93a0;font-size:.85rem;margin-bottom:2rem;">All completed flights have been processed.</p>
   {% endif %}
 
-  <hr style="border:none;border-top:1px solid #eef1f4;margin:2rem 0 1.4rem;">
-
-  <!-- Transactions -->
+  {% else %}
+  <!-- ── Transactions ──────────────────────────────────────────────────── -->
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:.6rem;">
     <h2 class="sh2" style="margin:0;">Transactions
       <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ tx_page.paginator.count }} total)</span>
@@ -87,30 +85,30 @@
   {% if tx_page.paginator.num_pages > 1 %}
   <div style="display:flex;gap:.4rem;align-items:center;margin-top:.75rem;">
     {% if tx_page.has_previous %}
-    <a href="?page={{ tx_page.previous_page_number }}" class="cbtn">← Prev</a>
+    <a href="?{{ filter_qs }}&page={{ tx_page.previous_page_number }}" class="cbtn-sm">← Prev</a>
     {% endif %}
     {% for n in tx_page.paginator.page_range %}
       {% if n == tx_page.number %}
-      <span style="padding:.25rem .55rem;border-radius:5px;background:#2563eb;color:#fff;font-size:.82rem;font-weight:600;">{{ n }}</span>
+      <span class="cbtn-sm primary">{{ n }}</span>
       {% elif n == 1 or n == tx_page.paginator.num_pages or n >= tx_page.number|add:"-2" and n <= tx_page.number|add:"2" %}
-      <a href="?page={{ n }}" class="cbtn">{{ n }}</a>
+      <a href="?{{ filter_qs }}&page={{ n }}" class="cbtn-sm">{{ n }}</a>
       {% elif n == tx_page.number|add:"-3" or n == tx_page.number|add:"3" %}
       <span style="font-size:.82rem;color:#8a93a0;">…</span>
       {% endif %}
     {% endfor %}
     {% if tx_page.has_next %}
-    <a href="?page={{ tx_page.next_page_number }}" class="cbtn">Next →</a>
+    <a href="?{{ filter_qs }}&page={{ tx_page.next_page_number }}" class="cbtn-sm">Next →</a>
     {% endif %}
   </div>
   {% endif %}
   {% else %}
   <p style="color:#8a93a0;font-size:.85rem;">No transactions yet.</p>
   {% endif %}
+  {% endif %}
+
 </div>
 
 <style>
-  .conflict-badge{background:#e03131;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:10px;line-height:1.2;}
-
   .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
   .ct{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1rem;}
   .ct th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
@@ -118,7 +116,5 @@
   .ct tr:last-child td{border-bottom:0;}
   .ct tr.no-charge td{color:#adb5bd;}
   .out-chip{font-size:.72rem;background:#fff3e0;color:#c76c00;padding:.1rem .4rem;border-radius:4px;font-weight:600;}
-  .cbtn{display:inline-flex;align-items:center;height:28px;padding:0 .65rem;border-radius:6px;border:1px solid #d6dae0;background:#fff;color:#1f2933;font-size:.8rem;cursor:pointer;text-decoration:none;}
-  .cbtn:hover{background:#f3f5f7;}
 </style>
 {% endblock %}
