@@ -226,12 +226,12 @@
         <tr>
           <td style="white-space:nowrap;">{{ c.get_credential_type_display }}</td>
           <td style="color:#5b6573;font-size:.82rem;">
-            {% if c.credential_type == 'type' and c.aircraft_type %}{{ c.aircraft_type.name }}{% if c.name %} <span style="color:#b0b8c4;">({{ c.name }})</span>{% endif %}
+            {% if c.credential_type == 'type' and c.aircraft_type %}{{ c.aircraft_type.name }}{% if c.name and c.name != c.aircraft_type.name %} <span style="color:#b0b8c4;">({{ c.name }})</span>{% endif %}
             {% else %}{{ c.name|default:"—" }}{% endif %}
           </td>
           <td style="color:#8a93a0;font-size:.82rem;">{{ c.certificate_number|default:"—" }}</td>
-          <td style="font-size:.83rem;">{{ c.issue_date|default:"—" }}</td>
-          <td style="font-size:.83rem;">{{ c.expiry_date|default:"—" }}</td>
+          <td style="font-size:.83rem;white-space:nowrap;">{% if c.issue_date %}{{ c.issue_date|date:"j M Y" }}{% else %}—{% endif %}</td>
+          <td style="font-size:.83rem;white-space:nowrap;">{% if c.expiry_date %}{{ c.expiry_date|date:"j M Y" }}{% else %}—{% endif %}</td>
           <td>
             {% if not c.expiry_date %}<span class="cred-chip ok">No expiry</span>
             {% elif c.is_expired %}<span class="cred-chip expired">Expired</span>
@@ -396,7 +396,7 @@
           <textarea name="notes" class="finput" rows="2" placeholder="e.g. Pro-rata from June" style="resize:vertical;"></textarea>
         </label>
         <div class="modal-actions">
-          <button type="submit" class="btn">Generate &amp; send</button>
+          <button type="submit" class="cbtn-add">↗ Generate &amp; send</button>
           <button type="button" class="cbtn" onclick="document.getElementById('sub-inv-modal').hidden=true">Cancel</button>
         </div>
       </form>
@@ -456,9 +456,9 @@
     {% if club_member.is_admin %}
     <!-- Action trigger buttons -->
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.9rem;">
-      <button class="cbtn cbtn-sm" onclick="acctPanel('panel-topup')">Top up account</button>
-      <button class="cbtn cbtn-sm" onclick="acctPanel('panel-adjust')">Manual adjustment</button>
-      <button class="cbtn cbtn-sm" onclick="acctPanel('panel-transfer')">Transfer to member</button>
+      <button class="cbtn-add" onclick="acctPanel('panel-topup')">+ Top up account</button>
+      <button class="cbtn-add" onclick="acctPanel('panel-adjust')">± Manual adjustment</button>
+      <button class="cbtn-add" onclick="acctPanel('panel-transfer')">→ Transfer to member</button>
     </div>
 
     <!-- Top-up panel -->
@@ -477,8 +477,8 @@
         </label>
         <label class="flabel">Reference<input type="text" name="reference" class="finput" placeholder="Optional bank ref or receipt no."></label>
         <div style="display:flex;gap:.5rem;margin-top:.6rem;">
-          <button type="submit" class="btn">Top Up</button>
-          <button type="button" class="btn secondary" onclick="acctPanel(null)">Cancel</button>
+          <button type="submit" class="cbtn primary">Top Up</button>
+          <button type="button" class="cbtn" onclick="acctPanel(null)">Cancel</button>
         </div>
       </form>
     </div>
@@ -497,8 +497,8 @@
         <label class="flabel">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" min="0.01" step="0.01" class="money-input" required></div></label>
         <label class="flabel">Description<input type="text" name="description" class="finput" required placeholder="Reason for adjustment"></label>
         <div style="display:flex;gap:.5rem;margin-top:.6rem;">
-          <button type="submit" class="btn">Confirm</button>
-          <button type="button" class="btn secondary" onclick="acctPanel(null)">Cancel</button>
+          <button type="submit" class="cbtn primary">Confirm</button>
+          <button type="button" class="cbtn" onclick="acctPanel(null)">Cancel</button>
         </div>
       </form>
     </div>
@@ -517,19 +517,19 @@
         <label class="flabel">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" min="0.01" step="0.01" class="money-input" required></div></label>
         <label class="flabel">Notes<input type="text" name="description" class="finput" placeholder="Optional reason"></label>
         <div style="display:flex;gap:.5rem;margin-top:.6rem;">
-          <button type="submit" class="btn">Transfer</button>
-          <button type="button" class="btn secondary" onclick="acctPanel(null)">Cancel</button>
+          <button type="submit" class="cbtn primary">Transfer</button>
+          <button type="button" class="cbtn" onclick="acctPanel(null)">Cancel</button>
         </div>
       </form>
     </div>
 
     <script>
     var _acctPanels = ['panel-topup','panel-adjust','panel-transfer'];
-    function acctPanel(id) {
+    window.acctPanel = function(id) {
       _acctPanels.forEach(function(p) {
         document.getElementById(p).hidden = (p !== id);
       });
-    }
+    };
     </script>
     {% endif %}
 
@@ -685,14 +685,14 @@ document.addEventListener('keydown', e => {
   });
 });
 
-function toggleAcTypeField(sel, wrapId) {
+window.toggleAcTypeField = function(sel, wrapId) {
   document.getElementById(wrapId).style.display = sel.value === 'type' ? '' : 'none';
-}
-function openEditCred(id, type, name, certNum, issueDate, expiryDate, notes, acTypeId) {
+};
+window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, notes, acTypeId) {
   document.getElementById('ecm-id').value = id;
   const typeSel = document.getElementById('ecm-type');
   typeSel.value = type;
-  toggleAcTypeField(typeSel, 'ecm-ac-type-wrap');
+  window.toggleAcTypeField(typeSel, 'ecm-ac-type-wrap');
   const acTypeSel = document.getElementById('ecm-ac-type');
   if (acTypeSel) acTypeSel.value = acTypeId || '';
   document.getElementById('ecm-name').value = name;
@@ -701,7 +701,7 @@ function openEditCred(id, type, name, certNum, issueDate, expiryDate, notes, acT
   document.getElementById('ecm-expiry').value = expiryDate;
   document.getElementById('ecm-notes').value = notes;
   document.getElementById('edit-cred-modal').hidden = false;
-}
+};
 </script>
 
 <!-- ── HISTORY ── -->

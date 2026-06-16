@@ -7,7 +7,7 @@
     <h1 class="sh2" style="margin:0;">Members <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ total_count }})</span></h1>
     {% if club_member.is_admin %}
     <button type="button" class="cbtn-add" onclick="document.getElementById('add-member-modal').hidden=false" style="margin-left:auto;">+ Add member</button>
-    <button type="button" class="cbtn" onclick="document.getElementById('registrar-modal').hidden=false">Registrar export</button>
+    <button type="button" class="cbtn-add" onclick="document.getElementById('registrar-modal').hidden=false">↓ Registrar export</button>
     {% endif %}
   </div>
   <form method="get" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">

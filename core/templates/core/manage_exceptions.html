@@ -172,7 +172,7 @@
             {% for b in row.bookings %}{{ b.scheduled_start|date:"H:i" }} {{ b.aircraft.registration }}{% if not forloop.last %}, {% endif %}{% endfor %}
           </td>
           <td style="padding:.4rem 0 0 0;white-space:nowrap;">
-            <a href="{% url 'core:manage_instructor_detail' club.slug row.cm.id %}" class="cbtn-sm cbtn-danger" data-overlay>View →</a>
+            <a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}#credentials" class="cbtn-sm cbtn-danger" data-overlay>View →</a>
           </td>
         </tr>
         {% endfor %}
@@ -193,7 +193,7 @@
       <tbody>
         {% for row in lapsed_creds_data %}
         <tr>
-          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}" data-overlay>{{ row.cm.user.get_full_name }}</a></td>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}#credentials" data-overlay>{{ row.cm.user.get_full_name }}</a></td>
           <td>
             {% for c in row.expired %}
               <span class="exc-issue-tag exc-issue-red">
@@ -208,7 +208,7 @@
               </a>
             {% endif %}
           </td>
-          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}" class="cbtn-sm" data-overlay>Member →</a></td>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}#credentials" class="cbtn-sm" data-overlay>Member →</a></td>
         </tr>
         {% endfor %}
       </tbody>

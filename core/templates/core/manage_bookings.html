@@ -61,7 +61,7 @@
     {% csrf_token %}
     <div class="bulk-bar" id="bulk-bar" style="display:none;">
       <span id="bulk-count" style="font-size:.83rem;color:#5b6573;"></span>
-      <button type="submit" name="action" value="confirm" class="cbtn">Confirm pending</button>
+      <button type="submit" name="action" value="confirm" class="cbtn-add">✓ Confirm pending</button>
       <button type="submit" name="action" value="cancel" class="cbtn danger" onclick="return confirm('Cancel selected bookings?')">Cancel selected</button>
       <span style="display:flex;align-items:center;gap:.3rem;">
         <select name="target_aircraft_id" class="finput" style="width:auto;">
