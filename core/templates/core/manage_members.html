@@ -6,7 +6,8 @@
   <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;">
     <h1 class="sh2" style="margin:0;">Members <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ total_count }})</span></h1>
     {% if club_member.is_admin %}
-    <button type="button" class="cbtn-add" onclick="document.getElementById('add-member-modal').hidden=false" style="margin-left:auto;">+ Add member</button>
+    <button type="button" class="cbtn-add" onclick="document.getElementById('invite-modal').hidden=false" style="margin-left:auto;">✉ Invite member</button>
+    <button type="button" class="cbtn-add" onclick="document.getElementById('add-member-modal').hidden=false">+ Add manually</button>
     <button type="button" class="cbtn-add" onclick="document.getElementById('registrar-modal').hidden=false">↓ Registrar export</button>
     {% endif %}
   </div>
@@ -104,6 +105,32 @@
     {% if members_page.has_next %}<a href="?{{ filter_qs }}&page={{ members_page.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
   </div>
   {% endif %}
+
+  {% if pending_invites and club_member.is_admin %}
+  <div style="margin-top:2rem;padding-top:1.2rem;border-top:1px solid #e8eaed;">
+    <h2 style="font-size:.88rem;font-weight:650;color:#5b6573;margin:0 0 .7rem;text-transform:uppercase;letter-spacing:.05em;">Pending invites</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
+      <thead>
+        <tr style="border-bottom:1px solid #e8eaed;">
+          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Email</th>
+          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Role</th>
+          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Sent</th>
+          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Expires</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for inv in pending_invites %}
+        <tr style="border-bottom:1px solid #f0f2f4;">
+          <td style="padding:.4rem .5rem;">{{ inv.email }}</td>
+          <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.role.name|default:"—" }}</td>
+          <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.created_at|date:"j M" }}</td>
+          <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.expires_at|date:"j M" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </div>
 
 <style>
@@ -150,6 +177,31 @@
   .expiry-grace {background:#fff7ed;color:#c2410c;}
   .expiry-overdue{background:#fff0f0;color:#c0392b;}
 </style>
+
+<!-- Invite member modal -->
+<div id="invite-modal" class="modal-back" hidden>
+  <div class="modal">
+    <h2>Invite member</h2>
+    <p style="font-size:.84rem;color:#5b6573;margin:0 0 1rem;">Sends a 7-day sign-up link to the recipient's email. They create their own account and are added with Pending standing.</p>
+    <form method="post" action="{% url 'core:send_invite' club.slug %}">
+      {% csrf_token %}
+      <label class="flabel">Email address
+        <input type="email" name="email" required class="finput" autocomplete="off" placeholder="member@example.com">
+      </label>
+      <label class="flabel" style="margin-top:.6rem;">Role <span style="font-weight:400;color:#9aa3af;">(optional — pre-assign a role)</span>
+        <select name="role_id" class="finput">
+          <option value="">— No role assigned yet —</option>
+          {% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="cbtn" onclick="document.getElementById('invite-modal').hidden=true">✕ Close</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn primary">Send invite</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- Add member modal -->
 <div id="add-member-modal" class="modal-back" hidden>

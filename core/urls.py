@@ -5,6 +5,7 @@ app_name = 'core'
 
 urlpatterns = [
     path('', views.index, name='index'),
+    path('invite/<uuid:token>/', views.accept_invite, name='accept_invite'),
     path('calendar/<slug:club_slug>/', views.gantt_day, name='gantt_day'),
     path('calendar/<slug:club_slug>/<int:year>/<int:month>/<int:day>/', views.gantt_day, name='gantt_day_date'),
     path('api/booking/create/', views.create_booking, name='create_booking'),
@@ -29,6 +30,7 @@ urlpatterns = [
     path('manage/<slug:club_slug>/blockouts/', views.manage_blockouts, name='manage_blockouts'),
     path('manage/<slug:club_slug>/exceptions/', views.manage_exceptions, name='manage_exceptions'),
     path('manage/<slug:club_slug>/members/', views.manage_members, name='manage_members'),
+    path('manage/<slug:club_slug>/members/invite/', views.send_invite, name='send_invite'),
     path('manage/<slug:club_slug>/members/registrar/', views.registrar_export, name='registrar_export'),
     path('manage/<slug:club_slug>/members/<int:member_id>/', views.manage_member_detail, name='manage_member_detail'),
     path('manage/<slug:club_slug>/aircraft/', views.manage_aircraft, name='manage_aircraft'),

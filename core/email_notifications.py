@@ -84,6 +84,28 @@ def _send(subject, body_text, to_email, from_email, body_html=None):
         log.warning('Email failed: %s → %s: %s', subject, to_email, e)
 
 
+# ── Club invite ───────────────────────────────────────────────────────────────
+
+def club_invite(invite):
+    """Send a single-use invite link to a prospective member."""
+    from django.urls import reverse
+    site = getattr(settings, 'SITE_URL', '').rstrip('/')
+    accept_path = reverse('core:accept_invite', kwargs={'token': str(invite.token)})
+    accept_url = site + accept_path
+
+    ctx = _email_context(invite.club)
+    ctx.update({'invite': invite, 'accept_url': accept_url})
+
+    subject = f"You've been invited to join {invite.club.name}"
+    body_html = render_to_string('email/invite.html', ctx)
+    body_text = (
+        f"You've been invited to join {invite.club.name} on ClubHangar.\n\n"
+        f"Accept your invitation:\n{accept_url}\n\n"
+        f"This link expires in 7 days. If you didn't expect this, you can ignore it."
+    )
+    _send(subject, body_text, invite.email, _from_addr(invite.club), body_html)
+
+
 # ── Booking events ────────────────────────────────────────────────────────────
 
 def booking_confirmed(booking):

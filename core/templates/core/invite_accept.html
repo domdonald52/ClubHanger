@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Join {{ club.name }} — ClubHangar</title>
+{% load static %}
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;}
+  .card{background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(16,24,40,.10);padding:2rem 2.2rem;width:min(440px,100%);}
+  .brand{display:flex;align-items:center;gap:.75rem;margin-bottom:1.8rem;}
+  .brand img{width:40px;height:40px;}
+  .brand-text{font-size:1rem;font-weight:750;color:#111827;letter-spacing:.03em;}
+  .brand-sub{font-size:.68rem;color:#9aa3ad;letter-spacing:.1em;margin-top:.1rem;}
+  h1{font-size:1.15rem;font-weight:700;color:#1f2933;margin-bottom:.4rem;}
+  .club-name{font-size:.9rem;color:#5b6573;margin-bottom:1.5rem;}
+  .field{margin-bottom:.9rem;}
+  label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.3rem;}
+  input[type=text],input[type=email],input[type=password]{width:100%;padding:.6rem .75rem;border:1px solid #d0d4db;border-radius:7px;font-size:.9rem;color:#1f2933;background:#fff;outline:none;}
+  input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);}
+  input[readonly]{background:#f8f9fb;color:#8a93a0;cursor:default;}
+  .btn-primary{display:block;width:100%;padding:.7rem;background:#c0481c;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:650;cursor:pointer;margin-top:1.2rem;}
+  .btn-primary:hover{background:#a83a16;}
+  .error{background:#fff1f2;border:1px solid #fca5a5;border-radius:7px;padding:.65rem .85rem;font-size:.84rem;color:#c0392b;margin-bottom:1rem;}
+  .info-box{background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px;padding:.85rem 1rem;font-size:.85rem;color:#1e3a5f;margin-bottom:1.2rem;line-height:1.6;}
+  .divider{text-align:center;font-size:.78rem;color:#9aa3ad;margin:1.2rem 0;position:relative;}
+  .divider::before,.divider::after{content:'';position:absolute;top:50%;width:44%;height:1px;background:#e5e7eb;}
+  .divider::before{left:0;}.divider::after{right:0;}
+  .secondary-link{display:block;text-align:center;font-size:.82rem;color:#5b6573;margin-top:.9rem;text-decoration:none;}
+  .secondary-link:hover{color:#1f2933;text-decoration:underline;}
+  .state-icon{font-size:2.5rem;text-align:center;margin-bottom:.8rem;}
+  .badge{display:inline-block;background:#e6f4ea;color:#2a7a3b;font-size:.75rem;font-weight:600;padding:.2rem .6rem;border-radius:10px;margin-bottom:1rem;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">
+    <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="ClubHangar">
+    <div>
+      <div class="brand-text">ClubHangar</div>
+      <div class="brand-sub">FLY · LOG · MANAGE</div>
+    </div>
+  </div>
+
+  {% if state == 'already_accepted' %}
+    <div class="state-icon">✓</div>
+    <h1>Invite already used</h1>
+    <p class="club-name">This invite link has already been accepted.</p>
+    {% if invite.club_member %}
+    <a href="{% url 'core:app_home' club.slug %}" class="btn-primary" style="text-align:center;display:block;text-decoration:none;">Open {{ club.name }} →</a>
+    {% endif %}
+
+  {% elif state == 'expired' %}
+    <div class="state-icon">⏱</div>
+    <h1>Invite expired</h1>
+    <p class="club-name">This invite link has expired. Please ask an admin to send a new one.</p>
+
+  {% elif state == 'already_member' %}
+    <div class="state-icon">✓</div>
+    <h1>You're already a member</h1>
+    <p class="club-name">Your account is already linked to {{ club.name }}.</p>
+    <a href="{% url 'core:app_home' club.slug %}" class="btn-primary" style="text-align:center;display:block;text-decoration:none;">Open {{ club.name }} →</a>
+
+  {% elif state == 'join' %}
+    <h1>Join {{ club.name }}</h1>
+    <p class="club-name">You're logged in as <strong>{{ request.user.get_full_name|default:request.user.email }}</strong>.</p>
+    {% if invite.role %}
+    <span class="badge">Role: {{ invite.role.name }}</span>
+    {% endif %}
+    <div class="info-box">
+      Click below to join <strong>{{ club.name }}</strong>. Your membership will start as <em>Pending</em> until the committee ratifies it.
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="join">
+      <button type="submit" class="btn-primary">Join {{ club.name }}</button>
+    </form>
+
+  {% elif state == 'create' %}
+    <h1>Join {{ club.name }}</h1>
+    <p class="club-name" style="margin-bottom:1.2rem;">Create your ClubHangar account to get started.</p>
+    {% if invite.role %}
+    <span class="badge">Role: {{ invite.role.name }}</span>
+    {% endif %}
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+        <div class="field">
+          <label for="first_name">First name</label>
+          <input type="text" id="first_name" name="first_name" value="{{ form_values.first_name }}" required autocomplete="given-name">
+        </div>
+        <div class="field">
+          <label for="last_name">Last name</label>
+          <input type="text" id="last_name" name="last_name" value="{{ form_values.last_name }}" required autocomplete="family-name">
+        </div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" value="{{ invite.email }}" readonly>
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="new-password" minlength="8" placeholder="At least 8 characters">
+      </div>
+      <div class="field">
+        <label for="password2">Confirm password</label>
+        <input type="password" id="password2" name="password2" required autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn-primary">Create account &amp; join</button>
+    </form>
+    <div class="divider">or</div>
+    <a href="/admin/login/?next={{ request.path }}" class="secondary-link">Log in with an existing account</a>
+  {% endif %}
+</div>
+</body>
+</html>

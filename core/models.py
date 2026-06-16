@@ -524,6 +524,44 @@ class MembershipHistoryEntry(models.Model):
 
 
 # ============================================================================
+# CLUB INVITES
+# ============================================================================
+
+import uuid as _uuid_mod
+
+class ClubInvite(models.Model):
+    """Single-use signed invite link — admin sends to a prospective member's email."""
+    club       = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='invites')
+    email      = models.EmailField()
+    role       = models.ForeignKey('Role', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    token      = models.UUIDField(default=_uuid_mod.uuid4, unique=True, editable=False)
+    invited_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    accepted_at   = models.DateTimeField(null=True, blank=True)
+    club_member   = models.ForeignKey('ClubMember', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Invite {self.email} → {self.club}'
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_accepted(self):
+        return self.accepted_at is not None
+
+    @property
+    def is_valid(self):
+        return not self.is_expired and not self.is_accepted
+
+
+# ============================================================================
 # ANNOUNCEMENTS
 # ============================================================================
 

@@ -4071,6 +4071,12 @@ def manage_members(request, club_slug):
     _filter_qs = _ue({k: v for k, v in request.GET.items() if k != 'page' and v})
 
     roles = Role.objects.filter(club=club).order_by('name')
+
+    from .models import ClubInvite as _CI
+    pending_invites = _CI.objects.filter(
+        club=club, accepted_at__isnull=True, expires_at__gt=timezone.now()
+    ).select_related('role', 'invited_by')
+
     return render(request, 'core/manage_members.html', {
         'club': club,
         'club_member': actor,
@@ -4095,7 +4101,141 @@ def manage_members(request, club_slug):
         'lapse_cutoff': _lapse_cutoff,
         'warn_cutoff': _warn_cutoff,
         'filter_qs': _filter_qs,
+        'pending_invites': pending_invites,
     })
+
+
+@login_required
+def send_invite(request, club_slug):
+    """Admin sends a single-use invite link to a prospective member's email address."""
+    if request.method != 'POST':
+        return redirect('core:manage_members', club_slug=club_slug)
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if err := require_admin(actor, club, request): return err
+
+    from .models import ClubInvite, Role as _Role
+    from django.contrib import messages as _msgs
+    from datetime import timedelta
+
+    email = request.POST.get('email', '').strip().lower()
+    role_id = request.POST.get('role_id', '').strip()
+
+    if not email:
+        _msgs.error(request, 'Email address is required.')
+        return redirect('core:manage_members', club_slug=club_slug)
+
+    role = None
+    if role_id:
+        role = _Role.objects.filter(club=club, id=role_id).first()
+
+    # Cancel any existing pending invite for this email so the new one supersedes it
+    ClubInvite.objects.filter(club=club, email=email, accepted_at__isnull=True).delete()
+
+    invite = ClubInvite.objects.create(
+        club=club, email=email, role=role,
+        invited_by=request.user,
+        expires_at=timezone.now() + timedelta(days=7),
+    )
+
+    from .email_notifications import club_invite as _email_invite
+    _email_invite(invite)
+
+    _msgs.success(request, f'Invite sent to {email}.')
+    return redirect('core:manage_members', club_slug=club_slug)
+
+
+def accept_invite(request, token):
+    """Public view — no login required. Recipient accepts a club invite."""
+    from .models import ClubInvite
+    invite = get_object_or_404(ClubInvite, token=token)
+    club = invite.club
+
+    def _render(state, error=None, form_values=None):
+        return render(request, 'core/invite_accept.html', {
+            'invite': invite, 'club': club,
+            'state': state, 'error': error,
+            'form_values': form_values or {},
+        })
+
+    if invite.is_accepted:
+        return _render('already_accepted')
+    if invite.is_expired:
+        return _render('expired')
+
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+
+        if action == 'join' and request.user.is_authenticated:
+            cm, created = ClubMember.objects.get_or_create(
+                club=club, user=request.user,
+                defaults={'standing': 'pending'},
+            )
+            if not created and cm.standing == 'resigned':
+                cm.standing = 'pending'
+                cm.save(update_fields=['standing'])
+            if invite.role and not cm.role:
+                cm.role = invite.role
+                cm.save(update_fields=['role'])
+            invite.accepted_at = timezone.now()
+            invite.club_member = cm
+            invite.save(update_fields=['accepted_at', 'club_member'])
+            MembershipHistoryEntry.objects.create(
+                club_member=cm, event_type='joined',
+                changed_by=request.user, new_value='via invite',
+            )
+            return redirect('core:app_home', club_slug=club.slug)
+
+        elif action == 'create':
+            from django.contrib.auth import get_user_model as _gum, login as _login
+            _User = _gum()
+            first = request.POST.get('first_name', '').strip()
+            last  = request.POST.get('last_name', '').strip()
+            pw    = request.POST.get('password', '').strip()
+            pw2   = request.POST.get('password2', '').strip()
+            fv    = {'first_name': first, 'last_name': last}
+
+            if not (first and last and pw):
+                return _render('create', 'All fields are required.', fv)
+            if pw != pw2:
+                return _render('create', 'Passwords do not match.', fv)
+            if len(pw) < 8:
+                return _render('create', 'Password must be at least 8 characters.', fv)
+            if _User.objects.filter(email=invite.email).exists():
+                return _render('create',
+                    'An account with this email already exists. Use the login link below.', fv)
+
+            user = _User.objects.create_user(
+                username=invite.email, email=invite.email,
+                first_name=first, last_name=last, password=pw,
+            )
+            cm = ClubMember.objects.create(
+                club=club, user=user, standing='pending', role=invite.role,
+            )
+            invite.accepted_at = timezone.now()
+            invite.club_member = cm
+            invite.save(update_fields=['accepted_at', 'club_member'])
+            MembershipHistoryEntry.objects.create(
+                club_member=cm, event_type='joined',
+                changed_by=user, new_value='via invite',
+            )
+            _login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            return redirect('core:app_home', club_slug=club.slug)
+
+    # GET — determine which state to show
+    if request.user.is_authenticated:
+        try:
+            existing_cm = ClubMember.objects.get(club=club, user=request.user)
+            if existing_cm.standing not in ('resigned',):
+                return _render('already_member')
+        except ClubMember.DoesNotExist:
+            pass
+        return _render('join')
+    else:
+        return _render('create')
 
 
 @login_required
