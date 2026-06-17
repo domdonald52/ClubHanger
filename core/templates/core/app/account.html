@@ -74,7 +74,7 @@
 </div>
 <div class="app-list">
   {% for inv in unpaid_invoices %}
-  <div class="app-list-row" style="cursor:default;">
+  <div class="app-list-row" style="cursor:pointer;" onclick="openInvoiceSheet('{{ inv.id }}')">
     <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;
       background:{% if inv.needs_attention %}#e03131{% else %}#f59e0b{% endif %};"></div>
     <div class="app-list-main">
@@ -85,7 +85,10 @@
         {% else %}Awaiting reconciliation — payments may take a few days to appear{% endif %}
       </div>
     </div>
-    <div style="font-size:.95rem;font-weight:700;color:{% if inv.needs_attention %}#e03131{% else %}#f59e0b{% endif %};">${{ inv.balance_due|floatformat:2|intcomma }}</div>
+    <div style="display:flex;align-items:center;gap:.4rem;">
+      <div style="font-size:.95rem;font-weight:700;color:{% if inv.needs_attention %}#e03131{% else %}#f59e0b{% endif %};">${{ inv.balance_due|floatformat:2|intcomma }}</div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
   </div>
   {% endfor %}
 </div>
@@ -221,4 +224,108 @@
   window.closeFlightSheet = closeFlightSheet;
 })();
 </script>
+
+<!-- ── Invoice detail sheets ── -->
+{% if unpaid_invoices %}
+<style>
+  .inv-cell{background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;}
+  .inv-cell .k{font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;}
+  .inv-cell .v{font-size:.86rem;font-weight:600;}
+</style>
+<div id="inv-sheet-back" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:300;" onclick="closeInvoiceSheet()"></div>
+{% for inv in unpaid_invoices %}
+<div class="inv-sheet" id="inv-sheet-{{ inv.id }}" style="display:none;position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
+  <div style="width:36px;height:4px;background:#e0e3e8;border-radius:2px;margin:0 auto .9rem;"></div>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
+    <div>
+      <div style="font-size:1.1rem;font-weight:750;">Invoice {{ inv.display_number }}</div>
+      <div style="font-size:.8rem;color:#8a93a0;margin-top:.15rem;">
+        Issued {{ inv.issue_date|date:"j M Y" }}{% if inv.is_overdue %} <span style="color:#e03131;font-weight:600;">· Overdue</span>{% endif %}
+      </div>
+    </div>
+    <button onclick="closeInvoiceSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  {% if inv.description %}
+  <div style="font-size:.86rem;color:#374151;margin-bottom:1rem;">{{ inv.description }}</div>
+  {% endif %}
+
+  {% if inv.flight_completion %}{% with b=inv.flight_completion.booking fc=inv.flight_completion %}
+  <div style="font-size:.68rem;color:#8a93a0;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Flight</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1.1rem;">
+    <div class="inv-cell"><div class="k">Aircraft</div><div class="v">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div></div>
+    <div class="inv-cell"><div class="k">Date</div><div class="v">{{ b.scheduled_start|localtime|date:"j M Y" }}</div></div>
+    <div class="inv-cell"><div class="k">Instructor</div><div class="v">{% if b.instructor %}{{ b.instructor.get_full_name }}{% else %}Solo{% endif %}</div></div>
+    {% if b.flight_type %}<div class="inv-cell"><div class="k">Flight type</div><div class="v">{{ b.flight_type.name }}</div></div>{% endif %}
+    <div class="inv-cell"><div class="k">Scheduled</div><div class="v">{{ b.scheduled_start|localtime|time:'H:i' }}–{{ b.scheduled_end|localtime|time:'H:i' }}</div></div>
+    <div class="inv-cell"><div class="k">Flight time</div><div class="v">{% if fc.actual_flight_hours %}{{ fc.actual_flight_hours }} h{% else %}—{% endif %}</div></div>
+  </div>
+  {% endwith %}{% endif %}
+
+  <div style="font-size:.68rem;color:#8a93a0;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Charges</div>
+  <div class="app-list">
+    {% for li in inv.line_items.all %}
+    <div class="app-list-row" style="cursor:default;">
+      <div class="app-list-main">
+        <div class="app-list-title" style="font-size:.85rem;">{{ li.description }}</div>
+        {% if li.quantity and li.quantity != 1 or li.unit %}<div class="app-list-sub">{{ li.quantity|floatformat:'-2' }}{% if li.unit %} {{ li.unit }}{% endif %} × ${{ li.rate|floatformat:2|intcomma }}</div>{% endif %}
+      </div>
+      <div class="app-list-right" style="font-weight:700;">${{ li.amount|floatformat:2|intcomma }}</div>
+    </div>
+    {% empty %}
+    <div class="app-empty">No line items</div>
+    {% endfor %}
+  </div>
+
+  <div style="border-top:1px solid #eef0f3;margin-top:.6rem;padding-top:.7rem;">
+    <div style="display:flex;justify-content:space-between;font-size:.84rem;color:#6b7280;margin-bottom:.3rem;">
+      <span>Total{% if inv.gst_rate %} (incl. ${{ inv.gst_amount|floatformat:2|intcomma }} GST){% endif %}</span>
+      <span style="font-weight:700;color:#1f2937;">${{ inv.total|floatformat:2|intcomma }}</span>
+    </div>
+    {% if inv.amount_paid > 0 %}
+    <div style="display:flex;justify-content:space-between;font-size:.84rem;color:#2a7a3b;margin-bottom:.3rem;">
+      <span>Paid</span><span style="font-weight:700;">−${{ inv.amount_paid|floatformat:2|intcomma }}</span>
+    </div>
+    {% endif %}
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#fff0f0;border-radius:10px;padding:.65rem .85rem;margin-top:.5rem;">
+      <span style="font-size:.74rem;color:#e03131;font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Balance due{% if inv.due_date %} · {{ inv.due_date|date:"j M" }}{% endif %}</span>
+      <span style="font-size:1.2rem;font-weight:800;color:#e03131;">${{ inv.balance_due|floatformat:2|intcomma }}</span>
+    </div>
+  </div>
+
+  <div style="padding:.75rem .1rem 0;font-size:.73rem;color:#9ca3af;line-height:1.5;">
+    Bank payments may take a few business days to be reconciled. If you've paid recently, check back in 2–3 days.
+  </div>
+</div>
+{% endfor %}
+
+<script>
+(function(){
+  var back = document.getElementById('inv-sheet-back');
+  function openInvoiceSheet(id) {
+    var sheet = document.getElementById('inv-sheet-' + id);
+    if (!sheet) return;
+    back.style.display = '';
+    sheet.style.display = '';
+    sheet.dataset.open = '1';
+    sheet.style.transform = 'translateY(100%)';
+    sheet.style.transition = 'transform .25s ease';
+    requestAnimationFrame(function(){ sheet.style.transform = 'translateY(0)'; });
+  }
+  function closeInvoiceSheet() {
+    back.style.display = 'none';
+    var open = document.querySelectorAll('.inv-sheet[data-open="1"]');
+    open.forEach(function(sheet){
+      sheet.dataset.open = '';
+      sheet.style.transform = 'translateY(100%)';
+      setTimeout(function(){ sheet.style.display = 'none'; }, 250);
+    });
+  }
+  window.openInvoiceSheet = openInvoiceSheet;
+  window.closeInvoiceSheet = closeInvoiceSheet;
+})();
+</script>
+{% endif %}
 {% endblock %}

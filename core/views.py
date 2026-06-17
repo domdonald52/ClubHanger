@@ -9785,6 +9785,9 @@ def app_account(request, club_slug):
     unpaid_invoices = list(
         _Inv.objects
         .filter(member=actor, club=club, status='sent')
+        .select_related('flight_completion__booking__aircraft__aircraft_type',
+                        'flight_completion__booking__instructor',
+                        'flight_completion__booking__flight_type')
         .prefetch_related('line_items')
         .order_by('-issue_date')
     )
