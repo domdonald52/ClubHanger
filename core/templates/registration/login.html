@@ -1,0 +1,39 @@
+{% extends 'registration/auth_base.html' %}
+
+{% block title %}Sign in{% endblock %}
+
+{% block content %}
+  <h1>Sign in</h1>
+  <p class="lede">Welcome back. Sign in to access your club.</p>
+
+  {% if form.errors %}
+  <div class="error">
+    {% if form.non_field_errors %}
+      {% for err in form.non_field_errors %}{{ err }}{% endfor %}
+    {% else %}
+      The email or password you entered is incorrect.
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <form method="post" action="{% url 'login' %}{% if request.GET.next %}?next={{ request.GET.next|urlencode }}{% endif %}">
+    {% csrf_token %}
+    <div class="field">
+      <label for="id_username">Email</label>
+      <input type="email" id="id_username" name="username"
+             value="{{ form.username.value|default:'' }}"
+             autocomplete="username" autofocus required
+             placeholder="you@example.com">
+    </div>
+    <div class="field">
+      <div class="label-row">
+        <label for="id_password">Password</label>
+        <a class="forgot" href="{% url 'password_reset' %}">Forgot password?</a>
+      </div>
+      <input type="password" id="id_password" name="password"
+             autocomplete="current-password" required>
+    </div>
+    {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+    <button type="submit" class="btn-primary">Sign in</button>
+  </form>
+{% endblock %}

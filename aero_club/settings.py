@@ -45,8 +45,9 @@ CSRF_TRUSTED_ORIGINS = [
     if h not in ('127.0.0.1', 'localhost', '192.168.86.198', 'healthcheck.railway.app')
 ]
 
-LOGIN_URL = '/admin/login/'
+LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = 'login'
 
 
 # Application definition

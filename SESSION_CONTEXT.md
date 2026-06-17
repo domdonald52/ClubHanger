@@ -1,5 +1,5 @@
 # ClubHangar — Session Context
-**Last updated:** 2026-06-06 (session 3) | **Reload this file at the start of every new session.**
+**Last updated:** 2026-06-17 | **Reload this file at the start of every new session.**
 
 ---
 
@@ -141,6 +141,134 @@ Paper Aviator settings tabs: Company Details, Resources, Flight Types, Airports,
 - **Invoice concept** — PA has no invoice lifecycle; it prints/emails and forgets. Our invoice model (draft→sent→paid/void) is a significant improvement for reconciliation.
 
 ---
+
+## Data migration (Paper Aviator → ClubHangar) — IN PROGRESS
+
+Goal: a **reusable importer** (re-run many times before go-live), fed by data
+shaped out of Paper Aviator's reports (mixed PDF/CSV, some per-member/aircraft).
+Load order follows FKs: reference data → Aircraft → Members → Credentials →
+Accounts/balances → Flights → Invoices → Maintenance → Occurrences.
+
+**Pinned decisions:**
+- **Test club**, not the live club — protects demo seed data. Imports target an
+  isolated club; reset between test runs.
+- **Aircraft**: done **manually** (only a few live; PA has many retired ones).
+- **Members importer (built)**: everyone → default **Member** role (set
+  instructor/admin by hand later); no email → synth `first.last@migrated.invalid`,
+  flagged; **never** sends invite/welcome emails on import; opening balances and
+  medical/BFR expiry **deferred** to later financial/credentials passes.
+- Natural key for re-runnable upsert = **email**.
+
+**Management commands added** (`core/management/commands/`):
+- `setup_test_club.py` — creates/ensures isolated club, runs `setup_defaults`,
+  stamps built-in roles with `system_role_type`. `--reset` wipes members +
+  orphaned users. `--slug` (default `migration-test`).
+- `import_members.py` — reads the 'Members' template sheet (.xlsx) or CSV;
+  header-driven (tolerant of optional Standing / Subscription expires columns);
+  `--dry-run` (validates in a rolled-back transaction); idempotent upsert on
+  email; collects row-level errors; one atomic transaction.
+  Run: `manage.py import_members <file> --club migration-test --dry-run`
+- **NOT yet run end-to-end** — container can't install Django 6.0.5. Verify on a
+  real 6.0 env. Next slices: Credentials, Accounts/balances, Flights.
+
+## Before go-live — deployment & data isolation (forward checklist)
+
+Captured 2026-06-17. Nothing here needs code changes now — these are
+decisions to action when the real club goes live, so they don't have to be
+re-figured-out under pressure.
+
+**How clubs are routed:** by **slug in the URL path** (`/app/<club_slug>/`,
+`/manage/<club_slug>/`, …) — one Django app, one domain. As currently
+deployed, the demo and a real club would share the **same Railway domain
+and the same database**, differing only by slug:
+- Demo → `/app/wac-demo/`
+- Production → `/app/wellington-aero-club/`
+
+**Decisions to action before real members onboard:**
+- [ ] **Separate Railway environments (recommended).** Put the real club on a
+      `production` environment with its **own database + domain**; keep the
+      demo/dev club on `staging`. Then demo seeding/`--reset` physically
+      *cannot* touch production data, and the prod domain never serves the
+      demo club. (Alternative = stay on one deployment + DB, relying only on
+      the slug guard below. Fine while building; not for go-live.)
+- [ ] **Production club populated via the Paper Aviator migration importer**
+      (see Data migration section), **never** the demo seed.
+- [ ] **Real billing/rates/member data entered via the Settings UI or the
+      importer — never via the demo seed.** The seed is demo-only.
+- [ ] **Reserve/protect the production slug** `wellington-aero-club`. The demo
+      seed already has a **guard** that refuses to write to the production
+      slug, so a stray seed/reset can't clobber the real club even on a shared
+      DB. Keep that guard; on separate environments it's belt-and-braces.
+
+When the time comes, ask Claude for the exact Railway steps to spin up the
+separate `staging` environment — it's all Railway-side config, no code change.
+
+### Authentication & login — DONE (2026-06-17)
+
+Branded login flow built (was previously the bare Django admin login):
+- **Routes** registered at project root in `aero_club/urls.py` with the standard
+  un-namespaced names so `redirect('login')` (~50 call sites) and
+  `LOGIN_URL='login'` resolve: `login`, `logout`, `password_reset`,
+  `password_reset_done`, `password_reset_confirm`, `password_reset_complete`.
+- **Templates** in `core/templates/registration/` extend `auth_base.html`
+  (ClubHangar card branding, matches `invite_accept.html`).
+- **Login form**: `core/auth_forms.py::EmailAuthenticationForm` — labels the
+  username field "Email" (members log in with email = username) + friendly
+  error copy. django-axes lockout still applies.
+- **Password reset** uses Django's built-in views + the configured
+  `EMAIL_BACKEND` (console in dev; set SMTP env vars in prod).
+- **Logout** is now POST (Django 6 requirement). The 3 sign-out links
+  (`base.html` header dropdown + sidenav, `app/profile.html`) submit a hidden
+  POST form to `{% url 'logout' %}`; `LOGOUT_REDIRECT_URL='login'`.
+- **Note:** login screen is ClubHangar (product) branded, not club-specific —
+  it sits before club selection. Per-club login branding would need login under
+  a club slug; deferred unless wanted.
+- **Multi-club login** → `index` view: 0 clubs = `no_access.html`; 1 club =
+  straight to that club's calendar; 2+ = `club_select.html` chooser. Header
+  dropdown also has "Switch to <club>" links. **Confirmed good** (2026-06-17):
+  the club picker should only appear for users who belong to 2+ clubs;
+  single-club users go straight in.
+- [ ] **TO DO — decide post-login landing per role.** Today every fresh sign-in
+      lands on the **web calendar** (`index` → `gantt_day`), even normal members
+      who'd more naturally start in the **mobile app** (`/app/<slug>/`). A
+      `?next=` link is honoured, but a bare login isn't. Decide: should members
+      land on the mobile app home and staff on the web calendar? (Applies after
+      club selection for multi-club users.)
+
+### Help guides (member-facing docs) — DONE (2026-06-17)
+
+- [x] **Member web-app help guide** — `member_guide` view, `/guide/<club>/`,
+      template `core/member_guide.html` (reuses the staff guide's CSS). Covers
+      sign-in, mobile app, calendar, booking, standing, account, credentials,
+      help. Visible to **any club member**; linked in the web sidenav `{% else %}`
+      (non-staff) as "Help guide".
+- [x] **Mobile-app (PWA) help guide** — `app_guide` view, `/app/<club>/guide/`,
+      template `core/app/guide.html` (extends `core/app/base.html`). Short,
+      card-based tour. Linked from the app Profile page ("📖 Help guide").
+- [x] **Guide visibility gated by role:** existing staff guide (`manage_guide`,
+      `require_staff`) → instructors & admins, link shown only to staff; member
+      guide → everyone else. Role test = `ClubMember.is_staff`
+      (= `is_admin or is_instructor`).
+- [x] **Invite sequence** documented in the staff/admin guide (`#mem-new`
+      step-flow) — now also notes the new Copy-link option and clarifies that
+      inviting does NOT create the member until they accept.
+
+### Invite member — Copy-link + behaviour (DONE 2026-06-17)
+
+- **Copy invite link** button added to the *Pending invites* table on
+  `manage_members` (admin only). Builds the full accept URL client-side
+  (`{{ request.scheme }}://{{ request.get_host }}{% url accept_invite token %}`)
+  and copies via `navigator.clipboard`. Lets you demo the join flow without
+  relying on email (e.g. while `EMAIL_OVERRIDE_TO` is set for testing).
+- **Key behaviour (confirmed):** sending an invite creates ONLY a `ClubInvite`
+  (7-day expiry). The `User` + `ClubMember` (standing `pending`) are created
+  when the recipient opens the link and sets name/password (`accept_invite`).
+  Exception: *+ Add manually* with "Send invite email" unticked creates the
+  account immediately with a (possibly auto-generated) password.
+- **Email reality:** `EMAIL_OVERRIDE_TO` (if set) redirects ALL outgoing mail to
+  that address; `_send()` swallows failures (the green "Invite sent" toast does
+  NOT prove delivery — check the inbox/logs). SMTP set up in Railway but
+  overridden on purpose for testing as of this date.
 
 ## Rules every new session must re-confirm
 

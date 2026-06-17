@@ -1,0 +1,73 @@
+{% extends "core/app/base.html" %}
+{% block title %}Help · {{ club.name }}{% endblock %}
+{% block page_title %}Help guide{% endblock %}
+
+{% block extra_style %}
+<style>
+  .g-card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:1rem 1.1rem;margin:.75rem;}
+  .g-card h2{font-size:.95rem;font-weight:700;color:#1f2933;margin:0 0 .4rem;display:flex;align-items:center;gap:.5rem;}
+  .g-card p{font-size:.85rem;line-height:1.6;color:#374151;margin:.3rem 0 .55rem;}
+  .g-card p:last-child{margin-bottom:0;}
+  .g-card ul{margin:.3rem 0 .55rem;padding-left:1.1rem;}
+  .g-card li{font-size:.85rem;line-height:1.6;color:#374151;margin-bottom:.25rem;}
+  .g-intro{padding:1rem 1.1rem .2rem;}
+  .g-intro h1{font-size:1.2rem;font-weight:780;margin:0 0 .35rem;}
+  .g-intro p{font-size:.86rem;color:#5b6573;line-height:1.6;margin:0;}
+  .g-chip{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:color-mix(in srgb,var(--primary) 12%,#fff);color:var(--primary);font-size:.8rem;flex-shrink:0;}
+  .g-step{display:flex;gap:.55rem;align-items:flex-start;margin:.4rem 0;}
+  .g-step .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--primary);color:#fff;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:.05rem;}
+  .g-step span{font-size:.85rem;line-height:1.55;color:#374151;}
+  .g-note{background:#f0f7ff;border-left:3px solid #3b82f6;border-radius:8px;padding:.6rem .8rem;font-size:.8rem;line-height:1.55;color:#1e3a5f;margin:.5rem 0 0;}
+  .g-warn{background:#fffbeb;border-left:3px solid #f59e0b;border-radius:8px;padding:.6rem .8rem;font-size:.8rem;line-height:1.55;color:#78350f;margin:.5rem 0 0;}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="g-intro">
+  <h1>Welcome 👋</h1>
+  <p>This is your club app for {{ club.name }}. Here's a quick tour of what each part does.</p>
+</div>
+
+<div class="g-card">
+  <h2><span class="g-chip">🏠</span> The five tabs</h2>
+  <ul>
+    <li><strong>Home</strong> — your next flights, notices, and quick actions.</li>
+    <li><strong>Schedule</strong> — the day's bookings across all aircraft and instructors.</li>
+    <li><strong>Bookings</strong> — your own bookings, past and upcoming.</li>
+    <li><strong>Account</strong> — your balance and payment history.</li>
+    <li><strong>Profile</strong> — your details, credentials, and settings.</li>
+  </ul>
+</div>
+
+<div class="g-card">
+  <h2><span class="g-chip">✈️</span> Booking a flight</h2>
+  <div class="g-step"><span class="n">1</span><span>Tap <strong>Book</strong> and choose what you want — aircraft, and an instructor if you need one.</span></div>
+  <div class="g-step"><span class="n">2</span><span>Pick from the times that are free, then confirm your request.</span></div>
+  <div class="g-step"><span class="n">3</span><span>Your booking starts as <strong>Pending</strong>. You'll get a notification when the club confirms it.</span></div>
+  <div class="g-step"><span class="n">4</span><span>On the day, an instructor or duty member checks you out and back in. The cost is added to your account automatically.</span></div>
+  <div class="g-note"><strong>Can't find a slot?</strong> The app only shows times that are actually free for that aircraft and instructor. Try a different time or aircraft.</div>
+</div>
+
+<div class="g-card">
+  <h2><span class="g-chip">🪪</span> Your credentials</h2>
+  <p>Your medical, flight review (BFR), and ratings decide what you can book and fly. Keep them current under <strong>Profile → Add credential</strong>.</p>
+  <div class="g-warn"><strong>If a credential lapses</strong> you may be blocked from booking or checking out until it's renewed and recorded. Add the new expiry date as soon as you have it.</div>
+</div>
+
+<div class="g-card">
+  <h2><span class="g-chip">💳</span> Account &amp; invoices</h2>
+  <p>Your <strong>Account</strong> tab shows your running balance — flights are charged to it, payments credit it. When the club issues you an invoice (like your annual subscription), you'll be notified. Pay it the way your club normally accepts; the office marks it paid once received.</p>
+</div>
+
+<div class="g-card">
+  <h2><span class="g-chip">🔔</span> Notifications</h2>
+  <p>Turn on notifications under <strong>Profile → Notifications</strong> to hear about confirmed bookings, new invoices, and club notices. You can add this app to your phone's home screen from your browser's <em>Share → Add to Home Screen</em> menu.</p>
+</div>
+
+<div class="g-card">
+  <h2><span class="g-chip">❓</span> Need a hand?</h2>
+  <p>If a charge looks wrong, a booking didn't confirm, or you can't sign in, contact the club office or your instructor — they can see your account and bookings and help sort it out.</p>
+</div>
+
+<div style="height:.5rem;"></div>
+{% endblock %}

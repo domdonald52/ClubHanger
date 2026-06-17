@@ -1,0 +1,47 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Sign in{% endblock %} — ClubHangar</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;}
+  .card{background:#fff;border-radius:14px;box-shadow:0 4px 24px rgba(16,24,40,.10);padding:2rem 2.2rem;width:min(440px,100%);}
+  .brand{display:flex;align-items:center;gap:.75rem;margin-bottom:1.8rem;}
+  .brand img{width:40px;height:40px;}
+  .brand-text{font-size:1rem;font-weight:750;color:#111827;letter-spacing:.03em;}
+  .brand-sub{font-size:.68rem;color:#9aa3ad;letter-spacing:.1em;margin-top:.1rem;}
+  h1{font-size:1.15rem;font-weight:700;color:#1f2933;margin-bottom:.4rem;}
+  .lede{font-size:.9rem;color:#5b6573;margin-bottom:1.5rem;line-height:1.5;}
+  .field{margin-bottom:.9rem;}
+  label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:.3rem;}
+  input[type=text],input[type=email],input[type=password]{width:100%;padding:.6rem .75rem;border:1px solid #d0d4db;border-radius:7px;font-size:.9rem;color:#1f2933;background:#fff;outline:none;}
+  input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.12);}
+  .btn-primary{display:block;width:100%;padding:.7rem;background:#c0481c;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:650;cursor:pointer;margin-top:1.2rem;text-align:center;text-decoration:none;}
+  .btn-primary:hover{background:#a83a16;}
+  .error{background:#fff1f2;border:1px solid #fca5a5;border-radius:7px;padding:.65rem .85rem;font-size:.84rem;color:#c0392b;margin-bottom:1rem;line-height:1.5;}
+  .error ul{margin:0;padding-left:1.1rem;}
+  .info-box{background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px;padding:.85rem 1rem;font-size:.85rem;color:#1e3a5f;margin-bottom:1.2rem;line-height:1.6;}
+  .helptext{font-size:.76rem;color:#9aa3ad;margin-top:.35rem;line-height:1.5;}
+  .secondary-link{display:block;text-align:center;font-size:.82rem;color:#5b6573;margin-top:1.1rem;text-decoration:none;}
+  .secondary-link:hover{color:#1f2933;text-decoration:underline;}
+  .forgot{font-size:.78rem;color:#5b6573;text-decoration:none;}
+  .forgot:hover{color:#c0481c;text-decoration:underline;}
+  .label-row{display:flex;justify-content:space-between;align-items:baseline;}
+  .state-icon{font-size:2.5rem;text-align:center;margin-bottom:.8rem;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">
+    <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="ClubHangar">
+    <div>
+      <div class="brand-text">ClubHangar</div>
+      <div class="brand-sub">FLY · LOG · MANAGE</div>
+    </div>
+  </div>
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

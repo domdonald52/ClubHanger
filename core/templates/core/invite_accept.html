@@ -114,7 +114,7 @@
       <button type="submit" class="btn-primary">Create account &amp; join</button>
     </form>
     <div class="divider">or</div>
-    <a href="/admin/login/?next={{ request.path }}" class="secondary-link">Log in with an existing account</a>
+    <a href="{% url 'login' %}?next={{ request.path }}" class="secondary-link">Log in with an existing account</a>
   {% endif %}
 </div>
 </body>

@@ -116,6 +116,7 @@
           <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Role</th>
           <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Sent</th>
           <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Expires</th>
+          <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Invite link</th>
         </tr>
       </thead>
       <tbody>
@@ -125,11 +126,39 @@
           <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.role.name|default:"—" }}</td>
           <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.created_at|date:"j M" }}</td>
           <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.expires_at|date:"j M" }}</td>
+          <td style="padding:.4rem .5rem;text-align:right;">
+            <button type="button" class="copy-invite-btn"
+                    data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'core:accept_invite' inv.token %}"
+                    style="font-size:.78rem;font-weight:600;color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,#fff);border:1px solid color-mix(in srgb,var(--primary) 30%,#fff);border-radius:6px;padding:.28rem .6rem;cursor:pointer;white-space:nowrap;">
+              Copy link
+            </button>
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+    <p style="font-size:.76rem;color:#9aa3ad;margin:.6rem .5rem 0;line-height:1.5;">
+      A 7-day sign-up link is emailed automatically when you invite someone. Use <strong>Copy link</strong> to send it yourself (e.g. by text) — handy while email delivery is being set up or overridden for testing.
+    </p>
   </div>
+
+  <script>
+  document.querySelectorAll('.copy-invite-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var link = btn.getAttribute('data-link');
+      var done = function(){
+        var orig = btn.textContent;
+        btn.textContent = '✓ Copied';
+        setTimeout(function(){ btn.textContent = orig; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link).then(done, function(){ window.prompt('Copy this invite link:', link); });
+      } else {
+        window.prompt('Copy this invite link:', link);
+      }
+    });
+  });
+  </script>
   {% endif %}
 </div>
 
