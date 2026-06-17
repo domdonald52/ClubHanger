@@ -49,6 +49,13 @@ LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = 'login'
 
+# Django admin path. Overridable via the ADMIN_URL env var so the real (non-obvious)
+# path lives only in Railway config, never in source control. Defaults to 'admin/'
+# so local/dev access keeps working until the env var is set in production.
+ADMIN_URL = os.environ.get('ADMIN_URL', 'admin/').strip().lstrip('/')
+if ADMIN_URL and not ADMIN_URL.endswith('/'):
+    ADMIN_URL += '/'
+
 
 # Application definition
 
