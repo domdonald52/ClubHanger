@@ -74,6 +74,7 @@ urlpatterns = [
     path('events/<slug:club_slug>/actions/', views.occurrence_actions, name='occurrence_actions'),
 
     # ── Mobile PWA ────────────────────────────────────────────────────────────
+    path('app/',                                                           views.app_root,     name='app_root'),
     path('app/<slug:club_slug>/',                                          views.app_home,     name='app_home'),
     path('app/<slug:club_slug>/schedule/',                                 views.app_schedule, name='app_schedule'),
     path('app/<slug:club_slug>/schedule/<int:year>/<int:month>/<int:day>/', views.app_schedule, name='app_schedule_date'),

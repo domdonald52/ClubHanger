@@ -9361,6 +9361,21 @@ def _app_actor(request, club_slug):
 
 
 @login_required
+@login_required
+def app_root(request):
+    """Mobile app entry point (start_url). Routes a multi-club member to a
+    club picker; a single-club member straight into their club's app home."""
+    memberships = (ClubMember.objects
+                   .filter(user=request.user)
+                   .select_related('club', 'role')
+                   .order_by('club__name'))
+    if not memberships.exists():
+        return render(request, 'core/no_access.html')
+    if memberships.count() == 1:
+        return redirect('core:app_home', club_slug=memberships.first().club.slug)
+    return render(request, 'core/app/club_select.html', {'memberships': memberships})
+
+
 def app_home(request, club_slug):
     from datetime import date as _d, timedelta as _td
     club, actor = _app_actor(request, club_slug)
@@ -10307,10 +10322,13 @@ def pwa_manifest(request, club_slug):
         ]
 
     manifest = {
-        'name': club.name,
-        'short_name': club.name,
+        'name': 'ClubHangar',
+        'short_name': 'ClubHangar',
         'description': f'{club.name} — powered by ClubHangar',
-        'start_url': f'/app/{club_slug}/',
+        # Open to the club picker so multi-club members choose each time;
+        # single-club members are redirected straight into their club.
+        'start_url': '/app/',
+        'scope': '/app/',
         'display': 'standalone',
         'orientation': 'portrait',
         'background_color': cfg.theme_banner or '#1d3a5f',
