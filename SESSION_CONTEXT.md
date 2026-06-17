@@ -287,6 +287,23 @@ Branded login flow built (was previously the bare Django admin login):
   `app/club_select.html` → mobile app). Single-club members never see it.
 - Member guide "open the app" URL updated to `/app/`.
 
+### Two demo clubs + Railway healthcheck (DONE 2026-06-17)
+
+- **Railway is staging/testing only**; production will move elsewhere at go-live.
+  The real `wellington-aero-club` club exists in the Railway DB (pre-dates the
+  demo work) — fine for staging, not an isolation problem there.
+- **`seed_demos`** (new command) seeds TWO clearly-fictional demo clubs —
+  **Skyhaven Aero Club** (`skyhaven`) and **Brightwater Flying Club**
+  (`brightwater`) — via `seed_demo`. The seeded admin is a member of both, so
+  signing in shows the **club picker** (web + mobile). Run:
+  `python manage.py seed_demos` (or `--reset`).
+- **`seed_demo --reset` is now multi-club-safe**: it only deletes users orphaned
+  from ALL clubs, so reseeding one demo club no longer deletes members shared
+  with another.
+- **Railway healthcheck** moved from `/admin/login/` → `/login/` in
+  `railway.toml`, so setting `ADMIN_URL` (to hide the admin) doesn't fail the
+  healthcheck.
+
 ### Production environment variables (Railway) — GO-LIVE CHECKLIST
 
 Set these in the hosting platform's Variables (Railway → service → Variables),

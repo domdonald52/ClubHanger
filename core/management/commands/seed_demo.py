@@ -259,7 +259,14 @@ class Command(BaseCommand):
             OccurrenceReport.objects.filter(reported_by__club=club).delete()
             FlightPayment.objects.filter(member__club=club).delete()
             ClubMember.objects.filter(club=club).delete()
-            User.objects.filter(id__in=stale_user_ids, is_superuser=False).delete()
+            # Only remove users who now belong to NO club at all — so seeding a
+            # second demo club that shares this roster doesn't delete members
+            # still in use by the other club.
+            orphaned_ids = [
+                uid for uid in stale_user_ids
+                if not ClubMember.objects.filter(user_id=uid).exists()
+            ]
+            User.objects.filter(id__in=orphaned_ids, is_superuser=False).delete()
             AerodromeFeeType.objects.filter(aerodrome__club=club).delete()
             Aerodrome.objects.filter(club=club).delete()
 

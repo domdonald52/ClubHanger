@@ -3,6 +3,8 @@ builder = "nixpacks"
 
 [deploy]
 startCommand = "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn aero_club.wsgi --workers 2 --timeout 120"
-healthcheckPath = "/admin/login/"
+# Use the branded login (always present) rather than /admin/login/, which moves
+# when ADMIN_URL is set to hide the Django admin.
+healthcheckPath = "/login/"
 healthcheckTimeout = 60
 restartPolicyType = "on_failure"
