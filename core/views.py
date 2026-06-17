@@ -10301,6 +10301,7 @@ def app_book_confirm(request, club_slug):
 def pwa_manifest(request, club_slug):
     """Dynamic PWA manifest — uses club's uploaded logo as icon, falling back to ClubHangar mark."""
     import json as _json
+    from django.conf import settings
     club = get_object_or_404(Club, slug=club_slug)
     cfg  = get_config(club)
     site = getattr(settings, 'SITE_URL', '').rstrip('/')
