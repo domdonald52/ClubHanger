@@ -305,6 +305,11 @@ class Command(BaseCommand):
         # ── Instructor credentials ─────────────────────────────────────────────
         self._setup_instructor_credentials(club, members)
 
+        # ── Instructor availability (roster windows) ───────────────────────────
+        # Without these, the off-roster check treats every instructor as
+        # unavailable and flags all their bookings on the Attention page.
+        self._setup_instructor_availability(club, members)
+
         # ── Dominic's personal demo data (always idempotent) ──────────────────
         self._setup_dominic(club, aircraft, members, ft, admin_user)
 
@@ -1087,6 +1092,24 @@ class Command(BaseCommand):
                 if c:
                     created += 1
         self.stdout.write(f"  Instructor credentials: {created} created")
+
+    def _setup_instructor_availability(self, club, members):
+        """Give every rostered instructor full-week, all-day availability.
+        Without availability windows the off-roster check treats an instructor
+        as unavailable and falsely flags all their bookings on the Attention
+        page. Idempotent."""
+        from core.models import InstructorAvailability
+        instructors = [m for m in members if m.role and m.role.name == "Instructor"]
+        created = 0
+        for m in instructors:
+            for weekday in range(7):  # Mon (0) .. Sun (6)
+                _, c = InstructorAvailability.objects.get_or_create(
+                    club_member=m, recurrence='weekly', weekday=weekday,
+                    defaults={'all_day': True},
+                )
+                if c:
+                    created += 1
+        self.stdout.write(f"  Instructor availability: {created} windows created")
 
     def _setup_dominic(self, club, aircraft, members, ft, admin_user):
         today = date.today()

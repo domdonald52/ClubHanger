@@ -144,7 +144,9 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             instr_cm = next((i for i in instructors if i.user_id == b.instructor_id), None)
             if instr_cm:
                 roster = _av_cache.get(instr_cm.id)
-                if roster is not True:
+                # None = no schedule declared = always available (per the model).
+                # Only flag when the instructor HAS windows and none apply (False).
+                if roster is False:
                     issues.append(('instructor_roster', 'Instructor off roster'))
 
         if not issues:
@@ -2171,7 +2173,7 @@ def manage_bookings(request, club_slug):
             return False
         windows = _av_windows.get(uid, [])
         if not windows:
-            return True  # no schedule = not available
+            return False  # no schedule declared = assumed available (per model)
         bdate = booking.scheduled_start.date()
         return not any(w.applies_on(bdate) for w in windows)
 
