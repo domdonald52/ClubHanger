@@ -1,5 +1,5 @@
 # ClubHangar — Session Context
-**Last updated:** 2026-06-06 (session 3) | **Reload this file at the start of every new session.**
+**Last updated:** 2026-06-17 | **Reload this file at the start of every new session.**
 
 ---
 
@@ -170,6 +170,38 @@ Accounts/balances → Flights → Invoices → Maintenance → Occurrences.
   Run: `manage.py import_members <file> --club migration-test --dry-run`
 - **NOT yet run end-to-end** — container can't install Django 6.0.5. Verify on a
   real 6.0 env. Next slices: Credentials, Accounts/balances, Flights.
+
+## Before go-live — deployment & data isolation (forward checklist)
+
+Captured 2026-06-17. Nothing here needs code changes now — these are
+decisions to action when the real club goes live, so they don't have to be
+re-figured-out under pressure.
+
+**How clubs are routed:** by **slug in the URL path** (`/app/<club_slug>/`,
+`/manage/<club_slug>/`, …) — one Django app, one domain. As currently
+deployed, the demo and a real club would share the **same Railway domain
+and the same database**, differing only by slug:
+- Demo → `/app/wac-demo/`
+- Production → `/app/wellington-aero-club/`
+
+**Decisions to action before real members onboard:**
+- [ ] **Separate Railway environments (recommended).** Put the real club on a
+      `production` environment with its **own database + domain**; keep the
+      demo/dev club on `staging`. Then demo seeding/`--reset` physically
+      *cannot* touch production data, and the prod domain never serves the
+      demo club. (Alternative = stay on one deployment + DB, relying only on
+      the slug guard below. Fine while building; not for go-live.)
+- [ ] **Production club populated via the Paper Aviator migration importer**
+      (see Data migration section), **never** the demo seed.
+- [ ] **Real billing/rates/member data entered via the Settings UI or the
+      importer — never via the demo seed.** The seed is demo-only.
+- [ ] **Reserve/protect the production slug** `wellington-aero-club`. The demo
+      seed already has a **guard** that refuses to write to the production
+      slug, so a stray seed/reset can't clobber the real club even on a shared
+      DB. Keep that guard; on separate environments it's belt-and-braces.
+
+When the time comes, ask Claude for the exact Railway steps to spin up the
+separate `staging` environment — it's all Railway-side config, no code change.
 
 ## Rules every new session must re-confirm
 
