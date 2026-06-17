@@ -764,90 +764,79 @@ class Command(BaseCommand):
     # ── Invoices ──────────────────────────────────────────────────────────────
 
     def _setup_invoices(self, club, members, admin_user):
-        invoice_members = [
-            m for m in members
-            if m.user.username in INVOICE_PAYERS
-        ]
-        member_map = {m.user.username: m for m in invoice_members}
-        today = date.today()
+        config = club.config
+        terms  = config.payment_terms_days or 14
+        today  = date.today()
         inv_num = Invoice.objects.filter(club=club).count() + 1
         invoices_created = 0
 
-        # Monthly invoices for each invoice-paying member: 3 months history
-        # March → paid, April → paid, May → overdue, June → current/draft
-        months = [
-            # (label, issue_offset_days, due_offset_days, status, amount_paid_pct)
-            ("March 2026 flights", -105, -75, "paid",  1.0),
-            ("April 2026 flights", -75,  -45, "paid",  1.0),
-            ("May 2026 flights",   -45,  -15, "sent",  0.0),  # overdue
-            ("June 2026 flights",  -14,  +16, "sent",  0.0),  # current
-        ]
+        # Real-world model: one invoice per flight, raised at completion when the
+        # pilot couldn't pay on the spot (no credit is extended). Issued on the
+        # flight date; due payment_terms_days later — so older unpaid flights fall
+        # overdue on their own. Driven off the actual invoice-method completions
+        # so every invoice ties back to a real flight.
+        already = set(
+            Invoice.objects.filter(club=club, flight_completion__isnull=False)
+            .values_list("flight_completion_id", flat=True))
 
-        for username, member in member_map.items():
-            for label, issue_off, due_off, status, paid_pct in months:
-                issue = today + timedelta(days=issue_off)
-                due   = today + timedelta(days=due_off)
+        inv_completions = (
+            FlightCompletion.objects
+            .filter(booking__club=club, payment_method="invoice", outcome="completed")
+            .select_related("booking__aircraft", "booking__member__user",
+                            "booking__flight_type", "booking__instructor")
+            .prefetch_related("charge_items")
+            .order_by("booking__scheduled_start")
+        )
 
-                # Get 3-6 flight completions for this member in that month window
-                fc_qs = FlightCompletion.objects.filter(
-                    booking__member=member,
-                    booking__scheduled_start__date__gte=issue,
-                    booking__scheduled_start__date__lt=issue + timedelta(days=32),
-                ).select_related("booking__aircraft")[:5]
+        for fc in inv_completions:
+            if fc.pk in already:
+                continue
+            b = fc.booking
+            flight_date = b.scheduled_start.astimezone(NZ).date()
+            issue = flight_date
+            due   = flight_date + timedelta(days=terms)
+            reg   = b.aircraft.registration
 
-                line_total = sum(fc.total_charge for fc in fc_qs)
-                if not line_total:
-                    line_total = Decimal(str(random.randint(300, 900)))
+            # Has the bank transfer come through? Most past-due flights have been
+            # settled; a few stay outstanding (the ones the office chases).
+            if (today - flight_date).days > terms and random.random() < 0.65:
+                status = "paid"
+                amount_paid = fc.total_charge
+                paid_at = (datetime(flight_date.year, flight_date.month, flight_date.day,
+                                    10, 0, tzinfo=NZ) + timedelta(days=min(terms, 7)))
+            else:
+                status = "sent"
+                amount_paid = fc.amount_paid   # 0, or a partial payment
+                paid_at = None
 
-                amount_paid = (line_total * Decimal(str(paid_pct))).quantize(
-                    Decimal("0.01"))
+            inv = Invoice.objects.create(
+                club=club, member=b.member, flight_completion=fc,
+                invoice_number=inv_num,
+                issue_date=issue, due_date=due,
+                description=f"Flight hire — {reg} {flight_date.strftime('%d %b %Y')}",
+                status=status, gst_rate=Decimal("15"),
+                amount_paid=amount_paid,
+                sent_at=datetime(issue.year, issue.month, issue.day, 17, 0, tzinfo=NZ),
+                paid_at=paid_at,
+                created_by=admin_user,
+            )
+            inv_num += 1
+            invoices_created += 1
 
-                inv = Invoice.objects.create(
-                    club=club,
-                    member=member,
-                    invoice_number=inv_num,
-                    issue_date=issue,
-                    due_date=due,
-                    description=f"{label} — {member.user.get_full_name()}",
-                    status=status,
-                    gst_rate=Decimal("15"),
-                    amount_paid=amount_paid,
-                    sent_at=datetime(issue.year, issue.month, issue.day,
-                                     9, 0, tzinfo=NZ) if status != "draft" else None,
-                    paid_at=(datetime(due.year, due.month, due.day,
-                                      14, 0, tzinfo=NZ)
-                             if status == "paid" else None),
-                    created_by=admin_user,
-                )
-                inv_num += 1
-                invoices_created += 1
-
-                # Line items: one per flight or a summary line
-                if fc_qs:
-                    for i, fc in enumerate(fc_qs):
-                        InvoiceLineItem.objects.create(
-                            invoice=inv,
-                            description=(
-                                f"{fc.booking.aircraft.registration} — "
-                                f"{fc.booking.scheduled_start.strftime('%d %b')}"
-                            ),
-                            quantity=fc.actual_flight_hours,
-                            unit="hrs",
-                            rate=HIRE_RATE.get(fc.booking.aircraft.registration,
-                                              Decimal("185")),
-                            amount=fc.total_charge,
-                            sort_order=i,
-                        )
+            # Mirror the flight's charge breakdown as invoice line items.
+            for i, ci in enumerate(fc.charge_items.all()):
+                if ci.item_type in ("hire", "instructor"):
+                    qty  = fc.actual_flight_hours
+                    unit = "hrs"
+                    rate = (HIRE_RATE.get(reg, Decimal("185"))
+                            if ci.item_type == "hire" else INSTRUCTOR_RATE)
                 else:
-                    InvoiceLineItem.objects.create(
-                        invoice=inv,
-                        description="Flight hire (see flight records)",
-                        quantity=Decimal("1"),
-                        unit="",
-                        rate=line_total,
-                        amount=line_total,
-                        sort_order=0,
-                    )
+                    qty, unit, rate = Decimal("1"), "", ci.amount
+                InvoiceLineItem.objects.create(
+                    invoice=inv, description=ci.description,
+                    quantity=qty, unit=unit, rate=rate, amount=ci.amount,
+                    charge_item=ci, sort_order=i,
+                )
 
         # Add one subscription invoice for a member renewal (for UI demo)
         renewal_member = next(
@@ -1080,29 +1069,77 @@ class Command(BaseCommand):
                     status=BookingStatus.CONFIRMED, created_by=admin_user,
                 )
 
-        # ── Unpaid invoice ────────────────────────────────────────────────────
+        # ── Unpaid per-flight invoices (mobile-app demo) ──────────────────────
+        # Dominic usually pays by credit, but a couple of flights went to invoice
+        # (no card on the day → bank transfer): one current, one overdue. Each is
+        # a real completed flight so the mobile invoice sheet shows full detail.
         if not Invoice.objects.filter(club=club, member=dom).exists():
+            terms = club.config.payment_terms_days or 14
             inv_num = Invoice.objects.filter(club=club).count() + 1
-            inv = Invoice.objects.create(
-                club=club, member=dom, invoice_number=inv_num,
-                issue_date=today - timedelta(days=18),
-                due_date=today + timedelta(days=12),
-                description=f"May/Jun 2026 flight hire — Dominic Donald",
-                status="sent", gst_rate=Decimal("15"), amount_paid=Decimal("0"),
-                sent_at=datetime(today.year, today.month, today.day,
-                                 9, 0, tzinfo=NZ) - timedelta(days=18),
-                created_by=admin_user,
-            )
-            InvoiceLineItem.objects.create(
-                invoice=inv, description="ZK-WAC hire — 3 Jun 2026",
-                quantity=Decimal("1.2"), unit="hrs",
-                rate=Decimal("190"), amount=Decimal("228.00"), sort_order=0,
-            )
-            InvoiceLineItem.objects.create(
-                invoice=inv, description="ZK-BCX hire — 9 Jun 2026",
-                quantity=Decimal("1.4"), unit="hrs",
-                rate=Decimal("290"), amount=Decimal("406.00"), sort_order=1,
-            )
+
+            # (reg, days_ago, flight_type, hours, [(label, item_type, amount)])
+            demo_flights = [
+                ("ZK-BCX", 6, "XC", Decimal("1.4"), [
+                    ("Four-seat surcharge (C172)",                "surcharge", Decimal("75.00")),
+                    ("Landing fee — NZMS Masterton (full stop)",  "landing",   Decimal("20.00")),
+                ]),
+                ("ZK-WAC", 20, "SOLO", Decimal("1.2"), [
+                    ("Landing fee — NZMS Masterton (full stop)",  "landing",   Decimal("20.00")),
+                ]),
+            ]
+            for reg, days_ago, ftype_code, hours, extras in demo_flights:
+                ac = ac_map.get(reg)
+                if not ac:
+                    continue
+                d = today - timedelta(days=days_ago)
+                start = datetime(d.year, d.month, d.day, 10, 0, tzinfo=NZ)
+                booking = Booking.objects.create(
+                    club=club, aircraft=ac, member=dom,
+                    flight_type=ft.get(ftype_code), instructor=None,
+                    scheduled_start=start, scheduled_end=start + timedelta(minutes=90),
+                    status=BookingStatus.COMPLETED, created_by=admin_user,
+                    departed_at=start + timedelta(minutes=5),
+                    arrived_at=start + timedelta(minutes=int(hours * 60) + 5),
+                )
+                hire_rate = HIRE_RATE.get(reg, Decimal("185"))
+                hire_amt  = (hire_rate * hours).quantize(Decimal("0.01"))
+                total = hire_amt + sum((amt for _, _, amt in extras), Decimal("0"))
+
+                start_reading = Decimal(str(ac.hobbs_initial or "1000"))
+                fc = FlightCompletion.objects.create(
+                    booking=booking, outcome="completed",
+                    actual_flight_hours=hours,
+                    hobbs_start=start_reading, hobbs_end=start_reading + hours,
+                    total_charge=total, payment_method="invoice",
+                    amount_paid=Decimal("0"), paid_at=None, logged_by=admin_user,
+                )
+                FlightChargeItem.objects.create(
+                    flight_completion=fc, item_type="hire",
+                    description=f"{reg} hire", amount=hire_amt)
+                for label, itype, amt in extras:
+                    FlightChargeItem.objects.create(
+                        flight_completion=fc, item_type=itype,
+                        description=label, amount=amt)
+
+                inv = Invoice.objects.create(
+                    club=club, member=dom, flight_completion=fc,
+                    invoice_number=inv_num,
+                    issue_date=d, due_date=d + timedelta(days=terms),
+                    description=f"Flight hire — {reg} {d.strftime('%d %b %Y')}",
+                    status="sent", gst_rate=Decimal("15"), amount_paid=Decimal("0"),
+                    sent_at=datetime(d.year, d.month, d.day, 17, 0, tzinfo=NZ),
+                    created_by=admin_user,
+                )
+                inv_num += 1
+                InvoiceLineItem.objects.create(
+                    invoice=inv, description=f"{reg} hire",
+                    quantity=hours, unit="hrs", rate=hire_rate, amount=hire_amt,
+                    sort_order=0)
+                for i, (label, _itype, amt) in enumerate(extras, start=1):
+                    InvoiceLineItem.objects.create(
+                        invoice=inv, description=label,
+                        quantity=Decimal("1"), unit="", rate=amt, amount=amt,
+                        sort_order=i)
 
         self.stdout.write("  Dominic: credentials, bookings and invoice seeded")
 
