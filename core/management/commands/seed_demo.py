@@ -15,6 +15,11 @@ Creates:
 Usage:
   python manage.py seed_demo           # idempotent, skips if data exists
   python manage.py seed_demo --reset   # wipe and regenerate everything
+  python manage.py seed_demo --slug staging --name "Staging Club"  # named copy
+
+The demo club defaults to "Wellington Aero Club (Demo)" / "wac-demo". The real
+"wellington-aero-club" slug is reserved for production and the seed refuses to
+touch it unless --force is given.
 """
 
 from collections import defaultdict
@@ -23,7 +28,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 import random
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
@@ -42,9 +47,17 @@ NZ = ZoneInfo('Pacific/Auckland')
 
 # ── Club ─────────────────────────────────────────────────────────────────────
 
+# Demo identity. Kept deliberately distinct from the real club: "Wellington
+# Aero Club" / "wellington-aero-club" is reserved for the first PRODUCTION
+# instance, so the seed must never create or mutate it (get_or_create on the
+# prod slug would otherwise dump demo data into the live club).
+DEMO_NAME = "Wellington Aero Club (Demo)"
+DEMO_SLUG = "wac-demo"
+RESERVED_SLUGS = {"wellington-aero-club"}
+
 CLUB = {
-    "name": "Wellington Aero Club",
-    "slug": "wellington-aero-club",
+    "name": DEMO_NAME,
+    "slug": DEMO_SLUG,
     "phone": "04 388 8000",
     "email": "office@wellingtonaero.example",
     "timezone": "Pacific/Auckland",
@@ -177,13 +190,28 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--reset', action='store_true',
                             help='Delete existing data and regenerate')
+        parser.add_argument('--slug', default=DEMO_SLUG,
+                            help=f'Club slug to seed (default: {DEMO_SLUG}). '
+                                 f'The production slug is reserved.')
+        parser.add_argument('--name', default=DEMO_NAME,
+                            help=f'Club name, used only when first created '
+                                 f'(default: "{DEMO_NAME}").')
+        parser.add_argument('--force', action='store_true',
+                            help='Allow seeding a reserved/production slug (dangerous).')
 
     @transaction.atomic
     def handle(self, *args, **options):
         random.seed(42)
         reset = options['reset']
+        slug = options['slug']
+        name = options['name']
 
-        club = self._setup_club()
+        if slug in RESERVED_SLUGS and not options['force']:
+            raise CommandError(
+                f"Refusing to seed reserved production slug '{slug}'. "
+                f"Use a demo slug (default '{DEMO_SLUG}'), or pass --force to override.")
+
+        club = self._setup_club(slug, name)
 
         if reset:
             self.stdout.write("  Wiping existing demo data...")
@@ -255,8 +283,9 @@ class Command(BaseCommand):
 
     # ── Setup helpers ─────────────────────────────────────────────────────────
 
-    def _setup_club(self):
-        club, created = Club.objects.get_or_create(slug=CLUB["slug"], defaults=CLUB)
+    def _setup_club(self, slug=DEMO_SLUG, name=DEMO_NAME):
+        defaults = {**CLUB, "slug": slug, "name": name}
+        club, created = Club.objects.get_or_create(slug=slug, defaults=defaults)
         self.stdout.write(f"Club: {club.name} ({'created' if created else 'exists'})")
         ClubConfig.objects.get_or_create(
             club=club,
