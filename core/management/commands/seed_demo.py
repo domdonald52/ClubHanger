@@ -27,6 +27,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 import random
+import os
 
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
@@ -54,6 +55,13 @@ NZ = ZoneInfo('Pacific/Auckland')
 DEMO_NAME = "Wellington Aero Club (Demo)"
 DEMO_SLUG = "wac-demo"
 RESERVED_SLUGS = {"wellington-aero-club"}
+
+# Seeded admin login. The username IS an email so it works with the
+# email-enforcing login screen (the old 'dominic' username could not be entered
+# there). Override with the SEED_ADMIN_EMAIL env var (e.g. your real address, so
+# password-reset emails actually reach you); the default is a placeholder kept
+# out of any personal inbox and safe to commit to a public repo.
+ADMIN_EMAIL = os.environ.get("SEED_ADMIN_EMAIL", "admin@wac-demo.example")
 
 CLUB = {
     "name": DEMO_NAME,
@@ -137,7 +145,7 @@ FLIGHT_TYPES = [
 
 PEOPLE = [
     # Admins
-    ("dominic","Dominic","Donald",    "Admin",      "Full Member",         "active", "2027-03-31",None, "credit",  Decimal("1500")),
+    (ADMIN_EMAIL,"Dominic","Donald",    "Admin",      "Full Member",         "active", "2027-03-31",None, "credit",  Decimal("1500")),
     ("alex",   "Alex",   "Reed",      "Admin",      "Commercial Pilot",    "active", "2027-03-31",None, "credit",  Decimal("0")),
     # Instructors (always exempt from credit limit)
     ("sean",   "Sean",   "Kemp",      "Instructor", "Instructor",          "active", "2027-03-31",None, "credit",  Decimal("0")),
@@ -294,7 +302,7 @@ class Command(BaseCommand):
         self._setup_dominic(club, aircraft, members, ft, admin_user)
 
         self.stdout.write(self.style.SUCCESS(
-            f"\nDone. Login: dominic / {DEFAULT_PASSWORD}\n"
+            f"\nDone. Login: {ADMIN_EMAIL} / {DEFAULT_PASSWORD}\n"
             f"Management app: /manage/{club.slug}/\n"
             f"Mobile app:     /app/{club.slug}/"
         ))
@@ -423,6 +431,11 @@ class Command(BaseCommand):
             user.first_name, user.last_name = first, last
             if u_created:
                 user.set_password(DEFAULT_PASSWORD)
+            if not user.email:
+                # Username is already an email for the admin; synthesize one for
+                # everyone else so no account is left without an address (which
+                # would silently break password reset).
+                user.email = username if "@" in username else f"{username}@wac-demo.example"
             if role_name == "Admin":
                 user.is_staff = user.is_superuser = True
             user.save()
@@ -1070,7 +1083,7 @@ class Command(BaseCommand):
 
     def _setup_dominic(self, club, aircraft, members, ft, admin_user):
         today = date.today()
-        dom = next((m for m in members if m.user.username == 'dominic'), None)
+        dom = next((m for m in members if m.user.username == ADMIN_EMAIL), None)
         if not dom:
             return
 

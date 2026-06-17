@@ -287,6 +287,43 @@ Branded login flow built (was previously the bare Django admin login):
   `app/club_select.html` → mobile app). Single-club members never see it.
 - Member guide "open the app" URL updated to `/app/`.
 
+### Production environment variables (Railway) — GO-LIVE CHECKLIST
+
+Set these in the hosting platform's Variables (Railway → service → Variables),
+NOT in source. Re-deploy after changing.
+
+- [ ] **`ADMIN_URL`** — hide the Django admin. Set to a non-guessable path
+      ending in `/`, e.g. `flightdeck-7g3k/`. Defaults to `admin/` if unset.
+      Do the `dominic` username/email fix via `/admin/` FIRST, then set this.
+- [ ] **`SEED_ADMIN_EMAIL`** — only relevant if you ever (re)run `seed_demo`.
+      Sets the demo admin's login email (default placeholder
+      `admin@wac-demo.example`). Set to a real address to receive its
+      password-reset emails.
+- [ ] **`EMAIL_OVERRIDE_TO`** — currently set on purpose for testing (redirects
+      ALL outgoing mail to you). **Clear it at go-live** so members get their own
+      mail. SMTP already configured in Railway.
+- [ ] **`SITE_URL`** — must be the live `https://…` URL (used to build links in
+      invite / password-reset emails; blank = broken links).
+
+### Seeded admin login + emails (DONE 2026-06-17)
+
+- Seeded admin's **username is now an email** (`ADMIN_EMAIL`, from
+  `SEED_ADMIN_EMAIL`, default `admin@wac-demo.example`) so it works with the
+  email-enforcing login (the old `dominic` username could not be typed there).
+- Every seeded user now gets a non-blank email (`<username>@wac-demo.example`)
+  so password reset never silently no-ops on a missing address.
+- Existing live `dominic` account was fixed manually by the user (username +
+  email set to their real address via `/admin/`).
+
+### Auth pages no-cache (DONE 2026-06-17)
+
+- `NoCacheAppMiddleware` now also no-caches `/login`, `/logout`,
+  `/password-reset`, `/reset/` (previously only `/app/`). Prevents a stale
+  cached login/reset page (which can look like an old Django screen).
+- NOTE: "Forgot password?" → branded `/password-reset/` has ALWAYS been correct
+  in code (git-verified). If the Django admin reset still shows, it's a stale
+  deploy/cache — confirm Railway deployed latest `main` + hard refresh.
+
 ### Configurable Django admin path (DONE 2026-06-17)
 
 - Django admin is no longer hardcoded at `/admin/`. `aero_club/urls.py` uses
