@@ -373,6 +373,31 @@ NOT in source. Re-deploy after changing.
 - **Sequence note:** do the `dominic` username/email fix via `/admin/` FIRST
   (while the default path still works), then set `ADMIN_URL` and redeploy.
 
+### Live map changes — DEFERRED / NOT STARTED (paused 2026-06-17)
+
+Requested but paused ("hold that thought"). Files: `live_positions` view
+(`core/views.py` ~8817) + `core/templates/core/live_map.html`. Plan agreed:
+
+1. **Icon by engines only.** Remove the `low_wing` (Piper) icon entirely. Use two
+   icons chosen purely by engine count: `engine_count >= 2` → `twin`, else →
+   `high_wing` (single). Affects: `live_positions` icon block (drop the
+   ICAO-designator `low_wing` branch); template `makeIcon()` (drop PIPER branch),
+   `PIPER_D` const, and the low-wing SVG in the legend. (Leave
+   `manage_aircraft_detail`'s icon logic alone — request was live map only.)
+2. **Discover ALL active aircraft, not just departed.** Query
+   `Aircraft.objects.filter(club=club).exclude(status='retired')`; build a
+   `pilot_by_aircraft` map from today's departed bookings (pilot only known for
+   those). Fetch ADS-B for every aircraft (threaded, existing 45s cache).
+   **Return only aircraft that were FOUND** on ADS-B.
+3. **Messaging.** When none are discoverable, show "No aircraft discoverable via
+   ADS-B service provider" (both the centre `#map-empty` and the panel empty
+   state). Rename the top-right panel header "Departed aircraft" → "Airborne
+   aircraft"; it shows the discovered aircraft. Handle empty `pilot_name`
+   gracefully in panel + popup (omit the Pilot line).
+
+Note the perf trade-off: hitting ADS-B for every aircraft each refresh (cached
+45s, threaded, join timeout ~10s) — fine for small fleets.
+
 ## Rules every new session must re-confirm
 
 Before writing any code in a new session, re-read this file and check:
