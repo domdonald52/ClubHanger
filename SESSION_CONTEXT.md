@@ -142,6 +142,35 @@ Paper Aviator settings tabs: Company Details, Resources, Flight Types, Airports,
 
 ---
 
+## Data migration (Paper Aviator → ClubHangar) — IN PROGRESS
+
+Goal: a **reusable importer** (re-run many times before go-live), fed by data
+shaped out of Paper Aviator's reports (mixed PDF/CSV, some per-member/aircraft).
+Load order follows FKs: reference data → Aircraft → Members → Credentials →
+Accounts/balances → Flights → Invoices → Maintenance → Occurrences.
+
+**Pinned decisions:**
+- **Test club**, not the live club — protects demo seed data. Imports target an
+  isolated club; reset between test runs.
+- **Aircraft**: done **manually** (only a few live; PA has many retired ones).
+- **Members importer (built)**: everyone → default **Member** role (set
+  instructor/admin by hand later); no email → synth `first.last@migrated.invalid`,
+  flagged; **never** sends invite/welcome emails on import; opening balances and
+  medical/BFR expiry **deferred** to later financial/credentials passes.
+- Natural key for re-runnable upsert = **email**.
+
+**Management commands added** (`core/management/commands/`):
+- `setup_test_club.py` — creates/ensures isolated club, runs `setup_defaults`,
+  stamps built-in roles with `system_role_type`. `--reset` wipes members +
+  orphaned users. `--slug` (default `migration-test`).
+- `import_members.py` — reads the 'Members' template sheet (.xlsx) or CSV;
+  header-driven (tolerant of optional Standing / Subscription expires columns);
+  `--dry-run` (validates in a rolled-back transaction); idempotent upsert on
+  email; collects row-level errors; one atomic transaction.
+  Run: `manage.py import_members <file> --club migration-test --dry-run`
+- **NOT yet run end-to-end** — container can't install Django 6.0.5. Verify on a
+  real 6.0 env. Next slices: Credentials, Accounts/balances, Flights.
+
 ## Rules every new session must re-confirm
 
 Before writing any code in a new session, re-read this file and check:
