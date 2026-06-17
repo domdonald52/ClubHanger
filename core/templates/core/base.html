@@ -7,11 +7,12 @@
     {% load static %}
     {% if theme.logo %}
     <link rel="icon" href="{{ theme.logo.url }}" type="image/png">
-    <link rel="apple-touch-icon" href="{{ theme.logo.url }}">
     {% else %}
     <link rel="icon" href="{% static 'core/img/clubhangar-mark.svg' %}" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="{% static 'core/img/clubhangar-mark.svg' %}">
     {% endif %}
+    {# iOS home-screen icon must be an opaque PNG — an SVG apple-touch-icon renders as a blank white tile #}
+    <link rel="apple-touch-icon" href="{% static 'core/img/apple-touch-icon-180.png' %}">
+    {% if theme.logo %}<link rel="apple-touch-icon" href="{{ theme.logo.url }}">{% endif %}
     {% if club %}<link rel="manifest" href="{% url 'core:pwa_manifest_manage' club.slug %}">{% endif %}
     {% if theme.font_url %}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="{{ theme.font_url }}" rel="stylesheet">{% endif %}
     {% block extra_head %}{% endblock %}
