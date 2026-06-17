@@ -246,6 +246,11 @@
 <div class="gap-sm"></div>
 {% endif %}
 
+<!-- Help guide -->
+<div style="padding:0 .75rem .6rem;">
+  <a href="{% url 'core:app_guide' club.slug %}" class="app-btn secondary" style="text-align:center;">📖 Help guide</a>
+</div>
+
 <!-- Sign out -->
 <div style="padding:0 .75rem 1rem;">
   <form method="post" action="{% url 'logout' %}">{% csrf_token %}

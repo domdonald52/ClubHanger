@@ -312,6 +312,11 @@
               <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2h11v11H2z"/><path d="M5 5h5M5 7.5h5M5 10h3"/></svg>
               User guide
             </a>
+            {% else %}
+            <a href="{% url 'core:member_guide' club.slug %}" class="sidenav-link {% if request.resolver_match.url_name == 'member_guide' %}active{% endif %}" style="margin-top:.4rem;">
+              <svg width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2h11v11H2z"/><path d="M5 5h5M5 7.5h5M5 10h3"/></svg>
+              Help guide
+            </a>
             {% endif %}
 
             <hr class="sidenav-divider" style="margin-top:.8rem;">

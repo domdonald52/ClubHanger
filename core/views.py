@@ -7661,6 +7661,34 @@ def manage_guide(request, club_slug):
 
 
 @login_required
+def member_guide(request, club_slug):
+    """Member-facing help guide for the web app — available to any club member."""
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    config = get_config(club)
+    return render(request, 'core/member_guide.html', {
+        'club': club, 'club_member': actor, 'config': config,
+    })
+
+
+@login_required
+def app_guide(request, club_slug):
+    """Short help guide for the mobile (PWA) app — available to any club member."""
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    config = get_config(club)
+    return render(request, 'core/app/guide.html', {
+        'club': club, 'club_member': actor, 'config': config,
+    })
+
+
+@login_required
 def data_page(request, club_slug):
     club = get_object_or_404(Club, slug=club_slug)
     try:

@@ -1,0 +1,146 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}Help Guide — {{ club.name }}{% endblock %}
+
+{% block content %}
+<style>
+.guide-wrap{display:flex;gap:2.5rem;max-width:900px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+.guide-nav{width:175px;flex-shrink:0;}
+.guide-nav-inner{position:sticky;top:1.5rem;max-height:calc(100vh - 3rem);overflow-y:auto;}
+.guide-nav h3{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#9aa3ad;margin:0 0 .3rem .1rem;}
+.guide-nav ul{list-style:none;margin:0;padding:0;}
+.guide-nav ul li a{display:block;font-size:.8rem;color:#5b6573;padding:.22rem .5rem;border-radius:5px;text-decoration:none;line-height:1.35;}
+.guide-nav ul li a:hover{background:#f0f2f5;color:#1f2933;}
+.guide-body{flex:1;min-width:0;}
+.guide-body h1{font-size:1.5rem;font-weight:750;margin:0 0 .3rem;}
+.guide-body .lead{font-size:.93rem;color:#5b6573;margin:0 0 2rem;line-height:1.65;}
+.gsec{margin-bottom:2.6rem;}
+.gsec h2{font-size:1.12rem;font-weight:700;margin:0 0 .85rem;padding-top:2rem;border-top:2px solid #e8eaed;color:#1f2933;}
+.gsec h3{font-size:.92rem;font-weight:650;margin:1.4rem 0 .45rem;color:#1f2933;}
+.gsec p,.gsec li{font-size:.86rem;line-height:1.72;color:#374151;}
+.gsec p{margin:.35rem 0 .75rem;}
+.gsec ul,.gsec ol{padding-left:1.4rem;margin:.3rem 0 .75rem;}
+.gsec li{margin-bottom:.25rem;}
+.callout{border-radius:8px;padding:.7rem 1rem;margin:.9rem 0;font-size:.83rem;line-height:1.65;}
+.callout.info{background:#f0f7ff;border-left:3px solid #3b82f6;color:#1e3a5f;}
+.callout.warn{background:#fffbeb;border-left:3px solid #f59e0b;color:#78350f;}
+.callout.tip{background:#f0fdf4;border-left:3px solid #22c55e;color:#14532d;}
+.callout strong{font-weight:650;}
+.step-flow{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem;margin:.9rem 0 1.1rem;}
+.step-flow .step{display:flex;align-items:center;gap:.4rem;background:#f4f6f8;border:1px solid #dde1e6;border-radius:20px;padding:.28rem .65rem .28rem .35rem;font-size:.77rem;font-weight:600;color:#374151;white-space:nowrap;}
+.step-flow .step .num{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:.67rem;font-weight:700;flex-shrink:0;}
+.step-flow .arrow{color:#9aa3ad;font-size:.85rem;font-weight:700;}
+.pill{font-size:.76rem;font-weight:600;padding:.2rem .6rem;border-radius:12px;white-space:nowrap;display:inline-block;}
+.pill.pending{background:#fff3e0;color:#e65100;}
+.pill.active{background:#e6f4ea;color:#2a7a3b;}
+@media(max-width:700px){.guide-wrap{flex-direction:column;}.guide-nav{width:auto;}}
+</style>
+
+<div class="guide-wrap">
+  <nav class="guide-nav">
+    <div class="guide-nav-inner">
+      <h3>Contents</h3>
+      <ul>
+        <li><a href="#welcome">Welcome</a></li>
+        <li><a href="#signin">Signing in</a></li>
+        <li><a href="#mobile">The mobile app</a></li>
+        <li><a href="#calendar">The calendar</a></li>
+        <li><a href="#booking">Booking a flight</a></li>
+        <li><a href="#standing">Your membership</a></li>
+        <li><a href="#account">Account &amp; payments</a></li>
+        <li><a href="#profile">Profile &amp; credentials</a></li>
+        <li><a href="#help">Getting help</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <article class="guide-body">
+    <div style="display:flex;align-items:center;gap:1.1rem;margin-bottom:1.6rem;padding:1.1rem 1.4rem;background:#111827;border-radius:12px;">
+      <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="Club Hangar" width="48" height="48" style="flex-shrink:0;">
+      <div>
+        <div style="font-size:1.2rem;font-weight:800;color:#fff;letter-spacing:.06em;line-height:1.15;">{{ club.name }}</div>
+        <div style="font-size:.7rem;font-weight:600;color:#9aa8b8;margin-top:.3rem;letter-spacing:.12em;">MEMBER HELP GUIDE</div>
+      </div>
+    </div>
+    <h1>Member help guide</h1>
+    <p class="lead">Welcome to {{ club.name }} on ClubHangar — the system the club uses to manage bookings, your membership, and your flying account. This short guide covers what you, as a member, need to know. Most day-to-day tasks (booking a flight, checking your balance) are quickest on the mobile app, but everything is available here on the web too.</p>
+
+    <div class="gsec" id="welcome">
+      <h2>Welcome</h2>
+      <p>ClubHangar is where you book aircraft and instructors, keep your pilot details up to date, and see what you owe or have paid. The club's office staff and instructors use the same system to run bookings, invoicing, and aircraft maintenance — so when you book or update your details, they see it straight away.</p>
+    </div>
+
+    <div class="gsec" id="signin">
+      <h2>Signing in</h2>
+      <p>You sign in with your <strong>email address</strong> and the password you chose when you accepted your invitation.</p>
+      <ul>
+        <li><strong>Forgot your password?</strong> Click <em>Forgot password?</em> on the sign-in screen and we'll email you a link to set a new one.</li>
+        <li><strong>Belong to more than one club?</strong> After signing in you'll be asked to pick which club you want to open. You can switch clubs any time from the menu — you don't need to sign in again.</li>
+      </ul>
+    </div>
+
+    <div class="gsec" id="mobile">
+      <h2>The mobile app</h2>
+      <p>For everyday use — booking, checking your balance, viewing the schedule — the <strong>mobile app</strong> is the easiest way in. It's the same account, designed for your phone.</p>
+      <ol>
+        <li>On your phone, open <code>{{ request.scheme }}://{{ request.get_host }}/app/{{ club.slug }}/</code></li>
+        <li>Sign in with your email and password.</li>
+        <li>Add it to your home screen (your browser's <em>Share → Add to Home Screen</em>) so it opens like a normal app.</li>
+      </ol>
+      <div class="callout tip"><strong>Tip:</strong> Turn on notifications in the app (Profile → Notifications) so you're told when a booking is confirmed or an invoice is issued.</div>
+      <p>There's a separate, even shorter guide for the mobile app — find it inside the app under <em>Profile</em>.</p>
+    </div>
+
+    <div class="gsec" id="calendar">
+      <h2>The calendar</h2>
+      <p>The calendar shows every aircraft and instructor across the day, so you can see at a glance what's free and what's already booked. Your own bookings are highlighted. Use it to plan when to fly before you request a booking.</p>
+    </div>
+
+    <div class="gsec" id="booking">
+      <h2>Booking a flight</h2>
+      <div class="step-flow">
+        <div class="step"><span class="num">1</span>Request a booking</div><span class="arrow">→</span>
+        <div class="step"><span class="num">2</span>Staff confirm it</div><span class="arrow">→</span>
+        <div class="step"><span class="num">3</span>Fly</div><span class="arrow">→</span>
+        <div class="step"><span class="num">4</span>Charged to your account</div>
+      </div>
+      <p><strong>1 — Request:</strong> Pick the aircraft (and instructor if you need one), choose a date and time, and send the request. The quickest way is the mobile app's <em>Book</em> button, which only offers slots that are actually free.</p>
+      <p><strong>2 — Confirmation:</strong> A booking starts as <span class="pill pending">Pending</span> until the club confirms it. You'll be notified when it's confirmed.</p>
+      <p><strong>3 — On the day:</strong> An instructor or duty member checks you out before the flight and checks you back in afterwards, recording the hours flown.</p>
+      <p><strong>4 — Charging:</strong> The flight's cost is worked out from the hours and the club's rates, and applied to your account automatically.</p>
+      <div class="callout info"><strong>Why might I not be able to book?</strong> Bookings need your membership to be active and your pilot credentials (medical, flight review, ratings) to be current. If something has lapsed, the system will let the club know — keep your details up to date (see Profile &amp; credentials below).</div>
+    </div>
+
+    <div class="gsec" id="standing">
+      <h2>Your membership</h2>
+      <p>Your membership has a <strong>standing</strong> that controls whether you can book:</p>
+      <ul>
+        <li><span class="pill pending">Pending</span> — you've joined but the committee hasn't yet ratified your membership, or your first subscription isn't paid. You can look around but not book.</li>
+        <li><span class="pill active">Active</span> — you're a paid-up member and can book flights.</li>
+      </ul>
+      <p>When your annual subscription is due, the club issues you a renewal invoice. Once it's paid, your membership stays active for the new year.</p>
+    </div>
+
+    <div class="gsec" id="account">
+      <h2>Account &amp; payments</h2>
+      <p>Your <strong>account</strong> is your running balance with the club. Flights and any other charges are applied to it; payments and top-ups credit it. You can see your balance and history at any time (it's on the <em>Account</em> tab in the mobile app).</p>
+      <p>When the club issues you an <strong>invoice</strong> — for a subscription or other charges — you'll be notified. How you pay (EFTPOS, cash, or bank transfer) depends on your club's normal arrangements; the office marks it paid once received.</p>
+    </div>
+
+    <div class="gsec" id="profile">
+      <h2>Profile &amp; credentials</h2>
+      <p>Keeping your details current matters — your <strong>credentials</strong> (medical certificate, flight review/BFR, ratings) determine what you're allowed to book and fly.</p>
+      <ul>
+        <li>Update your contact details and emergency contact under <em>Profile</em>.</li>
+        <li>Add or update a credential (e.g. a renewed medical) so the system knows it's current — in the mobile app, <em>Profile → Add credential</em>.</li>
+      </ul>
+      <div class="callout warn"><strong>Heads up:</strong> If a credential lapses, you may be blocked from booking or checking out a flight until it's renewed and recorded. Update it as soon as you have the new expiry date.</div>
+    </div>
+
+    <div class="gsec" id="help">
+      <h2>Getting help</h2>
+      <p>If something doesn't look right — a charge you don't recognise, a booking that didn't confirm, or trouble signing in — contact the club's office or your usual instructor. They can see your account and bookings and sort most things out quickly.</p>
+    </div>
+  </article>
+</div>
+{% endblock %}

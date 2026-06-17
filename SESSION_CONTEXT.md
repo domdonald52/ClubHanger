@@ -235,19 +235,40 @@ Branded login flow built (was previously the bare Django admin login):
       land on the mobile app home and staff on the web calendar? (Applies after
       club selection for multi-club users.)
 
-### Help guides (member-facing docs) — TO DO
+### Help guides (member-facing docs) — DONE (2026-06-17)
 
-- [ ] **Member web-app user guide** — a normal-member version of the existing
-      staff guide (`manage_guide`, `/manage/<club>/guide/`). Same tone/style as
-      the staff guide but covering only what a member does (book, view schedule,
-      profile/credentials, account). 
-- [ ] **Mobile-app (PWA) help guide** — same tone/style as the web guide but
-      **smaller and simpler**, for the `/app/<club>/…` mobile experience.
-- [ ] **Gate guide visibility by role:**
-      - Existing staff guide (`manage_guide`) → **instructors & admins only**.
-      - New member guide → visible to **members**.
-      - (Check how staff vs member is determined — `ClubMember.role` /
-        `system_role_type`; the manage nav already gates admin-only links.)
+- [x] **Member web-app help guide** — `member_guide` view, `/guide/<club>/`,
+      template `core/member_guide.html` (reuses the staff guide's CSS). Covers
+      sign-in, mobile app, calendar, booking, standing, account, credentials,
+      help. Visible to **any club member**; linked in the web sidenav `{% else %}`
+      (non-staff) as "Help guide".
+- [x] **Mobile-app (PWA) help guide** — `app_guide` view, `/app/<club>/guide/`,
+      template `core/app/guide.html` (extends `core/app/base.html`). Short,
+      card-based tour. Linked from the app Profile page ("📖 Help guide").
+- [x] **Guide visibility gated by role:** existing staff guide (`manage_guide`,
+      `require_staff`) → instructors & admins, link shown only to staff; member
+      guide → everyone else. Role test = `ClubMember.is_staff`
+      (= `is_admin or is_instructor`).
+- [x] **Invite sequence** documented in the staff/admin guide (`#mem-new`
+      step-flow) — now also notes the new Copy-link option and clarifies that
+      inviting does NOT create the member until they accept.
+
+### Invite member — Copy-link + behaviour (DONE 2026-06-17)
+
+- **Copy invite link** button added to the *Pending invites* table on
+  `manage_members` (admin only). Builds the full accept URL client-side
+  (`{{ request.scheme }}://{{ request.get_host }}{% url accept_invite token %}`)
+  and copies via `navigator.clipboard`. Lets you demo the join flow without
+  relying on email (e.g. while `EMAIL_OVERRIDE_TO` is set for testing).
+- **Key behaviour (confirmed):** sending an invite creates ONLY a `ClubInvite`
+  (7-day expiry). The `User` + `ClubMember` (standing `pending`) are created
+  when the recipient opens the link and sets name/password (`accept_invite`).
+  Exception: *+ Add manually* with "Send invite email" unticked creates the
+  account immediately with a (possibly auto-generated) password.
+- **Email reality:** `EMAIL_OVERRIDE_TO` (if set) redirects ALL outgoing mail to
+  that address; `_send()` swallows failures (the green "Invite sent" toast does
+  NOT prove delivery — check the inbox/logs). SMTP set up in Railway but
+  overridden on purpose for testing as of this date.
 
 ## Rules every new session must re-confirm
 
