@@ -60,8 +60,26 @@ CLUB = {
     "slug": DEMO_SLUG,
     "phone": "04 388 8000",
     "email": "office@wellingtonaero.example",
+    "address": "Main Terminal, Wellington Airport\nRongotai, Wellington 6022",
     "timezone": "Pacific/Auckland",
     "currency": "NZD",
+}
+
+# Demo billing + theme. PLACEHOLDERS — clearly a demo. Real GST/bank details
+# belong on the production club, entered via Settings (never committed here).
+DEMO_BILLING = {
+    "invoice_number_prefix": "WAC-",
+    "payment_terms_days": 14,
+    "payment_terms_text": ("Payment due within 14 days. Direct credit to the "
+                           "account above, quoting your invoice number."),
+    "gst_number": "123-456-789",
+    "bank_name": "ANZ Bank",
+    "bank_account": "01-0123-0123456-00",
+}
+DEMO_THEME = {
+    "theme_banner": "#1d3a5f",   # navy — matches the app icon
+    "theme_primary": "#2f7dd1",
+    "theme_accent": "#4a90d9",
 }
 
 # ── Aircraft fleet ────────────────────────────────────────────────────────────
@@ -286,17 +304,27 @@ class Command(BaseCommand):
     def _setup_club(self, slug=DEMO_SLUG, name=DEMO_NAME):
         defaults = {**CLUB, "slug": slug, "name": name}
         club, created = Club.objects.get_or_create(slug=slug, defaults=defaults)
+        # Keep demo contact details fresh on re-seed (defaults only apply on create).
+        club.phone = CLUB["phone"]
+        club.email = CLUB["email"]
+        club.address = CLUB["address"]
+        club.save(update_fields=["phone", "email", "address"])
         self.stdout.write(f"Club: {club.name} ({'created' if created else 'exists'})")
-        ClubConfig.objects.get_or_create(
+
+        config, _ = ClubConfig.objects.get_or_create(
             club=club,
             defaults={
                 "default_booking_duration": 90,
                 "time_slot_interval": 30,
                 "operating_hours_start": time(8, 0),
                 "operating_hours_end": time(18, 0),
-                "invoice_number_prefix": "WAC-",
             },
         )
+        # Sync demo billing + theme every run (so --reset refreshes presentation).
+        # Logo is left untouched — supply a real PNG and set it in Settings.
+        for field, value in {**DEMO_BILLING, **DEMO_THEME}.items():
+            setattr(config, field, value)
+        config.save()
         return club
 
     def _setup_taxonomy(self, club):
