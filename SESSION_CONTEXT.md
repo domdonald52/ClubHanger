@@ -287,6 +287,25 @@ Branded login flow built (was previously the bare Django admin login):
   `app/club_select.html` → mobile app). Single-club members never see it.
 - Member guide "open the app" URL updated to `/app/`.
 
+### False "instructor off roster" warnings — FIXED (2026-06-17)
+
+- **Root cause:** the off-roster conflict check treated an instructor with NO
+  availability windows as *unavailable* — contradicting the model
+  (`InstructorAvailability`: "no records = available all operating hours") and
+  the gantt ghost-row logic (which correctly treats none = available). So every
+  instructor booking was flagged on the Attention page / gantt. Affected real
+  clubs too, not just the demo.
+- **Fixes (`core/views.py`):** `_check_live_conflict` now flags only when
+  `roster is False` (was `is not True`); `_instructor_off_roster` returns
+  `False` when there are no windows (was `True`). Now only instructors who HAVE
+  windows and none apply on the date are flagged.
+- **Seed:** `_setup_instructor_availability` gives every demo instructor
+  full-week all-day windows (realism + populates the availability search).
+- **Part B (discoverability):** changing the instructor on a confirmed booking
+  was possible but hidden behind a vague "Edit details" button on the checkout
+  screen — relabelled to **"Change instructor / aircraft"** in
+  `booking_detail.html` (the `change_details` action already worked).
+
 ### Two demo clubs + Railway healthcheck (DONE 2026-06-17)
 
 - **Railway is staging/testing only**; production will move elsewhere at go-live.
