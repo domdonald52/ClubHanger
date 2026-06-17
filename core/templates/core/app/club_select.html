@@ -1,0 +1,76 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ClubHangar">
+<meta name="theme-color" content="#0E2A47">
+<title>Choose a club — ClubHangar</title>
+<link rel="apple-touch-icon" href="{% static 'core/img/apple-touch-icon-180.png' %}">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f6f9;color:#1f2933;
+       padding:calc(env(safe-area-inset-top,0px) + 1.5rem) 1.1rem calc(env(safe-area-inset-bottom,0px) + 1.5rem);
+       display:flex;flex-direction:column;}
+  .brand{display:flex;align-items:center;gap:.7rem;margin-bottom:1.8rem;}
+  .brand img{width:40px;height:40px;border-radius:9px;}
+  .brand-text{font-size:1rem;font-weight:750;color:#111827;letter-spacing:.03em;}
+  .brand-sub{font-size:.64rem;color:#9aa3ad;letter-spacing:.11em;margin-top:.12rem;}
+  h1{font-size:1.25rem;font-weight:780;margin-bottom:.3rem;}
+  .lede{font-size:.86rem;color:#8a93a0;margin-bottom:1.4rem;line-height:1.5;}
+  .club-btn{display:flex;align-items:center;gap:.9rem;width:100%;padding:.95rem 1rem;border:1px solid #e3e6ea;
+            border-radius:14px;background:#fff;text-decoration:none;color:inherit;margin-bottom:.7rem;
+            box-shadow:0 1px 4px rgba(0,0,0,.05);}
+  .club-btn:active{background:#f7f9fc;}
+  .club-icon{width:44px;height:44px;border-radius:10px;background:#eef1f4;display:flex;align-items:center;
+             justify-content:center;flex-shrink:0;overflow:hidden;}
+  .club-icon img{width:44px;height:44px;object-fit:cover;}
+  .club-main{flex:1;min-width:0;}
+  .club-name{font-weight:700;font-size:.95rem;color:#1f2933;}
+  .club-role{font-size:.76rem;color:#8a93a0;margin-top:.1rem;}
+  .chev{color:#c8cdd4;flex-shrink:0;}
+  .signout{margin-top:auto;padding-top:1.4rem;text-align:center;}
+  .signout button{background:none;border:none;color:#8a93a0;font-size:.82rem;cursor:pointer;text-decoration:underline;}
+</style>
+</head>
+<body>
+  <div class="brand">
+    <img src="{% static 'core/img/clubhangar-icon-512.png' %}" alt="ClubHangar">
+    <div>
+      <div class="brand-text">ClubHangar</div>
+      <div class="brand-sub">FLY · LOG · MANAGE</div>
+    </div>
+  </div>
+
+  <h1>Choose a club</h1>
+  <p class="lede">You're a member of more than one club. Which one would you like to open?</p>
+
+  {% for cm in memberships %}
+  <a href="{% url 'core:app_home' cm.club.slug %}" class="club-btn">
+    <div class="club-icon">
+      {% if cm.club.config.logo %}
+      <img src="{{ cm.club.config.logo.url }}" alt="">
+      {% else %}
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16l-4-4H5l-2 2 5 1 3 3 5-1 5-1z"/><path d="M12 12V5l-2-1"/>
+      </svg>
+      {% endif %}
+    </div>
+    <div class="club-main">
+      <div class="club-name">{{ cm.club.name }}</div>
+      <div class="club-role">{{ cm.role.name|default:"Member" }}</div>
+    </div>
+    <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+  {% endfor %}
+
+  <div class="signout">
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+      <button type="submit">Sign out</button>
+    </form>
+  </div>
+</body>
+</html>

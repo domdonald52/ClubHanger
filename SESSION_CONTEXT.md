@@ -270,6 +270,23 @@ Branded login flow built (was previously the bare Django admin login):
   NOT prove delivery — check the inbox/logs). SMTP set up in Railway but
   overridden on purpose for testing as of this date.
 
+### Mobile PWA name + multi-club picker (DONE 2026-06-17)
+
+- **Installed-app name is now "ClubHangar"** (was the club name). `pwa_manifest`
+  sets `name`/`short_name` = "ClubHangar"; the icon still uses the club's logo
+  and theme. **iOS caches the home-screen name at install time** — existing
+  installs must remove & re-add the icon to pick up the new name.
+- **Mobile club picker:** new slug-less entry `path('app/', views.app_root,
+  name='app_root')`. The manifest `start_url`/`scope` are now `/app/`, so opening
+  the installed app routes through `app_root`:
+  - 0 clubs → `no_access`; 1 club → redirect straight to `app_home`;
+    2+ clubs → `core/app/club_select.html` (mobile-styled picker → each club's
+    `app_home`).
+- So the **club pick-list now appears in BOTH contexts**: web (`index` →
+  `club_select.html` → web calendar) and mobile (`app_root` →
+  `app/club_select.html` → mobile app). Single-club members never see it.
+- Member guide "open the app" URL updated to `/app/`.
+
 ## Rules every new session must re-confirm
 
 Before writing any code in a new session, re-read this file and check:
