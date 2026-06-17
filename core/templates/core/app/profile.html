@@ -248,7 +248,9 @@
 
 <!-- Sign out -->
 <div style="padding:0 .75rem 1rem;">
-  <a href="/admin/logout/?next=/app/{{ club.slug }}/" class="app-btn secondary" style="text-align:center;">Sign out</a>
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+    <button type="submit" class="app-btn secondary" style="width:100%;text-align:center;border:none;cursor:pointer;">Sign out</button>
+  </form>
 </div>
 
 {% block extra_js %}

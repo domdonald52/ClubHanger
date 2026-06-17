@@ -203,6 +203,44 @@ and the same database**, differing only by slug:
 When the time comes, ask Claude for the exact Railway steps to spin up the
 separate `staging` environment — it's all Railway-side config, no code change.
 
+### Authentication & login — DONE (2026-06-17)
+
+Branded login flow built (was previously the bare Django admin login):
+- **Routes** registered at project root in `aero_club/urls.py` with the standard
+  un-namespaced names so `redirect('login')` (~50 call sites) and
+  `LOGIN_URL='login'` resolve: `login`, `logout`, `password_reset`,
+  `password_reset_done`, `password_reset_confirm`, `password_reset_complete`.
+- **Templates** in `core/templates/registration/` extend `auth_base.html`
+  (ClubHangar card branding, matches `invite_accept.html`).
+- **Login form**: `core/auth_forms.py::EmailAuthenticationForm` — labels the
+  username field "Email" (members log in with email = username) + friendly
+  error copy. django-axes lockout still applies.
+- **Password reset** uses Django's built-in views + the configured
+  `EMAIL_BACKEND` (console in dev; set SMTP env vars in prod).
+- **Logout** is now POST (Django 6 requirement). The 3 sign-out links
+  (`base.html` header dropdown + sidenav, `app/profile.html`) submit a hidden
+  POST form to `{% url 'logout' %}`; `LOGOUT_REDIRECT_URL='login'`.
+- **Note:** login screen is ClubHangar (product) branded, not club-specific —
+  it sits before club selection. Per-club login branding would need login under
+  a club slug; deferred unless wanted.
+- **Multi-club login** → `index` view: 0 clubs = `no_access.html`; 1 club =
+  straight to that club's calendar; 2+ = `club_select.html` chooser. Header
+  dropdown also has "Switch to <club>" links.
+
+### Help guides (member-facing docs) — TO DO
+
+- [ ] **Member web-app user guide** — a normal-member version of the existing
+      staff guide (`manage_guide`, `/manage/<club>/guide/`). Same tone/style as
+      the staff guide but covering only what a member does (book, view schedule,
+      profile/credentials, account). 
+- [ ] **Mobile-app (PWA) help guide** — same tone/style as the web guide but
+      **smaller and simpler**, for the `/app/<club>/…` mobile experience.
+- [ ] **Gate guide visibility by role:**
+      - Existing staff guide (`manage_guide`) → **instructors & admins only**.
+      - New member guide → visible to **members**.
+      - (Check how staff vs member is determined — `ClubMember.role` /
+        `system_role_type`; the manage nav already gates admin-only links.)
+
 ## Rules every new session must re-confirm
 
 Before writing any code in a new session, re-read this file and check:
