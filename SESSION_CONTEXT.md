@@ -225,7 +225,15 @@ Branded login flow built (was previously the bare Django admin login):
   a club slug; deferred unless wanted.
 - **Multi-club login** → `index` view: 0 clubs = `no_access.html`; 1 club =
   straight to that club's calendar; 2+ = `club_select.html` chooser. Header
-  dropdown also has "Switch to <club>" links.
+  dropdown also has "Switch to <club>" links. **Confirmed good** (2026-06-17):
+  the club picker should only appear for users who belong to 2+ clubs;
+  single-club users go straight in.
+- [ ] **TO DO — decide post-login landing per role.** Today every fresh sign-in
+      lands on the **web calendar** (`index` → `gantt_day`), even normal members
+      who'd more naturally start in the **mobile app** (`/app/<slug>/`). A
+      `?next=` link is honoured, but a bare login isn't. Decide: should members
+      land on the mobile app home and staff on the web calendar? (Applies after
+      club selection for multi-club users.)
 
 ### Help guides (member-facing docs) — TO DO
 
