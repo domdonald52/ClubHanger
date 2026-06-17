@@ -12,11 +12,12 @@
 <title>{% block title %}ClubHangar{% endblock %}</title>
 {% if theme.logo %}
 <link rel="icon" href="{{ theme.logo.url }}" type="image/png">
-<link rel="apple-touch-icon" href="{{ theme.logo.url }}">
 {% else %}
 <link rel="icon" href="{% static 'core/img/clubhangar-mark.svg' %}" type="image/svg+xml">
-<link rel="apple-touch-icon" href="{% static 'core/img/clubhangar-mark.svg' %}">
 {% endif %}
+{# iOS home-screen icon must be an opaque PNG — an SVG apple-touch-icon renders as a blank white tile #}
+<link rel="apple-touch-icon" href="{% static 'core/img/apple-touch-icon-180.png' %}">
+{% if theme.logo %}<link rel="apple-touch-icon" href="{{ theme.logo.url }}">{% endif %}
 <link rel="manifest" href="{% url 'core:pwa_manifest' club.slug %}">
 <style>
   :root {
