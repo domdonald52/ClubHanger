@@ -287,6 +287,19 @@ Branded login flow built (was previously the bare Django admin login):
   `app/club_select.html` → mobile app). Single-club members never see it.
 - Member guide "open the app" URL updated to `/app/`.
 
+### Configurable Django admin path (DONE 2026-06-17)
+
+- Django admin is no longer hardcoded at `/admin/`. `aero_club/urls.py` uses
+  `path(settings.ADMIN_URL, admin.site.urls)`, where `ADMIN_URL` comes from the
+  `ADMIN_URL` env var (default `admin/`). Keeps the real, non-obvious path out
+  of source control (repo is on GitHub).
+- **To lock down production:** set `ADMIN_URL` in Railway to a non-guessable
+  path, e.g. `flightdeck-7g3k/` (must end with `/`), then redeploy. Defends
+  against bots hitting `/admin/`; django-axes still throttles brute-force and
+  admin still requires `is_staff`.
+- **Sequence note:** do the `dominic` username/email fix via `/admin/` FIRST
+  (while the default path still works), then set `ADMIN_URL` and redeploy.
+
 ## Rules every new session must re-confirm
 
 Before writing any code in a new session, re-read this file and check:
