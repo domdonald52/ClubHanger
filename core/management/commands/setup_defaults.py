@@ -55,6 +55,10 @@ class Command(BaseCommand):
 
             # Config
             config, created = ClubConfig.objects.get_or_create(club=club)
+            if created:
+                # TimeField defaults are declared as strings ('07:00'); reload so
+                # they come back as real time objects before we format them.
+                config.refresh_from_db()
             self.stdout.write(
                 f"  Config: {'created' if created else 'exists'} "
                 f"(hours {config.operating_hours_start:%H:%M}-{config.operating_hours_end:%H:%M}, "
