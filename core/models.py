@@ -417,6 +417,11 @@ class ClubMember(models.Model):
     next_of_kin_name  = models.CharField(max_length=200, blank=True)
     next_of_kin_phone = models.CharField(max_length=20, blank=True)
 
+    membership_number = models.CharField(
+        max_length=20, blank=True,
+        help_text='Club-assigned member number (e.g. from previous system)',
+    )
+
     # ── Membership standing & subscription ───────────────────────────────────
     standing = models.CharField(max_length=20, choices=STANDING_CHOICES, default='active')
     membership_category = models.ForeignKey(MembershipCategory, on_delete=models.SET_NULL, null=True, blank=True)
