@@ -662,14 +662,30 @@
 <script>
 (function(){
   const TABS = ['contact','membership','credentials','account','passengers','bookings','history'];
+
+  // Scope element lookups to this stab-bar's container.
+  // When the page loads inside an overlay, the outer page may have other
+  // elements sharing the same IDs — document.getElementById() would return
+  // the wrong one. Using the bar as an anchor avoids the conflict.
+  const bar = document.querySelector('.stab-bar[data-managed]');
+  if (!bar) return;
+  const container = bar.parentElement;
+
+  function getBtn(t)   { return bar.querySelector('[data-tab="'+t+'"]'); }
+  function getPanel(t) {
+    // Panels are siblings inside container, except #tab-history which lives
+    // outside the main div — fall back to document search only for that one.
+    return (container && container.querySelector('#tab-'+t)) || document.getElementById('tab-'+t);
+  }
+
   function activate(id) {
     TABS.forEach(t => {
-      document.getElementById('tab-'+t).classList.toggle('active', t===id);
-      document.getElementById('tabBtn-'+t).classList.toggle('active', t===id);
+      const panel = getPanel(t); if (panel) panel.classList.toggle('active', t===id);
+      const btn   = getBtn(t);   if (btn)   btn.classList.toggle('active', t===id);
     });
     try { localStorage.setItem('memberDetailTab', id); } catch(e){}
   }
-  TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
+  TABS.forEach(t => { const btn = getBtn(t); if (btn) btn.addEventListener('click', () => activate(t)); });
   const hash = location.hash.replace('#','');
   const _stored = (()=>{ try{ return localStorage.getItem('memberDetailTab'); }catch(e){} })();
   const init = (TABS.includes(hash) ? hash : null)
