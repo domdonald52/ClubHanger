@@ -171,10 +171,10 @@ class ClubConfig(models.Model):
 
     FONT_STACKS = {
         FONT_SYSTEM:  ("system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif", None),
-        FONT_INTER:   ("'Inter',sans-serif",   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"),
-        FONT_POPPINS: ("'Poppins',sans-serif", "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap"),
-        FONT_NUNITO:  ("'Nunito',sans-serif",  "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700&display=swap"),
-        FONT_LORA:    ("'Lora',Georgia,serif", "https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=swap"),
+        FONT_INTER:   ("'Inter',sans-serif",   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=optional"),
+        FONT_POPPINS: ("'Poppins',sans-serif", "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=optional"),
+        FONT_NUNITO:  ("'Nunito',sans-serif",  "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700&display=optional"),
+        FONT_LORA:    ("'Lora',Georgia,serif", "https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=optional"),
     }
 
     def get_font(self):
