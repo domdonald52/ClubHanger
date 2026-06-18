@@ -144,7 +144,7 @@
     {% if eligibility or departure_maint_items %}
     <details class="readiness-box" {% if eligibility.has_blocks or eligibility.has_warnings or departure_maint_items %}open{% endif %}>
       <summary class="readiness-summary {% if eligibility.has_blocks %}rs-red{% elif eligibility.has_warnings or departure_maint_items %}rs-amber{% else %}rs-green{% endif %}">
-        {% if eligibility.has_blocks %}✗ Pilot &amp; aircraft — blocked{% elif eligibility.has_warnings or departure_maint_items %}⚠ Pilot &amp; aircraft — items to review{% else %}✓ Pilot &amp; aircraft — all clear{% endif %}
+        {% if eligibility.has_blocks %}✗ Compliance issues{% elif eligibility.has_warnings or departure_maint_items %}⚠ Pilot &amp; aircraft — items to review{% else %}✓ Pilot &amp; aircraft — all clear{% endif %}
       </summary>
       <div class="readiness-body">
         {% if eligibility %}
@@ -231,7 +231,7 @@
               <option value="">— keep {{ booking.instructor.get_full_name|default:"none" }} —</option>
               <option value="__none__">— remove instructor —</option>
               {% for instr, avail in rostered_instructors %}
-              <option value="{{ instr.user.id }}" {% if instr.user == booking.instructor %}selected{% endif %}>{% if avail == 'red' %}🔴{% elif avail == 'orange' %}🟠{% else %}🟢{% endif %} {{ instr.user.get_full_name }}{% if avail == 'red' %} · conflict{% elif avail == 'orange' %} · pending conflict{% endif %}</option>
+              <option value="{{ instr.user.id }}" {% if instr.user == booking.instructor %}selected{% endif %}>{% if avail == 'red' %}✗{% elif avail == 'orange' %}!{% else %}✓{% endif %} {{ instr.user.get_full_name }}{% if avail == 'red' %} · conflict{% elif avail == 'orange' %} · pending conflict{% endif %}</option>
               {% endfor %}
             </select>
           </label>
