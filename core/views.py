@@ -2260,9 +2260,6 @@ def manage_bookings(request, club_slug):
     f_date_to        = request.GET.get('date_to', '')
     show_all_history = request.GET.get('all_history') == '1'
 
-    # Always recompute conflict flags on page load so blockout-created conflicts surface immediately
-    _recompute_conflicts_for_club(club)
-
     _base_qs = (Booking.objects
                 .filter(club=club)
                 .select_related('member__user', 'aircraft', 'instructor',
