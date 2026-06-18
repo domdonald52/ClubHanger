@@ -104,10 +104,28 @@
         .btn:hover { filter: brightness(1.08); }
         .btn.secondary { background: #f3f5f7; color: #1f2933; border: 1px solid #d6dae0; }
         .btn.secondary:hover { background: #e8eaed; filter: none; }
+        /* ── Compact mode overrides ── */
+        body.compact header { height: 44px; }
+        body.compact main { padding: .55rem; }
+        body.compact .container { padding: 1.3rem !important; }
+        body.compact .sidenav-link { padding: .3rem .65rem; font-size: .84rem; }
+        body.compact .sidenav-section-label,
+        body.compact .nav-section-toggle { padding: .4rem .5rem .1rem; }
+        body.compact .btn { padding: .3rem .65rem; font-size: .82rem; }
+        body.compact .cbtn { padding: .35rem .7rem; font-size: .82rem; }
+        body.compact .cbtn-sm { padding: .17rem .45rem; font-size: .76rem; }
+        body.compact h1 { font-size: 1.3rem; }
+        body.compact .ft-table th { padding: .28rem .5rem; font-size: .72rem; }
+        body.compact .ft-table td { padding: .32rem .5rem; font-size: .82rem; }
+        body.compact .stab-btn { padding: .35rem .75rem; font-size: .83rem; }
+        body.compact .flabel { font-size: .83rem; }
+        body.compact .finput,
+        body.compact input.finput,
+        body.compact textarea.finput { font-size: .83rem; padding: .32rem .55rem; }
     </style>
     <script>const CHART_PALETTE = {{ theme.chart_colors|default:"[]"|safe }};const CHART_MAX_BAR = 52;</script>
 </head>
-<body>
+<body{% if theme.compact_mode %} class="compact"{% endif %}>
     <header>
         <div class="header-content">
             <div class="header-logo" style="display:flex;align-items:center;gap:.5rem;">

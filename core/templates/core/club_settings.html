@@ -353,7 +353,40 @@
       })();
       </script>
 
-      <button type="submit" name="_tab" value="appearance" class="btn">Save appearance</button>
+      <h2 class="sh2" style="margin-top:1.4rem;">Layout density</h2>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .8rem;">Compact mode reduces padding and font sizes across the management app for denser layouts on smaller screens.</p>
+      <label style="display:flex;align-items:center;gap:.7rem;cursor:pointer;font-size:.88rem;font-weight:500;margin-bottom:1.2rem;">
+        <input type="checkbox" name="compact_mode" id="compact-toggle"
+               {% if config.compact_mode %}checked{% endif %}
+               style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;">
+        Compact mode
+      </label>
+
+      <button type="submit" name="_tab" value="appearance" class="btn secondary" id="save-appearance-btn">Save appearance</button>
+      <script>
+      (function(){
+        /* Compact toggle — immediate preview */
+        var toggle = document.getElementById('compact-toggle');
+        if (toggle) {
+          toggle.addEventListener('change', function() {
+            document.body.classList.toggle('compact', this.checked);
+            markDirty();
+          });
+        }
+        /* Dirty-state tracking — highlight save button when anything changes */
+        var saveBtn = document.getElementById('save-appearance-btn');
+        function markDirty() {
+          if (saveBtn) { saveBtn.classList.remove('secondary'); }
+        }
+        var form = document.getElementById('tab-appearance');
+        if (form) {
+          form.querySelectorAll('input,select,textarea').forEach(function(el) {
+            el.addEventListener('change', markDirty);
+            el.addEventListener('input',  markDirty);
+          });
+        }
+      })();
+      </script>
     </div><!-- /tab-appearance -->
   </form>
 

@@ -1970,6 +1970,7 @@ def club_settings(request, club_slug, mode='settings'):
             _fc = request.POST.get('font_choice', '').strip()
             if _fc in dict(config.FONT_CHOICES):
                 config.font_choice = _fc
+            config.compact_mode = request.POST.get('compact_mode') == 'on'
             oh_start = request.POST.get('operating_hours_start')
             oh_end = request.POST.get('operating_hours_end')
             if oh_start:
@@ -7928,15 +7929,118 @@ def export_data(request, club_slug, export_type):
             ])
         return csv_bytes(rows, hdrs)
 
-    # ── Excel helper: build a single .xlsx from named sheets ──────────────────
+    # ── Excel helper: build a single .xlsx with named Excel Tables ──────────────
     def make_xlsx(sheets):
-        """sheets = list of (sheet_name, headers, rows). Returns bytes."""
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment
+        """sheets = list of (sheet_name, headers, rows). Returns bytes.
+        Each sheet becomes a named Excel Table so Power Query can load them
+        straight into the Data Model."""
+        import openpyxl, decimal as _dec, datetime as _dt, re as _re
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.worksheet.table import Table, TableStyleInfo
+        from openpyxl.utils import get_column_letter
+
         wb = openpyxl.Workbook()
         wb.remove(wb.active)
+
         HDR_FILL = PatternFill('solid', fgColor='1E3A5F')
         HDR_FONT = Font(color='FFFFFF', bold=True, size=10)
+        TBL_STYLE = TableStyleInfo(name='TableStyleMedium9', showFirstColumn=False,
+                                   showLastColumn=False, showRowStripes=True)
+        DATE_FMT  = 'yyyy-mm-dd'
+        NUM_FMT   = '#,##0.00'
+
+        def coerce(v):
+            """Preserve dates/numbers; convert everything else to string."""
+            if v is None or v == '':
+                return None
+            if isinstance(v, bool):
+                return 'Yes' if v else 'No'
+            if isinstance(v, (int, float)):
+                return v
+            if isinstance(v, _dec.Decimal):
+                return float(v)
+            if isinstance(v, _dt.datetime):
+                return v.replace(tzinfo=None)   # Excel doesn't handle tz-aware
+            if isinstance(v, _dt.date):
+                return v
+            return str(v)
+
+        def tbl_name(sheet_name):
+            n = _re.sub(r'[^A-Za-z0-9_]', '_', sheet_name)
+            return ('T' + n) if n[:1].isdigit() else n
+
+        # ── Instructions sheet ──────────────────────────────────────────────────
+        ws_i = wb.create_sheet('_Instructions', 0)
+        ws_i.sheet_view.showGridLines = False
+        ws_i.column_dimensions['A'].width = 4
+        ws_i.column_dimensions['B'].width = 28
+        ws_i.column_dimensions['C'].width = 68
+
+        def irow(row_num, b_val='', c_val='', b_bold=False, b_fill=None, c_fill=None, height=None):
+            ws_i.row_dimensions[row_num].height = height or 15
+            cb = ws_i.cell(row_num, 2, b_val)
+            cc = ws_i.cell(row_num, 3, c_val)
+            if b_bold: cb.font = Font(bold=True, size=11)
+            if b_fill: cb.fill = c_fill = PatternFill('solid', fgColor=b_fill)
+            if c_fill: cc.fill = PatternFill('solid', fgColor=c_fill)
+            cc.alignment = Alignment(wrap_text=True)
+
+        irow(1,  'ClubHangar Data Export',  '', b_bold=True); ws_i.row_dimensions[1].height = 22
+        ws_i.cell(1, 2).font = Font(bold=True, size=14, color='1E3A5F')
+        irow(2,  'Each tab in this workbook is a named Excel Table.', '')
+        irow(3,  'The tables mirror the ClubHangar database and can be linked into an Excel Data Model', '')
+        irow(4,  'for pivot tables, charts, and Power BI reports.', '')
+        irow(5)
+        irow(6,  'HOW TO BUILD THE DATA MODEL IN EXCEL', '', b_bold=True)
+        ws_i.cell(6, 2).font = Font(bold=True, size=11, color='1E3A5F')
+        irow(7,  'Step 1', 'Open this workbook in Microsoft Excel (2016 or later).')
+        irow(8,  'Step 2', 'Go to the Data tab → Get Data → From Table/Range.')
+        irow(9,  '',       'Select each table one at a time and choose "Load to… → Only create connection" + tick "Add to Data Model".')
+        irow(10, 'Step 3', 'Repeat Step 2 for every table (Members, Flights, Aircraft, Financial, Invoices, etc.).')
+        irow(11, 'Step 4', 'Once all tables are in the Data Model, go to Data → Relationships (or Power Pivot → Manage).')
+        irow(12, 'Step 5', 'Create the relationships listed in the table below, then build pivot tables or Power BI reports.')
+        irow(13)
+        irow(14, 'TIP',    'On a Mac you may need to use Power Query (Data → Get Data) rather than the Power Pivot add-in.')
+        ws_i.cell(14, 2).font = Font(bold=True, color='C07A1C')
+        irow(15, 'TIP',    'If you use Google Sheets, import each CSV file as a separate sheet and use VLOOKUP/QUERY to join them.')
+        ws_i.cell(15, 2).font = Font(bold=True, color='C07A1C')
+        irow(16)
+        irow(17, 'RELATIONSHIPS', '', b_bold=True)
+        ws_i.cell(17, 2).font = Font(bold=True, size=11, color='1E3A5F')
+
+        rel_hdrs = ['Table', 'Column', '→  relates to  →', 'Table', 'Column', 'Notes']
+        rels = [
+            ('Members',            'Email',          'Flights',             'Member email',    'Primary join for flight records'),
+            ('Members',            'Email',          'Financial',           'Member',          'Use Email in Members; match to member full name or add email to Financial'),
+            ('Members',            'Email',          'Invoices',            'Member',          'Match by full name or email'),
+            ('Members',            'Email',          'Credentials',         'Member',          'Full name match'),
+            ('Aircraft',           'Registration',   'Flights',             'Aircraft',        'Direct registration match'),
+            ('Aircraft',           'Registration',   'Maintenance Items',   'Aircraft',        'Direct registration match'),
+            ('Aircraft',           'Registration',   'Maintenance Log',     'Aircraft',        'Direct registration match'),
+            ('Invoices',           'Invoice #',      'Invoice Line Items',  'Invoice #',       'Direct invoice number match'),
+        ]
+        ws_i.cell(18, 2).value = rel_hdrs[0]; ws_i.cell(18, 2).font = Font(bold=True)
+        ws_i.cell(18, 3).value = rel_hdrs[1]; ws_i.cell(18, 3).font = Font(bold=True)
+        ws_i.cell(18, 4).value = rel_hdrs[2]; ws_i.cell(18, 4).font = Font(bold=True, color='888888')
+        ws_i.cell(18, 5).value = rel_hdrs[3]; ws_i.cell(18, 5).font = Font(bold=True)
+        ws_i.cell(18, 6).value = rel_hdrs[4]; ws_i.cell(18, 6).font = Font(bold=True)
+        ws_i.cell(18, 7).value = rel_hdrs[5]; ws_i.cell(18, 7).font = Font(bold=True, color='888888')
+        ws_i.column_dimensions['D'].width = 8
+        ws_i.column_dimensions['E'].width = 22
+        ws_i.column_dimensions['F'].width = 16
+        ws_i.column_dimensions['G'].width = 48
+        for ri, (t1, c1, t2, c2, note) in enumerate(rels, 19):
+            ws_i.cell(ri, 2, t1)
+            ws_i.cell(ri, 3, c1)
+            ws_i.cell(ri, 4, '→')
+            ws_i.cell(ri, 4).font = Font(color='888888')
+            ws_i.cell(ri, 4).alignment = Alignment(horizontal='center')
+            ws_i.cell(ri, 5, t2)
+            ws_i.cell(ri, 6, c2)
+            ws_i.cell(ri, 7, note)
+            ws_i.cell(ri, 7).font = Font(color='888888', italic=True)
+
+        # ── Data sheets ─────────────────────────────────────────────────────────
         for sheet_name, headers, rows in sheets:
             ws = wb.create_sheet(sheet_name[:31])
             ws.append(headers)
@@ -7945,10 +8049,32 @@ def export_data(request, club_slug, export_type):
                 cell.fill = HDR_FILL
                 cell.alignment = Alignment(horizontal='left')
             for row in rows:
-                ws.append([str(v) if v is not None else '' for v in row])
+                coerced = [coerce(v) for v in row]
+                ws.append(coerced)
+            # Format date/number columns
+            for col_idx, hdr in enumerate(headers, 1):
+                col_letter = get_column_letter(col_idx)
+                hdr_lower = hdr.lower()
+                if any(k in hdr_lower for k in ('date', 'expires', 'issued')):
+                    for cell in ws[col_letter][1:]:
+                        if isinstance(cell.value, _dt.date):
+                            cell.number_format = DATE_FMT
+                elif any(k in hdr_lower for k in ('amount', 'balance', 'charge', 'paid', 'price', 'total', 'rate')):
+                    for cell in ws[col_letter][1:]:
+                        if isinstance(cell.value, (int, float)):
+                            cell.number_format = NUM_FMT
+            # Auto-fit columns
             for col in ws.columns:
                 max_len = max((len(str(c.value or '')) for c in col), default=8)
                 ws.column_dimensions[col[0].column_letter].width = min(max_len + 3, 50)
+            # Add Excel Table (requires at least 1 data row for openpyxl)
+            if ws.max_row > 1:
+                n_cols = len(headers)
+                tbl = Table(displayName=tbl_name(sheet_name),
+                            ref=f'A1:{get_column_letter(n_cols)}{ws.max_row}')
+                tbl.tableStyleInfo = TBL_STYLE
+                ws.add_table(tbl)
+
         buf = io.BytesIO()
         wb.save(buf)
         buf.seek(0)

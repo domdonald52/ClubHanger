@@ -167,6 +167,7 @@ class ClubConfig(models.Model):
         max_length=20, default=FONT_SYSTEM, choices=FONT_CHOICES,
         help_text="Body font used across all pages."
     )
+    compact_mode = models.BooleanField(default=False, help_text="Reduce padding and font sizes for denser layouts.")
 
     FONT_STACKS = {
         FONT_SYSTEM:  ("system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif", None),
