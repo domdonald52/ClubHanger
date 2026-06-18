@@ -41,16 +41,20 @@
   </div>
   {% endif %}
 
-  <div class="legend">
-    <span><i class="dot confirmed"></i> Confirmed</span>
-    <span><i class="dot pending"></i> Pending</span>
-    <span><i class="dot departed"></i> Departed</span>
-    <span><i class="dot returned"></i> Returned</span>
-    <span><i class="dot completed-paid"></i> Completed</span>
-    <a href="{% url 'core:club_weather' club.slug %}" id="wx-pill" class="wx-pill" style="display:none;" title="Click for full weather page"></a>
-    {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
+  <div style="position:relative;">
+    <div class="legend">
+      <span><i class="dot confirmed"></i> Confirmed</span>
+      <span><i class="dot pending"></i> Pending</span>
+      <span><i class="dot departed"></i> Departed</span>
+      <span><i class="dot returned"></i> Returned</span>
+      <span><i class="dot completed-paid"></i> Completed</span>
+      <button type="button" id="wx-pill" class="wx-pill" style="display:none;" title="Click to show/hide TAF"></button>
+      {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
+    </div>
+    <div id="wx-taf" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:40;font-size:.75rem;background:color-mix(in srgb,var(--banner) 8%,#f7f9fb);border:1px solid color-mix(in srgb,var(--banner) 22%,#e3e6ea);border-radius:6px;padding:.35rem .75rem;line-height:1.5;color:color-mix(in srgb,var(--banner) 70%,#2b333d);box-shadow:0 4px 12px rgba(16,24,40,.1);">
+      <a id="wx-full-link" href="{% url 'core:club_weather' club.slug %}" style="float:right;font-size:.7rem;color:inherit;opacity:.65;text-decoration:underline;margin-left:1rem;">Full weather →</a>
+    </div>
   </div>
-  <div id="wx-taf" style="display:none;font-size:.75rem;background:color-mix(in srgb,var(--banner) 8%,#f7f9fb);border:1px solid color-mix(in srgb,var(--banner) 22%,#e3e6ea);border-radius:6px;padding:.35rem .75rem;margin-bottom:.6rem;line-height:1.5;color:color-mix(in srgb,var(--banner) 70%,#2b333d);"></div>
 
   {% if instructor_cred_issues %}
   <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.6rem .9rem;margin-bottom:.75rem;font-size:.82rem;color:#7f1d1d;">
@@ -744,8 +748,11 @@
 
 <script>
 (function(){
-  var pill = document.getElementById('wx-pill');
+  var pill   = document.getElementById('wx-pill');
+  var tafDiv = document.getElementById('wx-taf');
   if (!pill) return;
+
+  var hasTaf = false;
 
   function loadWx() {
     fetch('{% url "core:avwx_metar_api" club.slug %}')
@@ -768,18 +775,35 @@
         '<span class="wx-fr-badge wx-fr-badge-' + fr + '">' + d.flight_rules + '</span>' +
         '<span>' + parts + '</span>' +
         (ageStr ? '<span class="wx-pill-age">· ' + ageStr + (age >= 120 ? ' ⚠' : '') + '</span>' : '');
-      pill.title = d.raw + '\nClick for full weather page';
+      pill.title = d.raw + '\nClick to show TAF';
       pill.style.display = 'inline-flex';
-      var tafDiv = document.getElementById('wx-taf');
       if (tafDiv && d.taf_raw) {
+        hasTaf = true;
+        var link = document.getElementById('wx-full-link');
+        var linkHtml = link ? link.outerHTML : '';
         tafDiv.innerHTML =
+          linkHtml +
           '<span style="font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;opacity:.65;font-family:inherit;margin-right:.5rem;">TAF</span>' +
           '<span style="font-family:monospace;">' + d.taf_raw + '</span>';
-        tafDiv.style.display = 'block';
       }
     })
     .catch(function(){});
   }
+
+  // Toggle TAF panel on pill click — no layout shift (absolutely positioned)
+  pill.addEventListener('click', function() {
+    if (!hasTaf || !tafDiv) return;
+    var showing = tafDiv.style.display === 'block';
+    tafDiv.style.display = showing ? 'none' : 'block';
+  });
+
+  // Close TAF when clicking outside
+  document.addEventListener('click', function(e) {
+    if (tafDiv && tafDiv.style.display === 'block' &&
+        !pill.contains(e.target) && !tafDiv.contains(e.target)) {
+      tafDiv.style.display = 'none';
+    }
+  });
 
   loadWx();
   setInterval(loadWx, 5 * 60 * 1000); // re-fetch every 5 minutes
