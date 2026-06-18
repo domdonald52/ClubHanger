@@ -663,11 +663,12 @@
 (function(){
   const TABS = ['contact','membership','credentials','account','passengers','bookings','history'];
 
-  // Scope element lookups to this stab-bar's container.
-  // When the page loads inside an overlay, the outer page may have other
-  // elements sharing the same IDs — document.getElementById() would return
-  // the wrong one. Using the bar as an anchor avoids the conflict.
-  const bar = document.querySelector('.stab-bar[data-managed]');
+  // Scope element lookups to this stab-bar's container. Both the outer page
+  // (e.g. Attention) and this page can have a [data-managed] stab-bar; take
+  // the LAST match — overlay content is injected at the bottom of the DOM so
+  // our bar is always last whether we load directly or inside an overlay.
+  const allBars = document.querySelectorAll('.stab-bar[data-managed]');
+  const bar = allBars[allBars.length - 1];
   if (!bar) return;
   const container = bar.parentElement;
 
