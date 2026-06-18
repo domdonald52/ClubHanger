@@ -823,9 +823,6 @@
             Payment is via <strong>Invoice {{ fc.invoice.display_number }}</strong>
             <span class="status-badge status-{{ fc.invoice.status }}" style="margin:0 .4rem;">{{ fc.invoice.get_status_display }}</span>—
             record payment against the invoice, not the booking.
-            <div style="margin-top:.5rem;display:flex;gap:.5rem;">
-              <a href="{% url 'core:invoice_detail' club.slug fc.invoice.id %}" class="cbtn" style="font-size:.8rem;">View invoice</a>
-            </div>
           </div>
           {% else %}
           <!-- Multi-payment form — current flight + selectable outstanding others -->
