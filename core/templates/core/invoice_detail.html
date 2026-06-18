@@ -108,17 +108,17 @@
       </div>
 
       {% elif invoice.status == 'sent' %}
-      <div style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;">
-        <input type="hidden" name="action" value="mark_paid">
-        <label class="flabel" style="margin:0;">Payment received
-          <div class="money-wrap" style="margin-top:.2rem;">
+      <input type="hidden" name="action" value="mark_paid">
+      <label class="flabel" style="margin:0;">Payment received
+        <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
+          <div class="money-wrap">
             <span class="money-sym">$</span>
             <input type="number" name="payment_amount" step="0.01" min="0.01"
                    value="{{ invoice.balance_due }}" class="finput money-input" style="width:90px;" required>
           </div>
-        </label>
-        <button type="submit" class="btn">Save &amp; record payment</button>
-      </div>
+          <button type="submit" class="btn">Record payment</button>
+        </div>
+      </label>
       {% endif %}
     </form>
 
