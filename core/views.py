@@ -7088,6 +7088,34 @@ def manage_exceptions(request, club_slug):
         return not any(w.applies_on(booking.scheduled_start.date()) for w in windows)
 
     # 2. Booking conflicts (future non-cancelled bookings with a flagged issue)
+    from django.db.models import Exists as _Exists, OuterRef as _OuterRef
+    _ac_clash_sub = Booking.objects.filter(
+        club=club, aircraft_id=_OuterRef('aircraft_id'),
+        status__in=['pending', 'confirmed', 'departed'],
+        scheduled_start__lt=_OuterRef('scheduled_end'),
+        scheduled_end__gt=_OuterRef('scheduled_start'),
+    ).exclude(pk=_OuterRef('pk'))
+    _in_clash_sub = Booking.objects.filter(
+        club=club, instructor_id=_OuterRef('instructor_id'),
+        status__in=['pending', 'confirmed', 'departed'],
+        scheduled_start__lt=_OuterRef('scheduled_end'),
+        scheduled_end__gt=_OuterRef('scheduled_start'),
+    ).exclude(pk=_OuterRef('pk'))
+    _future_bks = (Booking.objects
+        .filter(club=club, scheduled_start__date__gte=today)
+        .exclude(status__in=['cancelled', 'completed']))
+    _ac_clash_ids = set(
+        _future_bks.filter(aircraft__isnull=False)
+        .annotate(_cl=_Exists(_ac_clash_sub)).filter(_cl=True)
+        .values_list('id', flat=True)
+    )
+    _in_clash_ids = set(
+        _future_bks.filter(instructor__isnull=False)
+        .annotate(_cl=_Exists(_in_clash_sub)).filter(_cl=True)
+        .values_list('id', flat=True)
+    )
+    _clashing_ids = _ac_clash_ids | _in_clash_ids
+
     _db_conflicts = list(
         Booking.objects
         .filter(club=club, scheduled_start__date__gte=today)
@@ -7098,7 +7126,8 @@ def manage_exceptions(request, club_slug):
             _Q(member__standing='active',
                member__subscription_expires__isnull=False,
                member__subscription_expires__lt=today) |
-            _Q(aircraft__status='retired')
+            _Q(aircraft__status='retired') |
+            _Q(id__in=_clashing_ids)
         )
         .select_related('member__user', 'aircraft', 'flight_type', 'instructor')
         .order_by('scheduled_start')
@@ -7120,6 +7149,10 @@ def manage_exceptions(request, club_slug):
 
     def _conflict_labels(b):
         labels = []
+        if b.id in _ac_clash_ids:
+            labels.append('Aircraft double-booked')
+        if b.id in _in_clash_ids:
+            labels.append('Instructor double-booked')
         if b.blockout_conflict:
             labels.append(b.blockout_conflict_reason or 'Block-out conflict')
         if b.member:
