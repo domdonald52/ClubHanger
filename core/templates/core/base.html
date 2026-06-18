@@ -556,8 +556,15 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 .ct tr:last-child td{border-bottom:none;}
 /* ── Smooth cross-document navigation (Chrome/Edge 126+, degrades gracefully) ── */
 @view-transition { navigation: auto; }
-::view-transition-old(root) { animation-duration: .15s; }
-::view-transition-new(root) { animation-duration: .15s; }
+::view-transition-old(root) { animation-duration: .18s; }
+::view-transition-new(root) { animation-duration: .18s; }
+/* Nav and header are persistent — skip the fade so badges don't flash */
+.sidenav { view-transition-name: site-nav; }
+header   { view-transition-name: site-header; }
+::view-transition-old(site-nav),
+::view-transition-new(site-nav),
+::view-transition-old(site-header),
+::view-transition-new(site-header) { animation: none; }
 </style>
 <style>
   .toast-rack{position:fixed;top:1.2rem;right:1.4rem;z-index:600;display:flex;flex-direction:column;gap:.5rem;pointer-events:none;max-width:420px;}

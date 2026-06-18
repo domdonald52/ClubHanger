@@ -460,6 +460,44 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         _instructor_cred_issues(club, selected_date) if can_manage else []
     )
 
+    # METAR/TAF — fetched server-side so the pill and TAF are in the HTML on first paint,
+    # eliminating the layout shift caused by async JS injection.
+    wx_ctx = {}
+    try:
+        from django.conf import settings as _s
+        _api_key = getattr(_s, 'AVWX_API_KEY', '')
+        _home_ae = Aerodrome.objects.filter(club=club, is_home=True).first()
+        if _api_key and _home_ae and getattr(_home_ae, 'icao_code', ''):
+            _raw_m = _fetch_avwx(_home_ae.icao_code, 'metar', _api_key)
+            if 'raw' in _raw_m:
+                _m = _parse_avwx_metar(_raw_m)
+                _raw_t = _fetch_avwx(_home_ae.icao_code, 'taf', _api_key)
+                _age = _m['age_minutes']
+                _ageStr = (
+                    '' if _age is None else
+                    f'{_age}min' if _age < 60 else
+                    f'{_age//60}h{_age%60}m' if _age % 60 else f'{_age//60}h'
+                )
+                _wind = ''
+                if _m['wind_dir_repr'] and _m['wind_speed']:
+                    _wind = f"{_m['wind_dir_repr']}/{_m['wind_speed']}kt"
+                elif _m['wind_speed']:
+                    _wind = f"{_m['wind_speed']}kt"
+                wx_ctx = {
+                    'icao': _home_ae.icao_code,
+                    'flight_rules': _m['flight_rules'],
+                    'fr_cls': (_m['flight_rules'] or '').lower(),
+                    'wind': _wind,
+                    'qnh': _m['qnh_repr'] or '',
+                    'age_str': _ageStr,
+                    'stale': _age is not None and _age >= 60,
+                    'very_stale': _age is not None and _age >= 120,
+                    'raw': _m['raw'],
+                    'taf_raw': _raw_t.get('raw', '') if 'raw' in _raw_t else '',
+                }
+    except Exception:
+        pass
+
     # Active announcements (pinned first) — includes general + event-specific for today
     from .models import Announcement as _Ann
     from django.db.models import Q as _Q2
@@ -508,6 +546,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         'instructor_cred_issues': instructor_cred_issues,
         'announcements_today': announcements_today,
         'club_phone': club_phone,
+        'wx': wx_ctx,
     }
 
     return render(request, 'core/gantt_day.html', context)
