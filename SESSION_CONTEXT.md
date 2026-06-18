@@ -389,6 +389,18 @@ Implemented in `live_positions` (`core/views.py`) + `live_map.html`:
 - Left `manage_aircraft_detail`'s own twin/high_wing/low_wing icon logic
   untouched (request was live map only).
 
+### Overlay modal: fixed height + internal scroll (DONE 2026-06-17)
+
+- `.page-overlay-modal` (base.html) is now a **fixed height** `clamp(420px,78vh,720px)`
+  with `overflow:hidden`; `#page-overlay-body` is the scroll region
+  (`flex:1;min-height:0;overflow-y:auto`). Switching sub-tabs no longer resizes
+  the modal (which made the `.stab-bar` jump). The `.pi-header` stays pinned
+  (already `position:sticky`). A global click listener resets
+  `#page-overlay-body.scrollTop` on any `.stab-btn` click so each tab starts at
+  the top. Trade-off: short tabs have some empty space below — accepted.
+- Possible follow-up if wanted: also make `.stab-bar` sticky so the tabs stay
+  visible while scrolling within a long tab (not done — needs header-height offset).
+
 ## Rules every new session must re-confirm
 
 Before writing any code in a new session, re-read this file and check:
