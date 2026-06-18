@@ -3232,6 +3232,41 @@ def booking_detail(request, club_slug, booking_id):
         _acct and _acct.balance < 0 and _acct.has_warning
     )
 
+    # Instructor availability at this booking's time slot (two queries, not N+1)
+    _active_statuses = ['confirmed', 'departed']
+    _confirmed_conflict_ids = set(
+        Booking.objects.filter(
+            club=club,
+            status__in=_active_statuses,
+            instructor__isnull=False,
+            scheduled_start__lt=booking.scheduled_end,
+            scheduled_end__gt=booking.scheduled_start,
+        ).exclude(pk=booking.pk).values_list('instructor_id', flat=True)
+    )
+    _pending_conflict_ids = set(
+        Booking.objects.filter(
+            club=club,
+            status='pending',
+            instructor__isnull=False,
+            scheduled_start__lt=booking.scheduled_end,
+            scheduled_end__gt=booking.scheduled_start,
+        ).exclude(pk=booking.pk).values_list('instructor_id', flat=True)
+    ) - _confirmed_conflict_ids
+
+    def _instr_avail(member):
+        uid = member.user_id
+        if uid in _confirmed_conflict_ids:
+            return 'red'
+        if uid in _pending_conflict_ids:
+            return 'orange'
+        return 'green'
+
+    _rostered = list(
+        ClubMember.objects.filter(club=club, is_on_instructor_roster=True)
+        .select_related('user').order_by('user__last_name')
+    )
+    rostered_instructors = [(_m, _instr_avail(_m)) for _m in _rostered]
+
     ctx = {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'booking': booking,
@@ -3264,7 +3299,7 @@ def booking_detail(request, club_slug, booking_id):
         'prev_tacho_end': prev_tacho_end,
         'prev_airswitch_end': prev_airswitch_end,
         'checkin_rates_json': checkin_rates_json,
-        'rostered_instructors': ClubMember.objects.filter(club=club, is_on_instructor_roster=True).select_related('user').order_by('user__last_name'),
+        'rostered_instructors': rostered_instructors,
         'online_aircraft': Aircraft.objects.filter(club=club, status='online').order_by('registration'),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
         'inline_title': f'Manage <span class="crumb-sep">›</span> Bookings <span class="crumb-sep">›</span> <span class="crumb-cur">{booking.member.user.get_full_name()} · {booking.aircraft.registration}</span>',

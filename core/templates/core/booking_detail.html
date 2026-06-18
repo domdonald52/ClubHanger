@@ -230,8 +230,8 @@
             <select name="instructor_id" class="finput">
               <option value="">— keep {{ booking.instructor.get_full_name|default:"none" }} —</option>
               <option value="__none__">— remove instructor —</option>
-              {% for instr in rostered_instructors %}
-              <option value="{{ instr.user.id }}" {% if instr.user == booking.instructor %}selected{% endif %}>{{ instr.user.get_full_name }}</option>
+              {% for instr, avail in rostered_instructors %}
+              <option value="{{ instr.user.id }}" {% if instr.user == booking.instructor %}selected{% endif %}>{% if avail == 'red' %}🔴{% elif avail == 'orange' %}🟠{% else %}🟢{% endif %} {{ instr.user.get_full_name }}{% if avail == 'red' %} · conflict{% elif avail == 'orange' %} · pending conflict{% endif %}</option>
               {% endfor %}
             </select>
           </label>

@@ -528,6 +528,15 @@
         <strong>Scheduling conflicts:</strong> When a booking is created, the system checks for clashes (same aircraft, overlapping time). Conflicts that slip through — or arise later when block-outs are created after the booking, or when an instructor is removed from the roster after being assigned to a booking — surface on the <a href="#book-attention">Attention page</a>.
       </div>
 
+      <h4>Reassigning the instructor</h4>
+      <p>When you open a booking detail and use <strong>Change instructor / aircraft</strong>, every instructor on the roster is shown with a colour indicator reflecting their availability during that exact time slot:</p>
+      <ul>
+        <li>🟢 <strong>Available</strong> — no other bookings overlap this time slot.</li>
+        <li>🟠 <strong>Pending conflict</strong> — has a <em>pending</em> (unconfirmed) booking that overlaps. That booking may still be cancelled, so this is a soft flag rather than a hard block.</li>
+        <li>🔴 <strong>Conflict</strong> — has a confirmed or in-flight booking that overlaps. Assigning this instructor creates a double-booking that will appear on the Attention page.</li>
+      </ul>
+      <p>All rostered instructors remain selectable regardless of their indicator — the system does not restrict your choice, because staff sometimes need to override or because the conflicting booking may be about to be cancelled. The dots let you make an informed decision and avoid reassigning to an instructor who is already committed.</p>
+
       <h4>Rescheduling a booking</h4>
       <p>From the booking detail panel (click the booking block on the Gantt), staff can reschedule a confirmed or pending booking to a new time. The reschedule form shows available alternative slots for the same aircraft and checks for block-out conflicts before saving. The booking member is notified of the new time via push notification. Use this rather than cancel-and-rebook when the time change is small — it preserves the booking record and audit trail.</p>
 
