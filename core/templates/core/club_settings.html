@@ -203,23 +203,6 @@
 
   <script>
   (function(){
-    // Booking slots
-    var raw = '{{ config.booking_slots|escapejs }}';
-    var pairs = raw ? raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
-    pairs.forEach(function(p) {
-      var dash = p.indexOf('-', 3);
-      addSlotRow(p.slice(0, dash).trim(), p.slice(dash + 1).trim());
-    });
-    document.getElementById('bookings-form').addEventListener('submit', function() {
-      var rows = document.querySelectorAll('.bs-row');
-      var vals = [];
-      rows.forEach(function(row) {
-        var s = row.querySelector('.bs-start').value.slice(0, 5);
-        var e = row.querySelector('.bs-end').value.slice(0, 5);
-        if (s && e) vals.push(s + '-' + e);
-      });
-      document.getElementById('slot-hidden').value = vals.join(', ');
-    });
     function addSlotRow(start, end) {
       var row = document.createElement('div');
       row.className = 'bs-row';
@@ -232,6 +215,23 @@
       document.getElementById('slot-rows').appendChild(row);
     }
     window.addSlotRow = addSlotRow;
+    // Restore existing slots
+    var raw = '{{ config.booking_slots|escapejs }}';
+    var pairs = raw ? raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
+    pairs.forEach(function(p) {
+      var dash = p.indexOf('-', 3);
+      addSlotRow(p.slice(0, dash).trim(), p.slice(dash + 1).trim());
+    });
+    document.getElementById('settings-form').addEventListener('submit', function() {
+      var rows = document.querySelectorAll('.bs-row');
+      var vals = [];
+      rows.forEach(function(row) {
+        var s = row.querySelector('.bs-start').value.slice(0, 5);
+        var e = row.querySelector('.bs-end').value.slice(0, 5);
+        if (s && e) vals.push(s + '-' + e);
+      });
+      document.getElementById('slot-hidden').value = vals.join(', ');
+    });
     // Booking blocks toggle
     var cb = document.getElementById('bb-enabled');
     var panel = document.getElementById('bb-conditions');
