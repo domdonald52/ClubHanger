@@ -9041,8 +9041,8 @@ def adsb_proxy(request, club_slug, aircraft_id):
         """Parse an ADSBExchange v2 'ac' array into our response dict."""
         for a in ac_list or []:
             alt = a.get('alt_baro')
-            if alt == 'ground' or not alt:
-                continue
+            if not isinstance(alt, (int, float)) or alt <= 0:
+                continue  # skip 'ground', None, zero, or invalid
             lat, lon = a.get('lat'), a.get('lon')
             if lat is None or lon is None:
                 continue
@@ -9062,41 +9062,24 @@ def adsb_proxy(request, club_slug, aircraft_id):
     tried = []
     result = None
 
-    # ── Source 1: OpenSky Network ──────────────────────────────────────────────
-    # Bounding box covers NZ + Aus east coast. Callsign match (no dash).
-    # State vector: [icao24, callsign, origin, time_pos, last_contact,
-    #                lon, lat, baro_alt_m, on_ground, velocity_ms, track, ...]
+    # ── Source 1: adsb.fi (/v2/registration/[reg], ADSBExchange v2) ───────────
     try:
-        data = _get('https://opensky-network.org/api/states/all'
-                    '?lamin=-50&lomin=160&lamax=-30&lomax=180')
-        tried.append('OpenSky')
-        for s in (data.get('states') or []):
-            if (s[1] or '').strip().upper() == callsign and not s[8]:
-                result = {
-                    'found': True,
-                    'lat': s[6], 'lon': s[5],
-                    'alt_ft': round(float(s[7]) * 3.28084) if s[7] else None,
-                    'speed_kt': round(float(s[9]) * 1.94384) if s[9] else None,
-                    'track': round(s[10]) if s[10] else None,
-                    'squawk': s[14] if len(s) > 14 else None,
-                    'seen': 0,
-                    'registration': ac.registration,
-                    'source': 'OpenSky',
-                }
-                break
+        data = _get(f'https://opendata.adsb.fi/api/v2/registration/{reg}')
+        tried.append('adsb.fi')
+        result = _parse_v2(data.get('ac'), 'adsb.fi')
     except Exception:
-        tried.append('OpenSky (failed)')
+        tried.append('adsb.fi (failed)')
 
-    # ── Source 2: adsb.fi (/v2/registration/[reg], ADSBExchange v2) ────────────
+    # ── Source 2: airplanes.live (/v2/registration/[reg], ADSBExchange v2) ────
     if result is None:
         try:
-            data = _get(f'https://opendata.adsb.fi/api/v2/registration/{reg}')
-            tried.append('adsb.fi')
-            result = _parse_v2(data.get('ac'), 'adsb.fi')
+            data = _get(f'https://api.airplanes.live/v2/registration/{reg}')
+            tried.append('airplanes.live')
+            result = _parse_v2(data.get('ac'), 'airplanes.live')
         except Exception:
-            tried.append('adsb.fi (failed)')
+            tried.append('airplanes.live (failed)')
 
-    # ── Source 3: ADSB.one (/v2/reg/[callsign], ADSBExchange v2) ──────────────
+    # ── Source 3: ADSB.one (/v2/reg/[callsign], ADSBExchange v2) ─────────────
     if result is None:
         try:
             data = _get(f'https://api.adsb.one/v2/reg/{callsign}')
@@ -9112,7 +9095,7 @@ def adsb_proxy(request, club_slug, aircraft_id):
             'note': f'{ac.registration} not detected in any ADS-B source',
         }
     result['tried'] = tried
-    cache.set(cache_key, result, 45)
+    cache.set(cache_key, result, 90)
     return JsonResponse(result)
 
 
@@ -9165,8 +9148,8 @@ def live_positions(request, club_slug):
     def _parse_v2(ac_list, reg):
         for a in ac_list or []:
             alt = a.get('alt_baro')
-            if alt == 'ground' or not alt:
-                continue
+            if not isinstance(alt, (int, float)) or alt <= 0:
+                continue  # skip 'ground', None, zero, or invalid
             lat, lon = a.get('lat'), a.get('lon')
             if lat is None or lon is None:
                 continue
@@ -9188,19 +9171,21 @@ def live_positions(request, club_slug):
         if cached is not None:
             return cached
         result = None
-        for url in [
-            f'https://opendata.adsb.fi/api/v2/registration/{reg}',
-            f'https://api.adsb.one/v2/reg/{callsign}',
-        ]:
+        sources = [
+            (f'https://opendata.adsb.fi/api/v2/registration/{reg}', 'ac'),
+            (f'https://api.airplanes.live/v2/registration/{reg}',    'ac'),
+            (f'https://api.adsb.one/v2/reg/{callsign}',              'ac'),
+        ]
+        for url, key in sources:
             try:
-                result = _parse_v2(_get(url).get('ac'), reg)
+                result = _parse_v2(_get(url).get(key), reg)
                 if result:
                     break
             except Exception:
                 pass
         if result is None:
             result = {'found': False, 'registration': reg}
-        cache.set(cache_key, result, 45)
+        cache.set(cache_key, result, 90)
         return result
 
     positions = {}
