@@ -9041,15 +9041,19 @@ def adsb_proxy(request, club_slug, aircraft_id):
         """Parse an ADSBExchange v2 'ac' array into our response dict."""
         for a in ac_list or []:
             alt = a.get('alt_baro')
-            if not isinstance(alt, (int, float)) or alt <= 0:
-                continue  # skip 'ground', None, zero, or invalid
+            try:
+                alt_ft = float(alt)
+                if alt_ft <= 0:
+                    continue  # on ground or invalid reading
+            except (TypeError, ValueError):
+                continue  # 'ground', None, or any non-numeric string
             lat, lon = a.get('lat'), a.get('lon')
             if lat is None or lon is None:
                 continue
             return {
                 'found': True,
                 'lat': lat, 'lon': lon,
-                'alt_ft': round(float(alt)),
+                'alt_ft': round(alt_ft),
                 'speed_kt': round(float(a['gs'])) if a.get('gs') else None,
                 'track': round(float(a['track'])) if a.get('track') else None,
                 'squawk': a.get('squawk'),
@@ -9070,7 +9074,16 @@ def adsb_proxy(request, club_slug, aircraft_id):
     except Exception:
         tried.append('adsb.fi (failed)')
 
-    # ── Source 2: airplanes.live (/v2/registration/[reg], ADSBExchange v2) ────
+    # ── Source 2: adsb.lol (/v2/registration/[reg], ADSBExchange community) ───
+    if result is None:
+        try:
+            data = _get(f'https://api.adsb.lol/v2/registration/{reg}')
+            tried.append('adsb.lol')
+            result = _parse_v2(data.get('ac'), 'adsb.lol')
+        except Exception:
+            tried.append('adsb.lol (failed)')
+
+    # ── Source 3: airplanes.live (/v2/registration/[reg], ADSBExchange v2) ────
     if result is None:
         try:
             data = _get(f'https://api.airplanes.live/v2/registration/{reg}')
@@ -9079,7 +9092,7 @@ def adsb_proxy(request, club_slug, aircraft_id):
         except Exception:
             tried.append('airplanes.live (failed)')
 
-    # ── Source 3: ADSB.one (/v2/reg/[callsign], ADSBExchange v2) ─────────────
+    # ── Source 4: ADSB.one (/v2/reg/[callsign], ADSBExchange v2) ─────────────
     if result is None:
         try:
             data = _get(f'https://api.adsb.one/v2/reg/{callsign}')
@@ -9148,15 +9161,19 @@ def live_positions(request, club_slug):
     def _parse_v2(ac_list, reg):
         for a in ac_list or []:
             alt = a.get('alt_baro')
-            if not isinstance(alt, (int, float)) or alt <= 0:
-                continue  # skip 'ground', None, zero, or invalid
+            try:
+                alt_ft = float(alt)
+                if alt_ft <= 0:
+                    continue
+            except (TypeError, ValueError):
+                continue  # 'ground', None, or non-numeric
             lat, lon = a.get('lat'), a.get('lon')
             if lat is None or lon is None:
                 continue
             return {
                 'found': True,
                 'lat': lat, 'lon': lon,
-                'alt_ft': round(float(alt)),
+                'alt_ft': round(alt_ft),
                 'speed_kt': round(float(a['gs'])) if a.get('gs') else None,
                 'track': round(float(a['track'])) if a.get('track') else None,
                 'registration': reg,
@@ -9172,13 +9189,14 @@ def live_positions(request, club_slug):
             return cached
         result = None
         sources = [
-            (f'https://opendata.adsb.fi/api/v2/registration/{reg}', 'ac'),
-            (f'https://api.airplanes.live/v2/registration/{reg}',    'ac'),
-            (f'https://api.adsb.one/v2/reg/{callsign}',              'ac'),
+            f'https://opendata.adsb.fi/api/v2/registration/{reg}',
+            f'https://api.adsb.lol/v2/registration/{reg}',
+            f'https://api.airplanes.live/v2/registration/{reg}',
+            f'https://api.adsb.one/v2/reg/{callsign}',
         ]
-        for url, key in sources:
+        for url in sources:
             try:
-                result = _parse_v2(_get(url).get(key), reg)
+                result = _parse_v2(_get(url).get('ac'), reg)
                 if result:
                     break
             except Exception:

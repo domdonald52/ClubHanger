@@ -860,6 +860,7 @@
       <div id="adsb-meta" style="font-size:.75rem;color:#adb5bd;display:none;">
         <span id="adsb-last-updated"></span> · refreshes every 60s · <span id="adsb-tried"></span> ·
         <a href="https://www.adsb.fi" target="_blank" style="color:inherit;">adsb.fi</a> /
+        <a href="https://www.adsb.lol" target="_blank" style="color:inherit;">adsb.lol</a> /
         <a href="https://www.airplanes.live" target="_blank" style="color:inherit;">airplanes.live</a> /
         <a href="https://www.adsb.one" target="_blank" style="color:inherit;">ADSB.one</a>
       </div>
@@ -1163,7 +1164,7 @@ window.dcModal = function(form, msg) {
   const STALE_MS = 15 * 60 * 1000;
 
   async function poll() {
-    statusEl.innerHTML = '<span class="adsb-spinner"></span>Querying adsb.fi · airplanes.live · ADSB.one for {{ ac.registration }}…';
+    statusEl.innerHTML = '<span class="adsb-spinner"></span>Querying adsb.fi · adsb.lol · airplanes.live · ADSB.one for {{ ac.registration }}…';
     statusEl.style.color = '#6b7785';
     try {
       const r = await fetch(ADSB_URL, {credentials:'same-origin'});
