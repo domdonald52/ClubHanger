@@ -47,11 +47,14 @@ def _blockout_check(club, aircraft, instructor, start_dt, end_dt, actor, overrid
 
 @login_required
 def index(request):
-    memberships = ClubMember.objects.filter(user=request.user).select_related('club').order_by('club__name')
+    memberships = ClubMember.objects.filter(user=request.user).select_related('club', 'role').order_by('club__name')
     if not memberships.exists():
         return render(request, 'core/no_access.html')
     if memberships.count() == 1:
-        return redirect('core:gantt_day', club_slug=memberships.first().club.slug)
+        m = memberships.first()
+        if m.is_staff:
+            return redirect('core:gantt_day', club_slug=m.club.slug)
+        return redirect('core:app_home', club_slug=m.club.slug)
     return render(request, 'core/club_select.html', {'memberships': memberships})
 
 
