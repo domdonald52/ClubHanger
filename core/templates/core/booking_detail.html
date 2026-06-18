@@ -206,8 +206,8 @@
       <form method="post" style="display:inline;">
         {% csrf_token %}
         <input type="hidden" name="action" value="undo_confirm">
-        <button type="submit" class="cbtn" style="font-size:.78rem;"
-                onclick="return confirm('Undo confirmation? Flight will return to pending.')">
+        <button type="submit" class="cbtn cbtn-warn" style="font-size:.78rem;"
+                onclick="return confirm('Undo confirmation? Flight will return to pending and the member will be notified.')">
           Undo confirmation
         </button>
       </form>

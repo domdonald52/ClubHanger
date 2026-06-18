@@ -18,6 +18,7 @@ def _push(club_member, title, body, url=None):
 
 _PREF_FIELDS = {
     'booking_confirmed', 'booking_cancelled', 'booking_reminder',
+    'booking_amended',
     'credential_expiring', 'subscription_expiring',
     'instructor_booking_urgent', 'instructor_booking_upcoming',
     'maintenance_alert', 'lapsed_credentials', 'slot_released',
@@ -105,6 +106,55 @@ def notify_instructor_new_booking(booking):
         f'{booking.scheduled_start.strftime("%a %-d %b %H:%M")}',
         action_url=url,
     )
+
+
+def notify_booking_unconfirmed(booking):
+    """Notify member (and instructor) that a confirmed booking has been reverted to pending."""
+    if not booking.member:
+        return
+    from django.urls import reverse
+    from ..models import ClubMember
+    app_url = reverse('core:app_bookings', kwargs={'club_slug': booking.club.slug})
+    title = f'Booking pending — {booking.aircraft.registration}'
+    body  = booking.scheduled_start.strftime('%a %-d %b, %H:%M')
+    notify(booking.member, 'booking_cancelled', title, body=body,
+           action_url=reverse('core:booking_detail',
+                              kwargs={'club_slug': booking.club.slug, 'booking_id': booking.id}))
+    _push(booking.member, title, body, url=app_url)
+    if booking.instructor:
+        im = ClubMember.objects.filter(user=booking.instructor, club=booking.club).first()
+        if im and im != booking.member:
+            notify(im, 'booking_cancelled', f'Booking unconfirmed: {booking.member.user.get_full_name()} · {booking.aircraft.registration} {body}',
+                   action_url=reverse('core:booking_detail',
+                                      kwargs={'club_slug': booking.club.slug, 'booking_id': booking.id}))
+            _push(im, f'Booking unconfirmed — {booking.aircraft.registration}', body, url=app_url)
+
+
+def notify_booking_amended(booking, changes='', old_instructor=None):
+    """Notify member and affected instructors of booking detail changes."""
+    if not booking.member:
+        return
+    from django.urls import reverse
+    from ..models import ClubMember
+    url = reverse('core:booking_detail',
+                  kwargs={'club_slug': booking.club.slug, 'booking_id': booking.id})
+    app_url = reverse('core:app_bookings', kwargs={'club_slug': booking.club.slug})
+    title = f'Booking updated — {booking.aircraft.registration}'
+    body  = f'{booking.scheduled_start.strftime("%a %-d %b, %H:%M")}' + (f' · {changes}' if changes else '')
+    notify(booking.member, 'booking_amended', title, body=body, action_url=url)
+    _push(booking.member, title, body, url=app_url)
+    # Notify removed instructor
+    if old_instructor and old_instructor != booking.instructor:
+        im = ClubMember.objects.filter(user=old_instructor, club=booking.club).first()
+        if im and im != booking.member:
+            notify(im, 'booking_amended',
+                   f'Booking updated (instructor changed): {booking.aircraft.registration} {booking.scheduled_start.strftime("%a %-d %b %H:%M")}',
+                   action_url=url)
+            _push(im, f'Booking updated — {booking.aircraft.registration}',
+                  booking.scheduled_start.strftime('%a %-d %b, %H:%M'), url=app_url)
+    # Notify newly assigned instructor
+    if booking.instructor and booking.instructor != old_instructor:
+        notify_instructor_new_booking(booking)
 
 
 def notify_flight_charged(flight_completion):

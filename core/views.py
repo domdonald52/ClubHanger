@@ -2441,6 +2441,8 @@ def booking_detail(request, club_slug, booking_id):
             )
             if result.ok:
                 _audit(booking, request.user, 'cancelled')
+                from .services import notification_service as _ns
+                _ns.notify_booking_cancelled(booking)
                 from .email_notifications import booking_cancelled as _email_cancelled
                 _email_cancelled(booking, reason=reason)
                 success = 'Booking cancelled.'
@@ -2507,6 +2509,7 @@ def booking_detail(request, club_slug, booking_id):
             new_ac_id    = request.POST.get('aircraft_id', '').strip()
             new_desc     = request.POST.get('description', booking.description or '').strip()
             changed = []
+            old_instructor = booking.instructor
             if new_instr_id == '__none__':
                 booking.instructor = None
                 changed.append('instructor')
@@ -2527,6 +2530,11 @@ def booking_detail(request, club_slug, booking_id):
             if changed:
                 booking.save(update_fields=['instructor', 'aircraft', 'description'])
                 _audit(booking, request.user, 'edited', notes=', '.join(changed) + ' updated')
+                notif_changes = ', '.join(changed)
+                from .services import notification_service as _ns
+                _ns.notify_booking_amended(booking, changes=notif_changes, old_instructor=old_instructor)
+                from .email_notifications import booking_amended as _email_amended
+                _email_amended(booking, changes=notif_changes)
                 success = 'Booking updated.'
 
         elif action == 'undo_confirm' and booking.status == 'confirmed' and actor.is_admin:
@@ -2535,6 +2543,10 @@ def booking_detail(request, club_slug, booking_id):
             booking.confirmed_at = None
             booking.save(update_fields=['status', 'confirmed_by', 'confirmed_at'])
             _audit(booking, request.user, 'undo_confirm')
+            from .services import notification_service as _ns
+            _ns.notify_booking_unconfirmed(booking)
+            from .email_notifications import booking_unconfirmed as _email_unconfirmed
+            _email_unconfirmed(booking)
             success = 'Confirmation undone — flight is back to pending.'
 
         elif action == 'checkin' and booking.status == 'departed' and (actor.is_admin or actor.is_instructor):

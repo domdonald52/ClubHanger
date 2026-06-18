@@ -157,6 +157,54 @@ def booking_cancelled(booking, reason=''):
     _send(subject, body, email, from_email, body_html=body_html)
 
 
+def booking_unconfirmed(booking):
+    """Sent to member when their confirmed booking is reverted to pending."""
+    member = booking.member
+    if not member:
+        return
+    email = member.user.email
+    if not email:
+        return
+    from_email = _from_addr(booking.club)
+    subject = f'Booking pending — {booking.aircraft.registration} · {booking.scheduled_start.strftime("%a %-d %b %H:%M")}'
+    body = (
+        f'Hi {member.user.first_name},\n\n'
+        f'Your booking has been moved back to pending.\n\n'
+        f'  Aircraft:  {booking.aircraft.registration}\n'
+        f'  Date/time: {booking.scheduled_start.strftime("%A %-d %B %Y, %H:%M")}\n'
+        f'\nThe club will be in touch to re-confirm or let you know next steps.\n\n{booking.club.name}\n'
+    )
+    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member}
+    body_html = render_to_string('email/booking_unconfirmed.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
+
+
+def booking_amended(booking, changes=''):
+    """Sent to member when booking details (aircraft, instructor) are changed by staff."""
+    member = booking.member
+    if not member:
+        return
+    email = member.user.email
+    if not email:
+        return
+    from_email = _from_addr(booking.club)
+    subject = f'Booking updated — {booking.aircraft.registration} · {booking.scheduled_start.strftime("%a %-d %b %H:%M")}'
+    body = (
+        f'Hi {member.user.first_name},\n\n'
+        f'Your booking has been updated.\n\n'
+        f'  Aircraft:  {booking.aircraft.registration}\n'
+        f'  Date/time: {booking.scheduled_start.strftime("%A %-d %B %Y, %H:%M")}\n'
+    )
+    if booking.instructor:
+        body += f'  Instructor: {booking.instructor.get_full_name()}\n'
+    if changes:
+        body += f'\nChanged: {changes}\n'
+    body += f'\n{booking.club.name}\n'
+    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member, 'changes': changes}
+    body_html = render_to_string('email/booking_amended.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
+
+
 def occurrence_submitted(report):
     """Alert manage-access members when a new occurrence report is submitted."""
     from .models import ClubMember
