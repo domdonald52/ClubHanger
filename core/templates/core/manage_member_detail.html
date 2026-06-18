@@ -534,13 +534,14 @@
     {% endif %}
 
     <!-- Transaction list -->
-    <h3 style="font-size:.88rem;font-weight:650;color:#1f2933;margin:0 0 .6rem;">Recent transactions</h3>
+    <h3 style="font-size:.88rem;font-weight:650;color:#1f2933;margin:0 0 .15rem;">Recent transactions</h3>
+    <p style="font-size:.78rem;color:#8a93a0;margin:0 0 .7rem;">The 30 most recent account entries, newest first.</p>
     {% if transactions %}
-    <table class="cred-table">
+    <table class="cred-table" id="tx-table">
       <thead><tr><th>Date</th><th>Type</th><th>Description</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Balance effect</th></tr></thead>
-      <tbody>
+      <tbody id="tx-tbody">
         {% for tx in transactions %}
-        <tr>
+        <tr class="tx-row">
           <td style="font-size:.8rem;white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
           <td style="font-size:.8rem;color:#8a93a0;">{{ tx.get_transaction_type_display }}</td>
           <td style="font-size:.85rem;">{{ tx.description }}</td>
@@ -552,6 +553,11 @@
         {% endfor %}
       </tbody>
     </table>
+    <div id="tx-pager" style="display:none;align-items:center;justify-content:center;gap:.8rem;margin-top:.7rem;">
+      <button type="button" class="cbtn" id="tx-prev" style="font-size:.8rem;padding:.3rem .7rem;">‹ Prev</button>
+      <span id="tx-pageinfo" style="font-size:.8rem;color:#5b6573;"></span>
+      <button type="button" class="cbtn" id="tx-next" style="font-size:.8rem;padding:.3rem .7rem;">Next ›</button>
+    </div>
     {% else %}
     <p style="color:#8a93a0;font-size:.85rem;">No transactions yet.</p>
     {% endif %}
@@ -700,6 +706,32 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
   document.getElementById('ecm-notes').value = notes;
   document.getElementById('edit-cred-modal').hidden = false;
 };
+
+// Paginate the recent-transactions table client-side (8 per page).
+(function(){
+  var tbody = document.getElementById('tx-tbody');
+  var pager = document.getElementById('tx-pager');
+  if (!tbody || !pager) return;
+  var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr.tx-row'));
+  var SIZE = 8, page = 0, pages = Math.ceil(rows.length / SIZE);
+  if (pages <= 1) return;  // short enough — no pager needed
+  var prev = document.getElementById('tx-prev');
+  var next = document.getElementById('tx-next');
+  var info = document.getElementById('tx-pageinfo');
+  function render(){
+    rows.forEach(function(r, i){
+      r.style.display = (i >= page*SIZE && i < (page+1)*SIZE) ? '' : 'none';
+    });
+    info.textContent = 'Page ' + (page+1) + ' of ' + pages;
+    prev.disabled = page === 0;  next.disabled = page === pages-1;
+    prev.style.opacity = prev.disabled ? '.45' : '1';
+    next.style.opacity = next.disabled ? '.45' : '1';
+  }
+  prev.addEventListener('click', function(){ if (page > 0){ page--; render(); } });
+  next.addEventListener('click', function(){ if (page < pages-1){ page++; render(); } });
+  pager.style.display = 'flex';
+  render();
+})();
 </script>
 
 <!-- ── HISTORY ── -->
