@@ -788,6 +788,9 @@
                   </form>
                   {% endif %}
                 {% else %}
+                  {% if fc.invoice and fc.invoice.status != 'void' %}
+                  <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fc.invoice.display_number }}</span>
+                  {% else %}
                   <form method="post" style="display:inline;">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="record_payee">
@@ -803,6 +806,7 @@
                             onclick="return confirm('Remove this payee allocation?')">✕</button>
                   </form>
                   {% endif %}
+                  {% endif %}
                 {% endif %}
               </div>
             </div>
@@ -813,6 +817,17 @@
           {% endif %}
 
           {% elif not fc.is_paid %}
+          {% if fc.invoice and fc.invoice.status != 'void' %}
+          <!-- Invoice exists — direct to invoice for payment -->
+          <div class="notice" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;margin-bottom:.5rem;">
+            Payment is via <strong>Invoice {{ fc.invoice.display_number }}</strong>
+            <span class="status-badge status-{{ fc.invoice.status }}" style="margin:0 .4rem;">{{ fc.invoice.get_status_display }}</span>—
+            record payment against the invoice, not the booking.
+            <div style="margin-top:.5rem;display:flex;gap:.5rem;">
+              <a href="{% url 'core:invoice_detail' club.slug fc.invoice.id %}" class="cbtn" style="font-size:.8rem;">View invoice</a>
+            </div>
+          </div>
+          {% else %}
           <!-- Multi-payment form — current flight + selectable outstanding others -->
           <form method="post" id="multi-pay-form">
             {% csrf_token %}
@@ -922,7 +937,7 @@
             recalc();
           })();
           </script>
-          {% endif %}
+          {% endif %}{% endif %}
 
           <!-- Fully paid confirmation -->
           {% if fc.is_paid %}

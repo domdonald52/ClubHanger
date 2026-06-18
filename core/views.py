@@ -2962,14 +2962,18 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'record_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                payment_id = request.POST.get('payment_id', '').strip()
-                result = charging_service.record_allocated_payment(
-                    fc, booking, request.user, payment_id
-                )
-                if result.ok:
-                    success = result.data['message']
+                _fc_inv = getattr(fc, 'invoice', None)
+                if _fc_inv and _fc_inv.status != 'void':
+                    error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
-                    error = result.error
+                    payment_id = request.POST.get('payment_id', '').strip()
+                    result = charging_service.record_allocated_payment(
+                        fc, booking, request.user, payment_id
+                    )
+                    if result.ok:
+                        success = result.data['message']
+                    else:
+                        error = result.error
 
         elif action == 'remove_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
@@ -2984,64 +2988,68 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'record_multi_payment' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                from decimal import Decimal as _D, InvalidOperation
-                method = request.POST.get('payment_method', 'eftpos')
-                received_str = request.POST.get('amount_received', '').strip()
-                try:
-                    received = _D(received_str)
-                except InvalidOperation:
-                    error = 'Invalid amount received'
+                _fc_inv = getattr(fc, 'invoice', None)
+                if _fc_inv and _fc_inv.status != 'void':
+                    error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
-                    # Arrears clearance — separate from flight amounts
+                    from decimal import Decimal as _D, InvalidOperation
+                    method = request.POST.get('payment_method', 'eftpos')
+                    received_str = request.POST.get('amount_received', '').strip()
                     try:
-                        arrears_clear_amt = _D(request.POST.get('arrears_amount', '0') or '0')
+                        received = _D(received_str)
                     except InvalidOperation:
-                        arrears_clear_amt = _D('0')
-                    include_arrears = bool(
-                        request.POST.get('include_arrears') and arrears_clear_amt > 0
-                    )
-                    received_for_flights = received - arrears_clear_amt if include_arrears else received
-
-                    # Build ordered list: current flight first, then selected others by date
-                    fc_amounts = [(fc, booking, fc.balance_owing)]
-                    selected_ids = request.POST.getlist('other_fc_ids')
-                    if selected_ids:
-                        _other_fcs = (FlightCompletion.objects
-                                      .filter(id__in=selected_ids,
-                                              booking__member=booking.member,
-                                              booking__club=club)
-                                      .select_related('booking__aircraft', 'booking')
-                                      .order_by('booking__scheduled_start'))
-                        for ofc in _other_fcs:
-                            amt_str = request.POST.get(f'other_amount_{ofc.id}', '').strip()
-                            try:
-                                amt = _D(amt_str)
-                            except InvalidOperation:
-                                amt = ofc.balance_owing
-                            fc_amounts.append((ofc, ofc.booking, amt))
-                    result = charging_service.record_multi_payment(
-                        fc, booking, request.user, method, fc_amounts, received_for_flights
-                    )
-                    if result.ok:
-                        if include_arrears:
-                            from .models import AccountTransaction as _AT
-                            try:
-                                _acct2 = booking.member.account
-                                _AT.objects.create(
-                                    account=_acct2,
-                                    transaction_type='deposit',
-                                    direction='credit',
-                                    amount=arrears_clear_amt,
-                                    payment_method=method,
-                                    description='Arrears clearance — collected with flight payment',
-                                    created_by=request.user,
-                                )
-                                _acct2.apply_transaction(arrears_clear_amt, 'credit')
-                            except Exception:
-                                pass
-                        success = result.data['message']
+                        error = 'Invalid amount received'
                     else:
-                        error = result.error
+                        # Arrears clearance — separate from flight amounts
+                        try:
+                            arrears_clear_amt = _D(request.POST.get('arrears_amount', '0') or '0')
+                        except InvalidOperation:
+                            arrears_clear_amt = _D('0')
+                        include_arrears = bool(
+                            request.POST.get('include_arrears') and arrears_clear_amt > 0
+                        )
+                        received_for_flights = received - arrears_clear_amt if include_arrears else received
+
+                        # Build ordered list: current flight first, then selected others by date
+                        fc_amounts = [(fc, booking, fc.balance_owing)]
+                        selected_ids = request.POST.getlist('other_fc_ids')
+                        if selected_ids:
+                            _other_fcs = (FlightCompletion.objects
+                                          .filter(id__in=selected_ids,
+                                                  booking__member=booking.member,
+                                                  booking__club=club)
+                                          .select_related('booking__aircraft', 'booking')
+                                          .order_by('booking__scheduled_start'))
+                            for ofc in _other_fcs:
+                                amt_str = request.POST.get(f'other_amount_{ofc.id}', '').strip()
+                                try:
+                                    amt = _D(amt_str)
+                                except InvalidOperation:
+                                    amt = ofc.balance_owing
+                                fc_amounts.append((ofc, ofc.booking, amt))
+                        result = charging_service.record_multi_payment(
+                            fc, booking, request.user, method, fc_amounts, received_for_flights
+                        )
+                        if result.ok:
+                            if include_arrears:
+                                from .models import AccountTransaction as _AT
+                                try:
+                                    _acct2 = booking.member.account
+                                    _AT.objects.create(
+                                        account=_acct2,
+                                        transaction_type='deposit',
+                                        direction='credit',
+                                        amount=arrears_clear_amt,
+                                        payment_method=method,
+                                        description='Arrears clearance — collected with flight payment',
+                                        created_by=request.user,
+                                    )
+                                    _acct2.apply_transaction(arrears_clear_amt, 'credit')
+                                except Exception:
+                                    pass
+                            success = result.data['message']
+                        else:
+                            error = result.error
 
         elif action == 'void_checkin' and booking.status == 'completed' and actor.is_admin:
             fc = getattr(booking, 'flight_completion', None)
