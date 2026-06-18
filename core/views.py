@@ -8816,8 +8816,9 @@ def adsb_proxy(request, club_slug, aircraft_id):
 @login_required
 def live_positions(request, club_slug):
     """
-    Returns ADS-B positions for all currently-departed club aircraft.
-    Fetches all aircraft in parallel (threads); per-aircraft 45s cache.
+    Returns ADS-B positions for every active club aircraft currently
+    discoverable on ADS-B (not just departed ones). Aircraft with no signal are
+    omitted. Fetches all aircraft in parallel (threads); per-aircraft 45s cache.
     """
     import urllib.request, ssl as _ssl, json as _json, threading
     from django.core.cache import cache
@@ -8829,15 +8830,21 @@ def live_positions(request, club_slug):
         return JsonResponse({'error': 'Access denied'}, status=403)
 
     today = timezone.localdate()
-    departed = (
-        Booking.objects.filter(club=club, status='departed', scheduled_start__date=today)
-        .select_related('aircraft', 'aircraft__aircraft_type', 'member', 'member__user')
-        .order_by('scheduled_start')
+    # Pilot names (when known) come from today's departed bookings.
+    pilot_by_aircraft = {}
+    for b in (Booking.objects
+              .filter(club=club, status='departed', scheduled_start__date=today)
+              .select_related('member', 'member__user')
+              .order_by('scheduled_start')):
+        if b.member and b.member.user:
+            pilot_by_aircraft[b.aircraft_id] = (
+                b.member.user.get_full_name() or b.member.user.username)
+
+    # Try to discover ALL active club aircraft on ADS-B, not just departed ones.
+    aircraft_objs = list(
+        Aircraft.objects.filter(club=club).exclude(status='retired')
+        .select_related('aircraft_type')
     )
-    # Deduplicate by aircraft — last booking per aircraft wins
-    aircraft_bookings = {}
-    for b in departed:
-        aircraft_bookings[b.aircraft_id] = b
 
     ctx = _ssl.create_default_context()
     try:
@@ -8870,8 +8877,7 @@ def live_positions(request, club_slug):
             }
         return None
 
-    def fetch_one(booking):
-        ac = booking.aircraft
+    def fetch_one(ac):
         reg = ac.registration.upper()
         callsign = reg.replace('-', '')
         cache_key = f'adsb_{club_slug}_{ac.id}'
@@ -8896,37 +8902,32 @@ def live_positions(request, club_slug):
 
     positions = {}
 
-    def worker(aid, bk):
-        positions[aid] = fetch_one(bk)
+    def worker(ac):
+        positions[ac.id] = fetch_one(ac)
 
-    threads = [threading.Thread(target=worker, args=(aid, bk), daemon=True)
-               for aid, bk in aircraft_bookings.items()]
+    threads = [threading.Thread(target=worker, args=(ac,), daemon=True)
+               for ac in aircraft_objs]
     for t in threads:
         t.start()
     for t in threads:
         t.join(timeout=10)
 
     aircraft_list = []
-    for aid, bk in aircraft_bookings.items():
-        ac = bk.aircraft
+    for ac in aircraft_objs:
+        pos = positions.get(ac.id)
+        if not pos or not pos.get('found'):
+            continue  # only return aircraft actually discovered on ADS-B
         at = ac.aircraft_type
-        pos = positions.get(aid, {'found': False, 'registration': ac.registration.upper()})
-        designator   = (at.icao_designator or '').upper() if at else ''
         engine_count = ac.engine_count or 1
-        if engine_count >= 2:
-            icon = 'twin'
-        elif any(designator.startswith(p) for p in ('C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9')):
-            icon = 'high_wing'
-        else:
-            icon = 'low_wing'
-        pilot = bk.member.user.get_full_name() or bk.member.user.username
+        # Icon is decided purely by engine count: 2+ = twin, otherwise single.
+        icon = 'twin' if engine_count >= 2 else 'high_wing'
         aircraft_list.append({
             'registration': ac.registration,
             'aircraft_type': at.name if at else '',
-            'icao_designator': designator,
+            'icao_designator': (at.icao_designator or '').upper() if at else '',
             'engine_count': engine_count,
             'icon': icon,
-            'pilot_name': pilot,
+            'pilot_name': pilot_by_aircraft.get(ac.id, ''),
             **pos,
         })
 
