@@ -19,7 +19,7 @@
       <span class="inv-badge inv-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
       <a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn">Print / PDF ↗</a>
       {% if invoice.flight_completion %}
-      <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}" class="cbtn" data-overlay>View booking</a>
+      <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}?back={{ request.path|urlencode }}" class="cbtn" data-overlay>View booking</a>
       {% endif %}
     </div>
   </div>
