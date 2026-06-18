@@ -1502,6 +1502,15 @@ def club_settings(request, club_slug, mode='settings'):
             from django.shortcuts import redirect as _redirect
             return _redirect(_redir_name, club_slug=club_slug)
 
+        elif action == 'upload_app_banner':
+            if request.FILES.get('app_banner'):
+                config.app_banner = request.FILES['app_banner']
+                config.save(update_fields=['app_banner'])
+            elif request.POST.get('remove_app_banner'):
+                config.app_banner.delete(save=True)
+            from django.shortcuts import redirect as _redirect
+            return _redirect(_redir_name, club_slug=club_slug)
+
         elif action == 'add_flight_type':
             ft_name = request.POST.get('ft_name', '').strip()
             ft_is_solo     = request.POST.get('ft_is_solo') == 'on'
@@ -10203,6 +10212,76 @@ def app_credential_add(request, club_slug):
         'credential_types': CredentialType.choices,
         'aircraft_type_list': aircraft_types,
     })
+
+
+def app_credential_edit(request, club_slug, cred_id):
+    """Mobile app — edit an existing credential (must belong to the current member)."""
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+
+    from .models import MemberCredential, CredentialType, AircraftType
+    from django.urls import reverse as _rev
+
+    cred = get_object_or_404(MemberCredential, id=cred_id, club_member=actor)
+
+    if request.method == 'POST':
+        cred_type = request.POST.get('credential_type', '').strip()
+        ac_type_id = request.POST.get('cred_aircraft_type_id', '').strip() or None
+        name = request.POST.get('cred_name', '').strip()
+        cert_num = request.POST.get('certificate_number', '').strip()
+        issue_str = request.POST.get('issue_date', '').strip()
+        expiry_str = request.POST.get('expiry_date', '').strip()
+        notes = request.POST.get('notes', '').strip()
+
+        from datetime import date as _d
+        def _pd(s):
+            try:
+                return _d.fromisoformat(s) if s else None
+            except ValueError:
+                return None
+
+        cred.credential_type = cred_type
+        cred.name = name
+        cred.certificate_number = cert_num
+        cred.issue_date = _pd(issue_str)
+        cred.expiry_date = _pd(expiry_str)
+        cred.notes = notes
+        cred.aircraft_type_id = None
+        if ac_type_id:
+            try:
+                cred.aircraft_type_id = int(ac_type_id)
+            except (ValueError, TypeError):
+                pass
+        if 'evidence' in request.FILES:
+            cred.evidence = request.FILES['evidence']
+        elif request.POST.get('remove_evidence') and cred.evidence:
+            cred.evidence.delete(save=False)
+            cred.evidence = None
+        cred.save()
+        return redirect(_rev('core:app_profile', args=[club.slug]) + '?saved=1')
+
+    aircraft_types = AircraftType.objects.filter(club=club).order_by('name')
+    return render(request, 'core/app/credential_edit.html', {
+        'club': club, 'club_member': actor, 'cred': cred,
+        'credential_types': CredentialType.choices,
+        'aircraft_type_list': aircraft_types,
+    })
+
+
+def app_credential_delete(request, club_slug, cred_id):
+    """Mobile app — delete a credential (POST only, must belong to current member)."""
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+
+    from .models import MemberCredential
+    from django.urls import reverse as _rev
+
+    cred = get_object_or_404(MemberCredential, id=cred_id, club_member=actor)
+    if request.method == 'POST':
+        cred.delete()
+    return redirect(_rev('core:app_profile', args=[club.slug]) + '?saved=1')
 
 
 @login_required

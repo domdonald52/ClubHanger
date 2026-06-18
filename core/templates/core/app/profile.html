@@ -169,6 +169,13 @@
       <span style="color:#6b7280;">{{ c.notes }}</span>
     </div>
     {% endif %}
+    <div style="display:flex;gap:.5rem;margin-top:.6rem;">
+      <a href="{% url 'core:app_credential_edit' club.slug c.id %}" class="app-btn-sm" style="font-size:.76rem;padding:.28rem .65rem;">Edit</a>
+      <form method="post" action="{% url 'core:app_credential_delete' club.slug c.id %}" onsubmit="return confirm('Remove this credential?')">
+        {% csrf_token %}
+        <button type="submit" class="app-btn-sm" style="font-size:.76rem;padding:.28rem .65rem;background:#fee2e2;color:#c0392b;border-color:#fca5a5;">Delete</button>
+      </form>
+    </div>
   </div>
 </details>
 {% endfor %}

@@ -17,7 +17,11 @@
 
 <!-- ── Hero banner ── -->
 <div style="margin:.5rem .75rem .1rem;border-radius:14px;overflow:hidden;height:165px;box-shadow:0 2px 8px rgba(0,0,0,.12);">
+  {% if theme.app_banner %}
+  <img src="{{ theme.app_banner.url }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+  {% else %}
   <img src="{% static 'core/img/C172.jpg' %}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+  {% endif %}
 </div>
 
 <!-- ── Announcements ── -->
