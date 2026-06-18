@@ -75,56 +75,88 @@
     </div>
   </div>
 
-  <!-- Combined actions + notes form -->
+  <!-- Actions card -->
   {% if invoice.status != 'void' %}
   <div class="inv-card" style="margin-bottom:1.2rem;">
-    <div class="inv-card-head">
-      {% if invoice.status == 'paid' %}Payment recorded{% else %}Actions{% endif %}
-    </div>
+    <div class="inv-card-head">Actions</div>
+
+    {% if error %}<div class="notice err" style="margin:.9rem .9rem 0;">{{ error }}</div>{% endif %}
+
+    {% if invoice.status == 'draft' %}
+    <!-- Draft: description + notes both editable; two submit buttons share one form -->
     <form method="post" style="padding:.9rem;">
       {% csrf_token %}
-      {% if error %}<div class="notice err" style="margin-bottom:.8rem;">{{ error }}</div>{% endif %}
-
-      <!-- Description & notes — always editable -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem;">
         <label class="flabel" style="margin:0;">Flight description <span style="font-weight:400;color:#8a93a0;">(shown on invoice)</span>
-          <input type="text" name="description" value="{{ invoice.description }}" class="finput"
-                 {% if invoice.status == 'paid' or invoice.status == 'void' %}disabled style="opacity:.6;"{% endif %}>
+          <input type="text" name="description" value="{{ invoice.description }}" class="finput">
         </label>
         <label class="flabel" style="margin:0;">Internal notes
-          <textarea name="notes" class="finput" rows="1"
-                    {% if invoice.status == 'paid' or invoice.status == 'void' %}disabled style="opacity:.6;"{% endif %}>{{ invoice.notes }}</textarea>
+          <textarea name="notes" class="finput" rows="1">{{ invoice.notes }}</textarea>
         </label>
       </div>
-
-      {% if invoice.status == 'paid' %}
-      <p style="font-size:.84rem;color:#216c2a;font-weight:500;">✓ Paid in full on {{ invoice.paid_at|date:"j M Y" }}</p>
-
-      {% elif invoice.status == 'draft' %}
       <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
-        <input type="hidden" name="action" value="mark_sent">
-        <button type="submit" class="cbtn-add">↗ Mark as sent</button>
-        <span style="font-size:.8rem;color:#8a93a0;">Sends the invoice status to "Sent" so payment can be recorded.</span>
+        <button type="submit" name="action" value="update_details" class="cbtn" style="font-size:.82rem;">Save details</button>
+        <button type="submit" name="action" value="mark_sent" class="cbtn-add">↗ Issue invoice</button>
+        <span style="font-size:.8rem;color:#8a93a0;">Issuing saves details and notifies the member.</span>
       </div>
-
-      {% elif invoice.status == 'sent' %}
-      <input type="hidden" name="action" value="mark_paid">
-      <label class="flabel" style="margin:0;">Payment received
-        <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
-          <div class="money-wrap">
-            <span class="money-sym">$</span>
-            <input type="number" name="payment_amount" step="0.01" min="0.01"
-                   value="{{ invoice.balance_due }}" class="finput money-input" style="width:90px;" required>
-          </div>
-          <button type="submit" class="btn">Record payment</button>
-        </div>
-      </label>
-      {% endif %}
     </form>
 
-    {% if invoice.status != 'paid' %}
-    <div style="padding:0 .9rem .9rem;border-top:1px solid #f0f2f4;margin-top:.6rem;padding-top:.6rem;">
-      <form method="post" onsubmit="return confirm('Void this invoice?')" style="display:inline;">
+    {% elif invoice.status == 'sent' %}
+    <!-- Sent: description locked; notes editable; payment recording separate -->
+    <div style="padding:.9rem .9rem .6rem;">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">
+        Flight description <span style="font-weight:400;text-transform:none;letter-spacing:0;">— locked after issue</span>
+      </div>
+      <div style="font-size:.9rem;color:#1f2937;">{{ invoice.description|default:"—" }}</div>
+    </div>
+    <form method="post" style="padding:0 .9rem .9rem;">
+      {% csrf_token %}
+      <label class="flabel" style="margin:0;">Internal notes
+        <textarea name="notes" class="finput" rows="1">{{ invoice.notes }}</textarea>
+      </label>
+      <div style="margin-top:.5rem;">
+        <button type="submit" name="action" value="save_notes" class="cbtn" style="font-size:.82rem;">Save notes</button>
+      </div>
+    </form>
+    <div style="border-top:1px solid #f0f2f4;padding:.9rem;">
+      <form method="post">
+        {% csrf_token %}
+        <label class="flabel" style="margin:0;">Payment received
+          <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
+            <div class="money-wrap">
+              <span class="money-sym">$</span>
+              <input type="number" name="payment_amount" step="0.01" min="0.01"
+                     value="{{ invoice.balance_due }}" class="finput money-input" style="width:90px;" required>
+            </div>
+            <button type="submit" name="action" value="mark_paid" class="btn">Record payment</button>
+          </div>
+        </label>
+      </form>
+    </div>
+
+    {% elif invoice.status == 'paid' %}
+    <!-- Paid: description locked; notes still editable for bookkeeper reference -->
+    <div style="padding:.9rem .9rem .6rem;">
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Flight description</div>
+      <div style="font-size:.9rem;color:#1f2937;">{{ invoice.description|default:"—" }}</div>
+    </div>
+    <form method="post" style="padding:0 .9rem .9rem;">
+      {% csrf_token %}
+      <label class="flabel" style="margin:0;">Internal notes
+        <textarea name="notes" class="finput" rows="1">{{ invoice.notes }}</textarea>
+      </label>
+      <div style="margin-top:.5rem;">
+        <button type="submit" name="action" value="save_notes" class="cbtn" style="font-size:.82rem;">Save notes</button>
+      </div>
+    </form>
+    <div style="padding:0 .9rem .9rem;">
+      <p style="font-size:.84rem;color:#216c2a;font-weight:600;">✓ Paid in full — {{ invoice.paid_at|date:"j M Y" }}</p>
+    </div>
+    {% endif %}
+
+    {% if invoice.status == 'draft' or invoice.status == 'sent' %}
+    <div style="padding:0 .9rem .9rem;border-top:1px solid #f0f2f4;padding-top:.6rem;">
+      <form method="post" onsubmit="return confirm('Void this invoice? This cannot be undone.')" style="display:inline;">
         {% csrf_token %}<input type="hidden" name="action" value="void">
         <button type="submit" class="cbtn cbtn-danger" style="font-size:.82rem;">Void invoice</button>
       </form>

@@ -5788,15 +5788,21 @@ def invoice_detail(request, club_slug, invoice_id):
     if request.method == 'POST':
         action = request.POST.get('action', '')
 
-        # Always save description/notes if included in the form
+        # Description only editable while draft; notes always editable
         _desc = request.POST.get('description', None)
         _notes = request.POST.get('notes', None)
-        if _desc is not None:
+        _fields = []
+        if _desc is not None and invoice.status == 'draft':
             invoice.description = _desc.strip()
-        if _notes is not None:
+            _fields.append('description')
+        if _notes is not None and invoice.status != 'void':
             invoice.notes = _notes.strip()
-        if _desc is not None or _notes is not None:
-            invoice.save(update_fields=['description', 'notes'])
+            _fields.append('notes')
+        if _fields:
+            invoice.save(update_fields=_fields)
+
+        if action in ('update_details', 'save_notes'):
+            return redirect(_stay_url)
 
         if action == 'mark_sent' and invoice.status == 'draft':
             invoice.status = 'sent'
