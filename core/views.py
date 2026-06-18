@@ -2228,6 +2228,8 @@ def manage_bookings(request, club_slug):
 
     def conflict_reasons(b):
         r = []
+        if b.id in _clashing_ids:
+            r.append('Aircraft double-booked')
         if b.blockout_conflict:
             r.append(b.blockout_conflict_reason or 'Block-out conflict')
         if b.member:
@@ -2243,15 +2245,35 @@ def manage_bookings(request, club_slug):
 
     _STATUS_ORDER = {'completed': 0, 'departed': 1, 'confirmed': 2, 'pending': 3}
 
+    # ── Booking-vs-booking aircraft clash detection ────────────────────────────
+    from django.db.models import Q as _Q2, Exists as _Exists, OuterRef as _OuterRef
+    _clash_inner = (Booking.objects
+        .filter(
+            club=club,
+            aircraft_id=_OuterRef('aircraft_id'),
+            status__in=['pending', 'confirmed', 'departed'],
+            scheduled_start__lt=_OuterRef('scheduled_end'),
+            scheduled_end__gt=_OuterRef('scheduled_start'),
+        )
+        .exclude(pk=_OuterRef('pk')))
+    _clashing_ids = set(
+        Booking.objects
+        .filter(club=club, status__in=['pending', 'confirmed'], aircraft__isnull=False,
+                scheduled_start__date__gte=today)
+        .annotate(_has_clash=_Exists(_clash_inner))
+        .filter(_has_clash=True)
+        .values_list('id', flat=True)
+    )
+
     # ── Needs-attention section (no status/date filter — always shows urgent items) ──
-    from django.db.models import Q as _Q2
     _near_cutoff = today + timedelta(days=7)
     _attn_list = list(
         _base_qs
         .filter(
             _Q2(status='departed') |
             _Q2(status='completed', flight_completion__paid_at__isnull=True) |
-            _Q2(status__in=['pending', 'confirmed'], scheduled_start__date__lte=_near_cutoff)
+            _Q2(status__in=['pending', 'confirmed'], scheduled_start__date__lte=_near_cutoff) |
+            _Q2(id__in=_clashing_ids)
         )
         .order_by('scheduled_start')
     )

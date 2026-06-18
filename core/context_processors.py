@@ -73,7 +73,7 @@ def theme(request):
             if cm.can_access_manage:
                 try:
                     from .models import Booking, AircraftMaintenanceItem, MemberCredential, MaintenanceUrgency
-                    from django.db.models import Q
+                    from django.db.models import Q, Exists, OuterRef
                     from datetime import date
                     _today = date.today()
                     _n = 0
@@ -89,6 +89,20 @@ def theme(request):
                         Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
                         Q(aircraft__status='retired')
                     ).count()
+                    # Booking-vs-booking aircraft clashes
+                    _clash_sub = Booking.objects.filter(
+                        club=club,
+                        aircraft_id=OuterRef('aircraft_id'),
+                        status__in=['pending', 'confirmed', 'departed'],
+                        scheduled_start__lt=OuterRef('scheduled_end'),
+                        scheduled_end__gt=OuterRef('scheduled_start'),
+                    ).exclude(pk=OuterRef('pk'))
+                    _n += (Booking.objects
+                        .filter(club=club, status__in=['pending', 'confirmed'],
+                                aircraft__isnull=False, scheduled_start__date__gte=_today)
+                        .annotate(_cl=Exists(_clash_sub))
+                        .filter(_cl=True)
+                        .count())
                     _n += AircraftMaintenanceItem.objects.filter(
                         aircraft__club=club, aircraft__status='online',
                         urgency__in=[MaintenanceUrgency.AMBER, MaintenanceUrgency.RED],
