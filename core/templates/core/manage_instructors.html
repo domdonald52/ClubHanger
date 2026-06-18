@@ -29,6 +29,7 @@
             <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}?tab=availability" class="row-action-btn" data-overlay>Manage →</a>
             {% if club_member.is_admin %}
             <button type="button" class="cbtn-sm cbtn-danger"
+              title="Remove from roster — this does not delete the instructor or their history"
               onclick="openRemove({{ instr.id }}, '{{ instr.user.get_full_name|escapejs }}', {{ instr.future_bookings|length }})">Remove</button>
             {% endif %}
           </div>
