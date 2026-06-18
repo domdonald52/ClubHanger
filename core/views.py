@@ -9217,9 +9217,7 @@ def live_positions(request, club_slug):
 
     aircraft_list = []
     for ac in aircraft_objs:
-        pos = positions.get(ac.id)
-        if not pos or not pos.get('found'):
-            continue  # only return aircraft actually discovered on ADS-B
+        pos = positions.get(ac.id) or {'found': False, 'registration': ac.registration}
         at = ac.aircraft_type
         engine_count = ac.engine_count or 1
         # Icon is decided purely by engine count: 2+ = twin, otherwise single.

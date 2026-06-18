@@ -154,8 +154,7 @@ function updateMap(aircraft) {
   const seen   = new Set();
   const bounds = [];
 
-  aircraft.forEach(ac => {
-    if (!ac.found) return;
+  aircraft.filter(ac => ac.found).forEach(ac => {
     seen.add(ac.registration);
     bounds.push([ac.lat, ac.lon]);
 
@@ -190,10 +189,17 @@ function updateMap(aircraft) {
 function updatePanel(aircraft) {
   const body = document.getElementById('mp-body');
   if (!aircraft.length) {
-    body.innerHTML = '<p class="mp-empty">No club aircraft discoverable via ADS-B service provider</p>';
+    body.innerHTML = '<p class="mp-empty">No aircraft in fleet</p>';
     return;
   }
   body.innerHTML = aircraft.map(ac => {
+    if (!ac.found) {
+      return `<div class="ac-row" style="opacity:.5;">
+        <div class="ac-reg">${ac.registration}</div>
+        <div class="ac-sub">${ac.aircraft_type || ''}</div>
+        <div class="ac-nofound">Not detected on ADS-B</div>
+      </div>`;
+    }
     const parts = [];
     if (ac.alt_ft   != null) parts.push(ac.alt_ft.toLocaleString() + ' ft');
     if (ac.speed_kt != null) parts.push(ac.speed_kt + ' kt');
@@ -213,14 +219,17 @@ const dot = document.getElementById('badge-dot');
 const txt = document.getElementById('badge-txt');
 
 function fetchPositions() {
+  dot.style.background = '#f59e0b';
+  txt.textContent = 'Querying ADS-B sources…';
   fetch(API_URL)
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(data => {
       const ac = data.aircraft || [];
       updateMap(ac);
       updatePanel(ac);
+      const found = ac.filter(a => a.found).length;
       countdown = REFRESH;
-      dot.style.background = '#22c55e';
+      dot.style.background = found > 0 ? '#22c55e' : '#8a93a0';
     })
     .catch(() => {
       dot.style.background = '#ef4444';
