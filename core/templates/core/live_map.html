@@ -73,7 +73,7 @@
 
   <!-- Empty state -->
   <div id="map-empty" style="display:none;">
-    <p>No aircraft discoverable via ADS-B service provider</p>
+    <p>No club aircraft discoverable via ADS-B service provider</p>
   </div>
 
   <!-- Legend — icons only -->
@@ -190,7 +190,7 @@ function updateMap(aircraft) {
 function updatePanel(aircraft) {
   const body = document.getElementById('mp-body');
   if (!aircraft.length) {
-    body.innerHTML = '<p class="mp-empty">No aircraft discoverable via ADS-B service provider</p>';
+    body.innerHTML = '<p class="mp-empty">No club aircraft discoverable via ADS-B service provider</p>';
     return;
   }
   body.innerHTML = aircraft.map(ac => {
