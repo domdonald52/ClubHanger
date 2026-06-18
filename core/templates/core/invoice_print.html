@@ -2,152 +2,478 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Invoice {{ invoice.display_number }} — {{ config.billing_name|default:club.name }}</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #111; background: #fff; }
-  .page { max-width: 760px; margin: 0 auto; padding: 32px 40px; }
+/* ── Reset ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* Header */
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 28px; }
-  .logo img { max-height: 80px; max-width: 180px; }
-  .club-details { text-align: right; font-size: 10pt; line-height: 1.6; }
-  .club-details strong { font-size: 11pt; }
+/* ── Screen chrome ──────────────────────────────────────── */
+body {
+  font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  color: #1a1a1a;
+  background: #d1d5db;
+  min-height: 100vh;
+}
 
-  /* TAX INVOICE heading */
-  .invoice-heading { text-align: center; font-size: 15pt; font-weight: bold; letter-spacing: .05em; margin: 18px 0 18px; border-top: 1.5px solid #111; border-bottom: 1.5px solid #111; padding: 6px 0; }
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .6rem;
+  padding: .85rem 1.5rem;
+  background: #f3f4f6;
+  border-bottom: 1px solid #d1d5db;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.toolbar a, .toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font: 600 .82rem/1 'Helvetica Neue', Arial, sans-serif;
+  padding: .48rem 1rem;
+  border-radius: 5px;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background .15s;
+}
+.btn-print {
+  background: {{ theme.primary|default:'#2563eb' }};
+  color: #fff;
+  border-color: {{ theme.primary|default:'#2563eb' }};
+}
+.btn-print:hover { filter: brightness(1.1); }
+.btn-back {
+  background: #fff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+.btn-back:hover { background: #f9fafb; }
 
-  /* Meta row */
-  .meta { display: flex; justify-content: space-between; margin-bottom: 22px; }
-  .bill-to { font-size: 10.5pt; line-height: 1.7; }
-  .bill-to .name { font-size: 12pt; font-weight: bold; }
-  .inv-meta { text-align: right; font-size: 10.5pt; line-height: 1.8; }
-  .inv-meta td:first-child { color: #555; padding-right: 12px; }
-  .inv-meta td:last-child { font-weight: 600; }
+/* ── A4 paper ───────────────────────────────────────────── */
+.paper-wrap {
+  padding: 1.5rem 1rem 3rem;
+}
+.paper {
+  background: #fff;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  box-shadow: 0 4px 32px rgba(0,0,0,.22);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
 
-  /* Description line */
-  .description-row { font-size: 10.5pt; margin-bottom: 12px; }
+/* ── Accent bar ─────────────────────────────────────────── */
+.accent-bar {
+  height: 5px;
+  background: {{ theme.primary|default:'#2563eb' }};
+  flex-shrink: 0;
+}
 
-  /* Line items table */
-  table.items { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin-bottom: 0; }
-  table.items thead tr { border-top: 1px solid #333; border-bottom: 1px solid #333; }
-  table.items th { padding: 5px 8px; font-weight: 700; text-align: left; }
-  table.items th.r { text-align: right; }
-  table.items td { padding: 5px 8px; border-bottom: 1px solid #e0e0e0; }
-  table.items td.r { text-align: right; }
-  table.items td.c { text-align: center; }
-  table.items tfoot td { border-top: 1.5px solid #333; border-bottom: none; padding: 5px 8px; }
-  table.items tfoot td.label { text-align: right; color: #444; }
-  table.items tfoot td.amt { text-align: right; font-weight: 600; }
-  table.items tfoot tr.total-row td { font-size: 12pt; font-weight: 700; padding-top: 6px; }
-  table.items tfoot tr.balance-row td { font-size: 12pt; font-weight: 700; }
-  table.items tfoot tr.gst-row td { font-size: 9.5pt; color: #555; }
+/* ── Inner content ──────────────────────────────────────── */
+.inner {
+  padding: 14mm 16mm 16mm;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 
-  /* Footer */
-  .footer { margin-top: 28px; border-top: 1px solid #ccc; padding-top: 14px; font-size: 10pt; color: #333; line-height: 1.7; }
+/* ── Header ─────────────────────────────────────────────── */
+.inv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10mm;
+}
+.inv-header .brand img {
+  max-height: 72px;
+  max-width: 160px;
+  display: block;
+}
+.inv-header .brand-name {
+  font-size: 15pt;
+  font-weight: 800;
+  color: {{ theme.primary|default:'#2563eb' }};
+  letter-spacing: -.01em;
+}
+.inv-header .supplier {
+  text-align: right;
+  font-size: 9pt;
+  line-height: 1.75;
+  color: #4b5563;
+}
+.inv-header .supplier .sname {
+  font-size: 10.5pt;
+  font-weight: 700;
+  color: #111;
+}
 
-  @media print {
-    body { font-size: 10pt; }
-    .page { padding: 0; max-width: 100%; }
-    @page { margin: 18mm 18mm 18mm 18mm; }
-    .no-print { display: none !important; }
+/* ── TAX INVOICE banner ─────────────────────────────────── */
+.inv-banner {
+  text-align: center;
+  font-size: 13pt;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: {{ theme.primary|default:'#2563eb' }};
+  padding: 4pt 0;
+  border-top: 1.5px solid {{ theme.primary|default:'#2563eb' }};
+  border-bottom: 1.5px solid {{ theme.primary|default:'#2563eb' }};
+  margin-bottom: 9mm;
+}
+
+/* ── Bill-to / meta row ─────────────────────────────────── */
+.inv-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8mm;
+}
+.bill-to-label {
+  font-size: 7.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #9ca3af;
+  margin-bottom: 3pt;
+}
+.bill-to-name {
+  font-size: 13pt;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.2;
+}
+.bill-to-detail {
+  font-size: 9pt;
+  color: #6b7280;
+  margin-top: 3pt;
+  line-height: 1.65;
+}
+.inv-fields {
+  text-align: right;
+}
+.inv-fields table {
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+.inv-fields td {
+  padding: 2.5pt 0;
+  vertical-align: middle;
+}
+.inv-fields td.lbl {
+  color: #9ca3af;
+  text-align: right;
+  padding-right: 10pt;
+  white-space: nowrap;
+  font-size: 8pt;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.inv-fields td.val {
+  font-weight: 700;
+  color: #111;
+  text-align: right;
+  white-space: nowrap;
+}
+.inv-fields td.val.highlight {
+  font-size: 10pt;
+  color: {{ theme.primary|default:'#2563eb' }};
+}
+
+/* ── Description ────────────────────────────────────────── */
+.inv-description {
+  font-size: 9.5pt;
+  color: #4b5563;
+  margin-bottom: 5mm;
+  padding: 3mm 0;
+  border-top: 1px solid #e5e7eb;
+}
+.inv-description strong { color: #111; }
+
+/* ── Line items table ───────────────────────────────────── */
+table.items {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+}
+table.items thead tr {
+  background: #f9fafb;
+  border-top: 1.5px solid #374151;
+  border-bottom: 1.5px solid #374151;
+}
+table.items th {
+  padding: 5pt 8pt;
+  font-size: 8pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #374151;
+  text-align: left;
+}
+table.items th.r { text-align: right; }
+table.items th.c { text-align: center; }
+table.items td {
+  padding: 6pt 8pt;
+  border-bottom: 1px solid #f3f4f6;
+  color: #1f2937;
+  vertical-align: middle;
+}
+table.items td.r { text-align: right; }
+table.items td.c { text-align: center; color: #6b7280; }
+table.items tbody tr:last-child td { border-bottom: none; }
+
+/* ── Totals ─────────────────────────────────────────────── */
+.totals-wrap {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 3mm;
+  border-top: 1.5px solid #374151;
+}
+.totals {
+  width: 52%;
+  border-collapse: collapse;
+  font-size: 9.5pt;
+}
+.totals td {
+  padding: 4pt 8pt;
+  vertical-align: middle;
+}
+.totals td.lbl {
+  text-align: right;
+  color: #6b7280;
+}
+.totals td.amt {
+  text-align: right;
+  font-weight: 600;
+  color: #111;
+  min-width: 72pt;
+}
+.totals tr.gst-row td {
+  font-size: 8.5pt;
+  color: #9ca3af;
+  padding-top: 5pt;
+}
+.totals tr.total-row td {
+  font-size: 11pt;
+  font-weight: 700;
+  padding-top: 5pt;
+}
+.totals tr.balance-row {
+  border-top: 1.5px solid #374151;
+}
+.totals tr.balance-row td {
+  font-size: 12pt;
+  font-weight: 800;
+  padding-top: 7pt;
+  color: {{ theme.primary|default:'#2563eb' }};
+}
+.totals tr.payments-row td {
+  color: #6b7280;
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
+.inv-footer {
+  margin-top: auto;
+  padding-top: 8mm;
+  border-top: 1px solid #e5e7eb;
+  font-size: 8.5pt;
+  color: #6b7280;
+  line-height: 1.75;
+}
+
+/* ── PAID watermark ─────────────────────────────────────── */
+{% if invoice.balance_due == 0 %}
+.paper::after {
+  content: 'PAID';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-35deg);
+  font-size: 72pt;
+  font-weight: 900;
+  color: rgba(22,163,74,.08);
+  letter-spacing: .15em;
+  pointer-events: none;
+  z-index: 0;
+}
+{% endif %}
+
+/* ── Print ──────────────────────────────────────────────── */
+@media print {
+  body { background: #fff; }
+  .toolbar { display: none !important; }
+  .paper-wrap { padding: 0; }
+  .paper {
+    width: 100%;
+    min-height: auto;
+    box-shadow: none;
   }
+  @page {
+    size: A4 portrait;
+    margin: 12mm 16mm 16mm;
+  }
+  .accent-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .inv-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .totals tr.balance-row td { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table.items thead tr { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
 </style>
 </head>
 <body>
-<div class="page">
 
-  <!-- Print button (hidden when printing) -->
-  <div class="no-print" style="text-align:right;margin-bottom:16px;">
-    <button onclick="window.print()" class="cbtn">Print / Save as PDF</button>
-    <a href="{% url 'core:invoice_detail' club.slug invoice.id %}" class="cbtn" style="margin-left:.5rem;">← Back</a>
-  </div>
+<!-- ── Toolbar (hidden in print) ── -->
+<div class="toolbar">
+  <a href="{% url 'core:invoice_detail' club.slug invoice.id %}" class="btn-back">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Back
+  </a>
+  <button class="btn-print" onclick="window.print()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    Print / Save as PDF
+  </button>
+</div>
 
-  <div class="header">
-    <div class="logo">
-      {% if config.logo %}<img src="{{ config.logo.url }}" alt="{{ club.name }}">{% else %}<strong style="font-size:14pt;">{{ config.billing_name|default:club.name }}</strong>{% endif %}
+<!-- ── A4 paper ── -->
+<div class="paper-wrap">
+<div class="paper">
+  <div class="accent-bar"></div>
+  <div class="inner">
+
+    <!-- Header -->
+    <div class="inv-header">
+      <div class="brand">
+        {% if config.logo %}
+        <img src="{{ config.logo.url }}" alt="{{ config.billing_name|default:club.name }}">
+        {% else %}
+        <div class="brand-name">{{ config.billing_name|default:club.name }}</div>
+        {% endif %}
+      </div>
+      <div class="supplier">
+        <div class="sname">{{ config.billing_name|default:club.name }}</div>
+        {% if config.billing_address %}{{ config.billing_address|linebreaksbr }}<br>{% endif %}
+        {% if config.billing_phone %}{{ config.billing_phone }}<br>{% endif %}
+        {% if config.billing_email %}{{ config.billing_email }}{% endif %}
+      </div>
     </div>
-    <div class="club-details">
-      <strong>{{ config.billing_name|default:club.name }}</strong><br>
-      {% if config.billing_address %}{{ config.billing_address|linebreaksbr }}<br>{% endif %}
-      {% if config.billing_phone %}{{ config.billing_phone }}<br>{% endif %}
-      {% if config.billing_email %}{{ config.billing_email }}{% endif %}
-    </div>
-  </div>
 
-  <div class="invoice-heading">TAX INVOICE</div>
+    <!-- TAX INVOICE banner -->
+    <div class="inv-banner">Tax Invoice</div>
 
-  <div class="meta">
-    <div class="bill-to">
-      <div class="name">{{ invoice.member.user.get_full_name }}</div>
-      {% if invoice.member.user.email %}{{ invoice.member.user.email }}{% endif %}
+    <!-- Bill-to / meta row -->
+    <div class="inv-meta-row">
+      <div class="bill-to">
+        <div class="bill-to-label">Bill to</div>
+        <div class="bill-to-name">{{ invoice.member.user.get_full_name }}</div>
+        <div class="bill-to-detail">
+          {% if invoice.member.user.email %}{{ invoice.member.user.email }}{% endif %}
+        </div>
+      </div>
+      <div class="inv-fields">
+        <table>
+          <tbody>
+            {% if config.gst_number %}
+            <tr>
+              <td class="lbl">GST Number</td>
+              <td class="val">{{ config.gst_number }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+              <td class="lbl">Invoice</td>
+              <td class="val highlight">{{ invoice.display_number }}</td>
+            </tr>
+            <tr>
+              <td class="lbl">Date</td>
+              <td class="val">{{ invoice.issue_date|date:"j M Y" }}</td>
+            </tr>
+            <tr>
+              <td class="lbl">Due</td>
+              <td class="val">{{ invoice.due_date|date:"j M Y" }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-    <table class="inv-meta">
+
+    <!-- Description -->
+    {% if invoice.description %}
+    <div class="inv-description">
+      <strong>{{ invoice.description }}</strong>
+    </div>
+    {% endif %}
+
+    <!-- Line items -->
+    <table class="items">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th class="r" style="width:54pt;">Qty</th>
+          <th class="c" style="width:42pt;">Units</th>
+          <th class="r" style="width:72pt;">Rate</th>
+          <th class="r" style="width:72pt;">Amount</th>
+        </tr>
+      </thead>
       <tbody>
-        {% if config.gst_number %}<tr><td>GST Number:</td><td>{{ config.gst_number }}</td></tr>{% endif %}
-        <tr><td>Invoice Number:</td><td>{{ invoice.display_number }}</td></tr>
-        <tr><td>Date:</td><td>{{ invoice.issue_date|date:"j-M-Y" }}</td></tr>
-        <tr><td>Due:</td><td>{{ invoice.due_date|date:"j-M-Y" }}</td></tr>
+        {% for item in line_items %}
+        <tr>
+          <td>{{ item.description }}</td>
+          <td class="r">{{ item.quantity }}</td>
+          <td class="c">{{ item.unit }}</td>
+          <td class="r">${{ item.rate|currency }}</td>
+          <td class="r">${{ item.amount|currency }}</td>
+        </tr>
+        {% endfor %}
       </tbody>
     </table>
-  </div>
 
-  {% if invoice.description %}
-  <div class="description-row"><strong>Description:</strong> &nbsp; {{ invoice.description }}</div>
-  {% endif %}
+    <!-- Totals -->
+    <div class="totals-wrap">
+      <table class="totals">
+        <tbody>
+          <tr class="gst-row">
+            <td class="lbl">G.S.T. {{ invoice.gst_rate }}% included</td>
+            <td class="amt" style="color:#9ca3af;">${{ invoice.gst_amount|currency }}</td>
+          </tr>
+          <tr class="total-row">
+            <td class="lbl">Invoice Total</td>
+            <td class="amt">${{ invoice.total|currency }}</td>
+          </tr>
+          {% if invoice.amount_paid %}
+          <tr class="payments-row">
+            <td class="lbl">Payments received</td>
+            <td class="amt">${{ invoice.amount_paid|currency }}</td>
+          </tr>
+          {% endif %}
+          <tr class="balance-row">
+            <td class="lbl">Total Due</td>
+            <td class="amt">${{ invoice.balance_due|currency }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-  <table class="items">
-    <thead>
-      <tr>
-        <th>Description</th>
-        <th class="r" style="width:60px;">Qty</th>
-        <th class="c" style="width:50px;">Units</th>
-        <th class="r" style="width:90px;">Rate</th>
-        <th class="r" style="width:100px;">Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in line_items %}
-      <tr>
-        <td>{{ item.description }}</td>
-        <td class="r">{{ item.quantity }}</td>
-        <td class="c">{{ item.unit }}</td>
-        <td class="r">${{ item.rate|currency }}</td>
-        <td class="r">${{ item.amount|currency }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-    <tfoot>
-      <tr class="gst-row">
-        <td colspan="4" class="label">G.S.T. {{ invoice.gst_rate }}% Included</td>
-        <td class="amt" style="color:#555;">${{ invoice.gst_amount|currency }}</td>
-      </tr>
-      <tr class="total-row">
-        <td colspan="4" class="label">Invoice Total</td>
-        <td class="amt">${{ invoice.total|currency }}</td>
-      </tr>
-      <tr>
-        <td colspan="4" class="label">Payments</td>
-        <td class="amt">${{ invoice.amount_paid|currency }}</td>
-      </tr>
-      <tr class="balance-row" style="border-top:1.5px solid #333;">
-        <td colspan="4" class="label">Total Due</td>
-        <td class="amt">${{ invoice.balance_due|currency }}</td>
-      </tr>
-    </tfoot>
-  </table>
+    <!-- Footer / payment terms -->
+    {% if config.payment_terms_text %}
+    <div class="inv-footer">{{ config.payment_terms_text|linebreaksbr }}</div>
+    {% elif config.bank_account %}
+    <div class="inv-footer">
+      Payment due within {{ config.payment_terms_days|default:14 }} days. Direct credit to:<br>
+      <strong>{{ config.billing_name|default:club.name }}</strong>
+      {% if config.bank_name %} &mdash; {{ config.bank_name }}{% endif %}
+      &mdash; {{ config.bank_account }}<br>
+      Please quote your invoice number <strong>{{ invoice.display_number }}</strong> as the payment reference.
+    </div>
+    {% endif %}
 
-  {% if config.payment_terms_text %}
-  <div class="footer">{{ config.payment_terms_text|linebreaksbr }}</div>
-  {% elif config.bank_account %}
-  <div class="footer">
-    Please include your invoice number when paying by direct credit.<br>
-    {{ config.billing_name|default:club.name }}<br>
-    {% if config.bank_name %}{{ config.bank_name }}<br>{% endif %}
-    {{ config.bank_account }}
-  </div>
-  {% endif %}
+  </div><!-- /inner -->
+</div><!-- /paper -->
+</div><!-- /paper-wrap -->
 
-</div>
 </body>
 </html>
