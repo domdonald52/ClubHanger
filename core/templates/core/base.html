@@ -31,7 +31,7 @@
             --font: {{ theme.font_family|default:"system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"|safe }};
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: var(--font); background: #f5f7fa; color: #333; line-height: 1.6; }
+        body { font-family: var(--font); background: #f5f7fa; color: #333; line-height: 1.6; scrollbar-gutter: stable; }
         header { background: var(--banner); color: white; padding: 0 1rem; box-shadow: 0 1px 0 rgba(255,255,255,.08); height: 52px; display: flex; align-items: center; }
         .header-content { max-width: 1600px; margin: 0 auto; width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
         .logo { font-size: 1rem; font-weight: 650; letter-spacing: -.01em; display: flex; align-items: center; gap: .5rem; color: #fff; opacity: .95; }
