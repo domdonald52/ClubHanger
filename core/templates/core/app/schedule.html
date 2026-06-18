@@ -293,7 +293,7 @@
          data-ac-reg="{{ ad.ac.registration }}">
       {% for blk in ad.blocks %}
       <div class="bk {% if blk.is_mine %}mine{% endif %}"
-           style="top:{{ blk.top }}px;height:{{ blk.height }}px;background:{{ blk.color }};"
+           style="top:{{ blk.top|add:1 }}px;height:{{ blk.height|add:"-2" }}px;background:{{ blk.color }};"
            data-booking-id="{{ blk.id }}"
            onclick="window.location='{% url 'core:app_bookings' club.slug %}#booking-{{ blk.id }}'">
         <div class="bk-name">{{ blk.name }}</div>
