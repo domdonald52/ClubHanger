@@ -89,20 +89,32 @@ def theme(request):
                         Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
                         Q(aircraft__status='retired')
                     ).count()
-                    # Booking-vs-booking aircraft clashes
-                    _clash_sub = Booking.objects.filter(
-                        club=club,
-                        aircraft_id=OuterRef('aircraft_id'),
+                    # Booking-vs-booking aircraft and instructor clashes
+                    _future = Booking.objects.filter(
+                        club=club, status__in=['pending', 'confirmed'],
+                        scheduled_start__date__gte=_today)
+                    _ac_sub = Booking.objects.filter(
+                        club=club, aircraft_id=OuterRef('aircraft_id'),
                         status__in=['pending', 'confirmed', 'departed'],
                         scheduled_start__lt=OuterRef('scheduled_end'),
                         scheduled_end__gt=OuterRef('scheduled_start'),
                     ).exclude(pk=OuterRef('pk'))
-                    _n += (Booking.objects
-                        .filter(club=club, status__in=['pending', 'confirmed'],
-                                aircraft__isnull=False, scheduled_start__date__gte=_today)
-                        .annotate(_cl=Exists(_clash_sub))
-                        .filter(_cl=True)
-                        .count())
+                    _in_sub = Booking.objects.filter(
+                        club=club, instructor_id=OuterRef('instructor_id'),
+                        status__in=['pending', 'confirmed', 'departed'],
+                        scheduled_start__lt=OuterRef('scheduled_end'),
+                        scheduled_end__gt=OuterRef('scheduled_start'),
+                    ).exclude(pk=OuterRef('pk'))
+                    _clash_ids = set(
+                        _future.filter(aircraft__isnull=False)
+                        .annotate(_cl=Exists(_ac_sub)).filter(_cl=True)
+                        .values_list('id', flat=True)
+                    ) | set(
+                        _future.filter(instructor__isnull=False)
+                        .annotate(_cl=Exists(_in_sub)).filter(_cl=True)
+                        .values_list('id', flat=True)
+                    )
+                    _n += len(_clash_ids)
                     _n += AircraftMaintenanceItem.objects.filter(
                         aircraft__club=club, aircraft__status='online',
                         urgency__in=[MaintenanceUrgency.AMBER, MaintenanceUrgency.RED],

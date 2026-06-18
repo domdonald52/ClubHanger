@@ -2229,7 +2229,21 @@ def manage_bookings(request, club_slug):
     def conflict_reasons(b):
         r = []
         if b.id in _clashing_ids:
-            r.append('Aircraft double-booked')
+            # Distinguish which resource is double-booked for the reason label
+            _ac_clash = (b.aircraft_id and Booking.objects
+                .filter(club=club, aircraft_id=b.aircraft_id,
+                        status__in=['pending','confirmed','departed'],
+                        scheduled_start__lt=b.scheduled_end,
+                        scheduled_end__gt=b.scheduled_start)
+                .exclude(pk=b.pk).exists())
+            _in_clash = (b.instructor_id and Booking.objects
+                .filter(club=club, instructor_id=b.instructor_id,
+                        status__in=['pending','confirmed','departed'],
+                        scheduled_start__lt=b.scheduled_end,
+                        scheduled_end__gt=b.scheduled_start)
+                .exclude(pk=b.pk).exists())
+            if _ac_clash: r.append('Aircraft double-booked')
+            if _in_clash: r.append('Instructor double-booked')
         if b.blockout_conflict:
             r.append(b.blockout_conflict_reason or 'Block-out conflict')
         if b.member:
@@ -2247,7 +2261,7 @@ def manage_bookings(request, club_slug):
 
     # ── Booking-vs-booking aircraft clash detection ────────────────────────────
     from django.db.models import Q as _Q2, Exists as _Exists, OuterRef as _OuterRef
-    _clash_inner = (Booking.objects
+    _ac_clash_inner = (Booking.objects
         .filter(
             club=club,
             aircraft_id=_OuterRef('aircraft_id'),
@@ -2256,11 +2270,26 @@ def manage_bookings(request, club_slug):
             scheduled_end__gt=_OuterRef('scheduled_start'),
         )
         .exclude(pk=_OuterRef('pk')))
+    _instr_clash_inner = (Booking.objects
+        .filter(
+            club=club,
+            instructor_id=_OuterRef('instructor_id'),
+            status__in=['pending', 'confirmed', 'departed'],
+            scheduled_start__lt=_OuterRef('scheduled_end'),
+            scheduled_end__gt=_OuterRef('scheduled_start'),
+        )
+        .exclude(pk=_OuterRef('pk')))
+    _future_active = Booking.objects.filter(
+        club=club, status__in=['pending', 'confirmed'],
+        scheduled_start__date__gte=today)
     _clashing_ids = set(
-        Booking.objects
-        .filter(club=club, status__in=['pending', 'confirmed'], aircraft__isnull=False,
-                scheduled_start__date__gte=today)
-        .annotate(_has_clash=_Exists(_clash_inner))
+        _future_active.filter(aircraft__isnull=False)
+        .annotate(_has_clash=_Exists(_ac_clash_inner))
+        .filter(_has_clash=True)
+        .values_list('id', flat=True)
+    ) | set(
+        _future_active.filter(instructor__isnull=False)
+        .annotate(_has_clash=_Exists(_instr_clash_inner))
         .filter(_has_clash=True)
         .values_list('id', flat=True)
     )
