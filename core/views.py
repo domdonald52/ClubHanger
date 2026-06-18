@@ -5475,6 +5475,41 @@ def manage_aerodromes(request, club_slug):
                 aerodrome__club=club, id=request.POST.get('ft_id')
             ).delete()
 
+        elif action == 'save_fees':
+            from decimal import Decimal, InvalidOperation
+            ae = Aerodrome.objects.filter(club=club, id=request.POST.get('ae_id')).first()
+            if ae:
+                keep_ids    = [i for i in request.POST.getlist('fee_id') if i]
+                fee_names   = request.POST.getlist('fee_name')
+                fee_amounts = request.POST.getlist('fee_amount')
+                for ft_id, name, amount in zip(keep_ids, fee_names, fee_amounts):
+                    ft = AerodromeFeeType.objects.filter(aerodrome=ae, id=ft_id).first()
+                    if ft and name.strip():
+                        ft.name = name.strip()
+                        try:
+                            ft.default_amount = Decimal(str(amount).strip())
+                        except (InvalidOperation, ValueError):
+                            pass
+                        ft.save()
+                int_ids = []
+                for i in keep_ids:
+                    try:
+                        int_ids.append(int(i))
+                    except ValueError:
+                        pass
+                AerodromeFeeType.objects.filter(aerodrome=ae).exclude(id__in=int_ids).delete()
+                for name, amount in zip(
+                    request.POST.getlist('new_fee_name'),
+                    request.POST.getlist('new_fee_amount'),
+                ):
+                    name = name.strip()
+                    if name:
+                        try:
+                            amt = Decimal(str(amount).strip())
+                        except (InvalidOperation, ValueError):
+                            amt = Decimal('0')
+                        AerodromeFeeType.objects.create(aerodrome=ae, name=name, default_amount=amt)
+
         return redirect('core:manage_aerodromes', club_slug=club_slug)
 
     aerodromes = Aerodrome.objects.filter(club=club).prefetch_related('fee_types').order_by('icao_code')

@@ -254,7 +254,7 @@
             <div style="display:inline-flex;gap:.3rem;">
               <button type="button" class="cbtn-sm"
                       onclick="openEditRate({{ r.id }},'{{ r.amount }}',{{ r.includes_fuel|yesno:'true,false' }})">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rate?')">
+              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete this rate?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_hire_rate">
                 <input type="hidden" name="rate_id" value="{{ r.id }}">
@@ -320,7 +320,7 @@
             <td style="color:#8a93a0;font-size:.82rem;">{{ r.notes|default:"—" }}</td>
             <td style="text-align:right;">
               {% if club_member.is_admin %}
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rate?')">
+              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete this rate?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_fuel_rate">
                 <input type="hidden" name="rate_id" value="{{ r.id }}">
@@ -339,7 +339,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="delete_fuel_rate">
       <input type="hidden" name="rate_id" value="{{ fuel_rates.0.id }}">
-      <button type="submit" class="cbtn-sm cbtn-danger" style="font-size:.78rem;" onsubmit="return confirm('Delete current rate?')">Delete current rate</button>
+      <button type="submit" class="cbtn-sm cbtn-danger" style="font-size:.78rem;" onclick="return dcModal(this.closest('form'),'Delete current rate?')">Delete current rate</button>
     </form>
     {% endif %}
     {% else %}
@@ -427,7 +427,7 @@
             <div style="display:inline-flex;gap:.3rem;">
               <button type="button" class="cbtn-sm"
                       onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|default:'' }}','{{ m.last_completed_hours|default:'' }}','{{ m.interval_days|default:'' }}','{{ m.interval_hours|default:'' }}','{{ m.warn_days|default:'' }}','{{ m.alert_days|default:'' }}','{{ m.warn_hours|default:'' }}','{{ m.alert_hours|default:'' }}')">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ m.name|escapejs }}?')">
+              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete {{ m.name|escapejs }}?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_maintenance">
                 <input type="hidden" name="maint_id" value="{{ m.id }}">
@@ -502,7 +502,7 @@
           <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
           <td style="color:#8a93a0;">{{ bo.label }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this block-out?')">
+            <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete this block-out?')">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_blockout">
               <input type="hidden" name="bo_id" value="{{ bo.id }}">
@@ -783,6 +783,19 @@
     </div>
   </div>
 
+  <!-- Delete confirmation modal (reused by all delete buttons on this page) -->
+  <div id="del-confirm-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(360px,94vw);">
+      <h2 id="dcm-title">Delete?</h2>
+      <p id="dcm-msg" style="font-size:.88rem;color:#4a5568;margin:.2rem 0 1.2rem;"></p>
+      <div class="modal-actions">
+        <button type="button" class="cbtn" id="dcm-cancel">Cancel</button>
+        <span style="flex:1"></span>
+        <button type="button" class="cbtn cbtn-danger" id="dcm-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Add block-out modal (aircraft) -->
   <div id="add-ac-bo-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(480px,94vw);">
@@ -876,7 +889,7 @@
             {% if b.flight_completion and b.flight_completion.total_charge %}${{ b.flight_completion.total_charge|currency }}{% else %}—{% endif %}
           </td>
           <td style="text-align:right;">
-            <a href="{% url 'core:booking_detail' club.slug b.id %}" class="row-action-link" data-overlay>View →</a>
+            <a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_aircraft_detail' club.slug ac.id %}" class="row-action-link">View →</a>
           </td>
         </tr>
         {% endfor %}
@@ -1017,16 +1030,18 @@ document.addEventListener('keydown', e => {
   }
 });
 
-function openEditRate(id, amount, wet) {
+// Assign to window so onclick="" attributes find them when this page
+// is loaded via overlay (new Function re-execution scopes declarations locally).
+window.openEditRate = function(id, amount, wet) {
   document.getElementById('erm-id').value = id;
   document.getElementById('erm-amount').value = amount;
   document.getElementById('erm-wet').checked = wet;
   document.getElementById('edit-rate-modal').hidden = false;
-}
+};
 
-function openAddMaint() { document.getElementById('add-maint-modal').hidden = false; }
+window.openAddMaint = function() { document.getElementById('add-maint-modal').hidden = false; };
 
-function openEditMaint(id, name, desc, dueDate, dueHours, lastDate, lastHours, intervalDays, intervalHours, warnDays, alertDays, warnHours, alertHours) {
+window.openEditMaint = function(id, name, desc, dueDate, dueHours, lastDate, lastHours, intervalDays, intervalHours, warnDays, alertDays, warnHours, alertHours) {
   document.getElementById('emm-id').value = id;
   document.getElementById('emm-name').value = name;
   document.getElementById('emm-desc').value = desc;
@@ -1041,17 +1056,41 @@ function openEditMaint(id, name, desc, dueDate, dueHours, lastDate, lastHours, i
   document.getElementById('emm-warn-hours').value = warnHours;
   document.getElementById('emm-alert-hours').value = alertHours;
   document.getElementById('edit-maint-modal').hidden = false;
-}
-function toggleBoRecur(sel) {
+};
+window.toggleBoRecur = function(sel) {
   const form = sel.closest('form');
   const v = sel.value;
   form.querySelectorAll('.bo-date-field').forEach(el => el.style.display = v==='one_off' ? '' : 'none');
   form.querySelectorAll('.bo-weekday-field').forEach(el => el.style.display = v==='weekly' ? '' : 'none');
-}
-function toggleBoTime(cb) {
+};
+window.toggleBoTime = function(cb) {
   const form = cb.closest('form');
   form.querySelectorAll('.bo-time-fields').forEach(el => el.style.display = cb.checked ? 'none' : 'flex');
-}
+};
+
+// In-app delete confirmation — replaces browser confirm() dialogs.
+// Usage: onsubmit="return dcModal(this,'Message')" or onclick="return dcModal(form,'Message')"
+var _dcPending = null;
+window.dcModal = function(form, msg) {
+  _dcPending = form;
+  document.getElementById('dcm-msg').textContent = msg;
+  document.getElementById('del-confirm-modal').hidden = false;
+  return false;
+};
+(function() {
+  var modal  = document.getElementById('del-confirm-modal');
+  var cancel = document.getElementById('dcm-cancel');
+  var ok     = document.getElementById('dcm-confirm');
+  cancel.addEventListener('click', function() { modal.hidden = true; _dcPending = null; });
+  modal.addEventListener('click',  function(e) { if (e.target === modal) { modal.hidden = true; _dcPending = null; } });
+  ok.addEventListener('click', function() {
+    modal.hidden = true;
+    if (_dcPending) { _dcPending.submit(); _dcPending = null; }
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !modal.hidden) { modal.hidden = true; _dcPending = null; }
+  });
+})();
 </script>
 
 <!-- ── ADS-B live tracking ── -->

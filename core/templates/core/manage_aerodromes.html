@@ -51,6 +51,8 @@
           </select>
         </form>
         <button type="button" class="cbtn-sm"
+                onclick="openEditFees({{ ae.id }}, '{{ ae.icao_code|escapejs }}')">Edit fees</button>
+        <button type="button" class="cbtn-sm"
                 onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name|escapejs }}', '{{ ae.notes|escapejs }}', {{ ae.is_home|yesno:'true,false' }})">Edit</button>
         <form method="post" style="display:inline;"
               onsubmit="return confirm('Delete {{ ae.icao_code }} — {{ ae.name|escapejs }}?')">
@@ -65,41 +67,15 @@
     <div class="ae-fees">
       <div class="ae-fees-title">Landing fee rates</div>
       {% for ft in ae.fee_types.all %}
-      <div class="fee-row">
+      <div class="fee-row-ro">
         <span class="fee-name">{{ ft.name }}</span>
-        <form method="post" class="fee-amount-form">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="edit_fee_type">
-          <input type="hidden" name="ft_id" value="{{ ft.id }}">
-          <input type="hidden" name="ft_name" value="{{ ft.name }}">
-          <span class="fee-dollar">$</span>
-          <input type="number" name="ft_amount" value="{{ ft.default_amount }}" step="0.01" min="0" class="finput money-input"
-                 class="fee-input" onchange="this.form.submit()">
-        </form>
-        <form method="post" style="display:inline;"
-              onsubmit="return confirm('Remove {{ ft.name }} fee type?')">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="delete_fee_type">
-          <input type="hidden" name="ft_id" value="{{ ft.id }}">
-          <button type="submit" class="fee-del">✕</button>
-        </form>
+        <span class="fee-amount-ro">${{ ft.default_amount|floatformat:2 }}</span>
       </div>
       {% empty %}
-      <p class="fee-empty">No fee rates yet — add one below.</p>
+      <p class="fee-empty">No fee rates configured — use Edit fees to add.</p>
       {% endfor %}
-
-      <form method="post" class="add-fee-form">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="add_fee_type">
-        <input type="hidden" name="ae_id" value="{{ ae.id }}">
-        <input type="text" name="ft_name" placeholder="Fee name (e.g. Full stop)" required
-               class="fee-name-input">
-        <span class="fee-dollar">$</span>
-        <input type="number" name="ft_amount" placeholder="0.00" step="0.01" min="0" class="finput money-input"
-               class="fee-input fee-input-new" required>
-        <button type="submit" class="cbtn-sm">Add</button>
-      </form>
     </div>
+    <script type="application/json" id="fees-data-{{ ae.id }}">[{% for ft in ae.fee_types.all %}{"id":{{ ft.id }},"name":"{{ ft.name|escapejs }}","amount":"{{ ft.default_amount|floatformat:2 }}"}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
   </div>
   {% empty %}
   <div class="ae-empty">
@@ -137,6 +113,26 @@
         <button type="button" class="cbtn" id="add-ae-cancel">✕ Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add aerodrome</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit fees modal -->
+<div id="fees-modal" class="modal-back" hidden>
+  <div class="modal" style="width:min(520px,94vw);">
+    <h2 id="fm-title">Edit fees</h2>
+    <p style="font-size:.8rem;color:#8a93a0;margin:-.3rem 0 .9rem;">Add, edit or remove landing fee rates for this aerodrome.</p>
+    <form method="post" id="fm-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_fees">
+      <input type="hidden" name="ae_id" id="fm-ae-id">
+      <div id="fm-rows" style="margin-bottom:.5rem;"></div>
+      <button type="button" class="cbtn-sm" id="fm-add-row" style="margin-bottom:1rem;">+ Add fee type</button>
+      <div class="modal-actions">
+        <button type="button" class="cbtn" id="fm-cancel">✕ Close</button>
+        <span style="flex:1"></span>
+        <button type="submit" class="cbtn primary">Save fees</button>
       </div>
     </form>
   </div>
@@ -190,18 +186,17 @@
   .ae-actions{display:flex;gap:.4rem;align-items:center;flex-shrink:0;}
   .ae-fees{padding:.8rem 1rem;}
   .ae-fees-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin-bottom:.5rem;}
-  .fee-row{display:flex;align-items:center;gap:.5rem;padding:.22rem 0;border-bottom:1px solid #f5f6f8;}
-  .fee-row:last-of-type{border-bottom:none;}
+  .fee-row-ro{display:flex;align-items:center;gap:.5rem;padding:.22rem 0;border-bottom:1px solid #f5f6f8;}
+  .fee-row-ro:last-of-type{border-bottom:none;}
   .fee-name{flex:1;font-size:.85rem;color:#1f2933;}
+  .fee-amount-ro{font-size:.85rem;font-weight:500;color:#1f2933;}
   .fee-dollar{font-size:.85rem;color:#8a93a0;}
-  .fee-input{width:80px;padding:.25rem .4rem;border:1px solid #ddd;border-radius:5px;font-size:.84rem;text-align:right;}
-  .fee-input-new{width:80px;}
-  .fee-amount-form{display:inline-flex;align-items:center;gap:.2rem;}
   .fee-del{background:none;border:none;color:#c0392b;cursor:pointer;font-size:.85rem;padding:.1rem .3rem;opacity:.6;}
   .fee-del:hover{opacity:1;}
   .fee-empty{font-size:.82rem;color:#8a93a0;font-style:italic;margin:.1rem 0 .5rem;}
-  .add-fee-form{display:flex;align-items:center;gap:.4rem;margin-top:.5rem;flex-wrap:wrap;}
-  .fee-name-input{flex:1;min-width:140px;padding:.28rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.84rem;}
+  .fm-fee-row{display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;}
+  .fm-name-input{flex:1;min-width:0;}
+  .fm-amt-input{width:75px;text-align:right;}
 
   .ae-empty{text-align:center;padding:3rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;}
   .ae-empty p{margin:.75rem 0 1rem;font-size:.9rem;}
@@ -238,8 +233,9 @@ function setAllAe(collapse) {
   if (expandBtn) expandBtn.addEventListener('click', function() { setAllAe(false); });
   if (collapseBtn) collapseBtn.addEventListener('click', function() { setAllAe(true); });
 
-  const addModal  = document.getElementById('add-ae-modal');
-  const editModal = document.getElementById('edit-ae-modal');
+  const addModal   = document.getElementById('add-ae-modal');
+  const editModal  = document.getElementById('edit-ae-modal');
+  const feesModal  = document.getElementById('fees-modal');
 
   function openAdd() { addModal.hidden = false; }
   document.getElementById('add-ae-btn').addEventListener('click', openAdd);
@@ -251,6 +247,12 @@ function setAllAe(collapse) {
   document.getElementById('eam-cancel').addEventListener('click', () => { editModal.hidden = true; });
   editModal.addEventListener('click', e => { if (e.target === editModal) editModal.hidden = true; });
 
+  document.getElementById('fm-cancel').addEventListener('click', () => { feesModal.hidden = true; });
+  feesModal.addEventListener('click', e => { if (e.target === feesModal) feesModal.hidden = true; });
+  document.getElementById('fm-add-row').addEventListener('click', () => {
+    document.getElementById('fm-rows').appendChild(makeFeeRow('', '', ''));
+  });
+
   window.openEditAe = function(id, icao, name, notes, isHome) {
     document.getElementById('eam-id').value = id;
     document.getElementById('eam-title').textContent = 'Edit ' + icao;
@@ -260,9 +262,38 @@ function setAllAe(collapse) {
     editModal.hidden = false;
   };
 
+  window.openEditFees = function(aeId, icao) {
+    var data = document.getElementById('fees-data-' + aeId);
+    var fees = data ? JSON.parse(data.textContent) : [];
+    document.getElementById('fm-ae-id').value = aeId;
+    document.getElementById('fm-title').textContent = 'Edit fees — ' + icao;
+    var rows = document.getElementById('fm-rows');
+    rows.innerHTML = '';
+    fees.forEach(function(fee) { rows.appendChild(makeFeeRow(fee.id, fee.name, fee.amount)); });
+    feesModal.hidden = false;
+  };
+
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { addModal.hidden = true; editModal.hidden = true; }
+    if (e.key === 'Escape') { addModal.hidden = true; editModal.hidden = true; feesModal.hidden = true; }
   });
 })();
+
+function escAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function makeFeeRow(id, name, amount) {
+  var div = document.createElement('div');
+  div.className = 'fm-fee-row';
+  var idInput   = id ? '<input type="hidden" name="fee_id" value="' + escAttr(id) + '">' : '';
+  var nameFld   = id ? 'fee_name'    : 'new_fee_name';
+  var amtFld    = id ? 'fee_amount'  : 'new_fee_amount';
+  div.innerHTML = idInput +
+    '<input type="text" name="' + nameFld + '" value="' + escAttr(name) + '" placeholder="Fee name" class="finput fm-name-input" required>' +
+    '<span class="fee-dollar">$</span>' +
+    '<input type="number" name="' + amtFld + '" value="' + escAttr(amount) + '" step="0.01" min="0" placeholder="0.00" class="finput fm-amt-input">' +
+    '<button type="button" class="fee-del" title="Remove">✕</button>';
+  div.querySelector('.fee-del').addEventListener('click', function() { div.remove(); });
+  return div;
+}
 </script>
 {% endblock %}
