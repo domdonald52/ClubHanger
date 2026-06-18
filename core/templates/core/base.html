@@ -754,9 +754,11 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 <style>
   .page-overlay-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500;padding:2vh 0;overflow-y:auto;}
   /* Fixed height + internal scroll so switching tabs never resizes the modal
-     (which made the tab bar jump). Body scrolls; the sticky header stays put. */
-  .page-overlay-modal{background:#fff;border-radius:10px;width:min(820px,96vw);box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;height:clamp(460px,86vh,840px);max-height:96vh;display:flex;flex-direction:column;overflow:hidden;}
-  .page-overlay-modal.wide{width:min(1060px,98vw);}
+     (which made the tab bar jump). Body scrolls; the sticky header stays put.
+     Width/height scale with the viewport (clamps tuned so a laptop ≈ the old
+     size, while a big/4K screen gets a proportionally larger modal). */
+  .page-overlay-modal{background:#fff;border-radius:10px;width:clamp(700px,60vw,1200px);max-width:96vw;box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;height:clamp(460px,88vh,1300px);max-height:96vh;display:flex;flex-direction:column;overflow:hidden;}
+  .page-overlay-modal.wide{width:clamp(900px,78vw,1600px);max-width:97vw;}
   #page-overlay-body{flex:1;min-height:0;overflow-y:auto;}
   .page-overlay-modal .pi-body{flex:1;}
   [hidden]{display:none!important;}
