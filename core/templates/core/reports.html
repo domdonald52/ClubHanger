@@ -17,8 +17,8 @@
   <!-- ── DASHBOARD tab ── -->
   <div id="tab-dashboard" class="stab-panel">
 
-    <!-- KPI cards — 4 group columns -->
-    <div class="dash-grid-4" style="margin-bottom:1.2rem;">
+    <!-- KPI cards — 5 group columns -->
+    <div class="dash-grid-5" style="margin-bottom:1.2rem;">
 
       <!-- Flying -->
       <div class="dash-kpi">
@@ -38,15 +38,25 @@
         {% endif %}
       </div>
 
-      <!-- Financial -->
-      <div class="dash-kpi {% if dash_debtor_count or dash_overdue_invoice_count %}dash-kpi-warn{% endif %}">
-        <div class="dash-kpi-sect">Financial</div>
-        <div class="dash-kpi-lbl">Revenue collected</div>
+      <!-- Revenue -->
+      <div class="dash-kpi dash-kpi-good">
+        <div class="dash-kpi-sect">Revenue</div>
+        <div class="dash-kpi-lbl">Collected</div>
         <div class="dash-kpi-val"><a href="{{ dash_charges_url }}" style="color:inherit;text-decoration:none;">${{ dash_revenue_collected|currency }}</a></div>
-        <div class="dash-kpi-sub">{{ fy_label }}{% if dash_revenue_charged > dash_revenue_collected %} · <span style="color:#c0392b;">${{ dash_revenue_charged|currency }} charged</span>{% endif %}</div>
+        <div class="dash-kpi-sub">{{ fy_label }}</div>
+        {% if dash_revenue_charged > dash_revenue_collected %}
         <hr class="dash-kpi-hr">
-        <div class="dash-kpi-row-lbl">Negative balances</div>
-        <div class="dash-kpi-row-val {% if dash_debtor_count %}dash-kpi-warn-val{% endif %}">${{ dash_outstanding_debt|currency }}</div>
+        <div class="dash-kpi-row-lbl">Charged</div>
+        <div class="dash-kpi-row-val">${{ dash_revenue_charged|currency }}</div>
+        <div class="dash-kpi-sub">not yet all collected</div>
+        {% endif %}
+      </div>
+
+      <!-- Debtors -->
+      <div class="dash-kpi {% if dash_debtor_count or dash_overdue_invoice_count %}dash-kpi-warn{% endif %}">
+        <div class="dash-kpi-sect">Debtors</div>
+        <div class="dash-kpi-lbl">Negative balances</div>
+        <div class="dash-kpi-val {% if dash_debtor_count %}dash-kpi-warn-val{% endif %}">${{ dash_outstanding_debt|currency }}</div>
         <div class="dash-kpi-sub"><a href="{{ dash_debtor_url }}" style="color:inherit;text-decoration:underline dotted;">{{ dash_debtor_count }} member{{ dash_debtor_count|pluralize }}</a></div>
         <hr class="dash-kpi-hr">
         <div class="dash-kpi-row-lbl">Unpaid invoices</div>
@@ -504,13 +514,16 @@
 </div>
 
 <style>
+.dash-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;}
 .dash-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
 .dash-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
 .dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
-@media(max-width:900px){.dash-grid-4{grid-template-columns:repeat(2,1fr);}}
-@media(max-width:700px){.dash-grid-4,.dash-grid-3,.dash-grid-2{grid-template-columns:1fr;}}
+@media(max-width:1100px){.dash-grid-5{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:900px){.dash-grid-4,.dash-grid-5{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:700px){.dash-grid-5,.dash-grid-4,.dash-grid-3,.dash-grid-2{grid-template-columns:1fr;}}
 .dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.75rem 1rem;}
 .dash-kpi-warn{border-color:#fca5a5;background:#fff8f8;}
+.dash-kpi-good{border-color:#86efac;background:#f0fdf4;}
 .dash-kpi-sect{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#c0c8d4;margin-bottom:.45rem;}
 .dash-kpi-lbl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.1rem;}
 .dash-kpi-val{font-size:1.45rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.1rem;}

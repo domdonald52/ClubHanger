@@ -1307,13 +1307,12 @@ class Voucher(models.Model):
 
 class ContactType(models.Model):
     """Club-configurable contact categories (Young Eagles, Trial flight, etc.)."""
-    club       = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='contact_types')
-    name       = models.CharField(max_length=100)
-    is_active  = models.BooleanField(default=True)
-    sort_order = models.PositiveSmallIntegerField(default=0)
+    club      = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='contact_types')
+    name      = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ['sort_order', 'name']
+        ordering = ['name']
         unique_together = [('club', 'name')]
 
     def __str__(self):

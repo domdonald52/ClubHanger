@@ -195,8 +195,10 @@
   .fee-del:hover{opacity:1;}
   .fee-empty{font-size:.82rem;color:#8a93a0;font-style:italic;margin:.1rem 0 .5rem;}
   .fm-fee-row{display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;}
+  .fm-input{padding:.3rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.85rem;line-height:1.4;background:#fff;}
+  .fm-input:focus{outline:none;border-color:var(--primary,#1e3a5f);}
   .fm-name-input{flex:1;min-width:0;}
-  .fm-amt-input{width:75px;text-align:right;}
+  .fm-amt-input{width:80px;text-align:right;}
 
   .ae-empty{text-align:center;padding:3rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;}
   .ae-empty p{margin:.75rem 0 1rem;font-size:.9rem;}
@@ -288,9 +290,9 @@ function makeFeeRow(id, name, amount) {
   var nameFld   = id ? 'fee_name'    : 'new_fee_name';
   var amtFld    = id ? 'fee_amount'  : 'new_fee_amount';
   div.innerHTML = idInput +
-    '<input type="text" name="' + nameFld + '" value="' + escAttr(name) + '" placeholder="Fee name" class="finput fm-name-input" required>' +
+    '<input type="text" name="' + nameFld + '" value="' + escAttr(name) + '" placeholder="Fee name" class="fm-input fm-name-input" required>' +
     '<span class="fee-dollar">$</span>' +
-    '<input type="number" name="' + amtFld + '" value="' + escAttr(amount) + '" step="0.01" min="0" placeholder="0.00" class="finput fm-amt-input">' +
+    '<input type="text" inputmode="decimal" name="' + amtFld + '" value="' + escAttr(amount) + '" placeholder="0.00" class="fm-input fm-amt-input">' +
     '<button type="button" class="fee-del" title="Remove">✕</button>';
   div.querySelector('.fee-del').addEventListener('click', function() { div.remove(); });
   return div;

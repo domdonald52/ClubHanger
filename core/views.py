@@ -1738,8 +1738,7 @@ def club_settings(request, club_slug, mode='settings'):
         elif action == 'add_contact_type':
             ct_name = request.POST.get('ct_name', '').strip()
             if ct_name:
-                ContactType.objects.get_or_create(club=club, name=ct_name,
-                    defaults={'sort_order': ContactType.objects.filter(club=club).count()})
+                ContactType.objects.get_or_create(club=club, name=ct_name)
             return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1")
 
         elif action == 'edit_contact_type':
@@ -1747,7 +1746,6 @@ def club_settings(request, club_slug, mode='settings'):
             if ct:
                 ct_name = request.POST.get('ct_name', '').strip()
                 if ct_name: ct.name = ct_name
-                ct.sort_order = int(request.POST.get('ct_sort', ct.sort_order) or ct.sort_order)
                 ct.save()
             return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1")
 
@@ -2056,7 +2054,7 @@ def club_settings(request, club_slug, mode='settings'):
         'surcharge_types': AircraftSurchargeType.objects.filter(club=club),
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'occurrence_types': OccurrenceType.objects.filter(club=club),
-        'contact_types_list': ContactType.objects.filter(club=club).order_by('sort_order', 'name'),
+        'contact_types_list': ContactType.objects.filter(club=club).order_by('name'),
         'voucher_types_list': VoucherType.objects.filter(club=club),
         'roles': roles,
         'saved': saved,
@@ -5050,7 +5048,7 @@ def manage_contacts(request, club_slug):
         'contacts_page': contacts_page,
         'total_count': _paginator.count,
         'f_type': f_type, 'f_q': f_q,
-        'contact_types': list(ContactType.objects.filter(club=club).order_by('sort_order','name')),
+        'contact_types': list(ContactType.objects.filter(club=club).order_by('name')),
         'filter_qs': _filter_qs,
         'sort': sort, 'sort_dir': sort_dir, 'base_qs': _base_qs,
     })
@@ -5082,7 +5080,7 @@ def contact_detail(request, club_slug, contact_id):
             contact.contact_type  = ContactType.objects.filter(id=_ct_id, club=club).first() if _ct_id else None
             contact.notes         = request.POST.get('notes', '').strip()
             contact.save()
-            redir = request.path + ('?inline=1&saved=1' if request.GET.get('inline') == '1' else '?saved=1')
+            redir = request.path + '?saved=1'
             return redirect(redir)
 
         elif action == 'convert_to_member' and contact.can_convert:
@@ -5144,7 +5142,7 @@ def contact_detail(request, club_slug, contact_id):
         'contact': contact,
         'bookings': bookings,
         'error': error,
-        'contact_types': list(ContactType.objects.filter(club=club).order_by('sort_order','name')),
+        'contact_types': list(ContactType.objects.filter(club=club).order_by('name')),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
         'inline_title': f'Manage <span class="crumb-sep">›</span> Contacts <span class="crumb-sep">›</span> <span class="crumb-cur">{contact.name}</span>',
     })

@@ -825,12 +825,11 @@
 
     {% if contact_types_list %}
     <table class="ft-table" style="margin-bottom:1.5rem;">
-      <thead><tr><th>Name</th><th>Order</th><th>Active</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Active</th><th></th></tr></thead>
       <tbody>
         {% for ctype in contact_types_list %}
         <tr>
           <td><strong>{{ ctype.name }}</strong></td>
-          <td style="color:#8a93a0;">{{ ctype.sort_order }}</td>
           <td>
             <form method="post" style="display:inline;">
               {% csrf_token %}<input type="hidden" name="action" value="toggle_contact_type">
@@ -841,7 +840,7 @@
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditCType({{ ctype.id }},'{{ ctype.name|escapejs }}',{{ ctype.sort_order }})">Edit</button>
+            <button type="button" class="cbtn sm" onclick="openEditCType({{ ctype.id }},'{{ ctype.name|escapejs }}')">Edit</button>
             {% if not ctype.contacts.exists %}
             <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ctype.name|escapejs }}?')">
               {% csrf_token %}<input type="hidden" name="action" value="delete_contact_type">
@@ -875,11 +874,8 @@
           {% csrf_token %}
           <input type="hidden" name="action" value="edit_contact_type">
           <input type="hidden" name="ct_id" id="edit-ct-id">
-          <label class="flabel" style="margin-bottom:.7rem;">Name
+          <label class="flabel" style="margin-bottom:.9rem;">Name
             <input type="text" name="ct_name" id="edit-ct-name" class="finput" required>
-          </label>
-          <label class="flabel" style="margin-bottom:.9rem;">Sort order
-            <input type="number" name="ct_sort" id="edit-ct-sort" class="finput" style="width:80px;" min="0">
           </label>
           <div class="modal-actions">
             <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true">✕ Close</button>
@@ -890,10 +886,9 @@
       </div>
     </div>
     <script>
-    function openEditCType(id, name, sort) {
+    function openEditCType(id, name) {
       document.getElementById('edit-ct-id').value = id;
       document.getElementById('edit-ct-name').value = name;
-      document.getElementById('edit-ct-sort').value = sort;
       document.getElementById('edit-ct-modal').hidden = false;
     }
     document.getElementById('edit-ct-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });
