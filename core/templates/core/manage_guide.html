@@ -710,7 +710,7 @@
       <table class="guide-table">
         <thead><tr><th>Invoice type</th><th>Created from</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr><td>Flight invoice</td><td>Flight completion → Invoice payment method</td><td>Charges a flight to formal invoice rather than account balance</td></tr>
+          <tr><td>Flight invoice</td><td>Flight completion → Invoice payment method <em>or</em> Need a formal invoice? → Generate</td><td>Either a request for payment (if raised before payment) or a proof-of-payment receipt (if raised after)</td></tr>
           <tr><td>Subscription invoice</td><td>Member detail → Membership tab → Generate subscription invoice</td><td>Annual membership fee; paying it auto-sets subscription expiry</td></tr>
           <tr><td>Sundry invoice</td><td>Sales → Invoices → Create</td><td>Manual billing: exam fees, training materials, ad-hoc items</td></tr>
           <tr><td>Sundry sale</td><td>Sales → Sundry</td><td>Quick point-of-sale; creates a charge without a formal invoice</td></tr>
@@ -731,6 +731,16 @@
         <div class="dbody">
           <p>You can record multiple payments against a single sent invoice. Each time you record a payment (Sales → Invoices → invoice → Mark paid), enter the amount received. The invoice stays as Sent and shows the outstanding balance until fully settled. Only when the total payments equal or exceed the invoice total is it marked Paid.</p>
           <p>This is useful when a member pays in instalments or when a bank transfer is received in parts due to a bank error.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
+        <summary>Proof-of-payment receipts</summary>
+        <div class="dbody">
+          <p>If a member paid by EFTPOS, cash, or account credit at the time of the flight, no invoice is generated automatically. If they later need written proof of payment — for example, for an employer reimbursement claim — staff can generate one from the booking detail: <strong>Need a formal invoice? → Generate invoice</strong>.</p>
+          <p>Because payment has already been recorded, the invoice is created in <strong>Paid</strong> status immediately. It will not appear as an outstanding item. The printed invoice shows the full charge, the amount paid, <strong>Total Due: $0.00</strong>, and the date and time payment was made. On screen the invoice shows "✓ Paid in full — [date at time]"; the print/PDF view adds a PAID watermark across the document.</p>
+          <p>For split flights or shared costs, pressing <strong>Generate invoice</strong> creates one receipt per payee in a single action — each addressed to that person for their share only.</p>
+          <p>Proof-of-payment receipts appear under Sales → Invoices filtered by <strong>Paid</strong> status. They are created already closed and do not pass through the Draft → Sent workflow.</p>
         </div>
       </details>
 

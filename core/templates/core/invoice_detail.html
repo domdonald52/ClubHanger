@@ -150,7 +150,7 @@
       </div>
     </form>
     <div style="padding:0 .9rem .9rem;">
-      <p style="font-size:.84rem;color:#216c2a;font-weight:600;">✓ Paid in full — {{ invoice.paid_at|date:"j M Y" }}</p>
+      <p style="font-size:.84rem;color:#216c2a;font-weight:600;">✓ Paid in full — {{ invoice.paid_at|date:"j M Y" }} at {{ invoice.paid_at|time:"H:i" }}</p>
     </div>
     {% endif %}
 
