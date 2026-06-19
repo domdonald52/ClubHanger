@@ -2632,6 +2632,13 @@ class Invoice(models.Model):
         ('paid',  'Paid'),
         ('void',  'Void'),
     ]
+    PAYMENT_METHOD_CHOICES = [
+        ('cash',           'Cash'),
+        ('eftpos',         'EFTPOS'),
+        ('credit_card',    'Credit card'),
+        ('bank_transfer',  'Bank transfer'),
+        ('account_credit', 'Account credit'),
+    ]
 
     club              = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='invoices')
     member            = models.ForeignKey('ClubMember', on_delete=models.SET_NULL,
@@ -2646,9 +2653,10 @@ class Invoice(models.Model):
     description = models.CharField(max_length=200, blank=True)
     notes       = models.TextField(blank=True)
 
-    status   = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
-    sent_at  = models.DateTimeField(null=True, blank=True)
-    paid_at  = models.DateTimeField(null=True, blank=True)
+    status         = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True)
+    sent_at        = models.DateTimeField(null=True, blank=True)
+    paid_at        = models.DateTimeField(null=True, blank=True)
 
     # Snapshot of GST rate at time of invoice creation
     gst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=15)

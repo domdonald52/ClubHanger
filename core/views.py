@@ -6014,27 +6014,58 @@ def invoice_detail(request, club_slug, invoice_id):
 
         elif action == 'mark_paid' and invoice.status == 'sent':
             from decimal import Decimal as _D
+            from .models import Account as _Acct, AccountTransaction as _AT
+            _pay_method = request.POST.get('payment_method', '').strip()
+            _valid_methods = {c[0] for c in Invoice.PAYMENT_METHOD_CHOICES}
+            if _pay_method not in _valid_methods:
+                error = 'Select a payment method.'
             pay_str = request.POST.get('payment_amount', '').strip()
             try:
                 pay_amt = _D(pay_str)
                 if pay_amt <= 0:
                     raise ValueError
             except (ValueError, Exception):
-                error = 'Enter a valid payment amount.'
+                if not error:
+                    error = 'Enter a valid payment amount.'
                 pay_amt = None
             if pay_amt and not error:
                 balance = (invoice.total or _D('0')) - (invoice.amount_paid or _D('0'))
                 if pay_amt > balance:
                     error = f'Payment ${pay_amt:.2f} exceeds outstanding balance ${balance:.2f}.'
                     pay_amt = None
+            if pay_amt and not error and _pay_method == 'account_credit':
+                if not invoice.member:
+                    error = 'Cannot use account credit — invoice has no member.'
+                    pay_amt = None
+                else:
+                    _acct, _ = _Acct.objects.get_or_create(club_member=invoice.member, defaults={'balance': 0})
+                    from .services.charging_service import _check_credit_headroom
+                    _credit_err = _check_credit_headroom(_acct, pay_amt)
+                    if _credit_err:
+                        error = _credit_err
+                        pay_amt = None
             if pay_amt and not error:
                 invoice.amount_paid = (invoice.amount_paid or _D('0')) + pay_amt
                 _now_fully_paid = invoice.amount_paid >= invoice.total
                 if _now_fully_paid:
                     invoice.status = 'paid'
                     invoice.paid_at = timezone.now()
-                invoice.save(update_fields=['amount_paid', 'status', 'paid_at'])
-                _fc_linked = getattr(invoice, 'flight_completion', None)
+                    invoice.payment_method = _pay_method
+                invoice.save(update_fields=['amount_paid', 'status', 'paid_at', 'payment_method'])
+                if _pay_method == 'account_credit' and invoice.member:
+                    _acct, _ = _Acct.objects.get_or_create(club_member=invoice.member, defaults={'balance': 0})
+                    _AT.objects.create(
+                        account=_acct,
+                        transaction_type='flight',
+                        direction='debit',
+                        amount=pay_amt,
+                        description=f'Invoice {invoice.display_number}',
+                        flight_completion=invoice.flight_completion,
+                        payment_method='account',
+                        created_by=request.user,
+                    )
+                    _acct.apply_transaction(pay_amt, 'debit')
+                _fc_linked = invoice.flight_completion
                 if _fc_linked is not None:
                     _fc_linked.refresh_from_db(fields=['amount_paid', 'total_charge', 'paid_at'])
                     if _fc_linked.balance_owing > _D('0'):
@@ -6088,10 +6119,15 @@ def invoice_detail(request, club_slug, invoice_id):
             return redirect(_stay_url)
 
     line_items = invoice.line_items.all()
+    from .models import Account as _Acct
+    _member_acct = None
+    if invoice.member:
+        _member_acct, _ = _Acct.objects.get_or_create(club_member=invoice.member, defaults={'balance': 0})
     return render(request, 'core/invoice_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'invoice': invoice, 'line_items': line_items, 'config': config,
         'error': error, 'success': success,
+        'member_account_balance': _member_acct.balance if _member_acct else None,
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
     })
 

@@ -119,20 +119,42 @@
       </div>
     </form>
     <div style="border-top:1px solid #f0f2f4;padding:.9rem;">
-      <form method="post">
+      <form method="post" id="inv-pay-form">
         {% csrf_token %}
-        <label class="flabel" style="margin:0;">Payment received
-          <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
-            <div class="money-wrap">
-              <span class="money-sym">$</span>
-              <input type="number" name="payment_amount" step="0.01" min="0.01"
-                     value="{{ invoice.balance_due }}" class="finput money-input" style="width:90px;" required>
-            </div>
-            <button type="submit" name="action" value="mark_paid" class="cbtn primary">Record payment</button>
+        <div class="flabel" style="margin:0;">Record payment received</div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.4rem;">
+          <select name="payment_method" class="finput" style="width:auto;" id="inv-pay-method" required>
+            <option value="">— method —</option>
+            <option value="cash">Cash</option>
+            <option value="eftpos">EFTPOS</option>
+            <option value="credit_card">Credit card</option>
+            <option value="bank_transfer">Bank transfer</option>
+            <option value="account_credit">Account credit</option>
+          </select>
+          <div class="money-wrap">
+            <span class="money-sym">$</span>
+            <input type="number" name="payment_amount" step="0.01" min="0.01"
+                   value="{{ invoice.balance_due }}" class="finput money-input" style="width:90px;" required>
           </div>
-        </label>
+          <button type="submit" name="action" value="mark_paid" class="cbtn primary">Record payment</button>
+        </div>
+        {% if member_account_balance is not None %}
+        <div id="inv-credit-hint" style="display:none;font-size:.82rem;color:#5b6573;margin-top:.4rem;">
+          Account balance: <strong>${{ member_account_balance|floatformat:2 }}</strong>
+        </div>
+        {% endif %}
       </form>
     </div>
+    <script>
+    (function(){
+      var sel = document.getElementById('inv-pay-method');
+      var hint = document.getElementById('inv-credit-hint');
+      if (!sel) return;
+      sel.addEventListener('change', function(){
+        if (hint) hint.style.display = this.value === 'account_credit' ? 'block' : 'none';
+      });
+    })();
+    </script>
 
     {% elif invoice.status == 'paid' %}
     <!-- Paid: description locked; notes still editable for bookkeeper reference -->
@@ -150,7 +172,7 @@
       </div>
     </form>
     <div style="padding:0 .9rem .9rem;">
-      <p style="font-size:.84rem;color:#216c2a;font-weight:600;">✓ Paid in full — {{ invoice.paid_at|date:"j M Y" }} at {{ invoice.paid_at|time:"H:i" }}</p>
+      <p style="font-size:.84rem;color:#216c2a;font-weight:600;">✓ Paid in full — {{ invoice.paid_at|date:"j M Y" }} at {{ invoice.paid_at|time:"H:i" }}{% if invoice.payment_method %} · {{ invoice.get_payment_method_display }}{% endif %}</p>
     </div>
     {% endif %}
 

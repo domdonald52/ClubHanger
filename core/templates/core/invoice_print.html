@@ -457,7 +457,7 @@ table.items tbody tr:last-child td { border-bottom: none; }
           {% if invoice.paid_at %}
           <tr>
             <td class="lbl" style="color:#216c2a;">Paid</td>
-            <td class="amt" style="color:#216c2a;">{{ invoice.paid_at|date:"j M Y" }} {{ invoice.paid_at|time:"H:i" }}</td>
+            <td class="amt" style="color:#216c2a;">{{ invoice.paid_at|date:"j M Y" }} {{ invoice.paid_at|time:"H:i" }}{% if invoice.payment_method %} · {{ invoice.get_payment_method_display }}{% endif %}</td>
           </tr>
           {% endif %}
         </tbody>
