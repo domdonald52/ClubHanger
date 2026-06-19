@@ -3187,6 +3187,7 @@ def booking_detail(request, club_slug, booking_id):
     fc_payments = list(fc.payments.select_related('member__user').order_by('created_at')) if fc else []
     _allocated_member_ids = {fp.member_id for fp in fc_payments}
     fc_segments_pending = [s for s in fc_segments if s.member_id not in _allocated_member_ids]
+    fc_payments_total = sum(fp.amount for fp in fc_payments)
     club_members = list(ClubMember.objects.filter(club=club).exclude(standing='resigned').select_related('user').order_by('user__last_name', 'user__first_name'))
     from .models import Contact as _Cont
     contacts = list(_Cont.objects.filter(club=club, converted_to_member__isnull=True).order_by('name'))
@@ -3346,6 +3347,7 @@ def booking_detail(request, club_slug, booking_id):
         'balance_owing': balance_owing,
         'overpayment': overpayment,
         'fc_payments': fc_payments,
+        'fc_payments_total': fc_payments_total,
         'club_members': club_members,
         'other_unpaid_list': other_unpaid_list,
         'other_outstanding_list': other_outstanding_list,

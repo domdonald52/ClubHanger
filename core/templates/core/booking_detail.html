@@ -805,7 +805,7 @@
           {% endif %}
           {% if fc_segments_pending %}
           <!-- Split flight — add-payee forms for unallocated members -->
-          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}">
+          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_total }}">
             {% for seg in fc_segments_pending %}
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
               <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
@@ -841,7 +841,7 @@
           </div>
           {% elif fc_segments %}
           <!-- Split flight — per-member payment forms -->
-          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}">
+          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_total }}">
             {% for seg in fc_segments %}
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
               <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
@@ -1576,9 +1576,10 @@ if (new URLSearchParams(location.search).get('edit') === '1') {
   var label = document.getElementById('split-alloc-total');
   if (!panel || !label) return;
   var flightTotal = parseFloat(panel.dataset.flightTotal) || 0;
+  var alreadyAllocated = parseFloat(panel.dataset.alreadyAllocated) || 0;
   function updateAllocTotal() {
     var inputs = panel.querySelectorAll('.split-alloc-input');
-    var sum = 0;
+    var sum = alreadyAllocated;
     inputs.forEach(function(el) { sum += parseFloat(el.value) || 0; });
     sum = Math.round(sum * 100) / 100;
     var diff = Math.round((sum - flightTotal) * 100) / 100;
