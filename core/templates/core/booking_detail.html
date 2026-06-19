@@ -291,11 +291,12 @@
               <input type="number" name="hobbs_start" id="ci-hobbs-start" step="0.1" required class="finput" style="width:105px;"
                      data-prev-end="{{ prev_hobbs_end|default:'' }}" data-meter="hobbs"
                      value="{% if fc and fc.hobbs_start %}{{ fc.hobbs_start }}{% elif prev_hobbs_end %}{{ prev_hobbs_end }}{% endif %}"
-                     oninput="checkMeterGap(this);updateCheckinPreview();">
+                     oninput="checkMeterGap(this);updateCheckinPreview();checkEndGtStart();">
             </label>
             <label class="flabel">Hobbs end <span class="req">*</span>
               <input type="number" name="hobbs_end" id="ci-hobbs-end" step="0.1" required class="finput" style="width:105px;"
-                     oninput="updateCheckinPreview();">
+                     oninput="updateCheckinPreview();checkEndGtStart();">
+              <span id="ci-hobbs-end-err" hidden style="color:#c0392b;font-size:.76rem;margin-top:.2rem;display:block;"></span>
             </label>
             {% endif %}
             {% if booking.aircraft.records_tacho %}
@@ -303,11 +304,12 @@
               <input type="number" name="tacho_start" id="ci-tacho-start" step="0.01" required class="finput" style="width:105px;"
                      data-prev-end="{{ prev_tacho_end|default:'' }}" data-meter="tacho"
                      value="{% if fc and fc.tacho_start %}{{ fc.tacho_start }}{% elif prev_tacho_end %}{{ prev_tacho_end }}{% endif %}"
-                     oninput="checkMeterGap(this);updateCheckinPreview();">
+                     oninput="checkMeterGap(this);updateCheckinPreview();checkEndGtStart();">
             </label>
             <label class="flabel">Tacho end <span class="req">*</span>
               <input type="number" name="tacho_end" id="ci-tacho-end" step="0.01" required class="finput" style="width:105px;"
-                     oninput="updateCheckinPreview();">
+                     oninput="updateCheckinPreview();checkEndGtStart();">
+              <span id="ci-tacho-end-err" hidden style="color:#c0392b;font-size:.76rem;margin-top:.2rem;display:block;"></span>
             </label>
             {% endif %}
             {% if booking.aircraft.records_airswitch %}
@@ -315,11 +317,12 @@
               <input type="number" name="airswitch_start" id="ci-airswitch-start" step="0.1" required class="finput" style="width:105px;"
                      data-prev-end="{{ prev_airswitch_end|default:'' }}" data-meter="airswitch"
                      value="{% if fc and fc.airswitch_start %}{{ fc.airswitch_start }}{% elif prev_airswitch_end %}{{ prev_airswitch_end }}{% endif %}"
-                     oninput="checkMeterGap(this);updateCheckinPreview();">
+                     oninput="checkMeterGap(this);updateCheckinPreview();checkEndGtStart();">
             </label>
             <label class="flabel">Air switch end <span class="req">*</span>
               <input type="number" name="airswitch_end" id="ci-airswitch-end" step="0.1" required class="finput" style="width:105px;"
-                     oninput="updateCheckinPreview();">
+                     oninput="updateCheckinPreview();checkEndGtStart();">
+              <span id="ci-airswitch-end-err" hidden style="color:#c0392b;font-size:.76rem;margin-top:.2rem;display:block;"></span>
             </label>
             {% endif %}
             {% if not booking.aircraft.records_hobbs and not booking.aircraft.records_tacho and not booking.aircraft.records_airswitch %}
@@ -1276,6 +1279,34 @@ function checkMeterGap(inp) {
     expl.required = false;
   }
 }
+
+function checkEndGtStart() {
+  var pairs = [
+    {s:'ci-hobbs-start',     e:'ci-hobbs-end',     err:'ci-hobbs-end-err',     label:'Hobbs'},
+    {s:'ci-tacho-start',     e:'ci-tacho-end',     err:'ci-tacho-end-err',     label:'Tacho'},
+    {s:'ci-airswitch-start', e:'ci-airswitch-end', err:'ci-airswitch-end-err', label:'Air switch'},
+  ];
+  pairs.forEach(function(p) {
+    var sEl = document.getElementById(p.s);
+    var eEl = document.getElementById(p.e);
+    var errEl = document.getElementById(p.err);
+    if (!sEl || !eEl || !errEl) return;
+    var sv = parseFloat(sEl.value);
+    var ev = parseFloat(eEl.value);
+    var bad = !isNaN(sv) && !isNaN(ev) && ev <= sv;
+    eEl.style.borderColor = bad ? '#c0392b' : '';
+    errEl.hidden = !bad;
+    if (bad) errEl.textContent = p.label + ' end must be greater than start (' + sv + ')';
+  });
+}
+document.getElementById('checkin-form').addEventListener('submit', function(e) {
+  checkEndGtStart();
+  var blocked = ['ci-hobbs-end-err','ci-tacho-end-err','ci-airswitch-end-err'].some(function(id) {
+    var el = document.getElementById(id);
+    return el && !el.hidden;
+  });
+  if (blocked) e.preventDefault();
+});
 
 // Split flight
 var splitSegCount = 2;
