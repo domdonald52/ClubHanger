@@ -998,6 +998,9 @@
           <div class="notice" style="background:#edfdf3;border-color:#a3e6bb;color:#1a6335;margin-bottom:.5rem;">
             <strong>Fully paid</strong> — ${{ fc.amount_paid|currency }} received · {{ fc.paid_at|date:"j M Y H:i" }}
           </div>
+          {% if actor.is_admin %}
+          <p style="font-size:.8rem;color:#5b6573;margin:.1rem 0 .5rem;">Need to add a missed charge? Use <strong>Reverse</strong> on a payment row below to reopen the flight, add the charge, then re-record payment.</p>
+          {% endif %}
           {% endif %}
 
           {% if overpayment and overpayment > 0 and actor.is_admin %}
