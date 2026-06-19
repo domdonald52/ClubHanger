@@ -128,10 +128,10 @@
           <td>{{ fp.name }}</td>
           <td style="color:#8a93a0;">{{ fp.phone }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;">{% csrf_token %}
+            <form method="post" style="display:inline;" data-confirm="Remove {{ fp.name }}?">{% csrf_token %}
               <input type="hidden" name="action" value="delete_frequent_passenger">
               <input type="hidden" name="fp_id" value="{{ fp.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger" onclick="return confirm('Remove {{ fp.name|escapejs }}?')">Remove</button>
+              <button type="submit" class="cbtn-sm cbtn-danger">Remove</button>
             </form>
           </td>
         </tr>
@@ -248,7 +248,7 @@
             <div style="display:inline-flex;gap:.3rem;">
               <button type="button" class="cbtn-xs"
                       onclick="openEditCred({{ c.id }},'{{ c.credential_type }}','{{ c.name|escapejs }}','{{ c.certificate_number|escapejs }}','{{ c.issue_date|default:'' }}','{{ c.expiry_date|default:'' }}','{{ c.notes|escapejs }}',{{ c.aircraft_type_id|default:'null' }})">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete this credential?')">
+              <form method="post" style="display:inline;" data-confirm="Delete this credential?">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_credential">
                 <input type="hidden" name="cred_id" value="{{ c.id }}">

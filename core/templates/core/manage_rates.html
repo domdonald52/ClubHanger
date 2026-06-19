@@ -70,7 +70,7 @@
         <td style="color:#8a93a0;font-size:.82rem;">{{ r.notes|default:"—" }}</td>
         <td style="text-align:right;">
           {% if not forloop.first %}
-          <form method="post" style="display:inline;" onsubmit="return confirm('Delete this rate entry?')">
+          <form method="post" style="display:inline;" data-confirm="Delete this rate entry?">
             {% csrf_token %}
             <input type="hidden" name="action" value="delete_rate">
             <input type="hidden" name="rate_id" value="{{ r.id }}">

@@ -156,7 +156,7 @@
 
     {% if invoice.status == 'draft' or invoice.status == 'sent' %}
     <div style="padding:0 .9rem .9rem;border-top:1px solid #f0f2f4;padding-top:.6rem;">
-      <form method="post" onsubmit="return confirm('Void this invoice? This cannot be undone.')" style="display:inline;">
+      <form method="post" data-confirm="Void this invoice? This cannot be undone." style="display:inline;">
         {% csrf_token %}<input type="hidden" name="action" value="void">
         <button type="submit" class="cbtn cbtn-danger" style="font-size:.82rem;">Void invoice</button>
       </form>

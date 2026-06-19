@@ -24,12 +24,12 @@
     </p>
     {% if total_issues %}
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-      <form method="post" style="margin:0;" onsubmit="return confirm('Recompute all account balances from their transaction history and save? This cannot be undone.');">
+      <form method="post" style="margin:0;" data-confirm="Recompute all account balances from their transaction history and save? This cannot be undone.">
         {% csrf_token %}
         <input type="hidden" name="action" value="fix_balance_drift">
         <button type="submit" class="cbtn cbtn-sm">Fix balance drift</button>
       </form>
-      <form method="post" style="margin:0;" onsubmit="return confirm('Sync all flight completion payment totals from their payment records? This cannot be undone.');">
+      <form method="post" style="margin:0;" data-confirm="Sync all flight completion payment totals from their payment records? This cannot be undone.">
         {% csrf_token %}
         <input type="hidden" name="action" value="fix_payment_drift">
         <button type="submit" class="cbtn cbtn-sm">Fix payment drift</button>

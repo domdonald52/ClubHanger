@@ -770,6 +770,45 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 })();
 </script>
 
+<!-- ── App-level confirm dialog (replaces browser confirm()) ── -->
+<div class="modal-back" id="app-confirm-modal" hidden>
+  <div class="modal" style="max-width:380px;">
+    <p id="app-confirm-msg" style="margin:0 0 1.1rem;font-size:.93rem;line-height:1.5;color:#1f2933;"></p>
+    <div class="modal-actions" style="justify-content:flex-end;">
+      <button class="cbtn" onclick="document.getElementById('app-confirm-modal').hidden=true">Cancel</button>
+      <button id="app-confirm-ok" class="btn" style="min-width:72px;">OK</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var modal = document.getElementById('app-confirm-modal');
+  var msgEl = document.getElementById('app-confirm-msg');
+  var okBtn = document.getElementById('app-confirm-ok');
+  var _cb   = null;
+  window.showAppConfirm = function(msg, onOk){
+    msgEl.textContent = msg;
+    _cb = onOk;
+    modal.hidden = false;
+    okBtn.focus();
+  };
+  okBtn.addEventListener('click', function(){
+    modal.hidden = true;
+    if(_cb){ var f=_cb; _cb=null; f(); }
+  });
+  modal.addEventListener('click', function(e){ if(e.target===modal) modal.hidden=true; });
+  document.addEventListener('keydown', function(e){ if(!modal.hidden && e.key==='Escape') modal.hidden=true; });
+  // Intercept any form with data-confirm before it submits
+  document.addEventListener('submit', function(e){
+    var form = e.target;
+    var msg  = form.getAttribute('data-confirm');
+    if(!msg) return;
+    e.preventDefault();
+    window.showAppConfirm(msg, function(){ form.submit(); });
+  }, true);
+})();
+</script>
+
 <!-- ── Generic page overlay — opened by [data-overlay] links ── -->
 <div id="page-overlay" class="page-overlay-back" hidden>
   <div class="page-overlay-modal" id="page-overlay-modal">

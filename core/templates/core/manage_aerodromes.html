@@ -51,11 +51,11 @@
           </select>
         </form>
         <button type="button" class="cbtn-sm"
-                onclick="openEditFees({{ ae.id }}, '{{ ae.icao_code|escapejs }}')">Edit fees</button>
+                onclick="openEditFees({{ ae.id }}, '{{ ae.icao_code }}')">Edit fees</button>
         <button type="button" class="cbtn-sm"
-                onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name|escapejs }}', '{{ ae.notes|escapejs }}', {{ ae.is_home|yesno:'true,false' }})">Edit</button>
+                onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name }}', '{{ ae.notes }}', {{ ae.is_home|yesno:'true,false' }})">Edit</button>
         <form method="post" style="display:inline;"
-              onsubmit="return confirm('Delete {{ ae.icao_code }} — {{ ae.name|escapejs }}?')">
+              data-confirm="Delete {{ ae.icao_code }} — {{ ae.name }}?">
           {% csrf_token %}
           <input type="hidden" name="action" value="delete_aerodrome">
           <input type="hidden" name="ae_id" value="{{ ae.id }}">
@@ -75,7 +75,7 @@
       <p class="fee-empty">No fee rates configured — use Edit fees to add.</p>
       {% endfor %}
     </div>
-    <script type="application/json" id="fees-data-{{ ae.id }}">[{% for ft in ae.fee_types.all %}{"id":{{ ft.id }},"name":"{{ ft.name|escapejs }}","amount":"{{ ft.default_amount|floatformat:2 }}"}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
+    <script type="application/json" id="fees-data-{{ ae.id }}">[{% for ft in ae.fee_types.all %}{"id":{{ ft.id }},"name":"{{ ft.name }}","amount":"{{ ft.default_amount|floatformat:2 }}"}{% if not forloop.last %},{% endif %}{% endfor %}]</script>
   </div>
   {% empty %}
   <div class="ae-empty">

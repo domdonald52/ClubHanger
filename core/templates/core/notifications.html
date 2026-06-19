@@ -51,7 +51,7 @@
           <button type="submit" class="cbtn-sm" title="Mark read" style="padding:.18rem .38rem;">✓</button>
         </form>
         {% endif %}
-        <form method="post" onsubmit="return confirm('Delete this notification?')">{% csrf_token %}
+        <form method="post" data-confirm="Delete this notification?">{% csrf_token %}
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="id" value="{{ n.id }}">
           <button type="submit" class="cbtn-sm cbtn-danger" title="Delete" style="padding:.18rem .38rem;">✕</button>

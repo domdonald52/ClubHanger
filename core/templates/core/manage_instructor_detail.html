@@ -97,7 +97,7 @@
           </td>
           <td style="color:#8a93a0;">{{ av.notes }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;" onsubmit="return confirm('Remove this window?')">
+            <form method="post" style="display:inline;" data-confirm="Remove this window?">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_instructor_availability">
               <input type="hidden" name="av_id" value="{{ av.id }}">
@@ -133,7 +133,7 @@
           <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
           <td style="color:#8a93a0;">{{ bo.label }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete this block-out?')">
+            <form method="post" style="display:inline;" data-confirm="Delete this block-out?">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_blockout">
               <input type="hidden" name="bo_id" value="{{ bo.id }}">

@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded',function(){
           <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
           <td style="width:32px;">
             {% if not fc.is_paid %}
-            <form method="post" onsubmit="return confirm('Remove this charge?')">
+            <form method="post" data-confirm="Remove this charge?">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_charge">
               <input type="hidden" name="item_id" value="{{ item.id }}">
@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
     <!-- Payment -->
     <div style="margin-top:.8rem;padding:.8rem;background:#f8f9fa;border-radius:8px;border:1px solid #e3e6ea;">
-      <form method="post">
+      <form method="post" data-confirm="Record payment of ${{ total|currency }} — this cannot be undone.">
         {% csrf_token %}
         <input type="hidden" name="action" value="confirm_payment">
         <input type="hidden" name="inline" value="1">
@@ -223,8 +223,7 @@ document.addEventListener('DOMContentLoaded',function(){
               <option value="invoice">Invoice / bank transfer</option>
             </select>
           </label>
-          <button type="submit" class="btn"
-                  onclick="return confirm('Record payment of ${{ total|currency }} — this cannot be undone.')">
+          <button type="submit" class="btn">
             Record payment — ${{ total|currency }}
           </button>
         </div>

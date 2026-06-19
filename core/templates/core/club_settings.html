@@ -82,7 +82,7 @@
             </button>
             {% if config.logo %}
             <button type="button" class="btn secondary" style="font-size:.78rem;padding:.3rem .6rem;"
-                    onclick="if(confirm('Remove the club logo?')) document.getElementById('remove-logo-form').submit()">Remove</button>
+                    onclick="showAppConfirm('Remove the club logo?', function(){ document.getElementById('remove-logo-form').submit(); })">Remove</button>
             {% endif %}
           </div>
           <div style="font-size:.73rem;color:#8a93a0;margin-top:.4rem;">White on transparent PNG works best</div>
@@ -105,7 +105,7 @@
             </button>
             {% if config.app_banner %}
             <button type="button" class="btn secondary" style="font-size:.78rem;padding:.3rem .6rem;"
-                    onclick="if(confirm('Remove the app banner image?')) document.getElementById('remove-app-banner-form').submit()">Remove</button>
+                    onclick="showAppConfirm('Remove the app banner image?', function(){ document.getElementById('remove-app-banner-form').submit(); })">Remove</button>
             {% endif %}
           </div>
           <div style="font-size:.73rem;color:#8a93a0;margin-top:.4rem;">Landscape, ~3:1 ratio (e.g. 1200×400px). Falls back to the ClubHangar default if not set.</div>
@@ -216,7 +216,7 @@
     }
     window.addSlotRow = addSlotRow;
     // Restore existing slots
-    var raw = '{{ config.booking_slots|escapejs }}';
+    var raw = '{{ config.booking_slots }}';
     var pairs = raw ? raw.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
     pairs.forEach(function(p) {
       var dash = p.indexOf('-', 3);
@@ -489,8 +489,8 @@
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditFt({{ ft.id }},'{{ ft.name|escapejs }}')">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ft.name|escapejs }}?')">{% csrf_token %}
+              <button type="button" class="cbtn-sm" onclick="sOpenEditFt({{ ft.id }},'{{ ft.name }}')">Edit</button>
+              <form method="post" style="display:inline;" data-confirm="Delete {{ ft.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_flight_type">
                 <input type="hidden" name="ft_id" value="{{ ft.id }}">
                 <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
@@ -536,8 +536,8 @@
           <td style="color:#8a93a0;font-size:.82rem;">{{ ig.display_order }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditIg({{ ig.id }},'{{ ig.name|escapejs }}','{{ ig.hourly_rate }}','{{ ig.display_order }}')">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ig.name|escapejs }}?')">{% csrf_token %}
+              <button type="button" class="cbtn-sm" onclick="sOpenEditIg({{ ig.id }},'{{ ig.name }}','{{ ig.hourly_rate }}','{{ ig.display_order }}')">Edit</button>
+              <form method="post" style="display:inline;" data-confirm="Delete {{ ig.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_instructor_grade">
                 <input type="hidden" name="ig_id" value="{{ ig.id }}">
                 <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
@@ -575,8 +575,8 @@
           <td>${{ st.amount|currency }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditSc({{ st.id }},'{{ st.name|escapejs }}','{{ st.description|escapejs }}','{{ st.amount }}')">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ st.name|escapejs }}?')">{% csrf_token %}
+              <button type="button" class="cbtn-sm" onclick="sOpenEditSc({{ st.id }},'{{ st.name }}','{{ st.description }}','{{ st.amount }}')">Edit</button>
+              <form method="post" style="display:inline;" data-confirm="Delete {{ st.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_surcharge_type">
                 <input type="hidden" name="st_id" value="{{ st.id }}">
                 <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
@@ -620,8 +620,8 @@
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name|escapejs }}','{{ bt.color }}')">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ bt.name|escapejs }}?')">{% csrf_token %}
+              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')">Edit</button>
+              <form method="post" style="display:inline;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_blockout_type">
                 <input type="hidden" name="bot_id" value="{{ bt.id }}">
                 <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
@@ -673,8 +673,8 @@
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name|escapejs }}','{{ bt.color }}')">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ bt.name|escapejs }}?')">{% csrf_token %}
+              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')">Edit</button>
+              <form method="post" style="display:inline;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_blockout_type">
                 <input type="hidden" name="bot_id" value="{{ bt.id }}">
                 <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
@@ -726,8 +726,8 @@
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name|escapejs }}','{{ bt.color }}')">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ bt.name|escapejs }}?')">{% csrf_token %}
+              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')">Edit</button>
+              <form method="post" style="display:inline;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_blockout_type">
                 <input type="hidden" name="bot_id" value="{{ bt.id }}">
                 <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
@@ -765,8 +765,8 @@
           <td style="color:#8a93a0;">{{ at.aircraft.count }}</td>
           <td style="color:#8a93a0;">{{ at.type_ratings.count }}</td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditAircraftType({{ at.id }},'{{ at.name|escapejs }}','{{ at.icao_designator|escapejs }}')">Edit</button>
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ at.name }}?')">
+            <button type="button" class="cbtn sm" onclick="openEditAircraftType({{ at.id }},'{{ at.name }}','{{ at.icao_designator }}')">Edit</button>
+            <form method="post" style="display:inline;" data-confirm="Delete {{ at.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_aircraft_type">
               <input type="hidden" name="at_id" value="{{ at.id }}">
               <button type="submit" class="cbtn sm danger">Delete</button>
@@ -818,9 +818,9 @@
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditOccType({{ ot.id }},'{{ ot.name|escapejs }}','{{ ot.description|escapejs }}',{{ ot.sort_order }})">Edit</button>
+            <button type="button" class="cbtn sm" onclick="openEditOccType({{ ot.id }},'{{ ot.name }}','{{ ot.description }}',{{ ot.sort_order }})">Edit</button>
             {% if not ot.reports.exists %}
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ot.name|escapejs }}?')">
+            <form method="post" style="display:inline;" data-confirm="Delete {{ ot.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_occurrence_type">
               <input type="hidden" name="ot_id" value="{{ ot.id }}">
               <button type="submit" class="cbtn sm danger">Delete</button>
@@ -907,9 +907,9 @@
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditCType({{ ctype.id }},'{{ ctype.name|escapejs }}')">Edit</button>
+            <button type="button" class="cbtn sm" onclick="openEditCType({{ ctype.id }},'{{ ctype.name }}')">Edit</button>
             {% if not ctype.contacts.exists %}
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ ctype.name|escapejs }}?')">
+            <form method="post" style="display:inline;" data-confirm="Delete {{ ctype.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_contact_type">
               <input type="hidden" name="ct_id" value="{{ ctype.id }}">
               <button type="submit" class="cbtn sm danger">Delete</button>
@@ -988,8 +988,8 @@
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditVType({{ vt.id }},'{{ vt.name|escapejs }}','{{ vt.default_value }}','{{ vt.description|escapejs }}',{{ vt.sort_order }})">Edit</button>
-            <form method="post" style="display:inline;" onsubmit="return confirm('Delete {{ vt.name|escapejs }}?')">
+            <button type="button" class="cbtn sm" onclick="openEditVType({{ vt.id }},'{{ vt.name }}','{{ vt.default_value }}','{{ vt.description }}',{{ vt.sort_order }})">Edit</button>
+            <form method="post" style="display:inline;" data-confirm="Delete {{ vt.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_voucher_type">
               <input type="hidden" name="vt_id" value="{{ vt.id }}">
               <button type="submit" class="cbtn sm danger">Delete</button>
@@ -1165,11 +1165,10 @@
       Members already holding an unpaid subscription invoice are skipped automatically.
     </p>
     <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem;">
-      <form method="post">
+      <form method="post" data-confirm="Send {{ renewal_fy_label }} renewal invoices to {{ renewal_preview|length }} member(s)?">
         {% csrf_token %}
         <input type="hidden" name="action" value="run_bulk_renewal">
-        <button type="submit" class="cbtn{% if renewal_preview %} primary{% endif %}"
-                onclick="return confirm('Send {{ renewal_fy_label }} renewal invoices to {{ renewal_preview|length }} member(s)?')">
+        <button type="submit" class="cbtn{% if renewal_preview %} primary{% endif %}">
           Send renewal invoices{% if renewal_preview %} ({{ renewal_preview|length }} eligible){% endif %}
         </button>
       </form>
@@ -1308,7 +1307,7 @@
           <td style="text-align:right;">
             {% if not role.is_system_role %}
             <button type="button" class="cbtn-sm cbtn-danger"
-                    onclick="openRoleDelModal('{{ role.id }}', '{{ role.name|escapejs }}', {{ role.member_count }})">
+                    onclick="openRoleDelModal('{{ role.id }}', '{{ role.name }}', {{ role.member_count }})">
               Delete
             </button>
             {% endif %}

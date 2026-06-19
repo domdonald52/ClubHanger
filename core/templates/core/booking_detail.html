@@ -84,7 +84,7 @@
         <input type="hidden" name="action" value="confirm">
         <button type="submit" class="cbtn primary">Confirm booking</button>
       </form>
-      <form method="post" style="display:inline;" onsubmit="return confirm('Cancel this booking?')">
+      <form method="post" style="display:inline;" data-confirm="Cancel this booking?">
         {% csrf_token %}
         <input type="hidden" name="action" value="cancel_booking">
         <button type="submit" class="cbtn" style="color:#c0392b;border-color:#fca5a5;">Cancel booking</button>
@@ -180,7 +180,7 @@
       This flight type requires a pre-departure declaration which has not been submitted.
     </div>
     {% endif %}
-    <form method="post">
+    <form method="post" data-confirm="Check out {{ booking.aircraft.registration }} for {{ booking.member.user.get_full_name }}? This marks the flight as departed.">
       {% csrf_token %}
       <input type="hidden" name="action" value="depart">
       {% if requires_decl and not has_submitted_decl %}
@@ -198,24 +198,20 @@
                placeholder="e.g. Flying with instructor, emergency crew duty…">
       </label>
       {% endif %}
-      <button type="submit" class="cbtn primary"
-              onclick="return confirm('Check out {{ booking.aircraft.registration }} for {{ booking.member.user.get_full_name }}?\n\nThis marks the flight as departed.')">Check out</button>
+      <button type="submit" class="cbtn primary">Check out</button>
     </form>
     {% if club_member.is_admin %}
     <div style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid #f0f2f4;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
-      <form method="post" style="display:inline;">
+      <form method="post" style="display:inline;" data-confirm="Undo confirmation? Flight will return to pending and the member will be notified.">
         {% csrf_token %}
         <input type="hidden" name="action" value="undo_confirm">
-        <button type="submit" class="cbtn cbtn-warn" style="font-size:.78rem;"
-                onclick="return confirm('Undo confirmation? Flight will return to pending and the member will be notified.')">
-          Undo confirmation
-        </button>
+        <button type="submit" class="cbtn cbtn-warn" style="font-size:.78rem;">Undo confirmation</button>
       </form>
       <button type="button" class="cbtn-add" style="font-size:.78rem;"
               onclick="document.getElementById('edit-details-panel').hidden=!document.getElementById('edit-details-panel').hidden">
         Change instructor / aircraft
       </button>
-      <form method="post" style="display:inline;" onsubmit="return confirm('Cancel this confirmed booking?')">
+      <form method="post" style="display:inline;" data-confirm="Cancel this confirmed booking?">
         {% csrf_token %}
         <input type="hidden" name="action" value="cancel_booking">
         <button type="submit" class="cbtn" style="font-size:.78rem;color:#c0392b;border-color:#fca5a5;">Cancel booking</button>
@@ -503,13 +499,10 @@
     </form>
     {% if club_member.is_admin %}
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid #f0f2f4;">
-      <form method="post" style="display:inline;">
+      <form method="post" style="display:inline;" data-confirm="Undo departure? The flight completion stub will be deleted and the flight will return to confirmed.">
         {% csrf_token %}
         <input type="hidden" name="action" value="undo_depart">
-        <button type="submit" class="cbtn" style="font-size:.78rem;"
-                onclick="return confirm('Undo departure? The flight completion stub will be deleted and the flight will return to confirmed.')">
-          Undo departure (return to confirmed)
-        </button>
+        <button type="submit" class="cbtn" style="font-size:.78rem;">Undo departure (return to confirmed)</button>
       </form>
     </div>
     {% endif %}
@@ -588,13 +581,10 @@
             <button type="submit" class="btn secondary" style="font-size:.85rem;">Save &amp; recalculate charges</button>
           </form>
           {% if not fc.amount_paid or fc.amount_paid == 0 %}
-          <form method="post" style="margin-top:.5rem;">
+          <form method="post" style="margin-top:.5rem;" data-confirm="Void this check-in? All charge items will be deleted and the flight will return to departed.">
             {% csrf_token %}
             <input type="hidden" name="action" value="void_checkin">
-            <button type="submit" class="cbtn" style="font-size:.8rem;color:#c0392b;border-color:#c0392b;"
-                    onclick="return confirm('Void this check-in? All charge items will be deleted and the flight will return to departed.')">
-              Void check-in (return to departed)
-            </button>
+            <button type="submit" class="cbtn" style="font-size:.8rem;color:#c0392b;border-color:#c0392b;">Void check-in (return to departed)</button>
           </form>
           {% else %}
           <p style="font-size:.78rem;color:#c0392b;margin:.4rem 0 0;">Void is blocked — ${{ fc.amount_paid|currency }} recorded. Reverse payment first.</p>
@@ -619,7 +609,7 @@
                 <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
                 <td style="width:32px;">
                   {% if not fc.is_paid %}
-                  <form method="post" style="display:inline;" onsubmit="return confirm('Remove this charge?')">
+                  <form method="post" style="display:inline;" data-confirm="Remove this charge?">
                     {% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}">
                     <button type="submit" class="del-btn">×</button>
                   </form>
@@ -637,7 +627,7 @@
                 <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
                 <td style="width:32px;">
                   {% if not fc.is_paid %}
-                  <form method="post" style="display:inline;" onsubmit="return confirm('Remove this charge?')">
+                  <form method="post" style="display:inline;" data-confirm="Remove this charge?">
                     {% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}">
                     <button type="submit" class="del-btn">×</button>
                   </form>
@@ -653,7 +643,7 @@
               <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
               <td style="width:32px;">
                 {% if not fc.is_paid %}
-                <form method="post" style="display:inline;" onsubmit="return confirm('Remove this charge?')">
+                <form method="post" style="display:inline;" data-confirm="Remove this charge?">
                   {% csrf_token %}
                   <input type="hidden" name="action" value="delete_charge">
                   <input type="hidden" name="item_id" value="{{ item.id }}">
@@ -779,12 +769,11 @@
                 {% if fp.is_paid %}
                   <div style="font-size:.78rem;color:#2a7a3b;font-weight:600;">✓ Paid {{ fp.paid_at|date:"j M H:i" }}</div>
                   {% if actor.is_admin %}
-                  <form method="post" style="margin-top:.2rem;">
+                  <form method="post" style="margin-top:.2rem;" data-confirm="Reverse ${{ fp.amount|currency }} payment from {{ fp.member.user.get_full_name }}?">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="reverse_payment">
                     <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                    <button type="submit" class="cbtn" style="font-size:.72rem;"
-                            onclick="return confirm('Reverse ${{ fp.amount|currency }} payment from {{ fp.member.user.get_full_name }}?')">Reverse</button>
+                    <button type="submit" class="cbtn" style="font-size:.72rem;">Reverse</button>
                   </form>
                   {% endif %}
                 {% else %}
@@ -798,12 +787,11 @@
                     <button type="submit" class="btn" style="font-size:.78rem;padding:.25rem .6rem;">Record payment</button>
                   </form>
                   {% if actor.is_admin %}
-                  <form method="post" style="display:inline;margin-left:.25rem;">
+                  <form method="post" style="display:inline;margin-left:.25rem;" data-confirm="Remove this payee allocation?">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="remove_payee">
                     <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                    <button type="submit" class="cbtn" style="font-size:.72rem;"
-                            onclick="return confirm('Remove this payee allocation?')">✕</button>
+                    <button type="submit" class="cbtn" style="font-size:.72rem;">✕</button>
                   </form>
                   {% endif %}
                   {% endif %}
