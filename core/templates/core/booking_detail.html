@@ -757,58 +757,71 @@
           </div>
 
           {% if fc_payments %}
-          <!-- Existing payee rows (split payment already set up) -->
-          <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;">
+          <!-- Existing payee rows -->
+          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_paid_total }}">
             {% for fp in fc_payments %}
-            <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:{% if fp.is_paid %}#f6fdf7{% else %}#fafbfc{% endif %};">
+            {% if fp.is_paid %}
+            <!-- Paid row — static -->
+            <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:#f6fdf7;">
               <div>
                 <div style="font-size:.88rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
                 <div style="font-size:.77rem;color:#8a93a0;">${{ fp.amount|currency }} · {{ fp.get_method_display }}</div>
               </div>
               <div style="text-align:right;">
-                {% if fp.is_paid %}
-                  <div style="font-size:.78rem;color:#2a7a3b;font-weight:600;">✓ Paid {{ fp.paid_at|date:"j M H:i" }}</div>
-                  {% if actor.is_admin %}
-                  <form method="post" style="margin-top:.2rem;" data-confirm="Reverse ${{ fp.amount|currency }} payment from {{ fp.member.user.get_full_name }}?">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="reverse_payment">
-                    <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                    <button type="submit" class="cbtn" style="font-size:.72rem;">Reverse</button>
-                  </form>
-                  {% endif %}
-                {% else %}
-                  {% if fc.invoice and fc.invoice.status != 'void' %}
-                  <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fc.invoice.display_number }}</span>
-                  {% else %}
-                  <form method="post" style="display:inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="record_payee">
-                    <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                    <button type="submit" class="btn" style="font-size:.78rem;padding:.25rem .6rem;">Record payment</button>
-                  </form>
-                  {% if actor.is_admin %}
-                  <form method="post" style="display:inline;margin-left:.25rem;" data-confirm="Remove this payee allocation?">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="remove_payee">
-                    <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                    <button type="submit" class="cbtn" style="font-size:.72rem;">✕</button>
-                  </form>
-                  {% endif %}
-                  {% endif %}
+                <div style="font-size:.78rem;color:#2a7a3b;font-weight:600;">✓ Paid {{ fp.paid_at|date:"j M H:i" }}</div>
+                {% if actor.is_admin %}
+                <form method="post" style="margin-top:.2rem;" data-confirm="Reverse ${{ fp.amount|currency }} payment from {{ fp.member.user.get_full_name }}?">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="reverse_payment">
+                  <input type="hidden" name="payment_id" value="{{ fp.id }}">
+                  <button type="submit" class="cbtn" style="font-size:.72rem;">Reverse</button>
+                </form>
                 {% endif %}
               </div>
             </div>
+            {% else %}
+            <!-- Pending row — editable amount/method; Record payment updates then marks paid -->
+            <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:#fafbfc;">
+              <div style="font-size:.88rem;font-weight:500;margin-bottom:.35rem;">{{ fp.member.user.get_full_name }}</div>
+              {% if fc.invoice and fc.invoice.status != 'void' %}
+              <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fc.invoice.display_number }}</span>
+              {% else %}
+              <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
+                <form method="post" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;flex:1;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="record_payee">
+                  <input type="hidden" name="payment_id" value="{{ fp.id }}">
+                  <select name="payment_method" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
+                    <option value="eftpos"{% if fp.method == "eftpos" %} selected{% endif %}>EFTPOS</option>
+                    <option value="cash"{% if fp.method == "cash" %} selected{% endif %}>Cash</option>
+                    <option value="credit"{% if fp.method == "credit" %} selected{% endif %}>Account balance</option>
+                    <option value="invoice"{% if fp.method == "invoice" %} selected{% endif %}>Invoice / bank transfer</option>
+                  </select>
+                  <div class="money-wrap" style="margin-top:0;">
+                    <span class="money-sym">$</span>
+                    <input type="number" name="payment_amount" step="0.01" min="0.01"
+                           value="{{ fp.amount }}" class="finput money-input split-alloc-input" style="width:80px;" required>
+                  </div>
+                  <button type="submit" class="btn" style="font-size:.78rem;padding:.25rem .6rem;">Record payment</button>
+                </form>
+                {% if actor.is_admin %}
+                <form method="post" data-confirm="Remove this payee allocation?" style="margin:0;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="remove_payee">
+                  <input type="hidden" name="payment_id" value="{{ fp.id }}">
+                  <button type="submit" class="cbtn" style="font-size:.72rem;">✕</button>
+                </form>
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
             {% endfor %}
-          </div>
-          {% if not fc.is_paid %}
-          <p style="font-size:.77rem;color:#8a93a0;margin:.2rem 0 .6rem;">${{ balance_owing|currency }} remaining on this flight</p>
-          {% endif %}
-          {% if fc_segments_pending %}
-          <!-- Split flight — add-payee forms for unallocated members -->
-          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_total }}">
+            {% if fc_segments_pending %}
+            <!-- Add-payee forms for segments not yet allocated -->
             {% for seg in fc_segments_pending %}
-            <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
-              <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
+            <div style="padding:.55rem .75rem;border-top:1px solid #f0f2f4;">
+              <div style="font-size:.88rem;font-weight:500;margin-bottom:.35rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
               <form method="post" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="add_payee">
@@ -827,8 +840,11 @@
               </form>
             </div>
             {% endfor %}
+            {% endif %}
           </div>
           <p id="split-alloc-total" style="font-size:.77rem;margin:.2rem 0 .6rem;"></p>
+          {% if not fc.is_paid %}
+          <p style="font-size:.77rem;color:#8a93a0;margin:.2rem 0 .6rem;">${{ balance_owing|currency }} remaining on this flight</p>
           {% endif %}
 
           {% elif not fc.is_paid %}
@@ -841,7 +857,7 @@
           </div>
           {% elif fc_segments %}
           <!-- Split flight — per-member payment forms -->
-          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_total }}">
+          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_paid_total }}">
             {% for seg in fc_segments %}
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
               <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
@@ -1141,7 +1157,7 @@
   .add-toggle::-webkit-details-marker{display:none;}
   .add-wrap[open] .add-toggle{border-bottom:1px solid #e3e6ea;margin-bottom:.2rem;}
   .lf-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;}
-  .lf-add-btn{flex-shrink:0;padding:.42rem .75rem;margin-bottom:0;}
+  .lf-add-btn{flex-shrink:0;padding:.42rem .75rem;margin-bottom:.6rem;}
   .lf-hint{font-size:.8rem;color:#8a93a0;margin:.3rem .7rem .1rem;font-style:italic;}
 
   .ch-total-row{display:flex;align-items:center;justify-content:space-between;padding:.7rem .5rem;border-top:2px solid #e3e6ea;margin-top:.6rem;}

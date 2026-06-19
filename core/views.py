@@ -3006,14 +3006,48 @@ def booking_detail(request, club_slug, booking_id):
                 if _fc_inv and _fc_inv.status != 'void':
                     error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
+                    from decimal import Decimal as _D, InvalidOperation as _IO
+                    from django.db.models import Sum as _Sum
                     payment_id = request.POST.get('payment_id', '').strip()
-                    result = charging_service.record_allocated_payment(
-                        fc, booking, request.user, payment_id
-                    )
-                    if result.ok:
-                        success = result.data['message']
-                    else:
-                        error = result.error
+                    new_amount_str = request.POST.get('payment_amount', '').strip()
+                    new_method = request.POST.get('payment_method', '').strip()
+                    # Update pending fp amount/method if the form submitted new values
+                    if new_amount_str:
+                        try:
+                            from .models import FlightPayment as _FP
+                            _new_amt = round(_D(new_amount_str), 2)
+                            if _new_amt <= 0:
+                                raise _IO('zero')
+                            _fp_obj = fc.payments.get(id=payment_id, paid_at__isnull=True)
+                            _other = fc.payments.exclude(id=payment_id).aggregate(t=_Sum('amount'))['t'] or _D('0')
+                            if _other + _new_amt > _D(str(fc.total_charge or 0)):
+                                _over = _other + _new_amt - _D(str(fc.total_charge or 0))
+                                error = f'Amount ${_new_amt:.2f} would exceed the flight total by ${_over:.2f}.'
+                            else:
+                                _fp_obj.amount = _new_amt
+                                if new_method:
+                                    _fp_obj.method = new_method
+                                _fp_obj.save(update_fields=['amount', 'method'])
+                        except (_IO, Exception):
+                            if not error:
+                                error = 'Invalid amount.'
+                    if not error:
+                        # Check total allocations match flight total before recording
+                        _all_alloc = fc.payments.aggregate(t=_Sum('amount'))['t'] or _D('0')
+                        _fc_total = _D(str(fc.total_charge or 0))
+                        if abs(_all_alloc - _fc_total) > _D('0.01'):
+                            _diff = _fc_total - _all_alloc
+                            error = (f'Allocations total ${_all_alloc:.2f} but flight total is ${_fc_total:.2f} '
+                                     f'(${abs(_diff):.2f} {"unallocated" if _diff > 0 else "over-allocated"}). '
+                                     f'Adjust allocations before recording payment.')
+                    if not error:
+                        result = charging_service.record_allocated_payment(
+                            fc, booking, request.user, payment_id
+                        )
+                        if result.ok:
+                            success = result.data['message']
+                        else:
+                            error = result.error
 
         elif action == 'remove_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
@@ -3143,8 +3177,9 @@ def booking_detail(request, club_slug, booking_id):
             pass  # fall through to re-render with error
         elif success and not error:
             if is_inline:
-                return redirect(f'{request.path}?inline=1')
-            return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
+                return redirect(f'{request.path}?inline=1&saved=1')
+            from django.urls import reverse as _rev
+            return redirect(_rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id}) + '?saved=1')
 
     is_inline = request.GET.get('inline') == '1'
 
@@ -3187,7 +3222,9 @@ def booking_detail(request, club_slug, booking_id):
     fc_payments = list(fc.payments.select_related('member__user').order_by('created_at')) if fc else []
     _allocated_member_ids = {fp.member_id for fp in fc_payments}
     fc_segments_pending = [s for s in fc_segments if s.member_id not in _allocated_member_ids]
-    fc_payments_total = sum(fp.amount for fp in fc_payments)
+    fc_payments_pending = [fp for fp in fc_payments if not fp.paid_at]
+    fc_payments_paid = [fp for fp in fc_payments if fp.paid_at]
+    fc_payments_paid_total = sum(fp.amount for fp in fc_payments_paid)
     club_members = list(ClubMember.objects.filter(club=club).exclude(standing='resigned').select_related('user').order_by('user__last_name', 'user__first_name'))
     from .models import Contact as _Cont
     contacts = list(_Cont.objects.filter(club=club, converted_to_member__isnull=True).order_by('name'))
@@ -3347,7 +3384,9 @@ def booking_detail(request, club_slug, booking_id):
         'balance_owing': balance_owing,
         'overpayment': overpayment,
         'fc_payments': fc_payments,
-        'fc_payments_total': fc_payments_total,
+        'fc_payments_pending': fc_payments_pending,
+        'fc_payments_paid': fc_payments_paid,
+        'fc_payments_paid_total': fc_payments_paid_total,
         'club_members': club_members,
         'other_unpaid_list': other_unpaid_list,
         'other_outstanding_list': other_outstanding_list,
