@@ -1297,26 +1297,29 @@ function checkEndGtStart() {
 }
 
 function checkHandoverRange(inp) {
-  var prefixes = [['seg-hobbs-h','hobbs'],['seg-tacho-h','tacho'],['seg-airswitch-h','airswitch']];
-  var meter = null;
-  for (var i = 0; i < prefixes.length; i++) {
-    if (inp.id.indexOf(prefixes[i][0]) === 0) { meter = prefixes[i][1]; break; }
-  }
-  if (!meter) return;
-  var sEl = document.getElementById('ci-' + meter + '-start');
-  var eEl = document.getElementById('ci-' + meter + '-end');
+  var m = inp.id.match(/^seg-(hobbs|tacho|airswitch)-h(\d)$/);
+  if (!m) return;
+  var meter = m[1], n = parseInt(m[2]);
+  var labels = {hobbs:'Hobbs',tacho:'Tacho',airswitch:'Air switch'};
+  var sEl  = document.getElementById('ci-' + meter + '-start');
+  var eEl  = document.getElementById('ci-' + meter + '-end');
+  var prevEl = n > 1 ? document.getElementById('seg-' + meter + '-h' + (n - 1)) : null;
   var hv = parseFloat(inp.value);
   if (isNaN(hv)) { inp.setCustomValidity(''); inp.style.borderColor = ''; return; }
-  var sv = sEl ? parseFloat(sEl.value) : NaN;
+  var prevVal = prevEl && prevEl.value ? parseFloat(prevEl.value) : NaN;
+  var lo = !isNaN(prevVal) ? prevVal : (sEl ? parseFloat(sEl.value) : NaN);
+  var loLabel = !isNaN(prevVal) ? 'previous handover (' + lo + ')' : 'flight start (' + lo + ')';
   var ev = eEl ? parseFloat(eEl.value) : NaN;
-  var labels = {hobbs:'Hobbs',tacho:'Tacho',airswitch:'Air switch'};
   var msg = '';
-  if (!isNaN(sv) && hv <= sv)
-    msg = labels[meter] + ' handover must be greater than flight start (' + sv + ')';
+  if (!isNaN(lo) && hv <= lo)
+    msg = labels[meter] + ' handover must be greater than ' + loLabel;
   else if (!isNaN(ev) && hv >= ev)
     msg = labels[meter] + ' handover must be less than flight end (' + ev + ')';
   inp.setCustomValidity(msg);
   inp.style.borderColor = msg ? '#c0392b' : '';
+  // Re-validate the next handover — its lower bound is now this value
+  var nextEl = document.getElementById('seg-' + meter + '-h' + (n + 1));
+  if (nextEl && nextEl.value) checkHandoverRange(nextEl);
 }
 
 // Split flight
