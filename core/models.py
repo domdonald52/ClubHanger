@@ -2699,17 +2699,17 @@ class Invoice(models.Model):
 
     @property
     def is_overdue(self):
-        from datetime import date
+        from django.utils import timezone
         return (self.status == self.STATUS_SENT and
                 self.due_date is not None and
-                self.due_date < date.today())
+                self.due_date < timezone.localdate())
 
     @property
     def days_overdue(self):
         if not self.is_overdue:
             return 0
-        from datetime import date
-        return (date.today() - self.due_date).days
+        from django.utils import timezone
+        return (timezone.localdate() - self.due_date).days
 
     @property
     def age_bucket(self):
