@@ -1025,13 +1025,16 @@
                   {% endfor %}
                 </select>
               </label>
-              <label class="flabel" style="margin-bottom:.4rem;">Amount
+              <label class="flabel" style="margin-bottom:.2rem;">Amount
                 <div class="money-wrap" style="margin-top:.25rem;">
                   <span class="money-sym">$</span>
                   <input type="number" name="payment_amount" step="0.01" min="0.01"
-                         class="finput money-input" style="width:100px;" placeholder="0.00" required>
+                         class="finput money-input" style="width:100px;" required
+                         value="{{ balance_owing }}"
+                         oninput="(function(el){var rem={{ balance_owing }}-parseFloat(el.value||0);var sp=document.getElementById('split-bill-rem');if(!sp)return;sp.textContent=rem<-0.005?'Over by $'+Math.abs(rem).toFixed(2):rem>0.005?'$'+rem.toFixed(2)+' remaining':'Matches balance ✓';sp.style.color=rem<-0.005?'#c0392b':rem>0.005?'#b06800':'#2a7a3b';})(this)">
                 </div>
               </label>
+              <p id="split-bill-rem" style="font-size:.77rem;margin:0 0 .4rem;color:#b06800;">${{ balance_owing|floatformat:2 }} remaining</p>
               <label class="flabel" style="margin-bottom:.5rem;">Method
                 <select name="payment_method" class="finput">
                   <option value="eftpos">EFTPOS</option>
