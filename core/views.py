@@ -3002,8 +3002,11 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'record_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                _fc_inv = getattr(fc, 'invoice', None)
-                if _fc_inv and _fc_inv.status != 'void':
+                _pid_for_check = request.POST.get('payment_id', '').strip()
+                _fp_for_check = fc.payments.filter(id=_pid_for_check).first()
+                _fc_inv = (fc.invoices.filter(member=_fp_for_check.member, status__in=['draft', 'sent']).first()
+                           if _fp_for_check else None)
+                if _fc_inv:
                     error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
                     from decimal import Decimal as _D, InvalidOperation as _IO
@@ -3052,8 +3055,9 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'record_new_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                _fc_inv = getattr(fc, 'invoice', None)
-                if _fc_inv and _fc_inv.status != 'void':
+                _mid_for_check = request.POST.get('member_id', '').strip()
+                _fc_inv = fc.invoices.filter(member_id=_mid_for_check, status__in=['draft', 'sent']).first()
+                if _fc_inv:
                     error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
                     from .models import ClubMember as _CM
@@ -3086,8 +3090,8 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'record_multi_payment' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                _fc_inv = getattr(fc, 'invoice', None)
-                if _fc_inv and _fc_inv.status != 'void':
+                _fc_inv = fc.invoices.filter(member=booking.member, status__in=['draft', 'sent']).first()
+                if _fc_inv:
                     error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
                     from decimal import Decimal as _D, InvalidOperation
