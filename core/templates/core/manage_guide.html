@@ -628,6 +628,10 @@
         <strong>Invoices live on after the flight is complete.</strong> Selecting <em>Invoice</em> as the payment method does not close the loop — it opens one. The booking is marked complete, but the resulting invoice stays in <strong>Sent</strong> status under Sales → Invoices until the bookkeeper marks it paid after receiving the bank transfer. This is by design: the flight record and the payment record are separate. You can track all outstanding flight invoices at any time from Sales → Invoices, filtering by status.
       </div>
 
+      <div class="callout warn">
+        <strong>Once an invoice is issued, all payment must be recorded against the invoice — not the booking.</strong> After a flight invoice has been raised (any status except Void), the payment panel on the booking detail is replaced with a notice directing you to the invoice. The only way to record payment is through Sales → Invoices → [invoice] → Record payment. This applies regardless of how the member pays — EFTPOS, cash, or bank transfer — because the invoice is the formal billing document and all receipts must be reconciled against it. If you need to revert to direct payment on the booking (for example, because the invoice was created in error), void the invoice first — voiding restores the normal payment form on the booking.
+      </div>
+
       <h4>Split flights — multiple pilots or shared costs</h4>
       <p>A single flight booking can be split between two or more members. Two splitting scenarios exist:</p>
 
