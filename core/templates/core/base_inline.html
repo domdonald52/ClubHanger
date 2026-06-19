@@ -84,4 +84,18 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% if request.GET.saved %}<script>if(window.showSavedToast)window.showSavedToast();</script>{% endif %}
+<script>
+(function(){
+  if(!window._snapForm||!window._checkDirty) return;
+  document.querySelectorAll('[data-dirty-save]').forEach(function(btn){
+    var form = btn.closest('form');
+    if(!form) return;
+    var snap = window._snapForm(form);
+    btn.classList.remove('primary');
+    function update(){ btn.classList.toggle('primary', window._checkDirty(form, snap)); }
+    form.addEventListener('input', update);
+    form.addEventListener('change', update);
+  });
+})();
+</script>
 {% if request.GET.err %}<div class="notice err" style="margin:.6rem 1.2rem 0;">{{ request.GET.err }}</div>{% endif %}
