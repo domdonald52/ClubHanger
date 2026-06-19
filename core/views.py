@@ -3049,6 +3049,30 @@ def booking_detail(request, club_slug, booking_id):
                         else:
                             error = result.error
 
+        elif action == 'record_new_payee' and booking.status == 'completed':
+            fc = getattr(booking, 'flight_completion', None)
+            if fc:
+                _fc_inv = getattr(fc, 'invoice', None)
+                if _fc_inv and _fc_inv.status != 'void':
+                    error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
+                else:
+                    from .models import ClubMember as _CM
+                    member_id = request.POST.get('member_id', '').strip()
+                    amount_str = request.POST.get('payment_amount', '').strip()
+                    method = request.POST.get('payment_method', 'eftpos')
+                    try:
+                        payee = _CM.objects.get(id=member_id, club=club)
+                    except _CM.DoesNotExist:
+                        error = 'Member not found'
+                    else:
+                        result = charging_service.record_payment(
+                            fc, booking, request.user, amount_str, method=method, member=payee
+                        )
+                        if result.ok:
+                            success = result.data['message']
+                        else:
+                            error = result.error
+
         elif action == 'remove_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc and actor.is_admin:
@@ -5817,34 +5841,49 @@ def generate_invoice(request, club_slug, booking_id):
 
     config = get_config(club)
     from datetime import date as _date, timedelta as _td
-
-    # Allocate invoice number atomically
     from django.db.models import F
-    ClubConfig = config.__class__
-    ClubConfig.objects.filter(pk=config.pk).select_for_update().get()
-    config.refresh_from_db()
-    inv_number = config.invoice_number_next
-    config.invoice_number_next = F('invoice_number_next') + 1
-    config.save(update_fields=['invoice_number_next'])
+    from django.db import IntegrityError as _IErr
 
+    ClubConfig = config.__class__
     today = timezone.localdate()
     due   = today + _td(days=config.payment_terms_days)
-
-    # Derive description from flight type
     description = booking.flight_type.name if booking.flight_type else ''
 
-    invoice = Invoice.objects.create(
-        club=club,
-        member=booking.member,
-        flight_completion=fc,
-        invoice_number=inv_number,
-        issue_date=today,
-        due_date=due,
-        description=description,
-        gst_rate=config.gst_rate,
-        amount_paid=fc.amount_paid or 0,
-        created_by=request.user,
-    )
+    # Allocate invoice number with savepoint retry — guards against concurrent
+    # double-clicks where two requests both read the same invoice_number_next
+    # before either commits (select_for_update is a no-op on SQLite).
+    invoice = None
+    for _attempt in range(5):
+        _sp = transaction.savepoint()
+        try:
+            config.refresh_from_db()
+            inv_number = config.invoice_number_next
+            ClubConfig.objects.filter(pk=config.pk).update(
+                invoice_number_next=F('invoice_number_next') + 1
+            )
+            invoice = Invoice.objects.create(
+                club=club,
+                member=booking.member,
+                flight_completion=fc,
+                invoice_number=inv_number,
+                issue_date=today,
+                due_date=due,
+                description=description,
+                gst_rate=config.gst_rate,
+                amount_paid=fc.amount_paid or 0,
+                created_by=request.user,
+            )
+            transaction.savepoint_commit(_sp)
+            break
+        except _IErr as _e:
+            transaction.savepoint_rollback(_sp)
+            if 'invoice_number' not in str(_e) or _attempt == 4:
+                raise
+
+    if invoice is None:
+        from django.contrib import messages as _msg
+        _msg.error(request, 'Could not allocate an invoice number. Please try again.')
+        return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
     # Snapshot charge items as line items (FlightChargeItem has description + amount only)
     UNIT_MAP = {'hire': 'Hr', 'instructor': 'Hr', 'fuel': 'Hr', 'landing': 'Ldg',

@@ -818,13 +818,14 @@
             {% endif %}
             {% endfor %}
             {% if fc_segments_pending %}
-            <!-- Add-payee forms for segments not yet allocated -->
+            <!-- Payment forms for segments not yet recorded -->
             {% for seg in fc_segments_pending %}
+            {% if seg.suggested_payment > 0 %}
             <div style="padding:.55rem .75rem;border-top:1px solid #f0f2f4;">
               <div style="font-size:.88rem;font-weight:500;margin-bottom:.35rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
               <form method="post" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="add_payee">
+                <input type="hidden" name="action" value="record_new_payee">
                 <input type="hidden" name="member_id" value="{{ seg.member.id }}">
                 <select name="payment_method" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
@@ -836,9 +837,10 @@
                   <span class="money-sym">$</span>
                   <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.suggested_payment }}" class="finput money-input split-alloc-input" style="width:80px;" required>
                 </div>
-                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Allocate</button>
+                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Record payment</button>
               </form>
             </div>
+            {% endif %}
             {% endfor %}
             {% endif %}
           </div>
@@ -859,11 +861,12 @@
           <!-- Split flight — per-member payment forms -->
           <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_paid_total }}">
             {% for seg in fc_segments %}
+            {% if seg.suggested_payment > 0 %}
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
               <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
               <form method="post" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="add_payee">
+                <input type="hidden" name="action" value="record_new_payee">
                 <input type="hidden" name="member_id" value="{{ seg.member.id }}">
                 <select name="payment_method" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
@@ -875,9 +878,10 @@
                   <span class="money-sym">$</span>
                   <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.suggested_payment }}" class="finput money-input split-alloc-input" style="width:80px;" required>
                 </div>
-                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Allocate</button>
+                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Record payment</button>
               </form>
             </div>
+            {% endif %}
             {% endfor %}
           </div>
           <p id="split-alloc-total" style="font-size:.77rem;margin:.2rem 0 .6rem;"></p>
