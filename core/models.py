@@ -2636,8 +2636,8 @@ class Invoice(models.Model):
     club              = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='invoices')
     member            = models.ForeignKey('ClubMember', on_delete=models.SET_NULL,
                                            null=True, related_name='invoices')
-    flight_completion = models.OneToOneField('FlightCompletion', on_delete=models.SET_NULL,
-                                              null=True, blank=True, related_name='invoice')
+    flight_completion = models.ForeignKey('FlightCompletion', on_delete=models.SET_NULL,
+                                          null=True, blank=True, related_name='invoices')
 
     invoice_number = models.PositiveIntegerField()
     issue_date     = models.DateField()
@@ -2666,7 +2666,7 @@ class Invoice(models.Model):
 
     class Meta:
         ordering = ['-invoice_number']
-        unique_together = [('club', 'invoice_number')]
+        unique_together = [('club', 'invoice_number'), ('flight_completion', 'member')]
 
     def __str__(self):
         prefix = self.club.config.invoice_number_prefix if hasattr(self.club, 'config') else ''

@@ -783,8 +783,8 @@
             <!-- Pending row — editable amount/method; Record payment updates then marks paid -->
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:#fafbfc;">
               <div style="font-size:.88rem;font-weight:500;margin-bottom:.35rem;">{{ fp.member.user.get_full_name }}</div>
-              {% if fc.invoice and fc.invoice.status != 'void' %}
-              <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fc.invoice.display_number }}</span>
+              {% if fp._invoice and fp._invoice.status != 'void' %}
+              <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fp._invoice.display_number }}</span>
               {% else %}
               <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
                 <form method="post" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;flex:1;">
@@ -850,12 +850,11 @@
           {% endif %}
 
           {% elif not fc.is_paid %}
-          {% if fc.invoice and fc.invoice.status != 'void' %}
-          <!-- Invoice exists — direct to invoice for payment -->
+          {% if fc_invoices and not fc.is_paid %}
+          <!-- Invoice(s) exist — direct to invoice(s) for payment -->
           <div class="notice" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;margin-bottom:.5rem;">
-            Payment is via <strong>Invoice {{ fc.invoice.display_number }}</strong>
-            <span class="status-badge status-{{ fc.invoice.status }}" style="margin:0 .4rem;">{{ fc.invoice.get_status_display }}</span>—
-            record payment against the invoice, not the booking.
+            Payment is via invoice — record payment against the invoice, not the booking.
+            {% for inv in fc_invoices %}<a href="{% url 'core:invoice_detail' club.slug inv.id %}" style="color:#1e40af;">{{ inv.display_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
           </div>
           {% elif fc_segments %}
           <!-- Split flight — per-member payment forms -->
@@ -1074,22 +1073,32 @@
 
         <!-- Invoice — secondary -->
         <div style="margin-top:.7rem;padding:.7rem 1rem;border:1px solid #e3e6ea;border-radius:8px;background:#fafbfc;">
-          {% if fc.invoice %}
-          <div style="font-size:.85rem;font-weight:600;color:#5b6573;margin-bottom:.4rem;">
-            Invoice {{ fc.invoice.display_number }}
-            <span class="status-badge status-{{ fc.invoice.status }}" style="margin-left:.4rem;">{{ fc.invoice.get_status_display }}</span>
-            {% if fc.invoice.is_overdue %}<span style="color:#c0392b;font-size:.75rem;margin-left:.3rem;">⚠ {{ fc.invoice.days_overdue }}d overdue</span>{% endif %}
+          {% if fc_invoices %}
+          {% for inv in fc_invoices %}
+          <div style="margin-bottom:.5rem;">
+            <div style="font-size:.77rem;color:#5b6573;margin-bottom:.15rem;">{{ inv.member.user.get_full_name }}</div>
+            <div>
+              Invoice {{ inv.display_number }}
+              <span class="status-badge status-{{ inv.status }}" style="margin-left:.4rem;">{{ inv.get_status_display }}</span>
+              {% if inv.is_overdue %}<span style="color:#c0392b;font-size:.75rem;margin-left:.3rem;">⚠ {{ inv.days_overdue }}d overdue</span>{% endif %}
+            </div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem;">
+              <a href="{% url 'core:invoice_detail' club.slug inv.id %}" class="btn" style="font-size:.8rem;padding:.3rem .65rem;">View</a>
+              <a href="{% url 'core:invoice_print' club.slug inv.id %}" target="_blank" class="cbtn" style="font-size:.8rem;">Print / PDF</a>
+            </div>
           </div>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-            <a href="{% url 'core:invoice_detail' club.slug fc.invoice.id %}" class="btn" style="font-size:.8rem;padding:.3rem .65rem;">View</a>
-            <a href="{% url 'core:invoice_print' club.slug fc.invoice.id %}" target="_blank" class="cbtn" style="font-size:.8rem;">Print / PDF</a>
+          {% endfor %}
+          {% if fc_has_uninvoiced_payees %}
+          <div style="margin-top:.4rem;">
+            <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="cbtn" style="font-size:.8rem;" data-overlay>Generate remaining invoices</a>
           </div>
+          {% endif %}
           {% else %}
           <details>
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Need a formal invoice?</summary>
             <div style="margin-top:.4rem;">
               {% if total %}
-              <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="cbtn" style="font-size:.8rem;" data-overlay>Generate invoice</a>
+              <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="cbtn" style="font-size:.8rem;" data-overlay>Generate invoice{% if fc_payments|length > 1 %}s{% endif %}</a>
               {% else %}
               <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Generate invoice</span>
               {% endif %}

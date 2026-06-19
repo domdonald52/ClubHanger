@@ -3249,6 +3249,20 @@ def booking_detail(request, club_slug, booking_id):
     fc_payments_pending = [fp for fp in fc_payments if not fp.paid_at]
     fc_payments_paid = [fp for fp in fc_payments if fp.paid_at]
     fc_payments_paid_total = sum(fp.amount for fp in fc_payments_paid)
+
+    # Build per-member invoice lookup (ForeignKey now, one per member per FC)
+    _fc_invoices = list(fc.invoices.all()) if fc else []
+    fc_invoices = _fc_invoices
+    _invoice_by_member = {inv.member_id: inv for inv in _fc_invoices}
+    # Attach invoice to each FlightPayment for template convenience
+    for _fp in fc_payments:
+        _fp._invoice = _invoice_by_member.get(_fp.member_id)
+
+    # True if any payee with a non-zero payment has no invoice yet
+    fc_has_uninvoiced_payees = any(
+        fp.amount > 0 and not _invoice_by_member.get(fp.member_id)
+        for fp in fc_payments
+    ) if fc_payments else (fc and not _fc_invoices)
     club_members = list(ClubMember.objects.filter(club=club).exclude(standing='resigned').select_related('user').order_by('user__last_name', 'user__first_name'))
     from .models import Contact as _Cont
     contacts = list(_Cont.objects.filter(club=club, converted_to_member__isnull=True).order_by('name'))
@@ -3411,6 +3425,8 @@ def booking_detail(request, club_slug, booking_id):
         'fc_payments_pending': fc_payments_pending,
         'fc_payments_paid': fc_payments_paid,
         'fc_payments_paid_total': fc_payments_paid_total,
+        'fc_invoices': fc_invoices,
+        'fc_has_uninvoiced_payees': fc_has_uninvoiced_payees,
         'club_members': club_members,
         'other_unpaid_list': other_unpaid_list,
         'other_outstanding_list': other_outstanding_list,
@@ -5810,7 +5826,7 @@ def club_rates(request, club_slug):
 @login_required
 @transaction.atomic
 def generate_invoice(request, club_slug, booking_id):
-    """Create an Invoice from a completed booking's charge items."""
+    """Create per-payee invoices from a completed booking's charge items."""
     club = get_object_or_404(Club, slug=club_slug)
     booking = get_object_or_404(Booking, club=club, id=booking_id)
     try:
@@ -5827,13 +5843,6 @@ def generate_invoice(request, club_slug, booking_id):
     _is_inline = request.GET.get('inline') == '1'
     _inline_sfx = '?inline=1' if _is_inline else ''
 
-    # If invoice already exists, go to it
-    if hasattr(fc, 'invoice') and fc.invoice:
-        return redirect(
-            _rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': fc.invoice.id})
-            + _inline_sfx
-        )
-
     if not fc.charge_items.exists() or not fc.total_charge:
         from django.contrib import messages as _msg
         _msg.error(request, 'Cannot generate a $0 invoice — add charge items first.')
@@ -5843,67 +5852,103 @@ def generate_invoice(request, club_slug, booking_id):
     from datetime import date as _date, timedelta as _td
     from django.db.models import F
     from django.db import IntegrityError as _IErr
-
     ClubConfig = config.__class__
+
     today = timezone.localdate()
     due   = today + _td(days=config.payment_terms_days)
     description = booking.flight_type.name if booking.flight_type else ''
 
-    # Allocate invoice number with savepoint retry — guards against concurrent
-    # double-clicks where two requests both read the same invoice_number_next
-    # before either commits (select_for_update is a no-op on SQLite).
-    invoice = None
-    for _attempt in range(5):
-        _sp = transaction.savepoint()
-        try:
-            config.refresh_from_db()
-            inv_number = config.invoice_number_next
-            ClubConfig.objects.filter(pk=config.pk).update(
-                invoice_number_next=F('invoice_number_next') + 1
-            )
-            invoice = Invoice.objects.create(
-                club=club,
-                member=booking.member,
-                flight_completion=fc,
-                invoice_number=inv_number,
-                issue_date=today,
-                due_date=due,
-                description=description,
-                gst_rate=config.gst_rate,
-                amount_paid=fc.amount_paid or 0,
-                created_by=request.user,
-            )
-            transaction.savepoint_commit(_sp)
-            break
-        except _IErr as _e:
-            transaction.savepoint_rollback(_sp)
-            if 'invoice_number' not in str(_e) or _attempt == 4:
-                raise
-
-    if invoice is None:
-        from django.contrib import messages as _msg
-        _msg.error(request, 'Could not allocate an invoice number. Please try again.')
-        return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
-
-    # Snapshot charge items as line items (FlightChargeItem has description + amount only)
     UNIT_MAP = {'hire': 'Hr', 'instructor': 'Hr', 'fuel': 'Hr', 'landing': 'Ldg',
                 'surcharge': 'Ea', 'one_off': 'Ea'}
-    for order, ci in enumerate(fc.charge_items.all()):
-        InvoiceLineItem.objects.create(
-            invoice=invoice,
-            description=ci.description or ci.get_item_type_display(),
-            quantity=1,
-            unit=UNIT_MAP.get(ci.item_type, 'Ea'),
-            rate=ci.amount,
-            amount=ci.amount,
-            sort_order=order,
-            charge_item=ci,
-        )
 
-    return redirect(
-        _rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': invoice.id})
-        + _inline_sfx
-    )
+    # Determine payees: use FlightPayments if split, else booking member
+    fp_list = list(fc.payments.all())
+    existing_member_ids = set(fc.invoices.values_list('member_id', flat=True))
+
+    if fp_list:
+        payees = [(fp.member, fp.amount, fp.amount if fp.paid_at else 0)
+                  for fp in fp_list
+                  if fp.amount > 0 and fp.member_id not in existing_member_ids]
+        is_split = len(fp_list) > 1
+    else:
+        if booking.member.id not in existing_member_ids:
+            payees = [(booking.member, fc.total_charge, fc.amount_paid or 0)]
+        else:
+            payees = []
+        is_split = False
+
+    if not payees:
+        # All payees already invoiced — redirect to first invoice
+        first = fc.invoices.order_by('invoice_number').first()
+        if first:
+            return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': first.id}) + _inline_sfx)
+        return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
+
+    created = []
+    for member, amount, paid in payees:
+        invoice = None
+        for _attempt in range(5):
+            _sp = transaction.savepoint()
+            try:
+                config.refresh_from_db()
+                inv_number = config.invoice_number_next
+                ClubConfig.objects.filter(pk=config.pk).update(
+                    invoice_number_next=F('invoice_number_next') + 1
+                )
+                invoice = Invoice.objects.create(
+                    club=club,
+                    member=member,
+                    flight_completion=fc,
+                    invoice_number=inv_number,
+                    issue_date=today,
+                    due_date=due,
+                    description=description,
+                    gst_rate=config.gst_rate,
+                    amount_paid=paid,
+                    created_by=request.user,
+                )
+                transaction.savepoint_commit(_sp)
+                break
+            except _IErr as _e:
+                transaction.savepoint_rollback(_sp)
+                if 'invoice_number' not in str(_e) or _attempt == 4:
+                    raise
+
+        if invoice is None:
+            continue
+
+        # Line items: for split, one summary line per payee; for single, snapshot all charge items
+        if is_split:
+            InvoiceLineItem.objects.create(
+                invoice=invoice,
+                description=f'Flight hire share — {booking.aircraft.registration} {today.strftime("%-d %b %Y")}',
+                quantity=1,
+                unit='Ea',
+                rate=amount,
+                amount=amount,
+                sort_order=0,
+            )
+        else:
+            for order, ci in enumerate(fc.charge_items.all()):
+                InvoiceLineItem.objects.create(
+                    invoice=invoice,
+                    description=ci.description or ci.get_item_type_display(),
+                    quantity=1,
+                    unit=UNIT_MAP.get(ci.item_type, 'Ea'),
+                    rate=ci.amount,
+                    amount=ci.amount,
+                    sort_order=order,
+                    charge_item=ci,
+                )
+        created.append(invoice)
+
+    if len(created) == 1:
+        return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _inline_sfx)
+
+    from django.contrib import messages as _msg
+    _msg.success(request, f'{len(created)} invoice(s) generated.')
+    _back = _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id})
+    return redirect(_back + '?saved=1')
 
 
 @login_required
@@ -7308,7 +7353,7 @@ def manage_exceptions(request, club_slug):
         .filter(club=club, status='completed',
                 flight_completion__paid_at__isnull=True,
                 flight_completion__total_charge__gt=0,
-                flight_completion__invoice__isnull=True)
+                flight_completion__invoices__isnull=True)
         .select_related('member__user', 'aircraft', 'flight_type', 'flight_completion')
         .order_by('arrived_at')
     )
