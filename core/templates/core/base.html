@@ -1139,6 +1139,8 @@ document.addEventListener('click', function(e){
   .money-sym{padding:0 .4rem;font-size:.88rem;color:#8a93a0;background:#f8f9fb;border-right:1px solid #ddd;line-height:2.2;}
   .money-input{border:none!important;border-radius:0!important;flex:1;min-width:0;margin-top:0!important;text-align:right;padding:.45rem .55rem;}
   .money-input:focus{outline:2px solid var(--primary);outline-offset:-1px;border-radius:0 5px 5px 0!important;}
+  .money-input::-webkit-outer-spin-button,.money-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .money-input{-moz-appearance:textfield;}
 </style>
 <script>
 // Format currency inputs to 2dp on blur — applied globally to any .money-input

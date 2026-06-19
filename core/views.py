@@ -3162,11 +3162,24 @@ def booking_detail(request, club_slug, booking_id):
             for _ci in charge_items:
                 if _ci.segment_id:
                     _by_seg[_ci.segment_id].append(_ci)
+            from decimal import Decimal as _D
             for _s in _segs:
                 _s.segment_charges = _by_seg.get(_s.id, [])
                 _s.charge_total = sum(ci.amount for ci in _s.segment_charges)
             fc_segments = _segs
             charge_items = [_ci for _ci in charge_items if not _ci.segment_id]
+            # Compute suggested payment per segment: segment charges + proportional share
+            # of any non-segment charges (landing fees, one-offs, etc.).
+            _total_seg = sum(_s.charge_total for _s in fc_segments)
+            _non_seg = _D(str(fc.total_charge or 0)) - _total_seg
+            _n = len(fc_segments)
+            for _s in fc_segments:
+                _ratio = (_s.charge_total / _total_seg) if _total_seg else (_D('1') / _n)
+                _s.suggested_payment = (_s.charge_total + (_non_seg * _ratio)).quantize(_D('0.01'))
+            # Last segment absorbs any rounding remainder
+            if fc_segments:
+                _rounding = _D(str(fc.total_charge or 0)) - sum(_s.suggested_payment for _s in fc_segments)
+                fc_segments[-1].suggested_payment += _rounding
     total = fc.total_charge if fc else 0
     balance_owing = fc.balance_owing if fc else 0
     from decimal import Decimal as _D

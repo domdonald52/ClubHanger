@@ -805,10 +805,10 @@
           {% endif %}
           {% if fc_segments_pending %}
           <!-- Split flight — add-payee forms for unallocated members -->
-          <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;">
+          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}">
             {% for seg in fc_segments_pending %}
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
-              <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }}</div>
+              <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
               <form method="post" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="add_payee">
@@ -821,13 +821,14 @@
                 </select>
                 <div class="money-wrap" style="margin-top:0;">
                   <span class="money-sym">$</span>
-                  <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.charge_total }}" class="finput money-input" style="width:80px;" required>
+                  <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.suggested_payment }}" class="finput money-input split-alloc-input" style="width:80px;" required>
                 </div>
                 <button type="submit" class="cbtn primary" style="font-size:.82rem;">Allocate</button>
               </form>
             </div>
             {% endfor %}
           </div>
+          <p id="split-alloc-total" style="font-size:.77rem;margin:.2rem 0 .6rem;"></p>
           {% endif %}
 
           {% elif not fc.is_paid %}
@@ -840,10 +841,10 @@
           </div>
           {% elif fc_segments %}
           <!-- Split flight — per-member payment forms -->
-          <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;">
+          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}">
             {% for seg in fc_segments %}
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
-              <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }}</div>
+              <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
               <form method="post" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="add_payee">
@@ -856,13 +857,14 @@
                 </select>
                 <div class="money-wrap" style="margin-top:0;">
                   <span class="money-sym">$</span>
-                  <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.charge_total }}" class="finput money-input" style="width:80px;" required>
+                  <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.suggested_payment }}" class="finput money-input split-alloc-input" style="width:80px;" required>
                 </div>
                 <button type="submit" class="cbtn primary" style="font-size:.82rem;">Allocate</button>
               </form>
             </div>
             {% endfor %}
           </div>
+          <p id="split-alloc-total" style="font-size:.77rem;margin:.2rem 0 .6rem;"></p>
           {% else %}
           <!-- Multi-payment form — current flight + selectable outstanding others -->
           <form method="post" id="multi-pay-form">
@@ -1564,5 +1566,35 @@ if (new URLSearchParams(location.search).get('edit') === '1') {
   var ep = document.getElementById('edit-details-panel');
   if (ep) ep.hidden = false;
 }
+
+// Split allocation live balance tracker
+(function(){
+  var panel = document.getElementById('split-alloc-panel');
+  var label = document.getElementById('split-alloc-total');
+  if (!panel || !label) return;
+  var flightTotal = parseFloat(panel.dataset.flightTotal) || 0;
+  function updateAllocTotal() {
+    var inputs = panel.querySelectorAll('.split-alloc-input');
+    var sum = 0;
+    inputs.forEach(function(el) { sum += parseFloat(el.value) || 0; });
+    sum = Math.round(sum * 100) / 100;
+    var diff = Math.round((sum - flightTotal) * 100) / 100;
+    var fmt = function(n) { return n.toFixed(2); };
+    if (Math.abs(diff) < 0.01) {
+      label.style.color = '#2a7a3b';
+      label.textContent = 'Allocations total $' + fmt(sum) + ' — matches flight total ✓';
+    } else if (diff > 0) {
+      label.style.color = '#c0392b';
+      label.textContent = 'Over-allocated by $' + fmt(diff) + ' (flight total $' + fmt(flightTotal) + ')';
+    } else {
+      label.style.color = '#b06800';
+      label.textContent = '$' + fmt(-diff) + ' unallocated (flight total $' + fmt(flightTotal) + ')';
+    }
+  }
+  panel.addEventListener('input', function(e) {
+    if (e.target.classList.contains('split-alloc-input')) updateAllocTotal();
+  });
+  updateAllocTotal();
+})();
 </script>
 {% endblock %}

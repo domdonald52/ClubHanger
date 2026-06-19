@@ -183,6 +183,13 @@ def allocate_payment(fc, booking, user, amount, method: str, member=None) -> Ser
     if alloc_amount <= 0:
         return ServiceResult(ok=False, error='Amount must be greater than zero')
 
+    from django.db.models import Sum as _Sum
+    _existing = fc.payments.aggregate(t=_Sum('amount'))['t'] or Decimal('0')
+    _fc_total = Decimal(str(fc.total_charge or 0))
+    if _existing + alloc_amount > _fc_total:
+        _over = (_existing + alloc_amount - _fc_total)
+        return ServiceResult(ok=False, error=f'Allocation of ${alloc_amount:.2f} would exceed the flight total by ${_over:.2f}.')
+
     payee = member or booking.member
     fp = FlightPayment.objects.create(
         completion=fc,
