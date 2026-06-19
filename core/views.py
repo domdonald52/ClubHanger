@@ -5862,17 +5862,20 @@ def generate_invoice(request, club_slug, booking_id):
                 'surcharge': 'Ea', 'one_off': 'Ea'}
 
     # Determine payees: use FlightPayments if split, else booking member
+    # Tuple: (member, invoice_total, amount_paid, paid_at)
     fp_list = list(fc.payments.all())
     existing_member_ids = set(fc.invoices.values_list('member_id', flat=True))
 
     if fp_list:
-        payees = [(fp.member, fp.amount, fp.amount if fp.paid_at else 0)
-                  for fp in fp_list
-                  if fp.amount > 0 and fp.member_id not in existing_member_ids]
+        payees = [
+            (fp.member, fp.amount, fp.amount if fp.paid_at else 0, fp.paid_at)
+            for fp in fp_list
+            if fp.amount > 0 and fp.member_id not in existing_member_ids
+        ]
         is_split = len(fp_list) > 1
     else:
         if booking.member.id not in existing_member_ids:
-            payees = [(booking.member, fc.total_charge, fc.amount_paid or 0)]
+            payees = [(booking.member, fc.total_charge, fc.amount_paid or 0, fc.paid_at)]
         else:
             payees = []
         is_split = False
@@ -5885,7 +5888,7 @@ def generate_invoice(request, club_slug, booking_id):
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
     created = []
-    for member, amount, paid in payees:
+    for member, amount, paid, fp_paid_at in payees:
         invoice = None
         for _attempt in range(5):
             _sp = transaction.savepoint()
@@ -5940,6 +5943,14 @@ def generate_invoice(request, club_slug, booking_id):
                     sort_order=order,
                     charge_item=ci,
                 )
+
+        # Auto-mark as paid if payment was already recorded — this is a receipt,
+        # not a request for payment, so it shouldn't live as an outstanding item.
+        if paid >= amount > 0:
+            invoice.status = Invoice.STATUS_PAID
+            invoice.paid_at = fp_paid_at or timezone.now()
+            invoice.save(update_fields=['status', 'paid_at'])
+
         created.append(invoice)
 
     if len(created) == 1:
