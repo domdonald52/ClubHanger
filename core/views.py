@@ -2668,6 +2668,32 @@ def booking_detail(request, club_slug, booking_id):
                 if _gap_detected and not gap_explanation:
                     error = f'Meter gap detected — {_gap_label}. An explanation is required (see warning below).'
 
+            # Validate split handover readings are between flight start and end
+            if not error and request.POST.get('has_split') == '1':
+                _sv_meth = ac.total_time_method
+                _sv_start_str = {'tacho': tacho_start, 'hobbs': hobbs_start, 'airswitch': airswitch_start}.get(_sv_meth)
+                _sv_end_str   = {'tacho': tacho_end,   'hobbs': hobbs_end,   'airswitch': airswitch_end}.get(_sv_meth)
+                if _sv_start_str and _sv_end_str:
+                    try:
+                        _sv_s    = float(_sv_start_str)
+                        _sv_e    = float(_sv_end_str)
+                        _sv_prev = _sv_s
+                        for _hn in range(1, 4):
+                            _hv_str = request.POST.get(f'seg_{_sv_meth}_h{_hn}', '').strip()
+                            _hm_id  = request.POST.get(f'seg_member_{_hn + 1}', '').strip()
+                            if not _hv_str or not _hm_id:
+                                break
+                            _hv = float(_hv_str)
+                            if _hv <= _sv_prev:
+                                error = f'Handover {_hn} reading ({_hv_str}) must be greater than the previous value ({_sv_prev}).'
+                                break
+                            if _hv >= _sv_e:
+                                error = f'Handover {_hn} reading ({_hv_str}) must be less than the flight end ({_sv_end_str}).'
+                                break
+                            _sv_prev = _hv
+                    except (ValueError, TypeError):
+                        error = 'Invalid split handover reading.'
+
             if not error:
                 fc, _ = FlightCompletion.objects.get_or_create(
                     booking=booking, defaults={'logged_by': request.user}
@@ -3123,6 +3149,7 @@ def booking_detail(request, club_slug, booking_id):
                     _by_seg[_ci.segment_id].append(_ci)
             for _s in _segs:
                 _s.segment_charges = _by_seg.get(_s.id, [])
+                _s.charge_total = sum(ci.amount for ci in _s.segment_charges)
             fc_segments = _segs
             charge_items = [_ci for _ci in charge_items if not _ci.segment_id]
     total = fc.total_charge if fc else 0
@@ -3130,6 +3157,8 @@ def booking_detail(request, club_slug, booking_id):
     from decimal import Decimal as _D
     overpayment = max(_D('0'), (_D(str(fc.amount_paid or 0)) - _D(str(fc.total_charge or 0)))) if fc else _D('0')
     fc_payments = list(fc.payments.select_related('member__user').order_by('created_at')) if fc else []
+    _allocated_member_ids = {fp.member_id for fp in fc_payments}
+    fc_segments_pending = [s for s in fc_segments if s.member_id not in _allocated_member_ids]
     club_members = list(ClubMember.objects.filter(club=club).exclude(standing='resigned').select_related('user').order_by('user__last_name', 'user__first_name'))
     from .models import Contact as _Cont
     contacts = list(_Cont.objects.filter(club=club, converted_to_member__isnull=True).order_by('name'))
@@ -3282,6 +3311,7 @@ def booking_detail(request, club_slug, booking_id):
         'arrears_clearable': _arrears_clearable,
         'fc': fc,
         'fc_segments': fc_segments,
+        'fc_segments_pending': fc_segments_pending,
         'charge_items': charge_items,
         'contacts': contacts,
         'total': total,

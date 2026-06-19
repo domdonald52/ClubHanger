@@ -638,13 +638,16 @@
       <details class="dblock">
         <summary>Scenario A — Two pilots fly in sequence (e.g. pilot A then pilot B on the same aircraft)</summary>
         <div class="dbody">
-          <p>Use <strong>flight segments</strong>. Each segment records a pilot and their own contiguous meter readings: segment 1 end = segment 2 start. The hours per segment are calculated from the meter delta.</p>
+          <p>Use <strong>split flight</strong> during check-in. Each segment records a pilot and a contiguous block of meter readings; the hours per segment come from the meter delta.</p>
           <ol>
-            <li>On the flight completion, add a segment for each pilot with their start/end readings.</li>
-            <li>Each segment generates its own charge items based on the hours flown by that pilot.</li>
-            <li>Each pilot then pays for their own segment independently — different payment methods are fine (e.g., pilot A pays by account credit, pilot B by invoice).</li>
+            <li>On the check-in screen, tick <strong>Split flight / add another person</strong>.</li>
+            <li>Enter the handover meter reading — the point where pilot A handed over to pilot B. This must be strictly between the flight start and end readings.</li>
+            <li>Select the second pilot from the member list. Add more handover rows for three or more pilots.</li>
+            <li>Submit check-in. The system validates that each handover reading falls within the overall start → end range and rejects the form if not.</li>
+            <li>On the payment screen, a payment form appears for each pilot showing their segment charge. Choose a payment method and amount for each and submit them one at a time — each submission allocates a pending payment for that pilot.</li>
+            <li>Once allocated, each pilot's row shows a <strong>Record payment</strong> button. Click it to confirm the payment has been collected.</li>
           </ol>
-          <p>The system stores the payment as a <code>FlightPayment</code> row per payee. The completion's overall payment_method shows as "Split" when multiple payment methods are used.</p>
+          <p>Different payment methods are fine per pilot (e.g. pilot A pays by account credit, pilot B by invoice). The completion's overall payment method shows as "Split" when multiple methods are used.</p>
         </div>
       </details>
 
