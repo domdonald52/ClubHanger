@@ -3260,7 +3260,7 @@ def booking_detail(request, club_slug, booking_id):
     _invoice_by_member = {inv.member_id: inv for inv in _fc_invoices}
     # Attach invoice to each FlightPayment for template convenience
     for _fp in fc_payments:
-        _fp._invoice = _invoice_by_member.get(_fp.member_id)
+        _fp.flight_invoice = _invoice_by_member.get(_fp.member_id)
 
     # True if any payee with a non-zero payment has no invoice yet
     fc_has_uninvoiced_payees = any(

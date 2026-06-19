@@ -783,8 +783,8 @@
             <!-- Pending row — editable amount/method; Record payment updates then marks paid -->
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:#fafbfc;">
               <div style="font-size:.88rem;font-weight:500;margin-bottom:.35rem;">{{ fp.member.user.get_full_name }}</div>
-              {% if fp._invoice and fp._invoice.status != 'void' %}
-              <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fp._invoice.display_number }}</span>
+              {% if fp.flight_invoice and fp.flight_invoice.status != 'void' %}
+              <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fp.flight_invoice.display_number }}</span>
               {% else %}
               <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
                 <form method="post" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;flex:1;">
