@@ -1035,6 +1035,19 @@ document.addEventListener('DOMContentLoaded', function(){
         });
       }).observe(modal, {attributes: true});
     });
+    // Arm data-dirty-save buttons on regular (non-modal) page forms
+    document.querySelectorAll('[data-dirty-save]').forEach(function(btn){
+      if(btn.closest('.modal-back')) return; // already handled by modal observer
+      var form = btn.closest('form');
+      if(!form) return;
+      var snap = snapForm(form);
+      btn.classList.remove('primary');
+      function update(){
+        btn.classList.toggle('primary', checkDirty(form, snap));
+      }
+      form.addEventListener('input', update);
+      form.addEventListener('change', update);
+    });
   });
   window._armDirtyModal = armDirtyModal;
 })();
