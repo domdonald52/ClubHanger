@@ -24,6 +24,8 @@
        data-instr="{% if b.instructor %}{{ b.instructor.get_full_name }}{% else %}Solo{% endif %}"
        data-type="{% if b.flight_type %}{{ b.flight_type.name }}{% endif %}"
        data-cancellable="{% if b.status == 'pending' or b.status == 'confirmed' %}1{% else %}0{% endif %}"
+       data-needs-decl="{% if b.flight_type.requires_declaration and b.status in 'pending confirmed' and not b.declaration or b.flight_type.requires_declaration and b.status in 'pending confirmed' and b.declaration.is_draft %}1{% else %}0{% endif %}"
+       data-decl-url="{% url 'core:booking_declaration' club.slug b.id %}"
        onclick="openBookingSheet(this)">
     <div style="width:38px;height:38px;border-radius:10px;background:{{ theme.confirmed|default:'#2563eb' }}1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:{{ theme.confirmed|default:'#2563eb' }};">
       {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
@@ -95,6 +97,15 @@
     </div>
   </div>
 
+  <!-- Declaration prompt — solo flights that require one -->
+  <div id="bk-decl-section" style="display:none;margin-bottom:.9rem;">
+    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:.75rem .9rem;margin-bottom:.6rem;">
+      <div style="font-size:.82rem;font-weight:600;color:#9a3412;margin-bottom:.2rem;">⚠ Pre-departure declaration required</div>
+      <div style="font-size:.78rem;color:#c2410c;">Complete your declaration before this flight can depart.</div>
+    </div>
+    <a id="bk-decl-link" href="#" class="app-btn" style="display:block;text-align:center;">Complete declaration →</a>
+  </div>
+
   <div id="bk-cancel-section" style="display:none;">
     <div style="font-size:.82rem;font-weight:600;color:#1f2933;margin-bottom:.45rem;">Cancellation reason</div>
     <select id="bk-cancel-reason" style="display:block;width:100%;padding:.5rem .6rem;border:1px solid #dde1e8;border-radius:9px;font-size:.86rem;background:#fff;margin-bottom:.7rem;">
@@ -134,6 +145,13 @@
       typeWrap.style.display = '';
     } else {
       typeWrap.style.display = 'none';
+    }
+
+    // Declaration prompt
+    var declSec = document.getElementById('bk-decl-section');
+    declSec.style.display = d.needsDecl === '1' ? '' : 'none';
+    if (d.needsDecl === '1') {
+      document.getElementById('bk-decl-link').href = d.declUrl;
     }
 
     var cancelSec = document.getElementById('bk-cancel-section');

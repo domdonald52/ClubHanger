@@ -40,6 +40,9 @@
 
 {% block app_bar %}
 <span class="app-bar-title">My Profile</span>
+<a href="{% url 'core:app_guide' club.slug %}" class="app-bar-action" title="Help guide">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+</a>
 <a href="{% url 'core:app_profile_edit' club.slug %}" class="app-bar-action" title="Edit details">
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 </a>
@@ -98,6 +101,13 @@
     </div>
     {% endif %}
   </div>
+</div>
+
+<!-- Sign out — placed here so it's visible without scrolling past credentials/notifications -->
+<div style="padding:.5rem .75rem 0;">
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}
+    <button type="submit" class="app-btn secondary" style="width:100%;text-align:center;border:none;cursor:pointer;font-size:.88rem;padding:.65rem;">Sign out</button>
+  </form>
 </div>
 
 <!-- Credentials -->
@@ -227,11 +237,14 @@
 <!-- Push notifications -->
 <div class="app-card" style="margin-top:.5rem;">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
-    <div>
+    <div style="flex:1;min-width:0;">
       <div style="font-size:.88rem;font-weight:600;">Push notifications</div>
       <div id="push-status-text" style="font-size:.76rem;color:#9ca3af;margin-top:.15rem;">Checking…</div>
     </div>
-    <button id="push-toggle-btn" class="app-btn-sm" style="min-width:90px;" onclick="togglePush()">…</button>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-shrink:0;">
+      <button id="push-test-btn" class="app-btn-sm ghost" style="display:none;font-size:.75rem;padding:.3rem .65rem;" onclick="testPush()">Send test</button>
+      <button id="push-toggle-btn" class="app-btn-sm" style="min-width:80px;" onclick="togglePush()">…</button>
+    </div>
   </div>
 </div>
 </div><!-- /notif-section -->
@@ -253,17 +266,7 @@
 <div class="gap-sm"></div>
 {% endif %}
 
-<!-- Help guide -->
-<div style="padding:0 .75rem .6rem;">
-  <a href="{% url 'core:app_guide' club.slug %}" class="app-btn secondary" style="text-align:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-.15em;margin-right:.4em;"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Help guide</a>
-</div>
-
-<!-- Sign out -->
-<div style="padding:0 .75rem 1rem;">
-  <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-    <button type="submit" class="app-btn secondary" style="width:100%;text-align:center;border:none;cursor:pointer;">Sign out</button>
-  </form>
-</div>
+<div class="gap-md"></div>
 
 {% block extra_js %}
 <script>
@@ -294,36 +297,58 @@ async function refreshPushUI() {
   _pushState = state;
   var statusEl = document.getElementById('push-status-text');
   var btnEl    = document.getElementById('push-toggle-btn');
+  var testEl   = document.getElementById('push-test-btn');
+  // Reset button style
+  btnEl.style.background = ''; btnEl.style.color = ''; btnEl.style.border = '';
   if (state === 'unsupported') {
     statusEl.textContent = 'Not supported on this browser';
     btnEl.disabled = true; btnEl.textContent = 'N/A';
+    if (testEl) testEl.style.display = 'none';
   } else if (state === 'denied') {
-    statusEl.textContent = 'Blocked — enable in browser settings';
+    statusEl.textContent = 'Blocked — enable notifications in your browser settings';
     btnEl.disabled = true; btnEl.textContent = 'Blocked';
+    if (testEl) testEl.style.display = 'none';
+  } else if (state === 'error') {
+    statusEl.textContent = 'Could not check status — see browser console';
+    btnEl.textContent = 'Retry'; btnEl.disabled = false;
+    if (testEl) testEl.style.display = 'none';
   } else if (state === 'subscribed') {
-    statusEl.textContent = 'You\'ll receive alerts for bookings, charges, and invoices';
+    statusEl.textContent = 'Enabled — you\'ll get alerts for bookings, charges, and invoices';
     btnEl.textContent = 'Turn off'; btnEl.disabled = false;
-    btnEl.style.background = 'transparent';
-    btnEl.style.color = '#e03131';
-    btnEl.style.border = '1.5px solid #e03131';
+    btnEl.style.background = 'transparent'; btnEl.style.color = '#e03131'; btnEl.style.border = '1.5px solid #e03131';
+    if (testEl) testEl.style.display = '';
   } else {
     statusEl.textContent = 'Get alerts for booking confirmations, charges, and invoices';
     btnEl.textContent = 'Turn on'; btnEl.disabled = false;
-    btnEl.style.background = '';
-    btnEl.style.color = '';
-    btnEl.style.border = '';
+    if (testEl) testEl.style.display = 'none';
   }
 }
 
 async function togglePush() {
   var btn = document.getElementById('push-toggle-btn');
   btn.disabled = true;
-  if (_pushState === 'subscribed') {
-    await ClubPush.unsubscribe();
-  } else {
-    await ClubPush.subscribe();
+  btn.textContent = '…';
+  var result = (_pushState === 'subscribed') ? await ClubPush.unsubscribe() : await ClubPush.subscribe();
+  if (result === 'error') {
+    document.getElementById('push-status-text').textContent = 'Something went wrong — check browser console for details';
+    btn.disabled = false;
+    btn.textContent = 'Retry';
+    return;
   }
   await refreshPushUI();
+}
+
+async function testPush() {
+  var btn = document.getElementById('push-test-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  var r = await ClubPush.sendTest();
+  if (r.ok) {
+    btn.textContent = 'Sent ✓';
+  } else {
+    btn.textContent = 'Failed';
+    document.getElementById('push-status-text').textContent = r.error || 'Send failed — check server logs';
+  }
+  setTimeout(function(){ btn.disabled = false; refreshPushUI(); }, 3000);
 }
 
 refreshPushUI();

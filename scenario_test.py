@@ -42,7 +42,7 @@ from core.models import (
     Club, ClubMember, Aircraft, FlightType, Booking,
     FlightCompletion, FlightChargeItem, ChargeRate,
     MaintenanceLogEntry, Account, AccountTransaction,
-    Invoice, InvoiceLineItem, FuelSurchargeRate,
+    Invoice, InvoiceLineItem, InvoicePayment, FuelSurchargeRate,
     create_maint_log_entry, ClubConfig,
     OccurrenceType, OccurrenceReport, OccurrenceAction, OccurrenceAuditEntry,
     Contact, ContactType, BlockOutType, BlockOut,
@@ -60,11 +60,16 @@ if not club:
     print("No club found."); sys.exit(1)
 
 config  = ClubConfig.objects.filter(club=club).first()
-admin_m = ClubMember.objects.filter(club=club, has_admin_access=True).select_related('user').first()
+admin_m = (ClubMember.objects.filter(club=club)
+           .filter(Q(has_admin_access=True) | Q(role__system_role_type='admin') | Q(role__is_superadmin=True))
+           .select_related('user').first())
 instr_m = ClubMember.objects.filter(club=club, is_on_instructor_roster=True).select_related('user','instructor_grade').first()
 # Student = any member without admin/instructor
+_admin_ids = set(ClubMember.objects.filter(club=club)
+                 .filter(Q(has_admin_access=True)|Q(role__system_role_type='admin')|Q(role__is_superadmin=True))
+                 .values_list('id', flat=True))
 student_m = (ClubMember.objects.filter(club=club, is_on_instructor_roster=False)
-             .exclude(has_admin_access=True).select_related('user','role').first())
+             .exclude(id__in=_admin_ids).select_related('user','role').first())
 
 all_ac    = list(Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration'))
 ac1       = all_ac[0] if len(all_ac) > 0 else None
@@ -152,16 +157,10 @@ def checkin(booking, fc, h_start, h_end, outcome='completed', logged_by=None):
 
 def make_invoice(fc, member, logged_by=None):
     """Mirror what generate_invoice view does."""
-    # Always read fresh to avoid stale F() expression value
-    cfg = ClubConfig.objects.filter(club=club).first()
-    if cfg:
-        num = cfg.invoice_number_next
-        ClubConfig.objects.filter(pk=cfg.pk).update(
-            invoice_number_next=F('invoice_number_next') + 1
-        )
-    else:
-        last = Invoice.objects.filter(club=club).order_by('-invoice_number').first()
-        num = (last.invoice_number + 1) if last else 1
+    from django.db.models import Max
+    _max = Invoice.objects.filter(club=club).aggregate(m=Max('invoice_number'))['m'] or 0
+    num = _max + 1
+    ClubConfig.objects.filter(club=club).update(invoice_number_next=num + 1)
     inv = Invoice.objects.create(
         club=club, member=member, flight_completion=fc,
         invoice_number=num, status='draft',
@@ -1343,6 +1342,11 @@ try:
           acct16.recompute_balance() == acct16.balance)
 
     sub("16b. Credit payment settles a flight charge")
+    # Set credit_limit=None so the test is independent of the real account balance
+    # (real DB accounts can have deeply negative balances from prior activity).
+    # S16c tests the rejection case with credit_limit=0.
+    acct16.credit_limit = None
+    acct16.save(update_fields=['credit_limit'])
     b16 = make_booking(student_m, ac1, dual_ft, instructor=instr_m)
     fc16 = depart(b16)
     hs16, he16 = next_hobbs(1.0)
@@ -1702,9 +1706,9 @@ try:
     # ──────────────────────────────────────────────────────────────────────────
     # Architecture note: Invoice.amount_paid and FlightCompletion.amount_paid are
     # TWO INDEPENDENT tracks. The FC track is updated only via FlightPayment rows
-    # (charging_service). The Invoice track is updated manually by the bookkeeper.
-    # Neither updates the other automatically. This means an invoice can be marked
-    # 'paid' while the FC still shows balance_owing > 0, and vice-versa.
+    # (charging_service). The Invoice track is updated via InvoicePayment rows +
+    # Invoice._sync_payment_cache(). Neither updates the other automatically.
+    # An invoice can be marked 'paid' while the FC still shows balance_owing > 0.
 
     def _make_charged_fc(amount=D('180.00')):
         """Helper: completed flight with one hire charge, total_charge set."""
@@ -1751,27 +1755,31 @@ try:
     check("FlightPayment row created with method='invoice'",
           FlightPayment.objects.filter(completion=fc19a, method='invoice').exists())
 
-    # Bookkeeper also marks the Invoice as paid (separate action — the two tracks
-    # do NOT update each other automatically)
-    inv19a.amount_paid = D('180.00')
-    inv19a.status = Invoice.STATUS_PAID
-    inv19a.paid_at = timezone.now()
-    inv19a.save(update_fields=['amount_paid', 'status', 'paid_at'])
+    # Bookkeeper also records the invoice payment (separate InvoicePayment row —
+    # the two tracks do NOT update each other automatically)
+    InvoicePayment.objects.create(
+        invoice=inv19a, amount=D('180.00'), method='bank_transfer',
+        paid_at=timezone.now(), recorded_by=admin_m.user,
+    )
+    _fully_paid_19a = inv19a._sync_payment_cache()
+    inv19a.refresh_from_db()
     check("Invoice marked paid after bookkeeper reconciles", inv19a.status == Invoice.STATUS_PAID)
     check("Invoice.balance_due == 0", inv19a.balance_due == D('0'))
-    # Fixed: invoice_detail mark_paid now auto-calls record_payment(method='invoice') on the linked FC,
-    # so FC.amount_paid is synced in the same request. The Integrity page also cross-validates these.
+    check("_sync_payment_cache() returns True when fully settled", _fully_paid_19a)
+    check("InvoicePayment row exists for 19a", InvoicePayment.objects.filter(invoice=inv19a).count() == 1)
 
     # ── 19b. Bookkeeper marks invoice paid but skips FC recording ─────────────
     sub("19b. Bookkeeper only updates invoice — FC still shows outstanding")
     b19b, fc19b = _make_charged_fc(D('120.00'))
     inv19b = make_invoice(fc19b, student_m)
     inv19b.status = Invoice.STATUS_SENT; inv19b.save(update_fields=['status'])
-    # Bookkeeper marks invoice paid (e.g. via a CSV import into accounting software)
-    inv19b.amount_paid = D('120.00')
-    inv19b.status = Invoice.STATUS_PAID
-    inv19b.paid_at = timezone.now()
-    inv19b.save(update_fields=['amount_paid', 'status', 'paid_at'])
+    # Bookkeeper records invoice paid (InvoicePayment + sync) — FC track untouched
+    InvoicePayment.objects.create(
+        invoice=inv19b, amount=D('120.00'), method='bank_transfer',
+        paid_at=timezone.now(), recorded_by=admin_m.user,
+    )
+    inv19b._sync_payment_cache()
+    inv19b.refresh_from_db()
     fc19b.refresh_from_db()
     check("Invoice is paid", inv19b.status == Invoice.STATUS_PAID)
     check("FC still shows balance_owing > 0 (FC track not updated)",
@@ -1787,16 +1795,22 @@ try:
     b19c, fc19c = _make_charged_fc(D('200.00'))
     inv19c = make_invoice(fc19c, student_m)
     inv19c.status = Invoice.STATUS_SENT; inv19c.save(update_fields=['status'])
-    # First instalment
-    inv19c.amount_paid = D('100.00')
-    inv19c.save(update_fields=['amount_paid'])
+    # First instalment — $100 via bank transfer
+    InvoicePayment.objects.create(
+        invoice=inv19c, amount=D('100.00'), method='bank_transfer',
+        paid_at=timezone.now(), recorded_by=admin_m.user,
+    )
+    inv19c._sync_payment_cache()
+    inv19c.refresh_from_db()
     check("Invoice.balance_due = $100 after first instalment", inv19c.balance_due == D('100.00'))
     check("Invoice stays 'sent' when partially paid", inv19c.status == Invoice.STATUS_SENT)
     # Second instalment — fully paid
-    inv19c.amount_paid = D('200.00')
-    inv19c.status = Invoice.STATUS_PAID
-    inv19c.paid_at = timezone.now()
-    inv19c.save(update_fields=['amount_paid', 'status', 'paid_at'])
+    InvoicePayment.objects.create(
+        invoice=inv19c, amount=D('100.00'), method='bank_transfer',
+        paid_at=timezone.now(), recorded_by=admin_m.user,
+    )
+    inv19c._sync_payment_cache()
+    inv19c.refresh_from_db()
     check("Invoice fully paid after second instalment", inv19c.balance_due == D('0'))
     # Also record both on FC
     charging_service.record_payment(fc19c, b19c, admin_m.user, '100.00', method='invoice')
@@ -2048,6 +2062,98 @@ try:
     check("remove_payment_allocation ok", r_cancel.ok)
     check("FlightPayment deleted", not FlightPayment.objects.filter(id=fp19n.id).exists())
     check("FC.balance_owing still full after cancellation", fc19n.balance_owing == D('90.00'))
+
+    # ── 19p. InvoicePayment ledger — cash payment closes invoice ─────────────
+    sub("19p. Cash payment via InvoicePayment ledger — amount_paid updated, invoice closed")
+    b19p, fc19p = _make_charged_fc(D('150.00'))
+    inv19p = make_invoice(fc19p, student_m)
+    inv19p.status = Invoice.STATUS_SENT; inv19p.save(update_fields=['status'])
+    InvoicePayment.objects.create(
+        invoice=inv19p, amount=D('150.00'), method='cash',
+        paid_at=timezone.now(), recorded_by=admin_m.user,
+    )
+    _fp19p = inv19p._sync_payment_cache()
+    inv19p.refresh_from_db()
+    check("19p: _sync_payment_cache() returns True (fully paid)", _fp19p)
+    check("19p: Invoice.amount_paid = $150", inv19p.amount_paid == D('150.00'))
+    check("19p: Invoice.status = paid", inv19p.status == Invoice.STATUS_PAID)
+    check("19p: Invoice.balance_due = $0", inv19p.balance_due == D('0'))
+    check("19p: One InvoicePayment row, method='cash'",
+          inv19p.payments.count() == 1 and inv19p.payments.first().method == 'cash')
+    check("19p: FC track independent — balance_owing still > 0 (no FlightPayment created)",
+          fc19p.balance_owing > D('0'))
+
+    # ── 19q. Partial EFTPOS + bank transfer completes ─────────────────────────
+    sub("19q. Partial EFTPOS payment stays sent; bank transfer with reference closes it")
+    b19q, fc19q = _make_charged_fc(D('200.00'))
+    inv19q = make_invoice(fc19q, student_m)
+    inv19q.status = Invoice.STATUS_SENT; inv19q.save(update_fields=['status'])
+    InvoicePayment.objects.create(
+        invoice=inv19q, amount=D('80.00'), method='eftpos',
+        paid_at=timezone.now(), recorded_by=admin_m.user,
+    )
+    _partly_19q = inv19q._sync_payment_cache()
+    inv19q.refresh_from_db()
+    check("19q: Invoice stays sent after partial EFTPOS", inv19q.status == Invoice.STATUS_SENT)
+    check("19q: _sync_payment_cache() returns False (not fully paid)", not _partly_19q)
+    check("19q: Invoice.amount_paid = $80", inv19q.amount_paid == D('80.00'))
+    check("19q: Invoice.balance_due = $120", inv19q.balance_due == D('120.00'))
+    # Remaining $120 via bank transfer
+    InvoicePayment.objects.create(
+        invoice=inv19q, amount=D('120.00'), method='bank_transfer',
+        paid_at=timezone.now(), reference='BNZ-20260619', recorded_by=admin_m.user,
+    )
+    _full_19q = inv19q._sync_payment_cache()
+    inv19q.refresh_from_db()
+    check("19q: Invoice paid after second instalment", inv19q.status == Invoice.STATUS_PAID)
+    check("19q: _sync_payment_cache() returns True", _full_19q)
+    check("19q: Invoice.amount_paid = $200", inv19q.amount_paid == D('200.00'))
+    check("19q: Two InvoicePayment rows", inv19q.payments.count() == 2)
+    check("19q: Bank transfer row has reference stored",
+          inv19q.payments.filter(method='bank_transfer', reference='BNZ-20260619').exists())
+
+    # ── 19r. Account credit invoice payment — debits member account ───────────
+    sub("19r. Account credit invoice payment — debits balance, creates AccountTransaction")
+    acct19r, _ = Account.objects.get_or_create(club_member=student_m, defaults={'balance': D('0')})
+    AccountTransaction.objects.create(
+        account=acct19r, transaction_type='top_up', direction='credit',
+        amount=D('500.00'), description='Top-up for 19r', payment_method='bank_transfer',
+        created_by=admin_m.user,
+    )
+    acct19r.apply_transaction(D('500.00'), 'credit')
+    acct19r.refresh_from_db()
+    _bal_before_19r = acct19r.balance
+
+    b19r, fc19r = _make_charged_fc(D('160.00'))
+    inv19r = make_invoice(fc19r, student_m)
+    inv19r.status = Invoice.STATUS_SENT; inv19r.save(update_fields=['status'])
+
+    # Record account credit payment (mirrors invoice_detail view logic)
+    InvoicePayment.objects.create(
+        invoice=inv19r, amount=D('160.00'), method='account_credit',
+        paid_at=timezone.now(), recorded_by=admin_m.user,
+    )
+    AccountTransaction.objects.create(
+        account=acct19r, transaction_type='flight', direction='debit',
+        amount=D('160.00'), description=f'Invoice {inv19r.display_number}',
+        flight_completion=fc19r, payment_method='account', created_by=admin_m.user,
+    )
+    acct19r.apply_transaction(D('160.00'), 'debit')
+    _full_19r = inv19r._sync_payment_cache()
+    inv19r.refresh_from_db(); acct19r.refresh_from_db()
+
+    check("19r: Invoice fully paid via account credit", inv19r.status == Invoice.STATUS_PAID)
+    check("19r: _sync_payment_cache() returns True", _full_19r)
+    check("19r: Member account debited $160", acct19r.balance == _bal_before_19r - D('160.00'))
+    check("19r: AccountTransaction 'debit' created for flight",
+          AccountTransaction.objects.filter(
+              account=acct19r, direction='debit',
+              transaction_type='flight', flight_completion=fc19r,
+          ).exists())
+    check("19r: recompute_balance() consistent after account credit payment",
+          acct19r.recompute_balance() == acct19r.balance)
+    check("19r: FC track independent — balance_owing still > 0 (no FlightPayment created)",
+          fc19r.balance_owing > D('0'))
 
 
     # ROLL BACK — no data persisted

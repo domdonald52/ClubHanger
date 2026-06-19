@@ -10284,7 +10284,7 @@ def app_bookings(request, club_slug):
     upcoming = (Booking.objects
                 .filter(member=actor, club=club, scheduled_start__date__gte=today)
                 .exclude(status='cancelled')
-                .select_related('aircraft', 'flight_type', 'instructor')
+                .select_related('aircraft', 'flight_type', 'instructor', 'declaration')
                 .order_by('scheduled_start')[:20])
 
     past = (Booking.objects
@@ -11066,6 +11066,28 @@ def push_unsubscribe(request, club_slug):
     if endpoint:
         PushSubscription.objects.filter(club_member=actor, endpoint=endpoint).delete()
     return JsonResponse({'ok': True})
+
+
+@login_required
+@require_POST
+def push_test(request, club_slug):
+    """Send a test push to all of the current member's subscriptions so they can verify delivery."""
+    import logging as _log
+    from .models import PushSubscription
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return JsonResponse({'ok': False}, status=403)
+    if not PushSubscription.objects.filter(club_member=actor).exists():
+        return JsonResponse({'ok': False, 'error': 'No push subscription found. Turn push on first.'})
+    try:
+        from .push import notify_member
+        from django.urls import reverse as _rev
+        app_url = _rev('core:app_home', kwargs={'club_slug': club_slug})
+        notify_member(actor, 'ClubHangar test', 'Push notifications are working ✓', url=app_url)
+        return JsonResponse({'ok': True})
+    except Exception as exc:
+        _log.getLogger(__name__).exception('push_test failed for %s', actor)
+        return JsonResponse({'ok': False, 'error': str(exc)})
 
 
 @login_required

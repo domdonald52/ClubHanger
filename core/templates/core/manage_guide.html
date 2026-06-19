@@ -624,6 +624,64 @@
         </tbody>
       </table>
 
+      <!-- Payment flow diagram -->
+      <div style="margin:1.2rem 0;padding:1rem;background:#f8fafc;border:1px solid #e3e6ea;border-radius:10px;overflow-x:auto;">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin-bottom:.9rem;">Payment flow — single flight</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:340px;">
+          <!-- Start node -->
+          <div style="background:#1d3a5f;color:#fff;border-radius:8px;padding:.45rem 1.1rem;font-size:.82rem;font-weight:600;">Flight completed &amp; charges confirmed</div>
+          <div style="width:2px;height:18px;background:#94a3b8;"></div>
+          <!-- Branch row -->
+          <div style="display:flex;align-items:flex-start;gap:0;width:100%;max-width:680px;position:relative;">
+            <!-- Left branch line -->
+            <div style="position:absolute;top:0;left:16.5%;right:16.5%;height:2px;background:#94a3b8;"></div>
+            <!-- Three columns -->
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:0;">
+              <div style="width:2px;height:18px;background:#94a3b8;"></div>
+              <div style="background:#dcfce7;border:1.5px solid #86efac;color:#166534;border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Account credit</div>
+              <div style="width:2px;height:14px;background:#86efac;"></div>
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Balance debited immediately</div>
+              <div style="width:2px;height:14px;background:#86efac;"></div>
+              <div style="background:#166534;color:#fff;border-radius:6px;padding:.35rem .7rem;font-size:.74rem;font-weight:700;text-align:center;">✓ Flight: Paid</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:0;">
+              <div style="width:2px;height:18px;background:#94a3b8;"></div>
+              <div style="background:#dbeafe;border:1.5px solid #93c5fd;color:#1d4ed8;border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">EFTPOS / Cash</div>
+              <div style="width:2px;height:14px;background:#93c5fd;"></div>
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Payment recorded immediately</div>
+              <div style="width:2px;height:14px;background:#93c5fd;"></div>
+              <div style="background:#166534;color:#fff;border-radius:6px;padding:.35rem .7rem;font-size:.74rem;font-weight:700;text-align:center;">✓ Flight: Paid</div>
+            </div>
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:0;">
+              <div style="width:2px;height:18px;background:#94a3b8;"></div>
+              <div style="background:#fef3c7;border:1.5px solid #fcd34d;color:#92400e;border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Invoice</div>
+              <div style="width:2px;height:14px;background:#fcd34d;"></div>
+              <div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Tax invoice created (Sent)</div>
+              <div style="width:2px;height:14px;background:#fcd34d;"></div>
+              <!-- Sub-branch for invoice payment -->
+              <div style="display:flex;width:100%;max-width:240px;align-items:flex-start;position:relative;">
+                <div style="position:absolute;top:0;left:25%;right:25%;height:2px;background:#fcd34d;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:2px;height:14px;background:#fcd34d;"></div>
+                  <div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:6px;padding:.3rem .4rem;font-size:.7rem;text-align:center;">Bank transfer<br><span style="font-size:.65rem;color:#c2410c;">(bookkeeper reconciles)</span></div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
+                  <div style="width:2px;height:14px;background:#fcd34d;"></div>
+                  <div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:6px;padding:.3rem .4rem;font-size:.7rem;text-align:center;">Account credit<br><span style="font-size:.65rem;color:#c2410c;">(balance debited)</span></div>
+                </div>
+              </div>
+              <div style="width:2px;height:14px;background:#fcd34d;"></div>
+              <div style="font-size:.7rem;color:#78350f;font-style:italic;text-align:center;">Record via Sales → Invoices</div>
+              <div style="width:2px;height:10px;background:#fcd34d;"></div>
+              <div style="background:#166534;color:#fff;border-radius:6px;padding:.35rem .7rem;font-size:.74rem;font-weight:700;text-align:center;">✓ Invoice: Paid</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:1rem;font-size:.73rem;color:#8a93a0;border-top:1px solid #e3e6ea;padding-top:.6rem;">
+          <strong>Split flights</strong> run each pilot through the same flow independently — pilot A might pay by account credit while pilot B gets an invoice. The flight's overall payment method shows as <em>Split</em>. Each pilot's portion creates its own FlightPayment row.
+        </div>
+      </div>
+
       <div class="callout info">
         <strong>Invoices live on after the flight is complete.</strong> Selecting <em>Invoice</em> as the payment method does not close the loop — it opens one. The booking is marked complete, but the resulting invoice stays in <strong>Sent</strong> status under Sales → Invoices until the bookkeeper marks it paid after receiving the bank transfer. This is by design: the flight record and the payment record are separate. You can track all outstanding flight invoices at any time from Sales → Invoices, filtering by status.
       </div>
