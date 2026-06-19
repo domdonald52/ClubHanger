@@ -2680,8 +2680,7 @@ def booking_detail(request, club_slug, booking_id):
                         _sv_prev = _sv_s
                         for _hn in range(1, 4):
                             _hv_str = request.POST.get(f'seg_{_sv_meth}_h{_hn}', '').strip()
-                            _hm_id  = request.POST.get(f'seg_member_{_hn + 1}', '').strip()
-                            if not _hv_str or not _hm_id:
+                            if not _hv_str:
                                 break
                             _hv = float(_hv_str)
                             if _hv <= _sv_prev:
@@ -2763,14 +2762,27 @@ def booking_detail(request, club_slug, booking_id):
                     # Build member list and handover list, stopping at first incomplete pair
                     _seg_members   = [booking.member]
                     _seg_handovers = []   # list of (hobbs, tacho, air) tuples
+                    _split_error   = None
                     for _hvtuple, _em in zip(_hp, _extra):
                         if any(_hvtuple) and _em:
                             _seg_handovers.append(_hvtuple)
                             _seg_members.append(_em)
+                        elif any(_hvtuple) and not _em:
+                            _split_error = 'A handover reading was provided but no member was selected for that segment.'
+                            break
                         else:
                             break
+                    if not _split_error and len(_seg_members) >= 2:
+                        _seen_ids = set()
+                        for _m in _seg_members:
+                            if _m.id in _seen_ids:
+                                _split_error = f'{_m.user.get_full_name()} appears more than once in the split — each pilot must be unique.'
+                                break
+                            _seen_ids.add(_m.id)
+                    if _split_error:
+                        error = _split_error
 
-                    if len(_seg_members) >= 2:
+                    if not error and len(_seg_members) >= 2:
                         _fc_start = (fc.hobbs_start, fc.tacho_start, fc.airswitch_start)
                         _fc_end   = (fc.hobbs_end,   fc.tacho_end,   fc.airswitch_end)
                         for _i, _m in enumerate(_seg_members):
@@ -2873,7 +2885,9 @@ def booking_detail(request, club_slug, booking_id):
                     except (ValueError, TypeError):
                         pass
                     fc.save()
-                    # Rebuild auto-generated charges; preserve manual/landing/one-off items
+                    # Rebuild auto-generated charges; preserve manual/landing/one-off items.
+                    # Clear segments — edit_checkin always produces non-segmented charges.
+                    fc.segments.all().delete()
                     fc.charge_items.filter(
                         item_type__in=['hire', 'fuel', 'instructor', 'surcharge']
                     ).delete()
@@ -3083,8 +3097,9 @@ def booking_detail(request, club_slug, booking_id):
                 if fc.amount_paid and fc.amount_paid > 0:
                     error = 'Cannot void check-in while a payment is recorded. Reverse the payment first.'
                 else:
-                    # Clear all charge items and meter data, reset status to departed
+                    # Clear all charge items, segments, and meter data, reset status to departed
                     fc.charge_items.all().delete()
+                    fc.segments.all().delete()
                     fc.hobbs_start = fc.hobbs_end = None
                     fc.tacho_start = fc.tacho_end = None
                     fc.airswitch_start = fc.airswitch_end = None

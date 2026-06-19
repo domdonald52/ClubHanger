@@ -296,7 +296,6 @@
             <label class="flabel">Hobbs end <span class="req">*</span>
               <input type="number" name="hobbs_end" id="ci-hobbs-end" step="0.1" required class="finput" style="width:105px;"
                      oninput="updateCheckinPreview();checkEndGtStart();">
-              <span id="ci-hobbs-end-err" hidden style="color:#c0392b;font-size:.76rem;margin-top:.2rem;display:block;"></span>
             </label>
             {% endif %}
             {% if booking.aircraft.records_tacho %}
@@ -309,7 +308,6 @@
             <label class="flabel">Tacho end <span class="req">*</span>
               <input type="number" name="tacho_end" id="ci-tacho-end" step="0.01" required class="finput" style="width:105px;"
                      oninput="updateCheckinPreview();checkEndGtStart();">
-              <span id="ci-tacho-end-err" hidden style="color:#c0392b;font-size:.76rem;margin-top:.2rem;display:block;"></span>
             </label>
             {% endif %}
             {% if booking.aircraft.records_airswitch %}
@@ -322,7 +320,6 @@
             <label class="flabel">Air switch end <span class="req">*</span>
               <input type="number" name="airswitch_end" id="ci-airswitch-end" step="0.1" required class="finput" style="width:105px;"
                      oninput="updateCheckinPreview();checkEndGtStart();">
-              <span id="ci-airswitch-end-err" hidden style="color:#c0392b;font-size:.76rem;margin-top:.2rem;display:block;"></span>
             </label>
             {% endif %}
             {% if not booking.aircraft.records_hobbs and not booking.aircraft.records_tacho and not booking.aircraft.records_airswitch %}
@@ -379,17 +376,17 @@
               <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
                 {% if booking.aircraft.records_hobbs %}
                 <label class="flabel">Hobbs
-                  <input type="number" name="seg_hobbs_h1" id="seg-hobbs-h1" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_hobbs_h1" id="seg-hobbs-h1" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
                 {% if booking.aircraft.records_tacho %}
                 <label class="flabel">Tacho
-                  <input type="number" name="seg_tacho_h1" id="seg-tacho-h1" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_tacho_h1" id="seg-tacho-h1" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
                 {% if booking.aircraft.records_airswitch %}
                 <label class="flabel">Air switch
-                  <input type="number" name="seg_airswitch_h1" id="seg-airswitch-h1" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_airswitch_h1" id="seg-airswitch-h1" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
               </div>
@@ -412,17 +409,17 @@
               <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
                 {% if booking.aircraft.records_hobbs %}
                 <label class="flabel">Hobbs
-                  <input type="number" name="seg_hobbs_h2" id="seg-hobbs-h2" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_hobbs_h2" id="seg-hobbs-h2" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
                 {% if booking.aircraft.records_tacho %}
                 <label class="flabel">Tacho
-                  <input type="number" name="seg_tacho_h2" id="seg-tacho-h2" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_tacho_h2" id="seg-tacho-h2" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
                 {% if booking.aircraft.records_airswitch %}
                 <label class="flabel">Air switch
-                  <input type="number" name="seg_airswitch_h2" id="seg-airswitch-h2" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_airswitch_h2" id="seg-airswitch-h2" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
               </div>
@@ -446,17 +443,17 @@
               <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
                 {% if booking.aircraft.records_hobbs %}
                 <label class="flabel">Hobbs
-                  <input type="number" name="seg_hobbs_h3" id="seg-hobbs-h3" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_hobbs_h3" id="seg-hobbs-h3" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
                 {% if booking.aircraft.records_tacho %}
                 <label class="flabel">Tacho
-                  <input type="number" name="seg_tacho_h3" id="seg-tacho-h3" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_tacho_h3" id="seg-tacho-h3" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
                 {% if booking.aircraft.records_airswitch %}
                 <label class="flabel">Air switch
-                  <input type="number" name="seg_airswitch_h3" id="seg-airswitch-h3" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours()">
+                  <input type="number" name="seg_airswitch_h3" id="seg-airswitch-h3" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
                 </label>
                 {% endif %}
               </div>
@@ -838,7 +835,7 @@
                   <span class="money-sym">$</span>
                   <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.charge_total }}" class="finput money-input" style="width:80px;" required>
                 </div>
-                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Record payment</button>
+                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Allocate</button>
               </form>
             </div>
             {% endfor %}
@@ -873,7 +870,7 @@
                   <span class="money-sym">$</span>
                   <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.charge_total }}" class="finput money-input" style="width:80px;" required>
                 </div>
-                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Record payment</button>
+                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Allocate</button>
               </form>
             </div>
             {% endfor %}
@@ -1282,31 +1279,45 @@ function checkMeterGap(inp) {
 
 function checkEndGtStart() {
   var pairs = [
-    {s:'ci-hobbs-start',     e:'ci-hobbs-end',     err:'ci-hobbs-end-err',     label:'Hobbs'},
-    {s:'ci-tacho-start',     e:'ci-tacho-end',     err:'ci-tacho-end-err',     label:'Tacho'},
-    {s:'ci-airswitch-start', e:'ci-airswitch-end', err:'ci-airswitch-end-err', label:'Air switch'},
+    {s:'ci-hobbs-start',     e:'ci-hobbs-end',     label:'Hobbs'},
+    {s:'ci-tacho-start',     e:'ci-tacho-end',     label:'Tacho'},
+    {s:'ci-airswitch-start', e:'ci-airswitch-end', label:'Air switch'},
   ];
   pairs.forEach(function(p) {
     var sEl = document.getElementById(p.s);
     var eEl = document.getElementById(p.e);
-    var errEl = document.getElementById(p.err);
-    if (!sEl || !eEl || !errEl) return;
+    if (!sEl || !eEl) return;
     var sv = parseFloat(sEl.value);
     var ev = parseFloat(eEl.value);
-    var bad = !isNaN(sv) && !isNaN(ev) && ev <= sv;
-    eEl.style.borderColor = bad ? '#c0392b' : '';
-    errEl.hidden = !bad;
-    if (bad) errEl.textContent = p.label + ' end must be greater than start (' + sv + ')';
+    var msg = (!isNaN(sv) && !isNaN(ev) && ev <= sv)
+      ? p.label + ' end must be greater than start (' + sv + ')' : '';
+    eEl.setCustomValidity(msg);
+    eEl.style.borderColor = msg ? '#c0392b' : '';
   });
 }
-document.getElementById('checkin-form').addEventListener('submit', function(e) {
-  checkEndGtStart();
-  var blocked = ['ci-hobbs-end-err','ci-tacho-end-err','ci-airswitch-end-err'].some(function(id) {
-    var el = document.getElementById(id);
-    return el && !el.hidden;
-  });
-  if (blocked) e.preventDefault();
-});
+
+function checkHandoverRange(inp) {
+  var prefixes = [['seg-hobbs-h','hobbs'],['seg-tacho-h','tacho'],['seg-airswitch-h','airswitch']];
+  var meter = null;
+  for (var i = 0; i < prefixes.length; i++) {
+    if (inp.id.indexOf(prefixes[i][0]) === 0) { meter = prefixes[i][1]; break; }
+  }
+  if (!meter) return;
+  var sEl = document.getElementById('ci-' + meter + '-start');
+  var eEl = document.getElementById('ci-' + meter + '-end');
+  var hv = parseFloat(inp.value);
+  if (isNaN(hv)) { inp.setCustomValidity(''); inp.style.borderColor = ''; return; }
+  var sv = sEl ? parseFloat(sEl.value) : NaN;
+  var ev = eEl ? parseFloat(eEl.value) : NaN;
+  var labels = {hobbs:'Hobbs',tacho:'Tacho',airswitch:'Air switch'};
+  var msg = '';
+  if (!isNaN(sv) && hv <= sv)
+    msg = labels[meter] + ' handover must be greater than flight start (' + sv + ')';
+  else if (!isNaN(ev) && hv >= ev)
+    msg = labels[meter] + ' handover must be less than flight end (' + ev + ')';
+  inp.setCustomValidity(msg);
+  inp.style.borderColor = msg ? '#c0392b' : '';
+}
 
 // Split flight
 var splitSegCount = 2;
@@ -1336,7 +1347,7 @@ function _resetSplitFields() {
   ['hobbs','tacho','airswitch'].forEach(function(k) {
     [1,2,3].forEach(function(n) {
       var el = document.getElementById('seg-' + k + '-h' + n);
-      if (el) el.value = '';
+      if (el) { el.value = ''; el.setCustomValidity(''); el.style.borderColor = ''; }
     });
   });
   [2,3,4].forEach(function(n) {
