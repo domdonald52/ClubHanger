@@ -727,10 +727,26 @@
       </div>
 
       <details class="dblock">
+        <summary>Recording a payment against an invoice</summary>
+        <div class="dbody">
+          <p>To record a payment: Sales → Invoices → [invoice] → <strong>Record payment received</strong>. You will see:</p>
+          <ul>
+            <li><strong>Method</strong> — how the money was received: Cash, EFTPOS, Credit card, Bank transfer, or Account credit. Required.</li>
+            <li><strong>Amount</strong> — defaults to the outstanding balance. Change it for a partial payment.</li>
+            <li><strong>Reference</strong> — optional. Use this for the bank transaction reference, receipt number, or any note that helps with reconciliation.</li>
+          </ul>
+          <p>Each payment creates an entry in the invoice's payment ledger. The ledger is shown on the invoice detail page and on the printed invoice. The invoice remains as <strong>Issued</strong> until the total payments equal or exceed the invoice total, at which point it is automatically marked <strong>Paid</strong>.</p>
+          <p><strong>Account credit</strong> — selecting this method deducts the payment amount from the member's in-system account balance immediately. The debit appears in their account transaction history. Use this when a member asks to settle an outstanding invoice using credit they have topped up into their account.</p>
+          <p><strong>Bank transfer</strong> — bank transfer payments are not automatically detected; they must be entered manually by the bookkeeper after reconciling the bank statement against outstanding invoices. This means bank transfer entries in the payment ledger may lag several days or weeks behind the actual transfer. Members should be made aware that their payment may not appear on the invoice immediately if they paid by bank transfer.</p>
+        </div>
+      </details>
+
+      <details class="dblock">
         <summary>Partial payments</summary>
         <div class="dbody">
-          <p>You can record multiple payments against a single sent invoice. Each time you record a payment (Sales → Invoices → invoice → Mark paid), enter the amount received. The invoice stays as Sent and shows the outstanding balance until fully settled. Only when the total payments equal or exceed the invoice total is it marked Paid.</p>
-          <p>This is useful when a member pays in instalments or when a bank transfer is received in parts due to a bank error.</p>
+          <p>You can record as many payments as needed against a single issued invoice — each instalment creates its own ledger entry showing the date, method, amount, and reference. The invoice stays as Issued after each partial payment and shows the remaining outstanding balance. Only when the cumulative total equals or exceeds the invoice total is the invoice automatically marked Paid.</p>
+          <p>This is useful when a member pays in instalments, when a bank transfer is received in parts, or when one portion is paid by bank transfer and the rest settled from their account credit.</p>
+          <p>The payment ledger is printed on the invoice PDF — each instalment appears as a separate row so the member can see exactly what has been received and when.</p>
         </div>
       </details>
 

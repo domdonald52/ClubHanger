@@ -2632,14 +2632,6 @@ class Invoice(models.Model):
         ('paid',  'Paid'),
         ('void',  'Void'),
     ]
-    PAYMENT_METHOD_CHOICES = [
-        ('cash',           'Cash'),
-        ('eftpos',         'EFTPOS'),
-        ('credit_card',    'Credit card'),
-        ('bank_transfer',  'Bank transfer'),
-        ('account_credit', 'Account credit'),
-    ]
-
     club              = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='invoices')
     member            = models.ForeignKey('ClubMember', on_delete=models.SET_NULL,
                                            null=True, related_name='invoices')
@@ -2653,10 +2645,9 @@ class Invoice(models.Model):
     description = models.CharField(max_length=200, blank=True)
     notes       = models.TextField(blank=True)
 
-    status         = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, blank=True)
-    sent_at        = models.DateTimeField(null=True, blank=True)
-    paid_at        = models.DateTimeField(null=True, blank=True)
+    status  = models.CharField(max_length=10, choices=STATUS_CHOICES, default='draft')
+    sent_at = models.DateTimeField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
 
     # Snapshot of GST rate at time of invoice creation
     gst_rate = models.DecimalField(max_digits=5, decimal_places=2, default=15)
@@ -2728,6 +2719,22 @@ class Invoice(models.Model):
         if d <= 90:  return '61-90'
         return '90+'
 
+    def _sync_payment_cache(self):
+        """Recompute amount_paid from InvoicePayment rows; mark Paid if fully settled."""
+        from decimal import Decimal
+        from django.db.models import Sum
+        from django.utils import timezone as _tz
+        total_paid = self.payments.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        self.amount_paid = total_paid
+        fields = ['amount_paid']
+        if total_paid > 0 and total_paid >= self.total and self.status == self.STATUS_SENT:
+            self.status = self.STATUS_PAID
+            last = self.payments.order_by('-paid_at').first()
+            self.paid_at = last.paid_at if last else _tz.now()
+            fields += ['status', 'paid_at']
+        self.save(update_fields=fields)
+        return self.status == self.STATUS_PAID
+
 
 class InvoiceLineItem(models.Model):
     invoice     = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='line_items')
@@ -2747,6 +2754,32 @@ class InvoiceLineItem(models.Model):
 
     def __str__(self):
         return f"{self.description} — ${self.amount}"
+
+
+class InvoicePayment(models.Model):
+    """Immutable ledger entry for a payment received against an invoice."""
+    PAYMENT_METHOD_CHOICES = [
+        ('cash',           'Cash'),
+        ('eftpos',         'EFTPOS'),
+        ('credit_card',    'Credit card'),
+        ('bank_transfer',  'Bank transfer'),
+        ('account_credit', 'Account credit'),
+    ]
+
+    invoice     = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='payments')
+    amount      = models.DecimalField(max_digits=10, decimal_places=2)
+    method      = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    paid_at     = models.DateTimeField()
+    reference   = models.CharField(max_length=100, blank=True,
+                                   help_text='Bank reference, receipt number, etc.')
+    recorded_by = models.ForeignKey('User', on_delete=models.PROTECT, related_name='+')
+    created_at  = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['paid_at']
+
+    def __str__(self):
+        return f'{self.invoice} — ${self.amount} ({self.get_method_display()})'
 
 
 # ============================================================================

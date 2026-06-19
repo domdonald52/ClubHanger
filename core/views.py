@@ -5866,20 +5866,24 @@ def generate_invoice(request, club_slug, booking_id):
                 'surcharge': 'Ea', 'one_off': 'Ea'}
 
     # Determine payees: use FlightPayments if split, else booking member
-    # Tuple: (member, invoice_total, amount_paid, paid_at)
+    # Tuple: (member, invoice_total, amount_paid, paid_at, fp_method)
+    _FP_METHOD_MAP = {'cash': 'cash', 'eftpos': 'eftpos', 'credit': 'account_credit'}
     fp_list = list(fc.payments.all())
     existing_member_ids = set(fc.invoices.values_list('member_id', flat=True))
 
     if fp_list:
         payees = [
-            (fp.member, fp.amount, fp.amount if fp.paid_at else 0, fp.paid_at)
+            (fp.member, fp.amount, fp.amount if fp.paid_at else 0, fp.paid_at,
+             _FP_METHOD_MAP.get(fp.method, 'bank_transfer'))
             for fp in fp_list
             if fp.amount > 0 and fp.member_id not in existing_member_ids
         ]
         is_split = len(fp_list) > 1
     else:
         if booking.member.id not in existing_member_ids:
-            payees = [(booking.member, fc.total_charge, fc.amount_paid or 0, fc.paid_at)]
+            _fp0 = fc.payments.filter(paid_at__isnull=False).first()
+            _m0 = _FP_METHOD_MAP.get(_fp0.method, 'bank_transfer') if _fp0 else 'bank_transfer'
+            payees = [(booking.member, fc.total_charge, fc.amount_paid or 0, fc.paid_at, _m0)]
         else:
             payees = []
         is_split = False
@@ -5891,8 +5895,9 @@ def generate_invoice(request, club_slug, booking_id):
             return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': first.id}) + _inline_sfx)
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
+    from .models import InvoicePayment as _IP
     created = []
-    for member, amount, paid, fp_paid_at in payees:
+    for member, amount, paid, fp_paid_at, inv_method in payees:
         invoice = None
         for _attempt in range(5):
             _sp = transaction.savepoint()
@@ -5911,7 +5916,6 @@ def generate_invoice(request, club_slug, booking_id):
                     due_date=due,
                     description=description,
                     gst_rate=config.gst_rate,
-                    amount_paid=paid,
                     created_by=request.user,
                 )
                 transaction.savepoint_commit(_sp)
@@ -5948,12 +5952,17 @@ def generate_invoice(request, club_slug, booking_id):
                     charge_item=ci,
                 )
 
-        # Auto-mark as paid if payment was already recorded — this is a receipt,
-        # not a request for payment, so it shouldn't live as an outstanding item.
+        # Auto-mark as paid if payment was already recorded — this is a receipt.
+        # Create an InvoicePayment row so the ledger is complete, then sync the cache.
         if paid >= amount > 0:
-            invoice.status = Invoice.STATUS_PAID
-            invoice.paid_at = fp_paid_at or timezone.now()
-            invoice.save(update_fields=['status', 'paid_at'])
+            _IP.objects.create(
+                invoice=invoice,
+                amount=paid,
+                method=inv_method,
+                paid_at=fp_paid_at or timezone.now(),
+                recorded_by=request.user,
+            )
+            invoice._sync_payment_cache()
 
         created.append(invoice)
 
@@ -6014,11 +6023,12 @@ def invoice_detail(request, club_slug, invoice_id):
 
         elif action == 'mark_paid' and invoice.status == 'sent':
             from decimal import Decimal as _D
-            from .models import Account as _Acct, AccountTransaction as _AT
+            from .models import Account as _Acct, AccountTransaction as _AT, InvoicePayment as _IP
             _pay_method = request.POST.get('payment_method', '').strip()
-            _valid_methods = {c[0] for c in Invoice.PAYMENT_METHOD_CHOICES}
+            _valid_methods = {c[0] for c in _IP.PAYMENT_METHOD_CHOICES}
             if _pay_method not in _valid_methods:
                 error = 'Select a payment method.'
+            _reference = request.POST.get('reference', '').strip()
             pay_str = request.POST.get('payment_amount', '').strip()
             try:
                 pay_amt = _D(pay_str)
@@ -6029,9 +6039,8 @@ def invoice_detail(request, club_slug, invoice_id):
                     error = 'Enter a valid payment amount.'
                 pay_amt = None
             if pay_amt and not error:
-                balance = (invoice.total or _D('0')) - (invoice.amount_paid or _D('0'))
-                if pay_amt > balance:
-                    error = f'Payment ${pay_amt:.2f} exceeds outstanding balance ${balance:.2f}.'
+                if pay_amt > invoice.balance_due:
+                    error = f'Payment ${pay_amt:.2f} exceeds outstanding balance ${invoice.balance_due:.2f}.'
                     pay_amt = None
             if pay_amt and not error and _pay_method == 'account_credit':
                 if not invoice.member:
@@ -6045,13 +6054,14 @@ def invoice_detail(request, club_slug, invoice_id):
                         error = _credit_err
                         pay_amt = None
             if pay_amt and not error:
-                invoice.amount_paid = (invoice.amount_paid or _D('0')) + pay_amt
-                _now_fully_paid = invoice.amount_paid >= invoice.total
-                if _now_fully_paid:
-                    invoice.status = 'paid'
-                    invoice.paid_at = timezone.now()
-                    invoice.payment_method = _pay_method
-                invoice.save(update_fields=['amount_paid', 'status', 'paid_at', 'payment_method'])
+                _IP.objects.create(
+                    invoice=invoice,
+                    amount=pay_amt,
+                    method=_pay_method,
+                    paid_at=timezone.now(),
+                    reference=_reference,
+                    recorded_by=request.user,
+                )
                 if _pay_method == 'account_credit' and invoice.member:
                     _acct, _ = _Acct.objects.get_or_create(club_member=invoice.member, defaults={'balance': 0})
                     _AT.objects.create(
@@ -6065,53 +6075,50 @@ def invoice_detail(request, club_slug, invoice_id):
                         created_by=request.user,
                     )
                     _acct.apply_transaction(pay_amt, 'debit')
-                _fc_linked = invoice.flight_completion
-                if _fc_linked is not None:
-                    _fc_linked.refresh_from_db(fields=['amount_paid', 'total_charge', 'paid_at'])
-                    if _fc_linked.balance_owing > _D('0'):
-                        _fc_pay = min(pay_amt, _D(str(_fc_linked.balance_owing)))
-                        from .services import charging_service as _cs
-                        _cs.record_payment(
-                            fc=_fc_linked,
-                            booking=_fc_linked.booking,
-                            user=request.user,
-                            amount=_fc_pay,
-                            method='invoice',
-                        )
-                # If this is a subscription invoice now fully paid, update member expiry
-                if _now_fully_paid and invoice.subscription_expiry_date and invoice.member:
-                    _sub_member = invoice.member
-                    _old_exp = _sub_member.subscription_expires
-                    _sub_member.subscription_expires = invoice.subscription_expiry_date
-                    _upd = ['subscription_expires']
-                    _was_pending = _sub_member.standing == 'pending'
-                    if _was_pending:
-                        _sub_member.standing = 'active'
-                        _upd.append('standing')
-                    _sub_member.save(update_fields=_upd)
-                    MembershipHistoryEntry.objects.create(
-                        club_member=_sub_member,
-                        event_type='subscription_renewed',
-                        changed_by=request.user,
-                        old_value=str(_old_exp) if _old_exp else '—',
-                        new_value=str(invoice.subscription_expiry_date),
-                    )
-                    if _was_pending:
+                _now_fully_paid = invoice._sync_payment_cache()
+                if _now_fully_paid:
+                    _fc_linked = invoice.flight_completion
+                    if _fc_linked is not None:
+                        _fc_linked.refresh_from_db(fields=['amount_paid', 'total_charge', 'paid_at'])
+                        if _fc_linked.balance_owing > _D('0'):
+                            _fc_pay = min(pay_amt, _D(str(_fc_linked.balance_owing)))
+                            from .services import charging_service as _cs
+                            _cs.record_payment(
+                                fc=_fc_linked,
+                                booking=_fc_linked.booking,
+                                user=request.user,
+                                amount=_fc_pay,
+                                method='invoice',
+                            )
+                    if invoice.subscription_expiry_date and invoice.member:
+                        _sub_member = invoice.member
+                        _old_exp = _sub_member.subscription_expires
+                        _sub_member.subscription_expires = invoice.subscription_expiry_date
+                        _upd = ['subscription_expires']
+                        _was_pending = _sub_member.standing == 'pending'
+                        if _was_pending:
+                            _sub_member.standing = 'active'
+                            _upd.append('standing')
+                        _sub_member.save(update_fields=_upd)
                         MembershipHistoryEntry.objects.create(
                             club_member=_sub_member,
-                            event_type='standing_change',
+                            event_type='subscription_renewed',
                             changed_by=request.user,
-                            old_value='pending', new_value='active',
-                            note='Standing set to Active — initial subscription invoice paid',
+                            old_value=str(_old_exp) if _old_exp else '—',
+                            new_value=str(invoice.subscription_expiry_date),
                         )
-                        if _sub_member.user and not _sub_member.user.is_active:
-                            _sub_member.user.is_active = True
-                            _sub_member.user.save(update_fields=['is_active'])
-                    return redirect(_stay_url)
-                # Exit inline context so the overlay closes and the calendar refreshes
-                from django.urls import reverse as _rv
-                _back = _rv('core:manage_bookings', kwargs={'club_slug': club_slug}) + '?saved=1'
-                return redirect(_back)
+                        if _was_pending:
+                            MembershipHistoryEntry.objects.create(
+                                club_member=_sub_member,
+                                event_type='standing_change',
+                                changed_by=request.user,
+                                old_value='pending', new_value='active',
+                                note='Standing set to Active — initial subscription invoice paid',
+                            )
+                            if _sub_member.user and not _sub_member.user.is_active:
+                                _sub_member.user.is_active = True
+                                _sub_member.user.save(update_fields=['is_active'])
+                return redirect(_stay_url)
 
         elif action == 'void' and invoice.status in ('draft', 'sent'):
             invoice.status = 'void'

@@ -75,6 +75,40 @@
     </div>
   </div>
 
+  <!-- Payments received ledger -->
+  {% with inv_payments=invoice.payments.all %}
+  {% if inv_payments %}
+  <div class="inv-card" style="margin-bottom:1.2rem;">
+    <div class="inv-card-head">Payments received</div>
+    <div style="padding:.5rem 0;">
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+        <thead>
+          <tr style="border-bottom:1px solid #eef1f4;">
+            <th style="padding:.35rem .9rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Date</th>
+            <th style="padding:.35rem .6rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Method</th>
+            <th style="padding:.35rem .6rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Reference</th>
+            <th style="padding:.35rem .9rem;text-align:right;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in inv_payments %}
+          <tr style="border-bottom:1px solid #f4f6f8;">
+            <td style="padding:.45rem .9rem;">{{ p.paid_at|date:"j M Y" }} <span style="color:#8a93a0;font-size:.8rem;">{{ p.paid_at|time:"H:i" }}</span></td>
+            <td style="padding:.45rem .6rem;">{{ p.get_method_display }}</td>
+            <td style="padding:.45rem .6rem;color:#5b6573;">{{ p.reference|default:"—" }}</td>
+            <td style="padding:.45rem .9rem;text-align:right;font-weight:500;">${{ p.amount|currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if invoice.status != 'paid' %}
+      <p style="font-size:.78rem;color:#8a93a0;margin:.5rem .9rem 0;">Bank transfer payments are entered by the bookkeeper during bank reconciliation and may not appear immediately.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+  {% endwith %}
+
   <!-- Actions card -->
   {% if invoice.status != 'void' %}
   <div class="inv-card" style="margin-bottom:1.2rem;">
@@ -121,8 +155,8 @@
     <div style="border-top:1px solid #f0f2f4;padding:.9rem;">
       <form method="post" id="inv-pay-form">
         {% csrf_token %}
-        <div class="flabel" style="margin:0;">Record payment received</div>
-        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.4rem;">
+        <div class="flabel" style="margin:0 0 .4rem;">Record payment received</div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           <select name="payment_method" class="finput" style="width:auto;" id="inv-pay-method" required>
             <option value="">— method —</option>
             <option value="cash">Cash</option>
@@ -136,7 +170,9 @@
             <input type="number" name="payment_amount" step="0.01" min="0.01"
                    value="{{ invoice.balance_due }}" class="finput money-input" style="width:90px;" required>
           </div>
-          <button type="submit" name="action" value="mark_paid" class="cbtn primary">Record payment</button>
+          <input type="text" name="reference" placeholder="Reference (optional)"
+                 class="finput" style="width:160px;" id="inv-pay-ref">
+          <button type="submit" name="action" value="mark_paid" class="cbtn primary">Record</button>
         </div>
         {% if member_account_balance is not None %}
         <div id="inv-credit-hint" style="display:none;font-size:.82rem;color:#5b6573;margin-top:.4rem;">
@@ -149,9 +185,11 @@
     (function(){
       var sel = document.getElementById('inv-pay-method');
       var hint = document.getElementById('inv-credit-hint');
+      var refInput = document.getElementById('inv-pay-ref');
       if (!sel) return;
       sel.addEventListener('change', function(){
         if (hint) hint.style.display = this.value === 'account_credit' ? 'block' : 'none';
+        if (refInput) refInput.placeholder = this.value === 'bank_transfer' ? 'Bank reference' : 'Reference (optional)';
       });
     })();
     </script>
@@ -172,7 +210,9 @@
       </div>
     </form>
     <div style="padding:0 .9rem .9rem;">
-      <p style="font-size:.84rem;color:#216c2a;font-weight:600;">✓ Paid in full — {{ invoice.paid_at|date:"j M Y" }} at {{ invoice.paid_at|time:"H:i" }}{% if invoice.payment_method %} · {{ invoice.get_payment_method_display }}{% endif %}</p>
+      {% with last_pay=invoice.payments.last %}
+      <p style="font-size:.84rem;color:#216c2a;font-weight:600;">✓ Paid in full — {{ invoice.paid_at|date:"j M Y" }} at {{ invoice.paid_at|time:"H:i" }}{% if last_pay %} · {{ last_pay.get_method_display }}{% endif %}</p>
+      {% endwith %}
     </div>
     {% endif %}
 

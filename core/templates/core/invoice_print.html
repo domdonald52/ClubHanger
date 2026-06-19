@@ -455,14 +455,44 @@ table.items tbody tr:last-child td { border-bottom: none; }
             <td class="amt">${{ invoice.balance_due|currency }}</td>
           </tr>
           {% if invoice.paid_at %}
+          {% with last_pay=invoice.payments.last %}
           <tr>
             <td class="lbl" style="color:#216c2a;">Paid</td>
-            <td class="amt" style="color:#216c2a;">{{ invoice.paid_at|date:"j M Y" }} {{ invoice.paid_at|time:"H:i" }}{% if invoice.payment_method %} · {{ invoice.get_payment_method_display }}{% endif %}</td>
+            <td class="amt" style="color:#216c2a;">{{ invoice.paid_at|date:"j M Y" }} {{ invoice.paid_at|time:"H:i" }}{% if last_pay %} · {{ last_pay.get_method_display }}{% endif %}</td>
           </tr>
+          {% endwith %}
           {% endif %}
         </tbody>
       </table>
     </div>
+
+    <!-- Payment history (if any recorded instalments) -->
+    {% with inv_payments=invoice.payments.all %}
+    {% if inv_payments %}
+    <div style="margin-top:6mm;">
+      <table style="width:100%;border-collapse:collapse;font-size:8.5pt;">
+        <thead>
+          <tr style="border-top:1px solid #d1d5db;border-bottom:1px solid #d1d5db;">
+            <th style="padding:3pt 6pt;text-align:left;color:#6b7280;font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;">Payment date</th>
+            <th style="padding:3pt 6pt;text-align:left;color:#6b7280;font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;">Method</th>
+            <th style="padding:3pt 6pt;text-align:left;color:#6b7280;font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;">Reference</th>
+            <th style="padding:3pt 6pt;text-align:right;color:#6b7280;font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in inv_payments %}
+          <tr style="border-bottom:1px solid #f3f4f6;">
+            <td style="padding:3pt 6pt;">{{ p.paid_at|date:"j M Y" }}</td>
+            <td style="padding:3pt 6pt;">{{ p.get_method_display }}</td>
+            <td style="padding:3pt 6pt;color:#6b7280;">{{ p.reference|default:"" }}</td>
+            <td style="padding:3pt 6pt;text-align:right;">${{ p.amount|currency }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+    {% endwith %}
 
     <!-- Footer / payment terms -->
     {% if config.payment_terms_text %}
