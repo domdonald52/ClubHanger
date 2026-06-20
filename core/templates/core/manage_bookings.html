@@ -26,15 +26,15 @@
 
       <input type="text" id="member-live-filter" placeholder="Filter by member…" class="finput" style="width:180px;" autocomplete="off" value="">
 
-      {% if tab == 'all' %}
       <select name="status" class="finput" style="width:auto;" onchange="this.form.submit()">
         <option value="">Any status</option>
         <option value="pending" {% if f_status == 'pending' %}selected{% endif %}>Pending</option>
         <option value="confirmed" {% if f_status == 'confirmed' %}selected{% endif %}>Confirmed</option>
         <option value="departed" {% if f_status == 'departed' %}selected{% endif %}>Departed</option>
-        <option value="completed" {% if f_status == 'completed' %}selected{% endif %}>Returned / Completed</option>
+        {% if tab == 'all' %}<option value="completed" {% if f_status == 'completed' %}selected{% endif %}>Returned / Completed</option>{% endif %}
       </select>
 
+      {% if tab == 'all' %}
       <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0;">
         <label for="date_from" style="font-size:.78rem;font-weight:600;color:#5b6573;white-space:nowrap;">From</label>
         <input type="date" id="date_from" name="date_from" value="{{ f_date_from }}" class="finput" style="width:auto;" onchange="syncDates(); this.form.submit()">
