@@ -190,8 +190,8 @@
   }
   populateMembers();
   fillSelect(fAircraft, AIRCRAFT, "id", "reg", false);
-  // Only show instructors who are available today (on_roster true or null=no schedule=always available)
-  fillSelect(fInstructor, INSTRUCTORS.filter(i => i.on_roster === true), "id", "name", true);
+  // Show rostered + always-available (null) instructors; on_roster===false = off roster today
+  fillSelect(fInstructor, INSTRUCTORS.filter(i => i.on_roster !== false), "id", "name", true);
   fillSelect(fFlightType, FLIGHT_TYPES, "id", "name", false);
 
   const memberNotice = document.getElementById("m-member-notice");
@@ -447,8 +447,8 @@
     syncInstructorVisibility();
     if (!cfg.canManage) {
       fMember.value = cfg.currentUserId;
-    } else if (MEMBERS.length) {
-      fMember.value = MEMBERS[0].id;
+    } else {
+      fMember.value = "";
     }
     updateMemberNotice();
     updateMemberDisplay();
@@ -704,6 +704,17 @@
     }
     fAircraft.value = pill.dataset.aircraftId || "";
     fInstructor.value = pill.dataset.instructorId || "";
+    // If the booking's instructor is off-roster today, they won't be in the list — add them
+    if (pill.dataset.instructorId && fInstructor.value !== pill.dataset.instructorId) {
+      const instr = INSTRUCTORS.find(i => String(i.id) === pill.dataset.instructorId);
+      if (instr) {
+        const o = document.createElement("option");
+        o.value = String(instr.id);
+        o.textContent = instr.name + " (off roster)";
+        fInstructor.appendChild(o);
+        fInstructor.value = String(instr.id);
+      }
+    }
     fStart.value = fmtLocalInput(new Date(pill.dataset.start));
     fDuration.value = pill.dataset.duration;
     fDesc.value = pill.dataset.desc || "";

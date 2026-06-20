@@ -525,13 +525,18 @@ def reschedule(booking, actor, new_start_dt, duration_minutes,
     target_instructor = instructor if instructor is not None else booking.instructor
 
     # Aircraft conflict (early-returned completed bookings free the aircraft from arrived_at)
-    if Booking.objects.filter(
+    _ac_conflict = Booking.objects.filter(
         club=club, aircraft=target_aircraft,
         scheduled_start__lt=new_end_dt, scheduled_end__gt=new_start_dt,
     ).exclude(id=booking.id).exclude(status='cancelled').exclude(
         status='completed', arrived_at__isnull=False, arrived_at__lte=new_start_dt,
-    ).exists():
-        return ServiceResult(ok=False, error='Aircraft not available at new time')
+    ).first()
+    if _ac_conflict:
+        from django.utils import timezone as _tz
+        _s = _tz.localtime(_ac_conflict.scheduled_start).strftime('%H:%M')
+        _e = _tz.localtime(_ac_conflict.scheduled_end).strftime('%H:%M')
+        _who = _ac_conflict.member.user.get_full_name() if _ac_conflict.member else '(no member)'
+        return ServiceResult(ok=False, error=f'Aircraft not available — conflicts with {_who} {_s}–{_e} ({_ac_conflict.status})')
 
     # Instructor conflict (only if we're explicitly setting one)
     if instructor is not None and instructor and Booking.objects.filter(
