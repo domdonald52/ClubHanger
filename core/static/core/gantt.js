@@ -1465,8 +1465,9 @@
       e.stopPropagation();
       if (cfg.canManage) {
         if (pill.dataset.status === "completed") {
-          // Navigate to the full booking detail page (overlay unreliable for completed)
-          window.location.href = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
+          const detailUrl = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
+          if (window.openPageOverlay) window.openPageOverlay(detailUrl);
+          else window.location.href = detailUrl;
         } else {
           openEdit(pill);
         }

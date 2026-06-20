@@ -615,7 +615,7 @@
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}?v=6"></script>
+<script src="{% static 'core/gantt.js' %}?v=7"></script>
 <script>
 (function() {
   const scroll   = document.querySelector('.grid-scroll');
@@ -723,7 +723,9 @@
     ctx.style.display = 'none';
     if (!activePill) return;
     const base = "{% url 'core:booking_detail' club.slug 0 %}";
-    window.location.href = base.replace('/0/', '/' + activePill.dataset.id + '/');
+    const url = base.replace('/0/', '/' + activePill.dataset.id + '/');
+    if (window.openPageOverlay) window.openPageOverlay(url);
+    else window.location.href = url;
   });
   document.getElementById('pill-ctx-track').addEventListener('click', () => {
     ctx.style.display = 'none';
