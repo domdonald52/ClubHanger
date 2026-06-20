@@ -18,7 +18,7 @@
   .dot.departed{background:var(--departed)}.dot.returned{background:var(--returned)}.dot.completed-paid{background:var(--completed-paid)}
   .dot.confirmed{background:var(--confirmed)}.dot.pending{background:var(--pending)}
   .grid-scroll{overflow-x:auto;border:1px solid #e3e6ea;border-radius:10px;background:#fff}
-  .grid{min-width:max-content;position:relative;}
+  .grid{width:100%;position:relative;}
   .grid-row{display:flex;align-items:stretch;border-bottom:1px solid #eef1f4}
   .grid-row:last-child{border-bottom:0}
   .row-label{flex:0 0 {{ label_w }}px;width:{{ label_w }}px;padding:.35rem .55rem;font-size:.76rem;font-weight:550;color:#2b333d;background:#fafbfc;border-right:1px solid #e3e6ea;position:sticky;left:0;z-index:3;display:flex;align-items:center;gap:.2rem;flex-wrap:nowrap;overflow:hidden;}
@@ -608,11 +608,7 @@
 <script src="{% static 'core/gantt.js' %}?v=10"></script>
 <script>
 (function() {
-  const scroll   = document.querySelector('.grid-scroll');
-  const grid     = document.querySelector('.grid');
-  const SERVER_TRACK_W = {{ track_width }};
-
-  // Measure the actual rendered label width (scrollWidth sees past overflow:hidden).
+  // Unify all row labels to the width of the longest one.
   let maxW = 0;
   document.querySelectorAll('.row-label .row-name').forEach(el => {
     maxW = Math.max(maxW, el.scrollWidth);
@@ -621,26 +617,6 @@
   document.querySelectorAll('.row-label, .section-cell').forEach(el => {
     el.style.flex = '0 0 ' + labelW + 'px';
     el.style.width = labelW + 'px';
-  });
-
-  // Expand --track-width to exactly fill available space, eliminating spurious
-  // scrollbar when the window is wide enough.
-  function fitTrack() {
-    if (!scroll || !grid) return;
-    // Temporarily hide overflow so clientWidth reflects the true container width
-    // (not reduced by a pre-existing scrollbar).
-    scroll.style.overflowX = 'hidden';
-    const avail = scroll.clientWidth - labelW - 3; // 2px border + 1px rounding buffer
-    const tw = avail > SERVER_TRACK_W ? avail : SERVER_TRACK_W;
-    grid.style.setProperty('--track-width', tw + 'px');
-    scroll.style.overflowX = '';  // restore (auto from CSS)
-  }
-  // Two rAF passes: first settles the label-width changes, second confirms no residual overflow.
-  requestAnimationFrame(() => { fitTrack(); requestAnimationFrame(fitTrack); });
-  let _fitTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(_fitTimer);
-    _fitTimer = setTimeout(fitTrack, 60);
   });
 
   {% if now_px is not None %}

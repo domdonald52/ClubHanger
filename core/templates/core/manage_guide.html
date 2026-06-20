@@ -106,7 +106,7 @@
           <ul class="sub"><li><a href="#mem-new">New member</a></li><li><a href="#mem-invoice">Subscription invoice</a></li><li><a href="#mem-renewal">Renewal &amp; lapse</a></li><li><a href="#mem-standing">Standings</a></li><li><a href="#mem-block">Booking block</a></li><li><a href="#mem-registrar">Member register</a></li></ul>
         </li>
         <li><a href="#bookings">Bookings</a>
-          <ul class="sub"><li><a href="#book-gantt">Gantt calendar</a></li><li><a href="#book-attention">Attention page</a></li><li><a href="#book-blockouts">Block-outs</a></li><li><a href="#book-roster">Instructor roster</a></li><li><a href="#book-lifecycle">Booking lifecycle</a></li><li><a href="#book-credentials">Credentials</a></li><li><a href="#book-declarations">Declarations</a></li><li><a href="#book-contact-flights">Contact flights</a></li><li><a href="#book-findslots">Find slots</a></li><li><a href="#book-completion">Completion</a></li><li><a href="#book-charging">Charging &amp; split</a></li><li><a href="#book-uncharged">Uncharged flights</a></li></ul>
+          <ul class="sub"><li><a href="#book-gantt">Gantt calendar</a></li><li><a href="#book-attention">Attention page</a></li><li><a href="#book-blockouts">Block-outs</a></li><li><a href="#book-roster">Instructor roster</a></li><li><a href="#book-lifecycle">Booking lifecycle</a></li><li><a href="#book-corrections">Correcting mistakes</a></li><li><a href="#book-credentials">Credentials</a></li><li><a href="#book-declarations">Declarations</a></li><li><a href="#book-contact-flights">Contact flights</a></li><li><a href="#book-findslots">Find slots</a></li><li><a href="#book-completion">Completion</a></li><li><a href="#book-charging">Charging &amp; split</a></li><li><a href="#book-uncharged">Uncharged flights</a></li></ul>
         </li>
         <li><a href="#sales">Sales &amp; invoicing</a>
           <ul class="sub"><li><a href="#sales-account">Account balance</a></li><li><a href="#sales-invoices">Invoices</a></li><li><a href="#sales-sundry">Sundry sales</a></li><li><a href="#sales-vouchers">Vouchers</a></li><li><a href="#sales-rates">Rates</a></li><li><a href="#sales-reconcile">Reconciliation</a></li></ul>
@@ -230,7 +230,7 @@
       </details>
 
       <h3 id="people-contacts">Contacts</h3>
-      <p>A <strong>contact</strong> is someone who flies with the club — as a passenger, trial flight participant, or regular seat-sharer — but who is not a member of the incorporated society and has no membership subscription. They have no login account. Their name can be added to bookings and flight records, and costs can be attributed to them, but none of the membership lifecycle applies: no standing, no subscription, no ISA register entry.</p>
+      <p>A <strong>contact</strong> is someone who flies with the club — as a trial flight student, Young Eagles participant, or Gateway Scheme member — but who is not a member of the incorporated society and has no membership subscription. Contacts typically fly in the left seat under instruction from a club instructor; they are students, not passengers. They have no login account. Their name can be added to bookings and flight records, and costs can be attributed to them, but none of the membership lifecycle applies: no standing, no subscription, no ISA register entry.</p>
       <p>Organisations (flying schools, companies) can also be added as contacts and marked accordingly.</p>
       <p><strong>Converting a contact to a member:</strong> If a contact later joins as a member, go to People → Contacts → [contact] → <em>Convert to member</em>. Enter their email address. By default, an invite email is sent so they can set their own password and log in — this is the recommended option. The contact and member records are linked; the contact's booking and flight history remains accessible from both records.</p>
 
@@ -361,6 +361,8 @@
       <p><strong>1 — Send invite:</strong> Members → <em>Invite member</em>. Enter the prospective member's email and optionally pre-assign a role. A 7-day sign-up link is emailed to them automatically. The invite also appears under <em>Pending invites</em> at the bottom of the Members page, each with a <strong>Copy link</strong> button — use this to send the sign-up link yourself (e.g. by text or WhatsApp) if email delivery isn't set up yet, or is being overridden for testing.</p>
       <div class="callout info">
         <strong>Inviting doesn't create the member yet.</strong> Sending an invite only creates a pending sign-up link — no member or login account exists until the person opens the link and creates their account (step 2). At that point their member record appears with standing <span class="pill pending">Pending</span>. (The exception is <em>+ Add manually</em> with "Send invite email" unticked, which creates the account immediately.)
+      </div>
+
       <p><strong>2 — Member creates account:</strong> The recipient clicks the link and enters their name and a password. Their account and member record are created automatically — you don't need to do anything.</p>
       <p><strong>3 — Pending:</strong> The new member appears on the Members page with standing Pending. They can use the mobile app to see their account and profile but cannot request bookings or appear as an active member in reports.</p>
       <p><strong>4 — Committee ratification (ISA 2022):</strong> The committee must formally vote to admit the member before membership takes effect. Record the meeting reference and date in your club minutes. This step happens outside ClubHangar.</p>
@@ -550,6 +552,17 @@
       <p>Any staff member (or member from their profile) can "watch" a booking they didn't create. When the booking is subsequently cancelled by staff with the release flag set, all watchers receive a "slot freed" push notification. To watch a booking, click the watch icon on the booking detail panel. To stop watching, unwatch from the same panel or from your Profile → Notifications tab.</p>
       <p>This is particularly useful when a member asks whether a slot might come free — instead of having to check back manually, they can set a watch and be notified automatically. Slot watch is opt-in per booking; there is no club-wide "notify me when any slot opens" option (to avoid notification overload).</p>
 
+      <h4 id="book-corrections">Correcting mistakes</h4>
+      <p>Most booking status changes can be reversed by an admin, as long as no downstream records have been created that depend on the change. Here is what to do for each scenario:</p>
+      <ul>
+        <li><strong>Accidentally confirmed a pending booking</strong> — On the booking detail, scroll to the status section and click <strong>Undo confirmation</strong>. The booking returns to Pending and the member receives an "unconfirmed" notification. Available any time before the flight departs.</li>
+        <li><strong>Accidentally checked out (departed) a booking</strong> — On the booking detail, click <strong>Undo departure</strong>. The booking returns to Confirmed and the departure timestamp is cleared. This only works if no charge items or payments have been added to the flight yet. If charge items exist, you must use <em>Void check-in</em> instead (see below).</li>
+        <li><strong>Accidentally completed a flight (checked in too early or wrong data entered)</strong> — On the booking detail, scroll to the charge summary and click <strong>Void check-in</strong>. This clears all meter readings, charge items, and segments, and returns the flight to Departed so you can redo the check-in correctly. If a payment has already been recorded, you must reverse it first (see below) before voiding.</li>
+        <li><strong>Accidentally recorded a payment</strong> — On the booking detail, find the payment in the Payments panel and click <strong>Reverse</strong>. This removes the payment record and reopens the flight for charging. For account credit payments, the reversal refunds the member's account balance; when you re-record payment, the balance is re-debited. Both the original and reversal appear in the member's account ledger as an audit trail. Note: if an invoice has been issued, payment must be reversed from the invoice (Sales → Invoices → [invoice]) rather than from the booking.</li>
+        <li><strong>Cancelled a booking by mistake</strong> — Cancellation cannot be undone. Create a new booking for the member at the same time slot.</li>
+      </ul>
+      <p>All reversals are admin-only and are recorded in the booking's audit log (visible at the bottom of the booking detail). If a status button doesn't appear, the prerequisite (no payment recorded, no charge items, etc.) has not been met — the reason is usually clear from context.</p>
+
       <h3 id="book-credentials">Credentials</h3>
       <p>ClubHangar tracks each member's pilot credentials — licences, ratings, medicals, Flight Reviews (BFR), and certificates. Credential records live on the member record under <strong>People → Members → [member] → Credentials tab</strong>. Members can also view (but not edit) their own credentials in the mobile app.</p>
 
@@ -591,7 +604,7 @@
       <p>Passengers are recorded on the departure declaration, not directly on the flight completion. Each passenger entry can include next-of-kin name and phone. If the same person regularly flies with the club, their details can be saved as a frequent passenger and auto-populated on future declarations for that member — reducing data entry and ensuring completeness.</p>
 
       <h3 id="book-contact-flights">Contact flight bookings (trial flights, Young Eagles, etc.)</h3>
-      <p>Some flights carry non-member contacts — trial flight participants, Young Eagles, Gateway Scheme members — rather than club members in the passenger seat. These are <strong>contact flight bookings</strong> and work differently from standard member bookings.</p>
+      <p>Some flights are flown with non-member contacts — trial flight participants, Young Eagles, Gateway Scheme members — in the left seat under instruction from a club instructor. These are instructed lessons, not scenic rides: the contact is the student pilot, with the instructor alongside. They are recorded as <strong>contact flight bookings</strong> and work differently from standard member bookings because no membership record exists for the person being invoiced.</p>
 
       <p><strong>Setup: mark the flight type as Contact.</strong> In Settings → Types → Flight types, enable the <em>Contact</em> toggle on any flight type that applies to non-member flights (e.g. "Trial Flight", "Young Eagles"). This is a one-time configuration. Once set, those types are treated differently in the booking form.</p>
 

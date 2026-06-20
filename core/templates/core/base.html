@@ -17,6 +17,7 @@
     {% if theme.font_url %}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="{{ theme.font_url }}" rel="stylesheet">{% endif %}
     {% block extra_head %}{% endblock %}
     <style>
+        @view-transition { navigation: auto; }
         :root {
             --banner: {{ theme.banner|default:'#1d3a5f' }};
             --primary: {{ theme.primary|default:'#2f7dd1' }};
