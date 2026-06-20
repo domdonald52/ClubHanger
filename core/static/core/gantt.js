@@ -450,8 +450,7 @@
   fFlightType.addEventListener("change", syncFlightTypeMode);
 
   function openCreate(aircraftId, start, instructorId, bookingKind) {
-    // Non-staff cannot book in the past
-    if (!cfg.canManage && start < new Date()) {
+    if (start < new Date()) {
       toast("Bookings cannot be made in the past");
       return;
     }

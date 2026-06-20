@@ -959,6 +959,9 @@ def create_booking(request):
         start_dt = _aware(datetime.fromisoformat(start_time))
         end_dt   = start_dt + timedelta(minutes=duration)
 
+        if start_dt < timezone.now():
+            return JsonResponse({'error': 'Bookings cannot be made in the past'}, status=400)
+
         # Who is the booking FOR?
         booking_member = actor
         if member_id and (actor.is_admin or actor.is_instructor):
