@@ -160,7 +160,7 @@
 <header class="app-bar">
   {% block app_bar_brand %}
   {% if theme.logo %}
-  <img src="{{ theme.logo.url }}" alt="{{ club.name }}" style="flex-shrink:0;height:20px;width:auto;max-width:72px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.1rem;">
+  <img src="{{ theme.logo.url }}" alt="{{ club.name }}" width="72" height="20" fetchpriority="high" style="flex-shrink:0;height:20px;width:auto;max-width:72px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.1rem;">
   {% else %}
   <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="ClubHangar" style="flex-shrink:0;height:22px;width:22px;object-fit:contain;pointer-events:none;margin-right:.2rem;">
   {% endif %}

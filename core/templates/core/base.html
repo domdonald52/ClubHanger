@@ -146,6 +146,7 @@
                 <div class="logo">
                     {% if theme.logo %}
                         <img src="{{ theme.logo.url }}" alt="{{ club.name }}"
+                             width="120" height="32" fetchpriority="high"
                              style="height:32px;max-width:120px;object-fit:contain;display:block;">
                         {{ club.name }}
                     {% else %}
