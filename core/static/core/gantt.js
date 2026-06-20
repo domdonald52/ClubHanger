@@ -1209,7 +1209,7 @@
 
     if (dvView) dvView.hidden = false;
     if (dvBack) dvBack.hidden = false;
-    if (dvConfirm) dvConfirm.hidden = false;
+    if (dvConfirm) { dvConfirm.hidden = false; dvConfirm.disabled = false; dvConfirm.textContent = "Confirm check out"; }
 
     const dvDeclSection = document.getElementById("dv-decl-section");
     const dvDeclReason  = document.getElementById("dv-decl-reason");
