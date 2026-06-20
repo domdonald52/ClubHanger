@@ -324,31 +324,40 @@
 
   // ---- Find member modal -----------------------------------------------
   const findMemberModal = document.getElementById("find-member-modal");
-  const fmSearch = document.getElementById("fm-search");
-  const fmList   = document.getElementById("fm-list");
+  const fmSearch  = document.getElementById("fm-search");
+  const fmList    = document.getElementById("fm-list");
+  const fmApply   = document.getElementById("fm-apply");
+  let   _fmSelected = null; // { id, el } of highlighted row
+
+  function _fmHighlight(item, memberId) {
+    if (_fmSelected) {
+      _fmSelected.el.style.background = "";
+      _fmSelected.el.style.fontWeight = "";
+    }
+    _fmSelected = { id: memberId, el: item };
+    item.style.background = "color-mix(in srgb, var(--primary) 12%, #fff)";
+    item.style.fontWeight  = "600";
+    if (fmApply) { fmApply.disabled = false; }
+  }
 
   function renderFmList(filter) {
     if (!fmList) return;
     const q = (filter || "").toLowerCase();
     fmList.innerHTML = "";
+    _fmSelected = null;
+    if (fmApply) fmApply.disabled = true;
     let count = 0;
     MEMBERS.forEach(m => {
       if (q && !m.name.toLowerCase().includes(q)) return;
       const badge = m.badge === "current" ? "" : m.badge === "non_member" ? " · Non-mbr" : " · Lapsed";
       const warn  = m.acct_warning ? " ⚠" : "";
       const item  = document.createElement("div");
-      item.style.cssText = "padding:.5rem .75rem;cursor:pointer;font-size:.88rem;border-bottom:1px solid #f0f2f4;";
+      item.style.cssText = "padding:.5rem .75rem;cursor:pointer;font-size:.88rem;border-bottom:1px solid #f0f2f4;transition:background .1s;";
       item.style.color = m.badge !== "current" ? "#adb5bd" : "#1f2933";
       item.textContent = m.name + badge + warn;
-      item.addEventListener("mouseenter", () => item.style.background = "#f0f4ff");
-      item.addEventListener("mouseleave", () => item.style.background = "");
-      item.addEventListener("click", () => {
-        fMember.value = m.id;
-        updateMemberDisplay();
-        updateMemberNotice();
-        updateClientState();
-        if (findMemberModal) findMemberModal.hidden = true;
-      });
+      item.dataset.memberId = m.id;
+      item.addEventListener("click", () => _fmHighlight(item, m.id));
+      item.addEventListener("dblclick", () => { _fmHighlight(item, m.id); _fmConfirm(); });
       fmList.appendChild(item);
       count++;
     });
@@ -357,9 +366,20 @@
     }
   }
 
+  function _fmConfirm() {
+    if (!_fmSelected) return;
+    fMember.value = _fmSelected.id;
+    updateMemberDisplay();
+    updateMemberNotice();
+    updateClientState();
+    if (findMemberModal) findMemberModal.hidden = true;
+  }
+
   if (findMemberModal) {
     if (fFindMemberBtn) {
       fFindMemberBtn.addEventListener("click", () => {
+        _fmSelected = null;
+        if (fmApply) fmApply.disabled = true;
         if (fmSearch) fmSearch.value = "";
         renderFmList("");
         findMemberModal.hidden = false;
@@ -370,11 +390,13 @@
       fmSearch.addEventListener("input", () => renderFmList(fmSearch.value));
       fmSearch.addEventListener("keydown", e => {
         if (e.key === "Enter") {
-          const first = fmList && fmList.querySelector("div");
-          if (first) first.click();
+          if (_fmSelected) { _fmConfirm(); return; }
+          const first = fmList && fmList.querySelector("[data-member-id]");
+          if (first) { first.click(); }
         }
       });
     }
+    if (fmApply)  fmApply.addEventListener("click", _fmConfirm);
     document.getElementById("fm-close").addEventListener("click", () => { findMemberModal.hidden = true; });
     document.getElementById("fm-cancel").addEventListener("click", () => { findMemberModal.hidden = true; });
     findMemberModal.addEventListener("click", e => { if (e.target === findMemberModal) findMemberModal.hidden = true; });
@@ -1531,7 +1553,8 @@
         return;
       }
       if (mode === "move" && pill.dataset.status === "completed") {
-        return; // Let the click handler open the detail overlay — don't capture pointer
+        mode = null; // reset so pointerup won't set _didDrag and block the click
+        return;
       }
       const rect = pill.getBoundingClientRect();
       cursorOffsetX = e.clientX - rect.left; // capture where in the pill was clicked

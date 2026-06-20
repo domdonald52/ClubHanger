@@ -500,6 +500,7 @@
     <div id="fm-list" style="max-height:300px;overflow-y:auto;border:1px solid #e3e6ea;border-radius:7px;"></div>
     <div class="modal-actions" style="margin-top:.7rem;">
       <button class="cbtn" id="fm-cancel" type="button">Cancel</button>
+      <button class="cbtn primary" id="fm-apply" type="button" disabled>Select member</button>
     </div>
   </div>
 </div>
@@ -622,7 +623,7 @@
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}"></script>
+<script src="{% static 'core/gantt.js' %}?v=3"></script>
 <script>
 (function() {
   const scroll   = document.querySelector('.grid-scroll');
