@@ -5882,8 +5882,15 @@ def generate_invoice(request, club_slug, booking_id):
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
     from django.urls import reverse as _rev
+    import urllib.parse as _up
     _is_inline = request.GET.get('inline') == '1'
     _inline_sfx = '?inline=1' if _is_inline else ''
+    _booking_url = _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id})
+    def _inv_qs(inv_id):
+        _qs_data = {'back': _booking_url}
+        if _is_inline:
+            _qs_data = {'inline': '1', 'back': _booking_url}
+        return '?' + _up.urlencode(_qs_data)
 
     if not fc.charge_items.exists() or not fc.total_charge:
         from django.contrib import messages as _msg
@@ -5930,7 +5937,7 @@ def generate_invoice(request, club_slug, booking_id):
         # All payees already invoiced — redirect to first invoice
         first = fc.invoices.order_by('invoice_number').first()
         if first:
-            return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': first.id}) + _inline_sfx)
+            return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': first.id}) + _inv_qs(first.id))
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
     from .models import InvoicePayment as _IP
@@ -5993,7 +6000,7 @@ def generate_invoice(request, club_slug, booking_id):
         created.append(invoice)
 
     if len(created) == 1:
-        return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _inline_sfx)
+        return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _inv_qs(created[0].id))
 
     from django.contrib import messages as _msg
     _msg.success(request, f'{len(created)} invoice(s) generated.')

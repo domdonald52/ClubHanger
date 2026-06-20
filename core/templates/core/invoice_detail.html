@@ -3,7 +3,7 @@
 {% block title %}Invoice {{ invoice.display_number }} · {{ club.name }}{% endblock %}
 {% block content %}
 <div style="padding:2rem;max-width:900px;margin:0 auto;">
-  <a href="{% url 'core:manage_invoices' club.slug %}" class="back-link">← Invoices</a>
+  <a href="{{ request.GET.back|default:'' }}{% if not request.GET.back %}{% url 'core:manage_invoices' club.slug %}{% endif %}" class="back-link">← Back</a>
 
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.4rem;">
     <div>
@@ -19,7 +19,7 @@
       <span class="inv-badge inv-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
       <a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn">Print / PDF ↗</a>
       {% if invoice.flight_completion %}
-      <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}?back={{ request.path|urlencode }}" class="cbtn">View booking</a>
+      <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}" class="cbtn" data-overlay data-overlay-wide>View booking</a>
       {% endif %}
     </div>
   </div>
