@@ -124,16 +124,19 @@ SITE_URL           = os.environ.get('SITE_URL', '')
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-_db_path = os.environ.get('DB_PATH')
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': Path(_db_path) if _db_path else BASE_DIR / 'db.sqlite3',
-        'OPTIONS': {
-            'timeout': 30,  # wait up to 30s before raising "database is locked"
-        },
+_database_url = os.environ.get('DATABASE_URL')
+if _database_url:
+    import dj_database_url
+    DATABASES = {'default': dj_database_url.config(default=_database_url, conn_max_age=600)}
+else:
+    _db_path = os.environ.get('DB_PATH')
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': Path(_db_path) if _db_path else BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {'timeout': 30},
+        }
     }
-}
 
 
 # Password validation
