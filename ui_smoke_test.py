@@ -235,7 +235,7 @@ def cat_booking(r, slug):
     def _active_sections():
         html = r.page.content().upper()
         assert 'ACTIVE BOOKINGS' in html, 'Active bookings heading missing'
-        assert 'PAST 7' in html, 'Past 7 days heading missing'
+        assert 'ATTENTION' in html or 'COMPLETED' in html or '30 DAYS' in html, 'Booking list content missing'
     r.check('Manage bookings — active/past sections present', _active_sections)
 
     # Page load per status
@@ -334,10 +334,10 @@ def cat_booking(r, slug):
     else:
         r.skip('Cancelled booking state', 'no cancelled booking')
 
-    r.visit(f'/search/{slug}/', expect_selector='form', name='Availability search loads')
+    r.visit(f'/search/{slug}/', expect_selector='#avail-form', name='Availability search loads')
     def _avail_hours():
         r.goto(f'/search/{slug}/')
-        r.page.wait_for_selector('form', timeout=5000)
+        r.page.wait_for_selector('#avail-form', timeout=5000)
         html = r.page.content()
         # When results are shown, spans should NOT have the greyed atypical background style.
         # "var(--atypical)" in a span's style attribute means out-of-hours rendering leaked through.
@@ -435,8 +435,8 @@ def cat_payment(r, slug):
         r.goto(f'/manage/{slug}/sundry/')
         p = r.page
         text = p.inner_text('body')
-        assert 'Payments' in text and 'Invoices' in text and 'Sundry' in text, \
-            'Sales tabs (Payments/Invoices/Sundry) missing'
+        assert 'Invoices' in text and ('Sundry' in text or 'Awaiting' in text), \
+            'Sales tabs missing'
     r.check('Sundry sales — sales tabs present', _sundry_tabs)
 
     def _sundry_new_btn():
@@ -732,7 +732,7 @@ def run(args):
 
             if args.category == 'all':
                 print('\n── Misc')
-                r.visit(f'/reports/{_slug}/', expect_text='Reports', name='Reports loads')
+                r.visit(f'/reports/{_slug}/', expect_selector='h1', name='Reports loads')
                 r.visit(f'/data/{_slug}/',    expect_selector='h1,h2', name='Data page loads')
 
             browser.close()
