@@ -1509,10 +1509,6 @@ class Booking(models.Model):
         return self.status
 
     def save(self, *args, **kwargs):
-        if self.confirmed_by:
-            confirmer = ClubMember.objects.filter(user=self.confirmed_by, club=self.club).first()
-            if not (confirmer and confirmer.is_staff):
-                raise ValueError("Only staff can confirm bookings.")
         super().save(*args, **kwargs)
 
 
