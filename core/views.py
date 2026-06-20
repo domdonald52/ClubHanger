@@ -439,7 +439,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         for i in instructors
     ]
     flight_types_data = [
-        {'id': ft.id, 'name': ft.name, 'code': ft.code, 'is_solo': ft.is_solo}
+        {'id': ft.id, 'name': ft.name, 'code': ft.code, 'is_solo': ft.is_solo, 'for_contacts': ft.for_contacts}
         for ft in FlightType.objects.filter(club=club)
     ]
     blockout_types_data = [
@@ -1605,9 +1605,11 @@ def club_settings(request, club_slug, mode='settings'):
                 code = slugify(ft_name).replace('-', '_')[:20]
                 if FlightType.objects.filter(club=club, code=code).exists():
                     code = code[:18] + '_2'
+                ft_for_contacts = request.POST.get('ft_for_contacts') == 'on'
                 FlightType.objects.create(
                     club=club, name=ft_name, code=code,
                     is_solo=ft_is_solo, is_training=ft_is_training, is_trial=ft_is_trial,
+                    for_contacts=ft_for_contacts,
                 )
             else:
                 ft_error = "Name is required."
@@ -1626,7 +1628,7 @@ def club_settings(request, club_slug, mode='settings'):
             ft_id = request.POST.get('ft_id')
             flag = request.POST.get('ft_flag')
             value = request.POST.get('ft_value') == '1'
-            allowed = {'is_training', 'is_billable', 'requires_declaration', 'is_solo', 'is_trial'}
+            allowed = {'is_training', 'is_billable', 'requires_declaration', 'is_solo', 'is_trial', 'for_contacts'}
             ft = FlightType.objects.filter(club=club, id=ft_id).first()
             if ft and flag in allowed:
                 setattr(ft, flag, value)

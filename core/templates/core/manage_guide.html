@@ -106,7 +106,7 @@
           <ul class="sub"><li><a href="#mem-new">New member</a></li><li><a href="#mem-invoice">Subscription invoice</a></li><li><a href="#mem-renewal">Renewal &amp; lapse</a></li><li><a href="#mem-standing">Standings</a></li><li><a href="#mem-block">Booking block</a></li><li><a href="#mem-registrar">Member register</a></li></ul>
         </li>
         <li><a href="#bookings">Bookings</a>
-          <ul class="sub"><li><a href="#book-gantt">Gantt calendar</a></li><li><a href="#book-attention">Attention page</a></li><li><a href="#book-blockouts">Block-outs</a></li><li><a href="#book-roster">Instructor roster</a></li><li><a href="#book-lifecycle">Booking lifecycle</a></li><li><a href="#book-credentials">Credentials</a></li><li><a href="#book-declarations">Declarations</a></li><li><a href="#book-findslots">Find slots</a></li><li><a href="#book-completion">Completion</a></li><li><a href="#book-charging">Charging &amp; split</a></li><li><a href="#book-uncharged">Uncharged flights</a></li></ul>
+          <ul class="sub"><li><a href="#book-gantt">Gantt calendar</a></li><li><a href="#book-attention">Attention page</a></li><li><a href="#book-blockouts">Block-outs</a></li><li><a href="#book-roster">Instructor roster</a></li><li><a href="#book-lifecycle">Booking lifecycle</a></li><li><a href="#book-credentials">Credentials</a></li><li><a href="#book-declarations">Declarations</a></li><li><a href="#book-contact-flights">Contact flights</a></li><li><a href="#book-findslots">Find slots</a></li><li><a href="#book-completion">Completion</a></li><li><a href="#book-charging">Charging &amp; split</a></li><li><a href="#book-uncharged">Uncharged flights</a></li></ul>
         </li>
         <li><a href="#sales">Sales &amp; invoicing</a>
           <ul class="sub"><li><a href="#sales-account">Account balance</a></li><li><a href="#sales-invoices">Invoices</a></li><li><a href="#sales-sundry">Sundry sales</a></li><li><a href="#sales-vouchers">Vouchers</a></li><li><a href="#sales-rates">Rates</a></li><li><a href="#sales-reconcile">Reconciliation</a></li></ul>
@@ -303,12 +303,13 @@
 
       <h3 id="setup-types">Types (Settings → Types)</h3>
       <p>Settings → Types is a separate screen for the classification lists that label records across the whole system. Each list is configured once and then appears as a dropdown wherever that concept is used — when requesting a booking, completing a flight, logging a maintenance entry, or submitting an occurrence report.</p>
-      <p><strong>Flight types.</strong> The options available when requesting or completing a booking: Solo, Dual, Check Flight, Cross-Country, Navigation Exercise, etc. Each type carries four flags that shape behaviour throughout the system:</p>
+      <p><strong>Flight types.</strong> The options available when requesting or completing a booking: Solo, Dual, Check Flight, Cross-Country, Navigation Exercise, etc. Each type carries five flags that shape behaviour throughout the system:</p>
       <ul>
-        <li><em>Solo</em> — hides the instructor field on the booking request form. If a member selects a solo type, they cannot attach an instructor to the booking.</li>
-        <li><em>Training</em> — marks the flight as a training flight in reports and may trigger a training declaration requirement at completion.</li>
-        <li><em>Requires declaration</em> — prompts the instructor to complete a training declaration when completing the flight. Useful for any flight type where a formal learning record is expected.</li>
+        <li><em>Solo</em> — hides the instructor field on the booking form. Members who select a solo type cannot attach an instructor to the booking.</li>
+        <li><em>Training</em> — tags the flight as a training flight in reports and analytics. No operational effect beyond categorisation.</li>
+        <li><em>Requires declaration</em> — the flight type requires a departure declaration to be submitted before the aircraft can depart. Use this for cross-country flights, private hire, or any operation where a formal pre-flight record and SAR time is expected. See <a href="#book-declarations">Departure declarations</a>.</li>
         <li><em>Billable</em> — flight time on this type generates charges. Uncheck for positioning flights, ferry flights, or any non-revenue operation you do not want to bill for.</li>
+        <li><em>Contact</em> — marks the flight type as one intended for non-member contacts (trial flights, Young Eagles, Gateway Scheme, etc.). See <a href="#book-contact-flights">Contact flight bookings</a> below for how this works on the Gantt calendar.</li>
       </ul>
       <p><strong>Charge types — instructor grades.</strong> Define the grades your club uses (C-Cat, B-Cat, A-Cat, Flight Examiner, etc.) along with the hourly rate for each. When an instructor with a given grade is assigned to a booking, their rate determines the instructor fee charged to the booking member. This is set per instructor on their profile (People → Instructors), referencing the grades defined here.</p>
       <p><strong>Charge types — aircraft surcharges.</strong> Per-flight additions that apply to specific aircraft — a 4-seat aircraft levy, an avionics equipment surcharge, a glass cockpit fee. You define the type and amount here, then assign it to individual aircraft under Fleet → Aircraft. Every flight on that aircraft automatically includes the surcharge as a line item in the charge calculation.</p>
@@ -519,7 +520,7 @@
       <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
       <p><strong>4 — Departed.</strong> Staff enter the meter start readings (Hobbs and/or Tacho, depending on which instruments the aircraft has) and click Depart. For solo bookings only, the member can depart themselves from the mobile app — no staff action required. Dual and instructor bookings always require staff. Before departure is allowed, the system checks: if the flight type <em>requires a declaration</em>, a submitted (non-draft) declaration must exist. If it doesn't, staff must provide a written override reason — this is recorded in the booking audit log. Once departed, if the aircraft has ADS-B configured (ICAO hex set on the aircraft record), it becomes visible on the <a href="#tools-map">Live Map</a>.</p>
       <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Solo — member (mobile) or admin; dual/instructor — admin or instructor (management web app)</em></p>
-      <p><strong>5 — Completed.</strong> After landing, staff enter: Hobbs/Tacho end readings, destination aerodrome, outcome, and any passengers. The system calculates flight time from the meter delta using the aircraft's billing instrument. The same readings advance the aircraft's maintenance hours using the configured maintenance instrument (which may differ — see <a href="#ac-hours">Hours tracking</a>). For flights requiring a training declaration, the instructor completes it at this point (not at departure).</p>
+      <p><strong>5 — Completed.</strong> After landing, staff enter: Hobbs/Tacho end readings, destination aerodrome, outcome, and any passengers. The system calculates flight time from the meter delta using the aircraft's billing instrument. The same readings advance the aircraft's maintenance hours using the configured maintenance instrument (which may differ — see <a href="#ac-hours">Hours tracking</a>).</p>
       <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
       <p><strong>6 — Charged.</strong> Review the calculated charge items (aircraft hire, instructor fee, surcharges, landing fees), adjust if needed, then apply payment. See <a href="#book-charging">Charging</a>. If the payment method is <em>Account credit</em> or <em>EFTPOS / Cash</em>, the booking cycle is complete. If the payment method is <em>Invoice</em>, the booking is marked complete but a tax invoice is created in <strong>Sent</strong> status — it remains open under <a href="#sales-invoices">Sales → Invoices</a> until the member pays and the invoice is marked paid.</p>
       <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin (management web app)</em></p>
@@ -576,10 +577,9 @@
 
       <h3 id="book-declarations">Departure declarations</h3>
       <p>A departure declaration is a pre-flight safety record completed by the pilot before departing. It records: intended route, destination, estimated return time, SAR time, next-of-kin contact, passenger details (with next-of-kin for each), and a series of pre-flight checks (AIP consulted, weather briefed, fuel checked, maps, fuel card, AFM carried, flight plan filed).</p>
-      <p><strong>Which flights require a declaration?</strong> This is configured per flight type in Settings → Types → Flight types → <em>Requires declaration</em> flag. Your club decides which flight types are declaration-obligatory — typically cross-country, private hire, or any flight where a SAR time is operationally important. Training flights (dual) don't usually require one in the departure-declaration sense, because the instructor is present and accountable; instead, they get a training declaration at completion (see below).</p>
+      <p><strong>Which flights require a declaration?</strong> This is configured per flight type in Settings → Types → Flight types → <em>Requires declaration</em> flag. Your club decides which flight types are declaration-obligatory — typically cross-country, private hire, or any flight where a SAR time is operationally important. Dual (instructor) flights do not usually require a departure declaration, because the instructor is present and accountable.</p>
       <p><strong>When to complete it.</strong> The declaration can be filled in any time before departure — while the booking is Pending, Confirmed, or right before the aircraft departs. Access it from the booking detail: click "Declaration." The member can complete it themselves from the management web app or (for solo flights) be directed to it before departing. Declarations remain in Draft until submitted; only a submitted (non-draft) declaration satisfies the departure gate.</p>
       <p><strong>Departure gate and override.</strong> If the flight type requires a declaration and none has been submitted, the Depart button will prompt for an override reason rather than silently blocking. Providing a reason allows departure to proceed but records the override and who authorised it — this appears in the booking audit log and on the Attention page. An override should only be used when there's a good operational reason (e.g. member already filed a flight plan externally and the system declaration is duplicative).</p>
-      <p><strong>Training declaration (dual flights).</strong> This is distinct from the departure declaration. On a dual flight, the instructor completes a training declaration at completion — not before departure. It records learning objectives achieved and the instructor's sign-off. This is required for any flight type with the <em>Training</em> flag set. Training declarations are accessed from the booking detail during or after completion.</p>
 
       <h4>Authorising instructor</h4>
       <p>The declaration includes an optional <strong>Authorising instructor</strong> field — the instructor who verbally cleared the flight. This is a record-only field: the system does not send an approval request to the named instructor and does not require their confirmation in the system. It simply records who the pilot says authorised the flight.</p>
@@ -587,6 +587,29 @@
 
       <h4>Passengers on declarations</h4>
       <p>Passengers are recorded on the departure declaration, not directly on the flight completion. Each passenger entry can include next-of-kin name and phone. If the same person regularly flies with the club, their details can be saved as a frequent passenger and auto-populated on future declarations for that member — reducing data entry and ensuring completeness.</p>
+
+      <h3 id="book-contact-flights">Contact flight bookings (trial flights, Young Eagles, etc.)</h3>
+      <p>Some flights carry non-member contacts — trial flight participants, Young Eagles, Gateway Scheme members — rather than club members in the passenger seat. These are <strong>contact flight bookings</strong> and work differently from standard member bookings.</p>
+
+      <p><strong>Setup: mark the flight type as Contact.</strong> In Settings → Types → Flight types, enable the <em>Contact</em> toggle on any flight type that applies to non-member flights (e.g. "Trial Flight", "Young Eagles"). This is a one-time configuration. Once set, those types are treated differently in the booking form.</p>
+
+      <div class="callout info">
+        <strong>Only instructors can book contact flights.</strong> The <em>Contact</em> flight types only appear in the flight type dropdown for users with an instructor role. Regular members see only non-contact flight types, so they cannot accidentally book as a contact flight.
+      </div>
+
+      <p><strong>How to book a trial flight (instructor workflow):</strong></p>
+      <ol style="line-height:1.8;">
+        <li>Open the Gantt calendar and click an available slot for the aircraft and time you want.</li>
+        <li>In the <strong>Flight type</strong> dropdown, select a Contact type (e.g. "Trial Flight") — these are shown under a <em>Contact flights</em> heading, separate from regular <em>Member flights</em>.</li>
+        <li>The <strong>Member</strong> field automatically fills with your own name as the pilot in command (instructor). You can change this if another instructor is flying.</li>
+        <li>A <strong>Contact</strong> field appears — search for and select the trial flight participant from your Contacts list. If they are not yet in the system, add them to Contacts first (People → Contacts → + Add).</li>
+        <li>The <strong>Billed to</strong> field appears once a contact is selected — choose whether the charge goes to the contact's account or another party (e.g. a Young Eagles sponsoring organisation).</li>
+        <li>Complete and save the booking as normal.</li>
+      </ol>
+
+      <p><strong>Switching back to a member flight:</strong> If you select a non-contact flight type after having chosen a contact type, the Contact and Billed to fields are cleared and hidden automatically. The instructor field also reappears for non-solo types.</p>
+
+      <p><strong>Contacts list.</strong> Contacts are managed under People → Contacts. Add a contact record before booking their flight, so they can be searched and attached to the booking. Each contact can have a type (e.g. "Trial Flight", "Young Eagles") and their flight history is recorded separately from member flight history.</p>
 
       <h3 id="book-findslots">Availability search (Find slots)</h3>
       <p>The availability search (Operations → Find slots, or the Search tab in the mobile app) lets you — or a member — quickly find available time windows without scrolling through the Gantt day by day. Enter an aircraft type, desired duration, and a date range; the system returns a list of windows where a matching aircraft is free, not blocked out, and within operating hours.</p>

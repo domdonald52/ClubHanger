@@ -192,7 +192,22 @@
   fillSelect(fAircraft, AIRCRAFT, "id", "reg", false);
   // Show rostered + always-available (null) instructors; on_roster===false = off roster today
   fillSelect(fInstructor, INSTRUCTORS.filter(i => i.on_roster !== false), "id", "name", true);
-  fillSelect(fFlightType, FLIGHT_TYPES, "id", "name", false);
+  // Flight type dropdown: blank default; instructors see Contact/Member optgroups, others see member-only
+  (function() {
+    const blank = document.createElement("option"); blank.value = ""; fFlightType.appendChild(blank);
+    const memberFTs  = FLIGHT_TYPES.filter(ft => !ft.for_contacts);
+    const contactFTs = FLIGHT_TYPES.filter(ft =>  ft.for_contacts);
+    if (cfg.isInstructor && contactFTs.length) {
+      const mg = document.createElement("optgroup"); mg.label = "Member flights";
+      memberFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ft.name; mg.appendChild(o); });
+      const cg = document.createElement("optgroup"); cg.label = "Contact flights";
+      contactFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ft.name; cg.appendChild(o); });
+      fFlightType.appendChild(mg);
+      fFlightType.appendChild(cg);
+    } else {
+      memberFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ft.name; fFlightType.appendChild(o); });
+    }
+  })();
 
   const memberNotice = document.getElementById("m-member-notice");
   function updateMemberNotice() {
@@ -239,18 +254,10 @@
     });
   }
   const memberLbl = document.getElementById("m-member-lbl");
-  function updateClientState() {
-    if (!fClient) return;
-    const hasClient = !!fClient.value;
-    if (fBilledToLabel) fBilledToLabel.style.display = hasClient ? "" : "none";
-    if (memberLbl) memberLbl.textContent = hasClient ? "Pilot / instructor" : "Member";
-    if (hasClient && !fMember.value) {
-      fMember.value = cfg.currentUserId;
-      updateMemberNotice();
-      updateMemberDisplay();
-    }
-  }
-  if (fClient) fClient.addEventListener("change", updateClientState);
+  // When client is chosen show billed-to; everything else driven by syncFlightTypeMode
+  if (fClient) fClient.addEventListener("change", () => {
+    if (fBilledToLabel) fBilledToLabel.style.display = fClient.value ? "" : "none";
+  });
 
   // ---- Quick-add contact mini-modal ------------------------------------
   const quickContactModal = document.getElementById("quick-contact-modal");
@@ -371,7 +378,6 @@
     fMember.value = _fmSelected.id;
     updateMemberDisplay();
     updateMemberNotice();
-    updateClientState();
     if (findMemberModal) findMemberModal.hidden = true;
   }
 
@@ -402,26 +408,46 @@
     findMemberModal.addEventListener("click", e => { if (e.target === findMemberModal) findMemberModal.hidden = true; });
   }
 
-  function syncInstructorVisibility() {
-    const ft = FLIGHT_TYPES.find((x) => String(x.id) === fFlightType.value);
-    if (ft && ft.is_solo) {
-      fInstructor.value = "";
-      fInstructorLabel.hidden = true;
-    } else {
-      fInstructorLabel.hidden = false;
-    }
-  }
-  fFlightType.addEventListener("change", syncInstructorVisibility);
+  // Single function driven by flight type selection — controls all dependent fields
+  function syncFlightTypeMode() {
+    const ft         = FLIGHT_TYPES.find(x => String(x.id) === fFlightType.value);
+    const isContact  = ft ? ft.for_contacts : false;
+    const isSolo     = ft ? ft.is_solo      : false;
+    const hasType    = !!ft;
 
-  function defaultFlightTypeFor(isSolo) {
-    if (isSolo) {
-      return (FLIGHT_TYPES.find((ft) => ft.is_solo && ft.code === "student_solo")
-           || FLIGHT_TYPES.find((ft) => ft.is_solo));
+    // Member field label
+    if (memberLbl) memberLbl.textContent = isContact ? "Pilot / instructor" : "Member";
+
+    // Instructor field: show only for dual member flights
+    if (fInstructorLabel) {
+      const showInstr = hasType && !isSolo && !isContact;
+      fInstructorLabel.hidden = !showInstr;
+      if (hasType && !showInstr) fInstructor.value = "";
     }
-    return (FLIGHT_TYPES.find((ft) => !ft.is_solo && ft.code === "student_dual")
-         || FLIGHT_TYPES.find((ft) => !ft.is_solo)
-         || FLIGHT_TYPES[0]);
+
+    // Contact row: show only for contact flight types
+    const clientLabel = document.getElementById("m-client-label");
+    if (clientLabel) clientLabel.hidden = !isContact;
+
+    // Billed-to: show when contact type AND a client is chosen
+    if (fBilledToLabel) {
+      fBilledToLabel.style.display = (isContact && fClient && fClient.value) ? "" : "none";
+    }
+
+    // Switching TO contact mode: auto-fill member with current user if blank
+    if (isContact && fMember && !fMember.value) {
+      fMember.value = String(cfg.currentUserId);
+      updateMemberNotice();
+      updateMemberDisplay();
+    }
+
+    // Switching AWAY from contact mode: clear client fields
+    if (!isContact) {
+      if (fClient)        fClient.value = "";
+      if (fBilledTo)      fBilledTo.value = "";
+    }
   }
+  fFlightType.addEventListener("change", syncFlightTypeMode);
 
   function openCreate(aircraftId, start, instructorId, bookingKind) {
     // Non-staff cannot book in the past
@@ -434,17 +460,11 @@
     btnDelete.hidden = true;
     btnConfirm.hidden = true;
     if (aircraftId) fAircraft.value = aircraftId;
-    const isSolo = bookingKind === "solo";
     fInstructor.value = instructorId || "";
     fStart.value = fmtLocalInput(start);
     fDuration.value = cfg.defaultDuration;
     fDesc.value = "";
-    if (fClient) fClient.value = "";
-    if (fBilledTo) fBilledTo.value = "";
-    if (fBilledToLabel) fBilledToLabel.style.display = "none";
-    const defFt = defaultFlightTypeFor(isSolo);
-    if (defFt) fFlightType.value = defFt.id;
-    syncInstructorVisibility();
+    fFlightType.value = "";
     if (!cfg.canManage) {
       fMember.value = cfg.currentUserId;
     } else {
@@ -452,7 +472,7 @@
     }
     updateMemberNotice();
     updateMemberDisplay();
-    updateClientState();
+    syncFlightTypeMode();
     conflictNotice.hidden = true;
     conflictNotice.innerHTML = "";
     if (instrConflictNotice) instrConflictNotice.hidden = true;
@@ -718,15 +738,14 @@
     fStart.value = fmtLocalInput(new Date(pill.dataset.start));
     fDuration.value = pill.dataset.duration;
     fDesc.value = pill.dataset.desc || "";
-    if (pill.dataset.flightTypeId) fFlightType.value = pill.dataset.flightTypeId;
-    syncInstructorVisibility();
+    fFlightType.value = pill.dataset.flightTypeId || "";
     const m = MEMBERS.find((x) => x.name === pill.dataset.member);
     if (m) fMember.value = m.id;
     updateMemberNotice();
     updateMemberDisplay();
     if (fClient) fClient.value = pill.dataset.clientId || "";
     if (fBilledTo) fBilledTo.value = pill.dataset.billedTo || "";
-    updateClientState();
+    syncFlightTypeMode();
 
     const noticeHtml = buildConflictNotice(pill);
     if (noticeHtml) {
@@ -1445,9 +1464,9 @@
       if (pill._didDrag) { pill._didDrag = false; return; }
       e.stopPropagation();
       if (cfg.canManage) {
-        // Completed bookings go straight to the detail overlay — the editor has nothing useful to show
         if (pill.dataset.status === "completed") {
-          openDetailOverlay(pill.dataset.id);
+          // Navigate to the full booking detail page (overlay unreliable for completed)
+          window.location.href = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
         } else {
           openEdit(pill);
         }

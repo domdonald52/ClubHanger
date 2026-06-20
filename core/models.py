@@ -1054,6 +1054,7 @@ class FlightType(models.Model):
     is_training = models.BooleanField(default=False)
     is_trial    = models.BooleanField(default=False, help_text="Trial/introductory flights — tracked separately in reports")
     is_solo = models.BooleanField(default=False, help_text="Solo flights — instructor is not required")
+    for_contacts = models.BooleanField(default=False, help_text="Flight type used for non-member contacts (trial flights, Young Eagles, etc.)")
     requires_declaration = models.BooleanField(
         default=False,
         help_text="Pilot must submit a pre-departure declaration before checking out (e.g. Private Hire)"

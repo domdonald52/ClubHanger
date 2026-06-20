@@ -172,15 +172,6 @@
     {% endif %}
     {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
   </div>
-  {% if wx.taf_raw %}
-  <div id="wx-taf" style="font-size:.75rem;background:color-mix(in srgb,var(--banner) 8%,#f7f9fb);border:1px solid color-mix(in srgb,var(--banner) 22%,#e3e6ea);border-radius:6px;padding:.35rem .75rem;margin-bottom:.6rem;line-height:1.5;color:color-mix(in srgb,var(--banner) 70%,#2b333d);">
-    <span style="font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;opacity:.65;margin-right:.5rem;">TAF</span><span style="font-family:monospace;" id="wx-taf-text">{{ wx.taf_raw }}</span>
-  </div>
-  {% else %}
-  <div id="wx-taf" style="display:none;font-size:.75rem;background:color-mix(in srgb,var(--banner) 8%,#f7f9fb);border:1px solid color-mix(in srgb,var(--banner) 22%,#e3e6ea);border-radius:6px;padding:.35rem .75rem;margin-bottom:.6rem;line-height:1.5;color:color-mix(in srgb,var(--banner) 70%,#2b333d);">
-    <span style="font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;opacity:.65;margin-right:.5rem;">TAF</span><span style="font-family:monospace;" id="wx-taf-text"></span>
-  </div>
-  {% endif %}
 
   {% if instructor_cred_issues %}
   <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.6rem .9rem;margin-bottom:.75rem;font-size:.82rem;color:#7f1d1d;">
@@ -346,7 +337,7 @@
       <div id="m-member-notice" style="display:none;font-size:.78rem;background:#fff8e1;border-left:3px solid #f59e0b;padding:.4rem .6rem;border-radius:4px;margin:-.3rem 0 .4rem;color:#92400e;"></div>
       <label>Flight type<select id="m-flight-type"></select></label>
       {% if can_manage %}
-      <label id="m-client-label">Non-member client (trial flight, Young Eagles, etc.)
+      <label id="m-client-label" hidden>Contact (trial flight, Young Eagles, etc.)
         <div style="display:flex;gap:.4rem;margin-top:.25rem;">
           <select id="m-client" style="flex:1;margin-top:0;"></select>
           <button type="button" id="m-client-new" class="cbtn-sm" style="flex-shrink:0;white-space:nowrap;">+ New</button>
@@ -584,6 +575,7 @@
   "defaultDuration": {{ default_duration }},
   "canBook": {{ can_book|yesno:"true,false" }},
   "canManage": {{ can_manage|yesno:"true,false" }},
+  "isInstructor": {{ is_instructor|yesno:"true,false" }},
   "currentUserId": {{ current_user_id }},
   "typicalStart": "{{ typical_hours_start }}",
   "typicalEnd": "{{ typical_hours_end }}",
@@ -623,7 +615,7 @@
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}?v=5"></script>
+<script src="{% static 'core/gantt.js' %}?v=6"></script>
 <script>
 (function() {
   const scroll   = document.querySelector('.grid-scroll');
@@ -729,7 +721,9 @@
 
   document.getElementById('pill-ctx-detail').addEventListener('click', () => {
     ctx.style.display = 'none';
-    if (activePill) window.openDetailOverlay(activePill.dataset.id);
+    if (!activePill) return;
+    const base = "{% url 'core:booking_detail' club.slug 0 %}";
+    window.location.href = base.replace('/0/', '/' + activePill.dataset.id + '/');
   });
   document.getElementById('pill-ctx-track').addEventListener('click', () => {
     ctx.style.display = 'none';
@@ -834,12 +828,10 @@
 
 <script>
 (function(){
-  var pill    = document.getElementById('wx-pill');
-  var tafDiv  = document.getElementById('wx-taf');
-  var tafText = document.getElementById('wx-taf-text');
+  var pill = document.getElementById('wx-pill');
   if (!pill) return;
 
-  // Refresh in-place every 5 minutes — no DOM insertion, just content update
+  // Refresh METAR in-place every 5 minutes
   function refreshWx() {
     fetch('{% url "core:avwx_metar_api" club.slug %}')
     .then(function(r){ return r.json(); })
@@ -862,15 +854,11 @@
         '<span>' + parts + '</span>' +
         (ageStr ? '<span class="wx-pill-age">· ' + ageStr + (age >= 120 ? ' ⚠' : '') + '</span>' : '');
       pill.title = d.raw + '\nClick for full weather page';
-      if (tafText && d.taf_raw) {
-        tafText.textContent = d.taf_raw;
-        if (tafDiv) tafDiv.style.display = '';
-      }
     })
     .catch(function(){});
   }
 
-  setInterval(refreshWx, 5 * 60 * 1000); // refresh every 5 minutes (initial content is server-side)
+  setInterval(refreshWx, 5 * 60 * 1000);
 })();
 </script>
 {% endblock %}

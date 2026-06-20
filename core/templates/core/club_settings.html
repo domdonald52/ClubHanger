@@ -436,7 +436,7 @@
 
     {% if flight_types %}
     <table class="ft-table">
-      <thead><tr><th>Name</th><th>Solo / Dual</th><th>Training</th><th>Trial</th><th>Declaration req.</th><th>Billable</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Solo / Dual</th><th>Contact</th><th>Training</th><th>Trial</th><th>Declaration req.</th><th>Billable</th><th></th></tr></thead>
       <tbody>
         {% for ft in flight_types %}
         <tr>
@@ -452,6 +452,18 @@
                 <span class="tog-track"></span>
               </label>
               <span style="font-size:.78rem;color:#8a93a0;">{% if ft.is_solo %}Solo{% else %}Dual{% endif %}</span>
+            </form>
+          </td>
+          <td>
+            <form method="post" style="display:inline-flex;align-items:center;gap:.5rem;">{% csrf_token %}
+              <input type="hidden" name="action" value="set_flight_type_flag">
+              <input type="hidden" name="ft_id" value="{{ ft.id }}">
+              <input type="hidden" name="ft_flag" value="for_contacts">
+              <input type="hidden" name="ft_value" value="0">
+              <label class="tog-sw">
+                <input type="checkbox" name="ft_value" value="1" {% if ft.for_contacts %}checked{% endif %} onchange="this.form.submit()">
+                <span class="tog-track"></span>
+              </label>
             </form>
           </td>
           {% for flag, label in forloop.parentloop.parentloop.parentloop|default:'' %}{% endfor %}
@@ -1427,6 +1439,9 @@
       <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem;">
         <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
           <input type="checkbox" name="ft_is_solo"> Solo (hides instructor field)
+        </label>
+        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
+          <input type="checkbox" name="ft_for_contacts"> Contact flight (trial, Young Eagles, etc.)
         </label>
         <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
           <input type="checkbox" name="ft_is_training"> Training
