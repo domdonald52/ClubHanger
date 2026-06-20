@@ -9657,7 +9657,7 @@ def occurrence_submit(request, club_slug):
             except Exception as e:
                 error = f'Error saving report: {e}'
 
-    is_app    = request.GET.get('app') == '1' or request.POST.get('_from_app') == '1'
+    is_app    = request.GET.get('app') == '1' or request.POST.get('_from_app') == '1' or request.path.startswith('/app/')
     is_inline = request.GET.get('inline') == '1'
     if is_app:
         base_template = 'core/app/base.html'

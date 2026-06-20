@@ -40,7 +40,7 @@
   Use this form to report snags, near misses, hazards, or anything worth recording. All reports are confidential and reviewed by the safety officer.
 </p>
 
-<form method="post" action="{% url 'core:occurrence_submit' club.slug %}?app=1" style="padding:.75rem;">
+<form method="post" action="{% url 'core:app_snag' club.slug %}" style="padding:.75rem;">
   {% csrf_token %}
   <input type="hidden" name="_from_app" value="1">
 
