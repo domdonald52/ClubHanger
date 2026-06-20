@@ -103,41 +103,35 @@
   </div>
 </div>
 
-<!-- Sign out — placed here so it's visible without scrolling past credentials/notifications -->
-<div style="padding:.5rem .75rem 0;">
-  <form method="post" action="{% url 'logout' %}">{% csrf_token %}
-    <button type="submit" class="app-btn secondary" style="width:100%;text-align:center;border:none;cursor:pointer;font-size:.88rem;padding:.65rem;">Sign out</button>
-  </form>
-</div>
-
 <!-- Credentials -->
 <div class="app-section gap-sm" style="display:flex;align-items:center;justify-content:space-between;padding-right:.75rem;">
-  <button id="cred-toggle" onclick="toggleCreds()" style="display:flex;align-items:center;gap:.3rem;background:none;border:none;padding:0;cursor:pointer;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">
+  <button id="cred-toggle" onclick="toggleCreds()" style="display:flex;align-items:center;gap:.4rem;background:none;border:none;padding:0;cursor:pointer;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">
     Credentials
-    <svg id="cred-chev-all" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+    <span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:{% if cred_status == 'red' %}#e03131{% elif cred_status == 'amber' %}#f59e0b{% elif cred_status == 'green' %}#2a7a3b{% else %}#c8cdd4{% endif %};"></span>
+    <svg id="cred-chev-all" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;transform:rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
   </button>
   <a href="{% url 'core:app_credential_add' club.slug %}" class="app-btn-sm" style="padding:.3rem .7rem;font-size:.78rem;">+ Add</a>
 </div>
 
 {% if credentials %}
-<div class="cred-list" id="cred-section">
+<div class="cred-list" id="cred-section" style="display:none;">
 {% for c in credentials %}
 <details class="cred-details">
   <summary>
-    <div class="cred-dot" style="background:{% if not c.expiry_date %}#c8cdd4{% elif c.is_expired %}#e03131{% elif c.expires_soon %}#f59e0b{% else %}#2a7a3b{% endif %};"></div>
+    <div class="cred-dot" style="background:{% if not c.expiry_date %}#c8cdd4{% elif c.is_expired %}#e03131{% elif c.is_expiring_soon %}#f59e0b{% else %}#2a7a3b{% endif %};"></div>
     <div class="cred-main">
       <div class="cred-type-name">{{ c.get_credential_type_display }}{% if c.aircraft_type %} — {{ c.aircraft_type.name }}{% endif %}</div>
       <div class="cred-sub">
         {% if c.expiry_date %}
           {% if c.is_expired %}Expired {{ c.expiry_date|date:"j M Y" }}
-          {% elif c.expires_soon %}Expires {{ c.expiry_date|date:"j M Y" }} &mdash; {{ c.days_until_expiry }}d left
+          {% elif c.is_expiring_soon %}Expires {{ c.expiry_date|date:"j M Y" }} &mdash; {{ c.days_until_expiry }}d left
           {% else %}Expires {{ c.expiry_date|date:"j M Y" }}{% endif %}
         {% else %}No expiry{% endif %}
       </div>
     </div>
     {% if c.is_expired %}
     <span class="m-pill m-pill-red" style="font-size:.58rem;">Expired</span>
-    {% elif c.expires_soon %}
+    {% elif c.is_expiring_soon %}
     <span class="m-pill m-pill-amber" style="font-size:.58rem;">{{ c.days_until_expiry }}d</span>
     {% endif %}
     <svg class="cred-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -191,7 +185,7 @@
 {% endfor %}
 </div>
 {% else %}
-<div class="app-empty">No credentials recorded — tap + Add to add one</div>
+<div class="app-empty" id="cred-section" style="display:none;">No credentials recorded — tap + Add to add one</div>
 {% endif %}
 
 <div class="gap-md"></div>
@@ -270,7 +264,7 @@
 
 {% block extra_js %}
 <script>
-var _credsOpen = true;
+var _credsOpen = false;
 function toggleCreds() {
   var sec = document.getElementById('cred-section');
   var chev = document.getElementById('cred-chev-all');

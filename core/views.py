@@ -10379,10 +10379,18 @@ def app_profile(request, club_slug):
             pref.save()
             return redirect(_profile_url + '?saved=1#notifications')
 
-    credentials = (MemberCredential.objects
-                   .filter(club_member=actor)
-                   .select_related('aircraft_type')
-                   .order_by('expiry_date'))
+    credentials = list(MemberCredential.objects
+                       .filter(club_member=actor)
+                       .select_related('aircraft_type')
+                       .order_by('expiry_date'))
+    if any(c.is_expired for c in credentials):
+        cred_status = 'red'
+    elif any(c.is_expiring_soon for c in credentials):
+        cred_status = 'amber'
+    elif credentials:
+        cred_status = 'green'
+    else:
+        cred_status = 'grey'
 
     today = timezone.localdate()
 
@@ -10430,6 +10438,7 @@ def app_profile(request, club_slug):
     return render(request, 'core/app/profile.html', {
         'club': club, 'club_member': actor,
         'credentials': credentials,
+        'cred_status': cred_status,
         'today': today,
         'saved': request.GET.get('saved') == '1',
         'sub_status': sub_status,
