@@ -45,6 +45,13 @@
     </div>
   </div>
 
+  {% if watchers %}
+  <div style="font-size:.82rem;color:#374151;margin-bottom:.75rem;padding:.5rem .75rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
+    <span style="color:#1d4ed8;">&#128065;</span> Watched by {{ watchers|length }} {{ watchers|length|pluralize:"person,people" }}:
+    {% for w in watchers %}<strong>{{ w.club_member.user.get_full_name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}
+  </div>
+  {% endif %}
+
   {% if actor.can_access_manage and booking.status not in 'completed' %}
   <details style="margin-bottom:.8rem;">
     <summary class="cbtn-sm" style="cursor:pointer;list-style:none;display:inline-block;">{% if booking.client %}Change client{% else %}+ Assign non-member client{% endif %}</summary>

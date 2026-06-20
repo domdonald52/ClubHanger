@@ -98,7 +98,9 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         scheduled_start__gte=day_start,
         scheduled_start__lt=day_end
     ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'flight_completion', 'client')
-    
+    from django.db.models import Count as _GCount
+    bookings = bookings.annotate(watcher_count=_GCount('watchers'))
+
     # Pixel geometry for absolute-positioned pills
     px_per_min = float(request.GET.get('zoom') or 2)
     # Atypical-hours boundaries in pixels from day_start (for calendar shading)
@@ -219,6 +221,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
                 if getattr(b.flight_type, 'requires_declaration', False) and b.status in ('pending', 'confirmed')
                 else ''
             ),
+            'watcher_count': getattr(b, 'watcher_count', 0),
         }
 
     # Apply filters — suppress when arriving via booking deep-link (?book=1) because
@@ -3560,6 +3563,7 @@ def booking_detail(request, club_slug, booking_id):
         'online_aircraft': Aircraft.objects.filter(club=club, status='online').order_by('registration'),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
         'inline_title': f'Manage <span class="crumb-sep">›</span> Bookings <span class="crumb-sep">›</span> <span class="crumb-cur">{booking.member.user.get_full_name()} · {booking.aircraft.registration}</span>',
+        'watchers': list(SlotWatch.objects.filter(booking=booking).select_related('club_member__user')) if actor.can_access_manage else [],
     }
     return render(request, 'core/booking_detail.html', ctx)
 

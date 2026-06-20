@@ -82,6 +82,7 @@
   .pill.override{box-shadow:0 0 0 2px #fff,0 0 0 4px #845ef7}
   .pill-dot{position:absolute;top:4px;right:10px;width:7px;height:7px;border-radius:50%;background:#e03131;border:1.5px solid rgba(255,255,255,.75);pointer-events:none;}
   .pill-dot-decl{background:#f59e0b;right:20px;}
+  .pill-dot-watch{background:#3b82f6;left:4px;right:auto;}
   .preview{position:absolute;top:4px;height:36px;border-radius:5px;border:2px dashed var(--primary);background:color-mix(in srgb, var(--primary) 15%, transparent);z-index:6;pointer-events:none}
   .preview span{position:absolute;top:11px;left:8px;font-size:.72rem;color:var(--primary);font-weight:600}
   .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500}
@@ -172,17 +173,6 @@
     {% endif %}
     {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
   </div>
-
-  {% if instructor_cred_issues %}
-  <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.6rem .9rem;margin-bottom:.75rem;font-size:.82rem;color:#7f1d1d;">
-    <strong>⚠ Instructor credential {{ instructor_cred_issues|length|pluralize:"issue,issues" }} {% if selected_date == today %}today{% else %}on {{ selected_date|date:"j M" }}{% endif %}:</strong>
-    {% for row in instructor_cred_issues %}
-      <span style="margin-left:.5rem;font-weight:600;">{{ row.cm.user.get_full_name }}</span>
-      — {% for issue in row.lapsed %}{{ issue }}{% if not forloop.last %}; {% endif %}{% endfor %}{% if not forloop.last %} ·{% endif %}
-    {% endfor %}
-    {% if selected_date == today %}<a href="{% url 'core:manage_exceptions' club.slug %}?tab=credentials" style="margin-left:.75rem;color:#c0392b;font-weight:600;text-decoration:underline;">View in Attention →</a>{% endif %}
-  </div>
-  {% endif %}
 
   <div class="grid-scroll">
     <div class="grid" style="--track-width: {{ track_width }}px;">
@@ -615,7 +605,7 @@
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}?v=9"></script>
+<script src="{% static 'core/gantt.js' %}?v=10"></script>
 <script>
 (function() {
   const scroll   = document.querySelector('.grid-scroll');
@@ -640,13 +630,13 @@
     // Temporarily hide overflow so clientWidth reflects the true container width
     // (not reduced by a pre-existing scrollbar).
     scroll.style.overflowX = 'hidden';
-    const avail = scroll.clientWidth - labelW - 2; // 2px for left+right border
+    const avail = scroll.clientWidth - labelW - 3; // 2px border + 1px rounding buffer
     const tw = avail > SERVER_TRACK_W ? avail : SERVER_TRACK_W;
     grid.style.setProperty('--track-width', tw + 'px');
     scroll.style.overflowX = '';  // restore (auto from CSS)
   }
-  // Run after layout is fully settled so clientWidth is accurate.
-  requestAnimationFrame(fitTrack);
+  // Two rAF passes: first settles the label-width changes, second confirms no residual overflow.
+  requestAnimationFrame(() => { fitTrack(); requestAnimationFrame(fitTrack); });
   let _fitTimer;
   window.addEventListener('resize', () => {
     clearTimeout(_fitTimer);
