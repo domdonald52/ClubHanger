@@ -113,6 +113,8 @@
   const fBilledTo = document.getElementById("m-billed-to");
   const fBilledToLabel = document.getElementById("m-billed-to-label");
   const fClientLabel = document.getElementById("m-client-label");
+  const fMemberDisplay = document.getElementById("m-member-display");
+  const fFindMemberBtn = document.getElementById("m-find-member");
   const btnDelete = document.getElementById("m-delete");
   const btnConfirm = document.getElementById("m-confirm");
   const btnDepart = document.getElementById("m-depart");
@@ -187,10 +189,6 @@
     if (!q && prev) fMember.value = prev;
   }
   populateMembers();
-  const memberSearch = document.getElementById('m-member-search');
-  if (memberSearch) {
-    memberSearch.addEventListener('input', () => { populateMembers(memberSearch.value); updateMemberNotice(); });
-  }
   fillSelect(fAircraft, AIRCRAFT, "id", "reg", false);
   // Only show instructors who are available today (on_roster true or null=no schedule=always available)
   fillSelect(fInstructor, INSTRUCTORS.filter(i => i.on_roster === true), "id", "name", true);
@@ -212,6 +210,18 @@
     }
   }
   fMember.addEventListener("change", updateMemberNotice);
+
+  function updateMemberDisplay() {
+    if (!fMemberDisplay) return;
+    const m = MEMBERS.find(x => String(x.id) === fMember.value);
+    if (m) {
+      fMemberDisplay.textContent = m.name;
+      fMemberDisplay.style.color = m.badge !== "current" ? "#adb5bd" : "#1f2933";
+    } else {
+      fMemberDisplay.textContent = "— select member —";
+      fMemberDisplay.style.color = "#8a93a0";
+    }
+  }
 
   // Hide member selector for non-staff — they always book for themselves
   if (!cfg.canManage) {
@@ -237,6 +247,7 @@
     if (hasClient && !fMember.value) {
       fMember.value = cfg.currentUserId;
       updateMemberNotice();
+      updateMemberDisplay();
     }
   }
   if (fClient) fClient.addEventListener("change", updateClientState);
@@ -311,6 +322,64 @@
     });
   }
 
+  // ---- Find member modal -----------------------------------------------
+  const findMemberModal = document.getElementById("find-member-modal");
+  const fmSearch = document.getElementById("fm-search");
+  const fmList   = document.getElementById("fm-list");
+
+  function renderFmList(filter) {
+    if (!fmList) return;
+    const q = (filter || "").toLowerCase();
+    fmList.innerHTML = "";
+    let count = 0;
+    MEMBERS.forEach(m => {
+      if (q && !m.name.toLowerCase().includes(q)) return;
+      const badge = m.badge === "current" ? "" : m.badge === "non_member" ? " · Non-mbr" : " · Lapsed";
+      const warn  = m.acct_warning ? " ⚠" : "";
+      const item  = document.createElement("div");
+      item.style.cssText = "padding:.5rem .75rem;cursor:pointer;font-size:.88rem;border-bottom:1px solid #f0f2f4;";
+      item.style.color = m.badge !== "current" ? "#adb5bd" : "#1f2933";
+      item.textContent = m.name + badge + warn;
+      item.addEventListener("mouseenter", () => item.style.background = "#f0f4ff");
+      item.addEventListener("mouseleave", () => item.style.background = "");
+      item.addEventListener("click", () => {
+        fMember.value = m.id;
+        updateMemberDisplay();
+        updateMemberNotice();
+        updateClientState();
+        if (findMemberModal) findMemberModal.hidden = true;
+      });
+      fmList.appendChild(item);
+      count++;
+    });
+    if (!count) {
+      fmList.innerHTML = '<div style="padding:.75rem;color:#8a93a0;font-size:.84rem;text-align:center;">No members found</div>';
+    }
+  }
+
+  if (findMemberModal) {
+    if (fFindMemberBtn) {
+      fFindMemberBtn.addEventListener("click", () => {
+        if (fmSearch) fmSearch.value = "";
+        renderFmList("");
+        findMemberModal.hidden = false;
+        setTimeout(() => fmSearch && fmSearch.focus(), 50);
+      });
+    }
+    if (fmSearch) {
+      fmSearch.addEventListener("input", () => renderFmList(fmSearch.value));
+      fmSearch.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          const first = fmList && fmList.querySelector("div");
+          if (first) first.click();
+        }
+      });
+    }
+    document.getElementById("fm-close").addEventListener("click", () => { findMemberModal.hidden = true; });
+    document.getElementById("fm-cancel").addEventListener("click", () => { findMemberModal.hidden = true; });
+    findMemberModal.addEventListener("click", e => { if (e.target === findMemberModal) findMemberModal.hidden = true; });
+  }
+
   function syncInstructorVisibility() {
     const ft = FLIGHT_TYPES.find((x) => String(x.id) === fFlightType.value);
     if (ft && ft.is_solo) {
@@ -354,13 +423,13 @@
     const defFt = defaultFlightTypeFor(isSolo);
     if (defFt) fFlightType.value = defFt.id;
     syncInstructorVisibility();
-    if (memberSearch) { memberSearch.value = ''; populateMembers(); }
     if (!cfg.canManage) {
       fMember.value = cfg.currentUserId;
     } else if (MEMBERS.length) {
       fMember.value = MEMBERS[0].id;
     }
     updateMemberNotice();
+    updateMemberDisplay();
     updateClientState();
     conflictNotice.hidden = true;
     conflictNotice.innerHTML = "";
@@ -618,10 +687,10 @@
     fDesc.value = pill.dataset.desc || "";
     if (pill.dataset.flightTypeId) fFlightType.value = pill.dataset.flightTypeId;
     syncInstructorVisibility();
-    if (memberSearch) { memberSearch.value = ''; populateMembers(); }
     const m = MEMBERS.find((x) => x.name === pill.dataset.member);
     if (m) fMember.value = m.id;
     updateMemberNotice();
+    updateMemberDisplay();
     if (fClient) fClient.value = pill.dataset.clientId || "";
     if (fBilledTo) fBilledTo.value = pill.dataset.billedTo || "";
     updateClientState();
@@ -639,6 +708,7 @@
     const _memberOwned = !cfg.canManage && (pill.dataset.memberUserId === String(cfg.currentUserId));
     fMember.disabled = _memberOwned;
     fMember.style.opacity = _memberOwned ? ".5" : "";
+    if (fFindMemberBtn) { fFindMemberBtn.disabled = _memberOwned; fFindMemberBtn.style.opacity = _memberOwned ? ".5" : ""; }
     fInstructor.disabled = _memberOwned;
     if (fInstructorLabel) fInstructorLabel.style.opacity = _memberOwned ? ".5" : "";
 
@@ -650,6 +720,7 @@
     modal.hidden = true;
     removePreview();
     fMember.disabled = false; fMember.style.opacity = "";
+    if (fFindMemberBtn) { fFindMemberBtn.disabled = false; fFindMemberBtn.style.opacity = ""; }
     fInstructor.disabled = false;
     if (fInstructorLabel) fInstructorLabel.style.opacity = "";
     if (fClient) fClient.value = "";

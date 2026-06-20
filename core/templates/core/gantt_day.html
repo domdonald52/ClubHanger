@@ -337,10 +337,11 @@
     <div id="m-edit-fields">
       <input type="hidden" id="m-booking-id">
       <label><span id="m-member-lbl">Member</span>
-        <input type="text" id="m-member-search" placeholder="Search…"
-               style="display:block;width:100%;box-sizing:border-box;margin-bottom:.3rem;padding:.35rem .55rem;border:1.5px solid #d5d9e0;border-radius:6px;font-size:.84rem;"
-               autocomplete="off">
-        <select id="m-member"></select>
+        <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;">
+          <span id="m-member-display" style="flex:1;font-size:.88rem;padding:.4rem .55rem;border:1px solid #d6dae0;border-radius:7px;background:#f9fafb;color:#8a93a0;display:flex;align-items:center;min-height:2.1rem;">— select member —</span>
+          <button type="button" id="m-find-member" class="cbtn-sm" style="flex-shrink:0;white-space:nowrap;">Find member</button>
+        </div>
+        <select id="m-member" hidden></select>
       </label>
       <div id="m-member-notice" style="display:none;font-size:.78rem;background:#fff8e1;border-left:3px solid #f59e0b;padding:.4rem .6rem;border-radius:4px;margin:-.3rem 0 .4rem;color:#92400e;"></div>
       <label>Flight type<select id="m-flight-type"></select></label>
@@ -486,6 +487,22 @@
   </div>
 </div>
 {% endif %}
+
+<!-- Find member modal -->
+<div id="find-member-modal" class="modal-back" hidden style="z-index:520;">
+  <div class="modal small">
+    <div class="modal-hdr">
+      <h2>Find member</h2>
+      <button class="modal-x" id="fm-close" type="button">✕</button>
+    </div>
+    <input type="text" id="fm-search" placeholder="Search by name…" autocomplete="off"
+           style="display:block;width:100%;margin-bottom:.6rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+    <div id="fm-list" style="max-height:300px;overflow-y:auto;border:1px solid #e3e6ea;border-radius:7px;"></div>
+    <div class="modal-actions" style="margin-top:.7rem;">
+      <button class="cbtn" id="fm-cancel" type="button">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <!-- Watch slot (shown to non-staff clicking another member's booking) -->
 <div id="watch-modal" class="modal-back" hidden>
