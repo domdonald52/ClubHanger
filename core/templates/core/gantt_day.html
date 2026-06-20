@@ -3,6 +3,7 @@
 {% block title %}{{ selected_date|date:"D j M Y" }} · {{ club.name }}{% endblock %}
 
 {% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
 <style>
   html,body{overflow-x:hidden}
   .cal-wrap{font-feature-settings:"tnum";max-width:none;color:#1f2933}
@@ -68,7 +69,7 @@
   .pill.pending{background:color-mix(in srgb,var(--primary) 18%,#fff);border:1.5px dashed color-mix(in srgb,var(--primary) 50%,#fff);color:color-mix(in srgb,var(--primary) 80%,#000);}
   .pill.confirmed{background:color-mix(in srgb,var(--primary) 42%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);}
   .pill.departed{background:var(--primary);border:1px solid color-mix(in srgb,var(--primary) 80%,#000);color:#fff;}
-  .pill.completed{background:color-mix(in srgb,var(--primary) 52%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);cursor:pointer;}
+  .pill.completed{background:color-mix(in srgb,var(--primary) 60%,#fff);border:1px solid color-mix(in srgb,var(--primary) 70%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);cursor:pointer;}
   .pill.completed.paid{background:#f1efe8;border:1px solid #b4b2a9;color:#444441;cursor:pointer;}
   /* Dual-flight pairing — teal top-edge accent */
   .pill.dual{border-top:3px solid var(--dual-accent);}
@@ -81,12 +82,15 @@
   .pill-body{flex:1;min-width:0;padding:.2rem .35rem;display:flex;flex-direction:column;justify-content:center;overflow:hidden;}
   .pill .nm{font-size:.72rem;font-weight:650;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .pill .sub{font-size:.62rem;opacity:.9;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  /* Airborne wedge — darker fin on right edge */
-  .pill-wedge{flex:0 0 28px;width:28px;align-self:stretch;background:color-mix(in srgb,var(--primary) 70%,#000);clip-path:polygon(35% 0,100% 0,100% 100%,35% 100%);display:flex;align-items:center;justify-content:flex-end;padding-right:4px;}
-  .pill-wedge svg{width:12px;height:12px;flex-shrink:0;}
+  /* Wedge fins (right edge) — dep = airborne, ret = returned */
+  .pill-wedge{flex:0 0 28px;width:28px;align-self:stretch;clip-path:polygon(35% 0,100% 0,100% 100%,35% 100%);display:flex;align-items:center;justify-content:flex-end;padding-right:5px;}
+  .pill-wedge.dep{background:color-mix(in srgb,var(--primary) 70%,#000);}
+  .pill-wedge.dep i{color:#fff;font-size:13px;}
+  .pill-wedge.ret{background:color-mix(in srgb,var(--primary) 80%,#fff);}
+  .pill-wedge.ret i{color:color-mix(in srgb,var(--primary) 82%,#000);font-size:13px;}
   /* Watch marker */
-  .pill-watch{position:absolute;top:3px;right:6px;font-size:.6rem;font-weight:700;display:flex;align-items:center;gap:1px;pointer-events:none;line-height:1;opacity:.7;}
-  .pill-watch svg{width:9px;height:9px;}
+  .pill-watch{position:absolute;top:3px;right:6px;font-size:.6rem;font-weight:700;display:flex;align-items:center;gap:2px;pointer-events:none;line-height:1;opacity:.75;}
+  .pill-watch i{font-size:9px;}
   /* Misc */
   .pill.drag{opacity:.9;box-shadow:0 8px 24px rgba(16,24,40,.35);z-index:100;cursor:grabbing}
   @keyframes pill-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}

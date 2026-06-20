@@ -36,7 +36,7 @@
     <div class="nm">{% if p.conflict %}⚠ {% endif %}{% if p.status == 'departed' %}✈ {% elif p.status == 'completed' %}{% if p.paid %}✓ {% else %}⏱ {% endif %}{% endif %}{% if p.client_name %}{{ p.client_name }}{% else %}{{ p.member_name }}{% endif %}</div>
     <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · airborne{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
   </div>
-  {% if p.status == 'departed' %}<div class="pill-wedge"><svg viewBox="0 0 24 24" fill="#fff" stroke="none" aria-hidden="true"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5 18 1 16 1 14.5 2.5L11 6 2.8 4.2 2 5l6.3 5.7L7.9 12 5 13.5 5 15l3 1 1 3 1.5 0 1.5-2.9 5.7 6.3z"/></svg></div>{% endif %}
-  {% if p.watcher_count %}<div class="pill-watch">{{ p.watcher_count }}</div>{% endif %}
+  {% if p.status == 'departed' %}<div class="pill-wedge dep"><i class="ti ti-plane-departure" aria-hidden="true"></i></div>{% elif p.status == 'completed' and not p.paid %}<div class="pill-wedge ret"><i class="ti ti-plane-arrival" aria-hidden="true"></i></div>{% endif %}
+  {% if p.watcher_count %}<div class="pill-watch"><i class="ti ti-eye" aria-hidden="true"></i>{{ p.watcher_count }}</div>{% endif %}
   <div class="rs" data-resize></div>
 </div>
