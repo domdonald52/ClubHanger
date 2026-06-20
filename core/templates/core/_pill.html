@@ -1,5 +1,5 @@
 {% load static %}
-<div class="pill {{ p.status }}{% if p.paid %} paid{% endif %}{% if p.is_dual %} dual{% endif %}{% if p.conflict %} conflict{% endif %}{% if p.override %} override{% endif %}"
+<div class="pill {{ p.status }}{% if p.paid %} paid{% endif %}{% if p.conflict %} conflict{% endif %}{% if p.override %} override{% endif %}"
      data-id="{{ p.id }}"
      data-decl-pending="{{ p.decl_pending|yesno:'true,false' }}"
      data-decl-url="{{ p.decl_url }}"

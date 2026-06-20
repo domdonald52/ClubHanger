@@ -66,14 +66,11 @@
   /* Lifecycle ramp — single primary hue at varying intensities */
   .pill{position:absolute;top:4px;height:36px;border-radius:5px;overflow:hidden;cursor:grab;user-select:none;box-sizing:border-box;z-index:5;display:flex;align-items:stretch;box-shadow:0 1px 2px rgba(16,24,40,.12);}
   .pill:active{cursor:grabbing}
-  .pill.pending{background:color-mix(in srgb,var(--primary) 18%,#fff);border:1.5px dashed color-mix(in srgb,var(--primary) 50%,#fff);color:color-mix(in srgb,var(--primary) 80%,#000);}
-  .pill.confirmed{background:color-mix(in srgb,var(--primary) 42%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);}
-  .pill.departed{background:var(--primary);border:1px solid color-mix(in srgb,var(--primary) 80%,#000);color:#fff;}
-  .pill.completed{background:color-mix(in srgb,var(--primary) 60%,#fff);border:1px solid color-mix(in srgb,var(--primary) 70%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);cursor:pointer;}
+  .pill.pending{background:color-mix(in srgb,var(--primary) 18%,#fff);border:1.5px dashed color-mix(in srgb,var(--primary) 55%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);}
+  .pill.confirmed{background:color-mix(in srgb,var(--primary) 42%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);}
+  .pill.departed{background:var(--primary);border:1px solid color-mix(in srgb,var(--primary) 70%,#000);color:#fff;}
+  .pill.completed{background:color-mix(in srgb,var(--primary) 60%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);cursor:pointer;}
   .pill.completed.paid{background:#f1efe8;border:1px solid #b4b2a9;color:#444441;cursor:pointer;}
-  /* Dual-flight pairing — teal top-edge accent */
-  .pill.dual{border-top:3px solid var(--dual-accent);}
-  .pill.dual-hover{outline:2px solid var(--dual-accent);outline-offset:-1px;}
   /* Exception left-spine */
   .pill-spine{flex:0 0 5px;width:5px;align-self:stretch;}
   .pill-spine.conflict{background:#e24b4a;}
@@ -83,11 +80,11 @@
   .pill .nm{font-size:.72rem;font-weight:650;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .pill .sub{font-size:.62rem;opacity:.9;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* Wedge fins (right edge) — dep = airborne, ret = returned */
-  .pill-wedge{flex:0 0 28px;width:28px;align-self:stretch;clip-path:polygon(35% 0,100% 0,100% 100%,35% 100%);display:flex;align-items:center;justify-content:flex-end;padding-right:5px;}
-  .pill-wedge.dep{background:color-mix(in srgb,var(--primary) 70%,#000);}
-  .pill-wedge.dep i{color:#fff;font-size:13px;}
-  .pill-wedge.ret{background:color-mix(in srgb,var(--primary) 80%,#fff);}
-  .pill-wedge.ret i{color:color-mix(in srgb,var(--primary) 82%,#000);font-size:13px;}
+  .pill-wedge{flex:0 0 34px;width:34px;align-self:stretch;clip-path:polygon(28% 0,100% 0,100% 100%,28% 100%);display:flex;align-items:center;justify-content:flex-end;padding-right:6px;}
+  .pill-wedge.dep{background:color-mix(in srgb,var(--primary) 30%,#000);}
+  .pill-wedge.dep i{color:#fff;font-size:14px;}
+  .pill-wedge.ret{background:color-mix(in srgb,var(--primary) 30%,#000);}
+  .pill-wedge.ret i{color:#fff;font-size:14px;}
   /* Watch marker */
   .pill-watch{position:absolute;top:3px;right:6px;font-size:.6rem;font-weight:700;display:flex;align-items:center;gap:2px;pointer-events:none;line-height:1;opacity:.75;}
   .pill-watch i{font-size:9px;}
@@ -656,15 +653,6 @@
     });
   })();
 
-  // Dual-flight hover: highlight all pills sharing the same booking on mouseenter
-  document.querySelectorAll('.pill.dual').forEach(function(pill) {
-    pill.addEventListener('mouseenter', function() {
-      document.querySelectorAll('.pill[data-id="' + pill.dataset.id + '"]').forEach(function(p) { p.classList.add('dual-hover'); });
-    });
-    pill.addEventListener('mouseleave', function() {
-      document.querySelectorAll('.pill[data-id="' + pill.dataset.id + '"]').forEach(function(p) { p.classList.remove('dual-hover'); });
-    });
-  });
 
   {% if now_px is not None %}
   const overlay = document.getElementById('now-overlay');

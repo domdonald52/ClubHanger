@@ -249,7 +249,6 @@
       <input type="hidden" name="theme_banner"   id="inp-banner"   value="{{ config.theme_banner }}">
       <input type="hidden" name="theme_primary"  id="inp-primary"  value="{{ config.theme_primary }}">
       <input type="hidden" name="theme_accent"   id="inp-accent"   value="{{ config.theme_accent }}">
-      <input type="hidden" name="dual_accent" id="inp-dual-accent" value="{{ config.dual_accent }}">
       <input type="hidden" name="theme_weekend"        value="{{ config.theme_weekend }}">
       <input type="hidden" name="theme_atypical"       value="{{ config.theme_atypical }}">
 
@@ -276,15 +275,6 @@
             <input type="color" id="pick-primary" value="{{ config.theme_primary }}"
                    style="width:44px;height:36px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
             <input type="text" id="hex-primary" value="{{ config.theme_primary }}"
-                   style="width:90px;padding:.38rem;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:.85rem;"
-                   maxlength="7" placeholder="#rrggbb">
-          </div>
-        </label>
-        <label class="flabel">Dual-flight accent
-          <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
-            <input type="color" id="pick-dual-accent" value="{{ config.dual_accent }}"
-                   style="width:44px;height:36px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
-            <input type="text" id="hex-dual-accent" value="{{ config.dual_accent }}"
                    style="width:90px;padding:.38rem;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:.85rem;"
                    maxlength="7" placeholder="#rrggbb">
           </div>
@@ -1824,25 +1814,6 @@
   }
   syncPicker('pick-banner',  'hex-banner',  'inp-banner',  'pv-banner');
   syncPicker('pick-primary', 'hex-primary', 'inp-primary', 'pv-primary');
-  // Dual-accent picker — also updates CSS var for live preview on Gantt
-  (function() {
-    const pick = document.getElementById('pick-dual-accent');
-    const hex  = document.getElementById('hex-dual-accent');
-    const inp  = document.getElementById('inp-dual-accent');
-    if (!pick) return;
-    function set(val) {
-      pick.value = val; hex.value = val; inp.value = val;
-      document.documentElement.style.setProperty('--dual-accent', val);
-    }
-    pick.addEventListener('input', () => set(pick.value));
-    hex.addEventListener('input', () => {
-      const v = hex.value.trim();
-      const h = v.startsWith('#') ? v : '#'+v;
-      if (/^#[0-9a-fA-F]{6}$/.test(h)) { set(h); hex.style.borderColor=''; }
-      else hex.style.borderColor='#e03131';
-    });
-    hex.addEventListener('blur', () => { hex.style.borderColor=''; if (!/^#[0-9a-fA-F]{6}$/.test(hex.value)) hex.value=pick.value; });
-  })();
 })();
 
 // ── Settings modal helpers ────────────────────────────────────────────────
