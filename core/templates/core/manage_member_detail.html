@@ -752,6 +752,7 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
 </script>
 
 <!-- ── HISTORY ── -->
+<div style="max-width:900px;margin:0 auto;padding:0 1rem;">
 <section id="tab-history" class="stab-panel detail-section">
   <h2 class="sh2">Membership history</h2>
   {% if membership_history %}
@@ -785,4 +786,5 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
   <div class="notice warn" style="margin-top:1rem;">Membership ceased {{ member.resigned_at|date:"j M Y" }} — retained for 7-year ISA 2022 register.</div>
   {% endif %}
 </section>
+</div>
 {% endblock %}

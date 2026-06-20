@@ -1504,7 +1504,10 @@
   }
 
   if (cfg.canManage) {
-    document.querySelectorAll(".pill").forEach((pill) => makeInteractive(pill));
+    // Completed pills are not draggable — skip makeInteractive so click fires naturally
+    document.querySelectorAll(".pill").forEach((pill) => {
+      if (pill.dataset.status !== "completed") makeInteractive(pill);
+    });
   }
 
   function makeInteractive(pill) {
