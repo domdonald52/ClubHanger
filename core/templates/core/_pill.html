@@ -12,6 +12,9 @@
      data-instructor-id="{{ p.instructor_id }}"
      data-member="{{ p.member_name }}"
      data-member-user-id="{{ p.member_user_id }}"
+     data-client-id="{{ p.client_id }}"
+     data-client-name="{{ p.client_name }}"
+     data-billed-to="{{ p.billed_to }}"
      data-status="{{ p.status }}"
      data-desc="{{ p.description }}"
      data-flight-type-id="{{ p.flight_type_id }}"
@@ -26,9 +29,9 @@
      data-total-time-method="{{ p.total_time_method }}"
      data-maint-time-source="{{ p.maint_time_source }}"
      data-paid="{{ p.paid|yesno:'true,false' }}"
-     title="{{ p.member_name }} · {{ p.start_label }}–{{ p.end_label }}{% if p.member_not_current %} · ⚑ Member {{ p.member_standing }}{% endif %}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.override %} · booked over block-out{% endif %}{% if p.decl_pending %} · ⚑ Declaration not submitted{% endif %}"
+     title="{% if p.client_name %}{{ p.client_name }} (via {{ p.member_name }}){% else %}{{ p.member_name }}{% endif %} · {{ p.start_label }}–{{ p.end_label }}{% if p.member_not_current %} · ⚑ Member {{ p.member_standing }}{% endif %}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.override %} · booked over block-out{% endif %}{% if p.decl_pending %} · ⚑ Declaration not submitted{% endif %}"
      style="left:{{ p.left }}px;width:{{ p.width }}px;">
-  <div class="nm">{% if p.conflict %}⚠ {% endif %}{% if p.status == 'departed' %}✈ {% elif p.status == 'completed' %}{% if p.paid %}✓ {% else %}⏱ {% endif %}{% endif %}{{ p.member_name }}</div>
+  <div class="nm">{% if p.conflict %}⚠ {% endif %}{% if p.status == 'departed' %}✈ {% elif p.status == 'completed' %}{% if p.paid %}✓ {% else %}⏱ {% endif %}{% endif %}{% if p.client_name %}{{ p.client_name }}{% else %}{{ p.member_name }}{% endif %}</div>
   <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · departed{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
   {% if p.member_not_current %}<span class="pill-dot" title="Member {{ p.member_standing }}"></span>{% endif %}
   {% if p.decl_pending %}<span class="pill-dot pill-dot-decl" title="Declaration required — not yet submitted"></span>{% endif %}

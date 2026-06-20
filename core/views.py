@@ -97,7 +97,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         club=club,
         scheduled_start__gte=day_start,
         scheduled_start__lt=day_end
-    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'flight_completion')
+    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'flight_completion', 'client')
     
     # Pixel geometry for absolute-positioned pills
     px_per_min = float(request.GET.get('zoom') or 2)
@@ -205,6 +205,9 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'records_airswitch':  b.aircraft.records_airswitch  if b.aircraft else False,
             'total_time_method':  b.aircraft.total_time_method  if b.aircraft else '',
             'maint_time_source':  b.aircraft.maint_time_source  if b.aircraft else '',
+            'client_id':   b.client_id or '',
+            'client_name': b.client.name if b.client else '',
+            'billed_to':   b.billed_to or '',
             'paid': (getattr(getattr(b, 'flight_completion', None), 'paid_at', None) is not None),
             'decl_pending': (
                 getattr(b.flight_type, 'requires_declaration', False) and
@@ -453,6 +456,27 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
 
     zoom_param = request.GET.get('zoom', '')
     can_manage = club_member.is_instructor or club_member.is_admin
+
+    # Contacts for trial-flight / non-member client booking (staff only)
+    if can_manage:
+        from .models import Contact as _Contact
+        contacts_data = [
+            {
+                'id': c.id,
+                'name': c.name,
+                'type': c.contact_type.name if c.contact_type_id else '',
+            }
+            for c in _Contact.objects.filter(club=club, converted_to_member__isnull=True)
+            .select_related('contact_type')
+            .order_by('name')
+        ]
+        contact_types_data = [
+            {'id': ct.id, 'name': ct.name}
+            for ct in ContactType.objects.filter(club=club, is_active=True).order_by('name')
+        ]
+    else:
+        contacts_data = []
+        contact_types_data = []
     club_phone = getattr(config, 'billing_phone', '') or ''
 
     # Instructor credential issues for the selected date (shown to staff only)
@@ -537,6 +561,8 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         'instructors_json': instructors_data,
         'flight_types_json': flight_types_data,
         'blockout_types_json': blockout_types_data,
+        'contacts_json': contacts_data,
+        'contact_types_json': contact_types_data,
         'watched_ids': list(
             SlotWatch.objects.filter(club_member=club_member)
             .values_list('booking_id', flat=True)
@@ -975,6 +1001,20 @@ def create_booking(request):
         if not result.ok:
             status_code = 409 if result.data.get('blockout') else 400
             return JsonResponse({'error': result.error, **result.data}, status=status_code)
+
+        # Attach non-member client (trial flight, Young Eagles, etc.) — staff only
+        if actor.is_admin or actor.is_instructor:
+            client_id = request.POST.get('client_id', '').strip()
+            billed_to = request.POST.get('billed_to', '').strip()
+            if client_id:
+                from .models import Contact as _Contact
+                client_obj = _Contact.objects.filter(id=client_id, club=club).first()
+                if client_obj:
+                    created_booking = Booking.objects.get(id=result.data['booking_id'])
+                    created_booking.client = client_obj
+                    created_booking.billed_to = billed_to
+                    created_booking.save(update_fields=['client', 'billed_to'])
+
         return JsonResponse({'success': True, 'booking_id': result.data['booking_id']})
 
     except Aircraft.DoesNotExist:
@@ -984,6 +1024,35 @@ def create_booking(request):
     except Exception as e:
         print(f"Error creating booking: {e}")
         return JsonResponse({'error': f'Server error: {str(e)}'}, status=500)
+
+
+@login_required
+@require_POST
+@transaction.atomic
+def quick_create_contact(request):
+    """AJAX: create a Contact from the calendar booking modal (staff/instructor only)."""
+    actor = ClubMember.objects.filter(user=request.user).first()
+    if not actor or not (actor.is_admin or actor.is_instructor):
+        return JsonResponse({'error': 'Not authorized'}, status=403)
+    club = actor.club
+    name = request.POST.get('name', '').strip()
+    if not name:
+        return JsonResponse({'error': 'Name is required'}, status=400)
+    from .models import Contact as _Contact
+    email    = request.POST.get('email', '').strip()
+    phone    = request.POST.get('phone', '').strip()
+    ctype_id = request.POST.get('contact_type', '').strip()
+    contact_type = ContactType.objects.filter(id=ctype_id, club=club).first() if ctype_id else None
+    contact = _Contact.objects.create(
+        club=club, name=name, email=email, phone=phone,
+        contact_type=contact_type, created_by=request.user,
+    )
+    return JsonResponse({
+        'success': True,
+        'id': contact.id,
+        'name': contact.name,
+        'type': contact.contact_type.name if contact.contact_type else '',
+    })
 
 
 @login_required
@@ -1047,6 +1116,21 @@ def edit_booking(request, booking_id):
         if not result.ok:
             status_code = 409 if result.data.get('blockout') else 400
             return JsonResponse({'error': result.error, **result.data}, status=status_code)
+
+        # Attach / clear non-member client — staff only
+        if actor.is_admin or actor.is_instructor:
+            client_id = request.POST.get('client_id', '').strip()
+            billed_to = request.POST.get('billed_to', '').strip()
+            from .models import Contact as _Contact
+            if client_id:
+                client_obj = _Contact.objects.filter(id=client_id, club=club).first()
+                booking.client = client_obj
+                booking.billed_to = billed_to if client_obj else ''
+            else:
+                booking.client = None
+                booking.billed_to = ''
+            booking.save(update_fields=['client', 'billed_to'])
+
         return JsonResponse({'success': True})
 
     except Aircraft.DoesNotExist:

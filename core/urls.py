@@ -9,6 +9,7 @@ urlpatterns = [
     path('calendar/<slug:club_slug>/', views.gantt_day, name='gantt_day'),
     path('calendar/<slug:club_slug>/<int:year>/<int:month>/<int:day>/', views.gantt_day, name='gantt_day_date'),
     path('api/booking/create/', views.create_booking, name='create_booking'),
+    path('api/contact/quick-create/', views.quick_create_contact, name='quick_create_contact'),
     path('api/booking/<int:booking_id>/edit/', views.edit_booking, name='edit_booking'),
     path('api/booking/<int:booking_id>/reschedule/', views.reschedule_booking, name='reschedule_booking'),
     path('api/booking/<int:booking_id>/reschedule-options/', views.reschedule_options, name='reschedule_options'),

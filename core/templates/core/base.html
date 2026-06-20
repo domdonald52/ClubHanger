@@ -835,15 +835,58 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 (function(){
   const overlay = document.getElementById('page-overlay');
   const body    = document.getElementById('page-overlay-body');
+  const modal   = document.getElementById('page-overlay-modal');
   if (!overlay || !body) return;
-  let didChange = false;
 
-  function openOverlay(url) {
+  let didChange = false;
+  let _stack = [];        // previously visited {url, wide} entries in the overlay
+  let _currentUrl = null; // URL currently shown in overlay
+
+  function _setBackBtn(show) {
+    const btn = body.querySelector('[data-overlay-back]');
+    if (btn) btn.style.display = show ? '' : 'none';
+  }
+
+  function openOverlay(url, wide) {
+    _stack = [];
+    _currentUrl = url;
     didChange = false;
     overlay.hidden = false;
     document.body.style.overflow = 'hidden';
+    if (modal) modal.classList.toggle('wide', !!wide);
     body.innerHTML = '<p style="color:#8a93a0;padding:2.5rem;text-align:center;">Loading…</p>';
     loadOverlay(url);
+  }
+
+  // Navigate deeper within the overlay; wide=true widens the modal for this page
+  function _pushAndLoad(url, wide) {
+    if (_currentUrl) _stack.push({url: _currentUrl, wide: modal ? modal.classList.contains('wide') : false});
+    _currentUrl = url;
+    if (modal && wide !== undefined) modal.classList.toggle('wide', !!wide);
+    body.innerHTML = '<p style="color:#8a93a0;padding:2.5rem;text-align:center;">Loading…</p>';
+    loadOverlay(url);
+  }
+
+  // Pop one step back, or close if at root of this click-path
+  function popOrClose() {
+    if (_stack.length === 0) {
+      _doCloseOverlay();
+    } else {
+      const prev = _stack.pop();
+      _currentUrl = prev.url;
+      if (modal) modal.classList.toggle('wide', prev.wide);
+      body.innerHTML = '<p style="color:#8a93a0;padding:2.5rem;text-align:center;">Loading…</p>';
+      loadOverlay(_currentUrl);
+    }
+  }
+
+  // Force-close entire overlay regardless of stack depth (Escape, backdrop)
+  function _doCloseOverlay() {
+    _stack = [];
+    _currentUrl = null;
+    overlay.hidden = true;
+    document.body.style.overflow = '';
+    if (didChange) location.reload();
   }
 
   function runScripts(container) {
@@ -853,14 +896,12 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
         s.src = old.getAttribute('src');
         document.head.appendChild(s);
       } else if (old.textContent.trim()) {
-        // eslint-disable-next-line no-new-func
         try { new Function(old.textContent)(); } catch(e) {}
       }
     });
   }
 
   async function loadOverlay(url) {
-    // Split hash from URL before fetching (fetch ignores fragments)
     const [urlWithoutHash, hash] = url.split('#');
     const sep = urlWithoutHash.includes('?') ? '&' : '?';
     try {
@@ -871,20 +912,49 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
       }
       const html = await resp.text();
       body.innerHTML = html;
-      // Inject hash into location so tab JS can read it
       if (hash) history.replaceState({}, '', location.pathname + location.search + '#' + hash);
       runScripts(body);
       attachHandlers(urlWithoutHash);
+      _setBackBtn(_stack.length > 0);
       if (window._setupModalForms) window._setupModalForms(body);
     } catch(e) {
       body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load page.</p>';
     }
   }
 
+  function _isInternalUrl(href) {
+    if (!href) return false;
+    if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:') || href.startsWith('javascript:')) return false;
+    try {
+      const u = new URL(href, location.href);
+      if (u.origin !== location.origin) return false;
+      if (u.pathname.startsWith('/app/')) return false;
+      if (u.pathname.startsWith('/accounts/')) return false;
+      if (u.pathname === '/logout/' || u.pathname === '/logout') return false;
+      return true;
+    } catch { return false; }
+  }
+
   function attachHandlers(baseUrl) {
-    body.querySelectorAll('[data-close-overlay]').forEach(el => {
-      el.addEventListener('click', closeOverlay);
+    // ✕ Close and ← Back both pop the stack (or close if at root)
+    body.querySelectorAll('[data-close-overlay], [data-overlay-back]').forEach(el => {
+      el.addEventListener('click', e => { e.preventDefault(); popOrClose(); });
     });
+
+    // Intercept all same-site link clicks to stay in the overlay
+    body.querySelectorAll('a[href]').forEach(a => {
+      if (a.hasAttribute('data-close-overlay') || a.hasAttribute('data-overlay-back')) return;
+      if (a.target === '_blank') return;
+      if (!_isInternalUrl(a.getAttribute('href'))) return;
+      const wide = a.hasAttribute('data-overlay-wide') || !!a.closest('[data-overlay-wide]');
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        e.stopPropagation(); // prevent document-level [data-overlay] handler double-firing
+        _pushAndLoad(a.href, wide);
+      });
+    });
+
+    // Form submissions: stay in overlay and navigate to the redirect target
     body.querySelectorAll('form').forEach(f => {
       f.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -903,13 +973,16 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
           }
           const finalUrl = new URL(resp.url, location.href);
           const wasSaved = finalUrl.searchParams.has('saved');
-          if (finalUrl.searchParams.has('inline')) {
-            await loadOverlay(baseUrl);
-            if (wasSaved && window.showSavedToast) window.showSavedToast();
+          if (finalUrl.origin === location.origin &&
+              !finalUrl.pathname.startsWith('/app/') &&
+              !finalUrl.pathname.startsWith('/accounts/') &&
+              finalUrl.pathname !== '/logout/' && finalUrl.pathname !== '/logout') {
+            _currentUrl = finalUrl.href;
+            await loadOverlay(_currentUrl);
+            // Toast fired by the page's ?saved=1 script via runScripts
           } else {
-            // Server redirected out of inline context — close overlay and toast
             if (wasSaved && window.toast) window.toast('Saved', 'ok');
-            closeOverlay();
+            _doCloseOverlay();
           }
         } catch(err) {
           body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Network error — check your connection and try again.</p>';
@@ -918,26 +991,33 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
     });
   }
 
-  function closeOverlay() {
-    overlay.hidden = true;
-    document.body.style.overflow = '';
-    if (didChange) location.reload();
-  }
+  // Escape and backdrop click: force-close entire overlay (clear stack)
+  overlay.addEventListener('click', e => { if (e.target === overlay) _doCloseOverlay(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) _doCloseOverlay(); });
 
-  overlay.addEventListener('click', e => { if (e.target === overlay) closeOverlay(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) closeOverlay(); });
-
+  // Document-level [data-overlay] handler — for links outside the overlay body.
+  // Links inside the overlay body are handled by element-level listeners in attachHandlers.
+  // This acts as a fallback for dynamically added [data-overlay] links inside the overlay.
   document.addEventListener('click', e => {
     const link = e.target.closest('[data-overlay]');
     if (!link || !link.href) return;
+    // Dynamic [data-overlay] inside overlay body (not caught by attachHandlers)
+    if (!overlay.hidden && body.contains(link)) {
+      e.preventDefault();
+      const w = link.hasAttribute('data-overlay-wide') || !!link.closest('[data-overlay-wide]');
+      _pushAndLoad(link.href, w);
+      return;
+    }
+    if (body.contains(e.target)) return; // inside overlay but not [data-overlay] — ignore
     e.preventDefault();
     const wide = link.hasAttribute('data-overlay-wide') || !!link.closest('[data-overlay-wide]');
-    document.getElementById('page-overlay-modal').classList.toggle('wide', wide);
-    openOverlay(link.href);
+    if (modal) modal.classList.toggle('wide', wide);
+    openOverlay(link.href, wide);
   });
 
   window.openPageOverlay = openOverlay;
-  window.closePageOverlay = closeOverlay;
+  window.closePageOverlay = _doCloseOverlay;
+  window.overlayGoBack = popOrClose;
 })();
 </script>
 <script>

@@ -25,6 +25,8 @@
   const AIRCRAFT = JSON.parse(document.getElementById("aircraft-data").textContent);
   const INSTRUCTORS = JSON.parse(document.getElementById("instructors-data").textContent);
   const FLIGHT_TYPES = JSON.parse(document.getElementById("flight-types-data").textContent);
+  const CONTACTS = JSON.parse((document.getElementById("contacts-data") || {textContent:"[]"}).textContent);
+  const CONTACT_TYPES = JSON.parse((document.getElementById("contact-types-data") || {textContent:"[]"}).textContent);
 
   const PX = cfg.pxPerMin;
   const SLOT = cfg.slotMin;
@@ -107,6 +109,10 @@
   const fStart = document.getElementById("m-start");
   const fDuration = document.getElementById("m-duration");
   const fDesc = document.getElementById("m-desc");
+  const fClient = document.getElementById("m-client");
+  const fBilledTo = document.getElementById("m-billed-to");
+  const fBilledToLabel = document.getElementById("m-billed-to-label");
+  const fClientLabel = document.getElementById("m-client-label");
   const btnDelete = document.getElementById("m-delete");
   const btnConfirm = document.getElementById("m-confirm");
   const btnDepart = document.getElementById("m-depart");
@@ -213,6 +219,98 @@
     if (memberLabel) memberLabel.hidden = true;
   }
 
+  // Populate contacts dropdown (staff only — fClient is null for non-staff)
+  if (fClient && CONTACTS.length) {
+    CONTACTS.forEach((c) => {
+      const o = document.createElement("option");
+      o.value = c.id;
+      o.textContent = c.name + (c.type ? ` (${c.type})` : "");
+      fClient.appendChild(o);
+    });
+  }
+  const memberLbl = document.getElementById("m-member-lbl");
+  function updateClientState() {
+    if (!fClient) return;
+    const hasClient = !!fClient.value;
+    if (fBilledToLabel) fBilledToLabel.style.display = hasClient ? "" : "none";
+    if (memberLbl) memberLbl.textContent = hasClient ? "Pilot / instructor" : "Member";
+    if (hasClient && !fMember.value) {
+      fMember.value = cfg.currentUserId;
+      updateMemberNotice();
+    }
+  }
+  if (fClient) fClient.addEventListener("change", updateClientState);
+
+  // ---- Quick-add contact mini-modal ------------------------------------
+  const quickContactModal = document.getElementById("quick-contact-modal");
+  if (quickContactModal) {
+    const qcName  = document.getElementById("qc-name");
+    const qcType  = document.getElementById("qc-type");
+    const qcEmail = document.getElementById("qc-email");
+    const qcPhone = document.getElementById("qc-phone");
+    const qcError = document.getElementById("qc-error");
+
+    // Populate contact type dropdown once
+    CONTACT_TYPES.forEach((ct) => {
+      const o = document.createElement("option");
+      o.value = ct.id; o.textContent = ct.name;
+      qcType.appendChild(o);
+    });
+
+    function openQuickContact() {
+      qcName.value = ""; qcType.value = ""; qcEmail.value = ""; qcPhone.value = "";
+      qcError.hidden = true;
+      quickContactModal.hidden = false;
+      qcName.focus();
+    }
+    function closeQuickContact() { quickContactModal.hidden = true; }
+
+    const btnClientNew = document.getElementById("m-client-new");
+    if (btnClientNew) btnClientNew.addEventListener("click", openQuickContact);
+    document.getElementById("qc-close").addEventListener("click", closeQuickContact);
+    document.getElementById("qc-cancel").addEventListener("click", closeQuickContact);
+    quickContactModal.addEventListener("click", (e) => { if (e.target === quickContactModal) closeQuickContact(); });
+
+    document.getElementById("qc-save").addEventListener("click", () => {
+      const name = qcName.value.trim();
+      if (!name) { qcError.textContent = "Name is required."; qcError.hidden = false; return; }
+      qcError.hidden = true;
+      post("/api/contact/quick-create/", {
+        name,
+        contact_type: qcType.value,
+        email: qcEmail.value.trim(),
+        phone: qcPhone.value.trim(),
+      }).then((res) => {
+        if (res.ok && res.data.success) {
+          const c = { id: res.data.id, name: res.data.name, type: res.data.type };
+          CONTACTS.push(c);
+          CONTACTS.sort((a, b) => a.name.localeCompare(b.name));
+          if (fClient) {
+            const o = document.createElement("option");
+            o.value = c.id;
+            o.textContent = c.name + (c.type ? ` (${c.type})` : "");
+            // Insert in alphabetical order after the blank option
+            let inserted = false;
+            for (const existing of Array.from(fClient.options)) {
+              if (existing.value && c.name.localeCompare(existing.textContent.split(" (")[0]) <= 0) {
+                fClient.insertBefore(o, existing);
+                inserted = true;
+                break;
+              }
+            }
+            if (!inserted) fClient.appendChild(o);
+            fClient.value = c.id;
+            updateClientState();
+          }
+          closeQuickContact();
+        } else {
+          qcError.textContent = res.data.error || "Could not create contact.";
+          qcError.hidden = false;
+        }
+      });
+    });
+  }
+
   function syncInstructorVisibility() {
     const ft = FLIGHT_TYPES.find((x) => String(x.id) === fFlightType.value);
     if (ft && ft.is_solo) {
@@ -250,6 +348,9 @@
     fStart.value = fmtLocalInput(start);
     fDuration.value = cfg.defaultDuration;
     fDesc.value = "";
+    if (fClient) fClient.value = "";
+    if (fBilledTo) fBilledTo.value = "";
+    if (fBilledToLabel) fBilledToLabel.style.display = "none";
     const defFt = defaultFlightTypeFor(isSolo);
     if (defFt) fFlightType.value = defFt.id;
     syncInstructorVisibility();
@@ -260,6 +361,7 @@
       fMember.value = MEMBERS[0].id;
     }
     updateMemberNotice();
+    updateClientState();
     conflictNotice.hidden = true;
     conflictNotice.innerHTML = "";
     if (instrConflictNotice) instrConflictNotice.hidden = true;
@@ -520,6 +622,9 @@
     const m = MEMBERS.find((x) => x.name === pill.dataset.member);
     if (m) fMember.value = m.id;
     updateMemberNotice();
+    if (fClient) fClient.value = pill.dataset.clientId || "";
+    if (fBilledTo) fBilledTo.value = pill.dataset.billedTo || "";
+    updateClientState();
 
     const noticeHtml = buildConflictNotice(pill);
     if (noticeHtml) {
@@ -547,6 +652,10 @@
     fMember.disabled = false; fMember.style.opacity = "";
     fInstructor.disabled = false;
     if (fInstructorLabel) fInstructorLabel.style.opacity = "";
+    if (fClient) fClient.value = "";
+    if (fBilledTo) fBilledTo.value = "";
+    if (fBilledToLabel) fBilledToLabel.style.display = "none";
+    updateClientState();
     btnConfirm.hidden = true;
     btnDepart.hidden = true;
     if (btnDeclLink) btnDeclLink.hidden = true;
@@ -741,6 +850,8 @@
       start_time: startDate.toISOString(),
       duration: fDuration.value,
       description: fDesc.value,
+      client_id: fClient ? (fClient.value || "") : "",
+      billed_to: fBilledTo ? (fBilledTo.value || "") : "",
     };
     const url = id ? `/api/booking/${id}/edit/` : cfgCreateUrl();
     const doSave = () => {
@@ -1347,6 +1458,9 @@
         pill.classList.add("shake");
         pill.addEventListener("animationend", () => pill.classList.remove("shake"), { once: true });
         return;
+      }
+      if (mode === "move" && pill.dataset.status === "completed") {
+        return; // Let the click handler open the detail overlay — don't capture pointer
       }
       const rect = pill.getBoundingClientRect();
       cursorOffsetX = e.clientX - rect.left; // capture where in the pill was clicked

@@ -68,8 +68,8 @@
   .pill.confirmed{background:var(--confirmed)}
   .pill.pending{background:var(--pending)}
   .pill.departed{background:var(--departed)}
-  .pill.completed{background:var(--returned)}
-  .pill.completed.paid{background:var(--completed-paid)}
+  .pill.completed{background:var(--returned);cursor:pointer}
+  .pill.completed.paid{background:var(--completed-paid);cursor:pointer}
   .pill .nm{font-size:.72rem;font-weight:650;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pill .sub{font-size:.62rem;opacity:.9;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize}
@@ -336,7 +336,7 @@
     <!-- Standard edit fields (hidden for departed/completed) -->
     <div id="m-edit-fields">
       <input type="hidden" id="m-booking-id">
-      <label>Member
+      <label><span id="m-member-lbl">Member</span>
         <input type="text" id="m-member-search" placeholder="Search…"
                style="display:block;width:100%;box-sizing:border-box;margin-bottom:.3rem;padding:.35rem .55rem;border:1.5px solid #d5d9e0;border-radius:6px;font-size:.84rem;"
                autocomplete="off">
@@ -344,6 +344,22 @@
       </label>
       <div id="m-member-notice" style="display:none;font-size:.78rem;background:#fff8e1;border-left:3px solid #f59e0b;padding:.4rem .6rem;border-radius:4px;margin:-.3rem 0 .4rem;color:#92400e;"></div>
       <label>Flight type<select id="m-flight-type"></select></label>
+      {% if can_manage %}
+      <label id="m-client-label">Non-member client (trial flight, Young Eagles, etc.)
+        <div style="display:flex;gap:.4rem;margin-top:.25rem;">
+          <select id="m-client" style="flex:1;margin-top:0;"></select>
+          <button type="button" id="m-client-new" class="cbtn-sm" style="flex-shrink:0;white-space:nowrap;">+ New</button>
+        </div>
+      </label>
+      <label id="m-billed-to-label" style="display:none;">Billed to
+        <select id="m-billed-to">
+          <option value="">— select —</option>
+          <option value="contact">Client pays</option>
+          <option value="organisation">Organisation invoiced</option>
+          <option value="club">Club absorbs</option>
+        </select>
+      </label>
+      {% endif %}
       <div class="two">
         <label>Aircraft<select id="m-aircraft"></select></label>
         <label id="m-instructor-label">Instructor<select id="m-instructor"><option value="">— none —</option></select></label>
@@ -434,6 +450,42 @@
     </div>
   </div>
 </div>
+
+{% if can_manage %}
+<!-- Quick-add contact mini-modal (stacked above booking modal) -->
+<div id="quick-contact-modal" class="modal-back" hidden style="z-index:520;">
+  <div class="modal small">
+    <div class="modal-hdr">
+      <h2>New contact</h2>
+      <button class="modal-x" id="qc-close" type="button">✕</button>
+    </div>
+    <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Name <span style="color:#c0392b;">*</span>
+      <input type="text" id="qc-name" placeholder="Full name" autocomplete="off"
+             style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+    </label>
+    <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Type
+      <select id="qc-type" style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+        <option value="">— select —</option>
+      </select>
+    </label>
+    <div class="two">
+      <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Email
+        <input type="email" id="qc-email" placeholder="optional"
+               style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+      </label>
+      <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Phone
+        <input type="text" id="qc-phone" placeholder="optional"
+               style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+      </label>
+    </div>
+    <div id="qc-error" hidden style="margin-bottom:.6rem;padding:.4rem .65rem;background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;font-size:.82rem;color:#7f1d1d;"></div>
+    <div class="modal-actions">
+      <button class="cbtn" id="qc-cancel" type="button">Cancel</button>
+      <button class="cbtn primary" id="qc-save" type="button">Create contact</button>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Watch slot (shown to non-staff clicking another member's booking) -->
 <div id="watch-modal" class="modal-back" hidden>
@@ -528,6 +580,8 @@
 {{ instructors_json|json_script:"instructors-data" }}
 {{ flight_types_json|json_script:"flight-types-data" }}
 {{ blockout_types_json|json_script:"blockout-types-data" }}
+{{ contacts_json|json_script:"contacts-data" }}
+{{ contact_types_json|json_script:"contact-types-data" }}
 
 <!-- Pre-confirmation credential check modal -->
 <div id="cred-check-modal" class="modal-back" hidden style="z-index:600;">
