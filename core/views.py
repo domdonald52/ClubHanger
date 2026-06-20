@@ -5640,6 +5640,7 @@ def booking_declaration(request, club_slug, booking_id):
         defaults={'submitted_by': request.user, 'is_draft': True}
     )
     error = None
+    _is_app = request.path.startswith('/app/')
 
     _decl_url = f'{request.path}{"?inline=1" if request.GET.get("inline") == "1" else ""}'
     _saved_url = request.path + '?saved=1'
@@ -5695,6 +5696,8 @@ def booking_declaration(request, club_slug, booking_id):
                 decl.is_draft = False
                 decl.submitted_at = tz.now()
                 decl.save()
+                if _is_app:
+                    return redirect('core:app_bookings', club_slug=club_slug)
                 return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
         else:
             decl.save()
@@ -5714,6 +5717,12 @@ def booking_declaration(request, club_slug, booking_id):
     hours_to_departure = max(0, _delta / 3600)
 
     _is_inline = request.GET.get('inline') == '1'
+    if _is_app:
+        _base = 'core/app/base.html'
+    elif _is_inline:
+        _base = 'core/base_inline.html'
+    else:
+        _base = 'core/base.html'
     return render(request, 'core/booking_declaration.html', {
         'club': club, 'club_member': actor,
         'booking': booking, 'decl': decl, 'error': error,
@@ -5725,7 +5734,8 @@ def booking_declaration(request, club_slug, booking_id):
         'readonly': readonly,
         'hours_to_departure': hours_to_departure,
         'is_inline': _is_inline,
-        'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
+        'is_app': _is_app,
+        'base_template': _base,
         'inline_title': f'Bookings <span class="crumb-sep">›</span> {booking.aircraft.registration} {booking.scheduled_start.strftime("%j %b")} <span class="crumb-sep">›</span> <span class="crumb-cur">Declaration</span>',
     })
 

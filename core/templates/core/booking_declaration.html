@@ -5,7 +5,9 @@
 {% block content %}
 <div style="max-width:720px;margin:0 auto;padding:2rem;">
 
-  {% if not is_inline %}
+  {% if is_app %}
+  <a href="{% url 'core:app_bookings' club.slug %}" class="back-link" style="display:inline-flex;align-items:center;gap:.3rem;margin-bottom:1rem;font-size:.85rem;color:#8a93a0;text-decoration:none;">← My Bookings</a>
+  {% elif not is_inline %}
   <a href="{% url 'core:booking_detail' club.slug booking.id %}" class="back-link">← Back to booking</a>
   {% endif %}
 

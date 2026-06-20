@@ -2,7 +2,6 @@
 {% load tz humanize static %}
 {% block title %}{{ club.name }}{% endblock %}
 
-{% block app_bar_brand %}{% if theme.logo %}<img src="{{ theme.logo.url }}" alt="{{ club.name }}" style="flex-shrink:0;height:20px;width:auto;max-width:72px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.1rem;">{% endif %}{% endblock %}
 {% block app_bar %}
 <span class="app-bar-title">{{ club.name }}</span>
 {% endblock %}
@@ -18,10 +17,13 @@
 <!-- ── Hero banner ── -->
 <div style="margin:.5rem .75rem .1rem;border-radius:14px;overflow:hidden;height:165px;box-shadow:0 2px 8px rgba(0,0,0,.12);position:relative;">
   {% if theme.app_banner %}
-  <img src="{{ theme.app_banner.url }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+  <img src="{{ theme.app_banner.url }}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" fetchpriority="high" decoding="async">
   {% else %}
-  <img src="{% static 'core/img/C172.jpg' %}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;">
+  <img src="{% static 'core/img/C172.jpg' %}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" fetchpriority="high" decoding="async">
   {% endif %}
+  <!-- CH roundel — bottom left -->
+  <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="" style="position:absolute;bottom:.6rem;left:.65rem;width:30px;height:30px;opacity:.9;pointer-events:none;">
+  <!-- Report snag — bottom right -->
   <a href="{% url 'core:app_snag' club.slug %}" style="position:absolute;bottom:.65rem;right:.65rem;display:inline-flex;align-items:center;gap:.3rem;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);color:#fff;text-decoration:none;font-size:.78rem;font-weight:600;padding:.35rem .65rem;border-radius:20px;border:1px solid rgba(255,255,255,.25);">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     Report snag
