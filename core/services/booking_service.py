@@ -89,6 +89,20 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
     if booking.status != 'confirmed':
         return ServiceResult(ok=False, error='Booking is not confirmed')
 
+    # Subscription / standing gate — must be enforced here, not only at the view layer
+    from datetime import date as _date
+    _bm = booking.member
+    if _bm.standing in ('suspended', 'lapsed', 'resigned'):
+        return ServiceResult(
+            ok=False,
+            error=f'Member standing is {_bm.get_standing_display()} — departure blocked.',
+        )
+    if _bm.subscription_expires and _bm.subscription_expires < _date.today():
+        return ServiceResult(
+            ok=False,
+            error=f'Membership subscription expired {_bm.subscription_expires.strftime("%-d %b %Y")} — departure blocked.',
+        )
+
     from ..models import Booking as _Booking
     _active = _Booking.objects.filter(status='departed').exclude(id=booking.id)
 

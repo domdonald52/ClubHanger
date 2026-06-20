@@ -2300,6 +2300,10 @@ def manage_bookings(request, club_slug):
             r.append('Aircraft retired')
         if _instructor_off_roster(b):
             r.append('Instructor off roster')
+        _fc = getattr(b, 'flight_completion', None)
+        if _fc and _fc.amount_paid and _fc.total_charge and _fc.amount_paid > _fc.total_charge:
+            _over = _fc.amount_paid - _fc.total_charge
+            r.append(f'Overpaid ${_over:.2f} — review and credit account')
         return r
 
     _STATUS_ORDER = {'completed': 0, 'departed': 1, 'confirmed': 2, 'pending': 3}
@@ -2340,6 +2344,7 @@ def manage_bookings(request, club_slug):
     )
 
     # ── Needs-attention section (no status/date filter — always shows urgent items) ──
+    from django.db.models import F as _F
     _near_cutoff = today + timedelta(days=7)
     _attn_list = list(
         _base_qs
@@ -2347,7 +2352,8 @@ def manage_bookings(request, club_slug):
             _Q2(status='departed') |
             _Q2(status='completed', flight_completion__paid_at__isnull=True) |
             _Q2(status__in=['pending', 'confirmed'], scheduled_start__date__lte=_near_cutoff) |
-            _Q2(id__in=_clashing_ids)
+            _Q2(id__in=_clashing_ids) |
+            _Q2(status='completed', flight_completion__amount_paid__gt=_F('flight_completion__total_charge'))
         )
         .order_by('scheduled_start')
     )
@@ -2954,7 +2960,12 @@ def booking_detail(request, club_slug, booking_id):
                     unit_amount=request.POST.get('unit_amount', amount) or amount,
                 )
                 if result.ok:
-                    success = 'Charge added.'
+                    _inv_count = fc.invoices.exclude(status='void').count()
+                    success = 'Charge added.' + (
+                        f' ⚠ This flight has {_inv_count} issued invoice(s) — '
+                        'the invoice total no longer matches. Update or re-issue the invoice.'
+                        if _inv_count else ''
+                    )
                 else:
                     error = result.error
 
@@ -2962,7 +2973,13 @@ def booking_detail(request, club_slug, booking_id):
             fc = getattr(booking, 'flight_completion', None)
             if fc:
                 result = charging_service.delete_charge(fc, request.POST.get('item_id'))
-                success = 'Charge removed.' if result.ok else ''
+                if result.ok:
+                    _inv_count = fc.invoices.exclude(status='void').count()
+                    success = 'Charge removed.' + (
+                        f' ⚠ This flight has {_inv_count} issued invoice(s) — '
+                        'the invoice total no longer matches. Update or re-issue the invoice.'
+                        if _inv_count else ''
+                    )
 
         elif action == 'confirm_payment' and booking.status == 'completed':
             # Quick single-payment record (default to booking member)
@@ -4887,6 +4904,27 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                 m.alert_hours = request.POST.get('alert_hours') or None
                 m.save()
 
+        elif action == 'mark_maintenance_done' and actor.is_admin:
+            maint_id = request.POST.get('maint_id')
+            m = AircraftMaintenanceItem.objects.filter(aircraft=ac, id=maint_id).first()
+            if m:
+                _today = timezone.localdate()
+                m.last_completed_date = _today
+                # Advance due_date by interval_days if configured
+                if m.interval_days:
+                    import datetime as _dt
+                    m.due_date = _today + _dt.timedelta(days=int(m.interval_days))
+                # Snapshot current Hobbs/tacho for hours-based items
+                _last_log = ac.maintenance_log_entries.order_by('-date', '-id').first()
+                if _last_log and _last_log.hobbs_reading is not None:
+                    m.last_completed_hours = _last_log.hobbs_reading
+                    if m.interval_hours and m.last_completed_hours is not None:
+                        m.due_hours = float(m.last_completed_hours) + float(m.interval_hours)
+                m.save()
+                m.recalc_urgency()
+                m.save(update_fields=['urgency'])
+                _saved = True
+
         elif action == 'delete_maintenance' and actor.is_admin:
             AircraftMaintenanceItem.objects.filter(aircraft=ac, id=request.POST.get('maint_id')).delete()
 
@@ -5896,37 +5934,25 @@ def generate_invoice(request, club_slug, booking_id):
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
     from .models import InvoicePayment as _IP
+    from django.db.models import Max as _Max
     created = []
     for member, amount, paid, fp_paid_at, inv_method in payees:
-        invoice = None
-        for _attempt in range(5):
-            _sp = transaction.savepoint()
-            try:
-                config.refresh_from_db()
-                inv_number = config.invoice_number_next
-                ClubConfig.objects.filter(pk=config.pk).update(
-                    invoice_number_next=F('invoice_number_next') + 1
-                )
-                invoice = Invoice.objects.create(
-                    club=club,
-                    member=member,
-                    flight_completion=fc,
-                    invoice_number=inv_number,
-                    issue_date=today,
-                    due_date=due,
-                    description=description,
-                    gst_rate=config.gst_rate,
-                    created_by=request.user,
-                )
-                transaction.savepoint_commit(_sp)
-                break
-            except _IErr as _e:
-                transaction.savepoint_rollback(_sp)
-                if 'invoice_number' not in str(_e) or _attempt == 4:
-                    raise
-
-        if invoice is None:
-            continue
+        with transaction.atomic():
+            _existing_max = Invoice.objects.filter(club=club).aggregate(m=_Max('invoice_number'))['m'] or 0
+            inv_number = max(config.invoice_number_next, _existing_max + 1)
+            ClubConfig.objects.filter(pk=config.pk).update(invoice_number_next=inv_number + 1)
+            config.invoice_number_next = inv_number + 1  # keep in-memory copy in sync for multi-payee loops
+            invoice = Invoice.objects.create(
+                club=club,
+                member=member,
+                flight_completion=fc,
+                invoice_number=inv_number,
+                issue_date=today,
+                due_date=due,
+                description=description,
+                gst_rate=config.gst_rate,
+                created_by=request.user,
+            )
 
         # Line items: for split, one summary line per payee; for single, snapshot all charge items
         if is_split:
@@ -7920,6 +7946,15 @@ def health_check(request, club_slug):
                 fixed += 1
         return redirect(request.path + '?fixed=' + str(fixed))
 
+    if request.method == 'POST' and request.POST.get('action') == 'mark_lapsed':
+        _today = timezone.localdate()
+        lapsed_count = ClubMember.objects.filter(
+            club=club, standing='active',
+            subscription_expires__isnull=False,
+            subscription_expires__lt=_today,
+        ).update(standing='lapsed')
+        return redirect(request.path + '?lapsed=' + str(lapsed_count))
+
     from django.urls import reverse as _rev
 
     # group -> {label, description, issues: [{severity, message, rows: [{text, url}]}], ok: [str]}
@@ -8111,6 +8146,7 @@ def health_check(request, club_slug):
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'groups': groups,
         'total_issues': total_issues,
+        'lapsed_active_count': len(lapsed_active),
     })
 
 

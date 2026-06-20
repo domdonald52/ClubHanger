@@ -1717,6 +1717,7 @@ class FlightPayment(models.Model):
         ('eftpos',  'EFTPOS'),
         ('cash',    'Cash'),
         ('invoice', 'Invoice (bank transfer)'),
+        ('refund',  'Refund'),
     ]
     completion  = models.ForeignKey(FlightCompletion, on_delete=models.CASCADE, related_name='payments')
     member      = models.ForeignKey('ClubMember', on_delete=models.PROTECT, related_name='flight_payments')

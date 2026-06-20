@@ -41,6 +41,9 @@ def add_charge(
     except InvalidOperation:
         return ServiceResult(ok=False, error='Invalid amount')
 
+    if amount_d <= 0:
+        return ServiceResult(ok=False, error='Charge amount must be greater than zero')
+
     if item_type == 'one_off' and description:
         if FlightChargeItem.objects.filter(
             flight_completion=fc, item_type='one_off', description__iexact=description
@@ -357,14 +360,14 @@ def record_refund(fc, booking, user, amount, method: str) -> ServiceResult:
     """
     Record a refund against an overpaid FlightCompletion.
 
-    'credit'  — adds the refund amount back to the member's account balance.
-    Any other method (eftpos, cash) — just logs the refund; physical refund
-    is handled offline.
+    Creates a negative FlightPayment row (method='refund') so the ledger is
+    complete and _sync_payment_cache() will recompute correctly.
 
-    The refund amount must not exceed the overpayment (amount_paid - total_charge).
+    'credit'  — also restores the member's account balance via AccountTransaction.
+    Other methods (eftpos, cash) — physical refund handled offline; ledger row provides the audit trail.
     """
     from django.utils import timezone
-    from ..models import Account, AccountTransaction
+    from ..models import Account, AccountTransaction, FlightPayment
 
     try:
         refund_amount = round(Decimal(str(amount)), 2)
@@ -404,11 +407,17 @@ def record_refund(fc, booking, user, amount, method: str) -> ServiceResult:
         acct.apply_transaction(refund_amount, 'credit')
         msg = f'${refund_amount:.2f} credited to member account.'
     else:
-        # Physical refund — no AccountTransaction (would corrupt account balance).
-        # The reduction in fc.amount_paid is the audit record.
         msg = f'${refund_amount:.2f} refund recorded ({method}). Physical refund handled offline.'
 
-    fc.amount_paid = (fc.amount_paid or Decimal('0')) - refund_amount
-    fc.save(update_fields=['amount_paid'])
+    # Negative FlightPayment row keeps the ledger consistent with _sync_payment_cache()
+    FlightPayment.objects.create(
+        completion=fc,
+        member=booking.member,
+        amount=-refund_amount,
+        method='refund',
+        paid_at=timezone.now(),
+        recorded_by=user,
+    )
+    fc._sync_payment_cache()
 
     return ServiceResult(ok=True, data={'message': msg})

@@ -9,6 +9,23 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _vapid_private_key():
+    """Return VAPID private key as base64url DER, converting from PEM if stored that way."""
+    key = settings.VAPID_PRIVATE_KEY
+    if not key:
+        raise ValueError('VAPID_PRIVATE_KEY not configured')
+    key = key.strip()
+    if key.startswith('-----'):
+        from cryptography.hazmat.primitives.serialization import (
+            load_pem_private_key, Encoding, PrivateFormat, NoEncryption,
+        )
+        import base64
+        private_key_obj = load_pem_private_key(key.encode(), password=None)
+        der = private_key_obj.private_bytes(Encoding.DER, PrivateFormat.TraditionalOpenSSL, NoEncryption())
+        return base64.urlsafe_b64encode(der).decode().rstrip('=')
+    return key
+
+
 def send_push(subscription, title, body, url=None, icon=None):
     """
     Send a Web Push notification to a single PushSubscription instance.
@@ -33,7 +50,7 @@ def send_push(subscription, title, body, url=None, icon=None):
                 },
             },
             data=payload,
-            vapid_private_key=settings.VAPID_PRIVATE_KEY,
+            vapid_private_key=_vapid_private_key(),
             vapid_claims={
                 'sub': f'mailto:{settings.VAPID_CLAIMS_EMAIL}',
             },

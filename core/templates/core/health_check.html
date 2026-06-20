@@ -13,6 +13,9 @@
   {% if request.GET.fixed %}
   <div class="snotice ok" style="margin-bottom:1rem;">✓ Recomputed and corrected {{ request.GET.fixed }} account balance{{ request.GET.fixed|pluralize }} from transaction history.</div>
   {% endif %}
+  {% if request.GET.lapsed %}
+  <div class="snotice ok" style="margin-bottom:1rem;">✓ Marked {{ request.GET.lapsed }} member{{ request.GET.lapsed|pluralize }} as Lapsed.</div>
+  {% endif %}
 
   <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.4rem;">
     <p style="font-size:.85rem;margin:0;">
@@ -34,6 +37,13 @@
         <input type="hidden" name="action" value="fix_payment_drift">
         <button type="submit" class="cbtn cbtn-sm">Fix payment drift</button>
       </form>
+      {% if lapsed_active_count %}
+      <form method="post" style="margin:0;" data-confirm="Mark {{ lapsed_active_count }} member{{ lapsed_active_count|pluralize }} with expired subscriptions as Lapsed? This updates their standing and will block departures until renewed.">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark_lapsed">
+        <button type="submit" class="cbtn cbtn-sm">Mark {{ lapsed_active_count }} lapsed</button>
+      </form>
+      {% endif %}
     </div>
     {% endif %}
   </div>
