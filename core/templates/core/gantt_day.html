@@ -95,6 +95,9 @@
   .pill.invalid{outline:2px solid #ffd43b;outline-offset:-2px}
   .pill.override{box-shadow:0 0 0 2px #fff,0 0 0 4px #845ef7}
   .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize;z-index:6;}
+  /* Overlapping pills on the same track — half-height stacked pair */
+  .pill.stagger{height:18px;}
+  .pill.stagger .sub,.pill.stagger .pill-wedge{display:none;}
   .preview{position:absolute;top:4px;height:36px;border-radius:5px;border:2px dashed var(--primary);background:color-mix(in srgb, var(--primary) 15%, transparent);z-index:6;pointer-events:none}
   .preview span{position:absolute;top:11px;left:8px;font-size:.72rem;color:var(--primary);font-weight:600}
   .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500}
@@ -630,6 +633,24 @@
     el.style.flex = '0 0 ' + labelW + 'px';
     el.style.width = labelW + 'px';
   });
+
+  // Stack overlapping pills on the same track (e.g. aircraft moved via instructor drag only)
+  (function stackOverlaps() {
+    document.querySelectorAll('.track').forEach(function(track) {
+      var pills = Array.from(track.querySelectorAll('.pill'))
+        .sort(function(a, b) { return parseFloat(a.style.left) - parseFloat(b.style.left); });
+      for (var i = 0; i < pills.length; i++) {
+        var li = parseFloat(pills[i].style.left), ri = li + parseFloat(pills[i].style.width);
+        for (var j = i + 1; j < pills.length; j++) {
+          var lj = parseFloat(pills[j].style.left);
+          if (lj >= ri) break;
+          // overlap — stack them at half height
+          pills[i].classList.add('stagger'); pills[i].style.top = '3px';
+          pills[j].classList.add('stagger'); pills[j].style.top = '22px';
+        }
+      }
+    });
+  })();
 
   // Dual-flight hover: highlight all pills sharing the same booking on mouseenter
   document.querySelectorAll('.pill.dual').forEach(function(pill) {
