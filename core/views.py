@@ -10294,6 +10294,13 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
         'completed': config.theme_completed_paid,
     }
 
+    from .models import SlotWatch as _SlotWatch
+    watched_ids = set(
+        _SlotWatch.objects
+        .filter(club_member=actor)
+        .values_list('booking_id', flat=True)
+    )
+
     aircraft_data = []
     for ac in aircraft_qs:
         blocks = []
@@ -10303,18 +10310,22 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
             top    = to_px(b.scheduled_start)
             height = max(22, to_px(b.scheduled_end) - top)
             blocks.append({
-                'id':       b.id,
-                'top':      top,
-                'height':   height,
-                'is_mine':  b.member == actor,
-                'name':     'You' if b.member == actor else b.member.user.get_short_name(),
-                'time':     '{}–{}'.format(
+                'id':            b.id,
+                'top':           top,
+                'height':        height,
+                'is_mine':       b.member == actor,
+                'name':          'You' if b.member == actor else b.member.user.get_short_name(),
+                'member_full':   b.member.user.get_full_name(),
+                'time':          '{}–{}'.format(
                     timezone.localtime(b.scheduled_start).strftime('%H:%M'),
                     timezone.localtime(b.scheduled_end).strftime('%H:%M')),
-                'status':   b.status,
-                'color':    status_color.get(b.status, config.theme_confirmed),
-                'solo':     not bool(b.instructor),
-                'instructor': b.instructor.get_short_name() if b.instructor else None,
+                'status':        b.status,
+                'color':         status_color.get(b.status, config.theme_confirmed),
+                'solo':          not bool(b.instructor),
+                'instructor':    b.instructor.get_short_name() if b.instructor else None,
+                'aircraft_reg':  ac.registration,
+                'flight_type':   b.flight_type.name if b.flight_type else '',
+                'watched':       b.id in watched_ids,
             })
         aircraft_data.append({'ac': ac, 'blocks': blocks})
 

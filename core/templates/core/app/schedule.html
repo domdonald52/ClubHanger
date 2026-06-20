@@ -295,7 +295,14 @@
       <div class="bk {% if blk.is_mine %}mine{% endif %}"
            style="top:{{ blk.top|add:1 }}px;height:{{ blk.height|add:"-2" }}px;background:{{ blk.color }};"
            data-booking-id="{{ blk.id }}"
-           onclick="window.location='{% url 'core:app_bookings' club.slug %}#booking-{{ blk.id }}'">
+           data-is-mine="{{ blk.is_mine|yesno:'true,false' }}"
+           data-member="{{ blk.member_full|escapejs }}"
+           data-time="{{ blk.time }}"
+           data-aircraft="{{ blk.aircraft_reg }}"
+           data-status="{{ blk.status }}"
+           data-flight-type="{{ blk.flight_type|escapejs }}"
+           data-watched="{{ blk.watched|yesno:'true,false' }}"
+           onclick="openBookingSheet(this)">
         <div class="bk-name">{{ blk.name }}</div>
         <div class="bk-time">{{ blk.time }}</div>
         {% if blk.solo %}<div class="bk-solo">Solo</div>
@@ -348,6 +355,27 @@
       <a id="lp-solo" href="#" class="app-btn" style="text-align:center;">Solo</a>
       <a id="lp-dual" href="#" class="app-btn" style="text-align:center;background:var(--banner);">Dual</a>
     </div>
+  </div>
+</div>
+
+<!-- Booking detail bottom sheet -->
+<div id="bk-sheet" style="display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.4);" onclick="closeBkSheet()">
+  <div id="bk-sheet-card" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:18px 18px 0 0;padding:1.1rem 1.1rem calc(1.8rem + var(--safe-bottom));touch-action:none;" onclick="event.stopPropagation()">
+    <div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto .9rem;"></div>
+    <!-- member + aircraft header -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.9rem;">
+      <div>
+        <div id="bks-name" style="font-size:1.05rem;font-weight:700;color:#1f2933;line-height:1.2;"></div>
+        <div id="bks-sub" style="font-size:.83rem;color:#6b7280;margin-top:.2rem;"></div>
+      </div>
+      <span id="bks-badge" style="font-size:.72rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:.15rem;"></span>
+    </div>
+    <!-- own booking notice -->
+    <div id="bks-own-notice" style="display:none;font-size:.85rem;color:#4b5563;background:#f3f4f6;border-radius:9px;padding:.65rem .85rem;margin-bottom:.9rem;line-height:1.45;"></div>
+    <!-- watch button (other members' active bookings) -->
+    <button id="bks-watch-btn" onclick="toggleWatch()" style="display:none;width:100%;padding:.75rem;border-radius:11px;border:1.5px solid var(--banner);background:#fff;color:var(--banner);font-size:.95rem;font-weight:600;cursor:pointer;transition:background .15s,color .15s;">Watch this slot</button>
+    <!-- my bookings link -->
+    <a id="bks-view-link" href="{% url 'core:app_bookings' club.slug %}" style="display:none;width:100%;padding:.75rem;border-radius:11px;background:var(--banner);color:#fff;font-size:.95rem;font-weight:600;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:.5rem;">View my bookings →</a>
   </div>
 </div>
 
@@ -555,5 +583,104 @@ if (outer && heads) {
     window.location.href = BASE + parts[0] + '/' + parseInt(parts[1]) + '/' + parseInt(parts[2]) + '/';
   });
 })();
+
+// ── Booking tap bottom sheet ──────────────────────────────────────────────
+var _bkSheetId = null;
+var _bkWatched = false;
+const CSRF = '{{ csrf_token }}';
+
+const STATUS_LABEL = {
+  pending:   'Pending',
+  confirmed: 'Confirmed',
+  departed:  'Checked out',
+  completed: 'Returned',
+};
+const STATUS_BG = {
+  pending:   '#f59e0b',
+  confirmed: 'var(--banner)',
+  departed:  '#f97316',
+  completed: '#6b7280',
+};
+
+function openBookingSheet(el) {
+  _bkSheetId = el.dataset.bookingId;
+  _bkWatched = el.dataset.watched === 'true';
+  const isMine    = el.dataset.isMine === 'true';
+  const member    = el.dataset.member;
+  const time      = el.dataset.time;
+  const aircraft  = el.dataset.aircraft;
+  const status    = el.dataset.status;
+  const flightType = el.dataset.flightType;
+
+  document.getElementById('bks-name').textContent = isMine ? 'Your booking' : member;
+  document.getElementById('bks-sub').textContent  = aircraft + ' · ' + time + (flightType ? ' · ' + flightType : '');
+
+  const badge = document.getElementById('bks-badge');
+  badge.textContent = STATUS_LABEL[status] || status;
+  badge.style.background = (STATUS_BG[status] || '#6b7280') + '22';
+  badge.style.color = STATUS_BG[status] || '#6b7280';
+
+  const ownNotice = document.getElementById('bks-own-notice');
+  const watchBtn  = document.getElementById('bks-watch-btn');
+  const viewLink  = document.getElementById('bks-view-link');
+
+  if (isMine) {
+    const msg = status === 'pending'
+      ? 'This booking is awaiting confirmation. To make changes contact the club.'
+      : status === 'confirmed'
+      ? 'This booking is confirmed.'
+      : status === 'departed'
+      ? 'You\'ve checked out — safe flying!'
+      : 'Flight complete.';
+    ownNotice.textContent = msg;
+    ownNotice.style.display = '';
+    watchBtn.style.display = 'none';
+    viewLink.style.display = '';
+  } else {
+    ownNotice.style.display = 'none';
+    viewLink.style.display = 'none';
+    const active = status === 'pending' || status === 'confirmed';
+    if (active) {
+      _updateWatchBtn();
+      watchBtn.style.display = '';
+    } else {
+      watchBtn.style.display = 'none';
+    }
+  }
+
+  document.getElementById('bk-sheet').style.display = '';
+}
+
+function _updateWatchBtn() {
+  const btn = document.getElementById('bks-watch-btn');
+  if (_bkWatched) {
+    btn.textContent = 'Watching ✓  (tap to stop)';
+    btn.style.background = 'var(--banner)';
+    btn.style.color = '#fff';
+  } else {
+    btn.textContent = 'Watch this slot';
+    btn.style.background = '#fff';
+    btn.style.color = 'var(--banner)';
+  }
+}
+
+function toggleWatch() {
+  if (!_bkSheetId) return;
+  fetch('/api/booking/' + _bkSheetId + '/watch/', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/x-www-form-urlencoded' },
+    credentials: 'same-origin',
+  }).then(r => r.json()).then(data => {
+    _bkWatched = !!data.watching;
+    // Sync back to the DOM element so re-opens reflect the new state
+    const el = document.querySelector('[data-booking-id="' + _bkSheetId + '"]');
+    if (el) el.dataset.watched = _bkWatched ? 'true' : 'false';
+    _updateWatchBtn();
+  }).catch(() => {});
+}
+
+function closeBkSheet() {
+  document.getElementById('bk-sheet').style.display = 'none';
+}
 </script>
 {% endblock %}
