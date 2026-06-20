@@ -27,7 +27,7 @@
        data-needs-decl="{% if b.flight_type.requires_declaration and b.status in 'pending confirmed' and not b.declaration or b.flight_type.requires_declaration and b.status in 'pending confirmed' and b.declaration.is_draft %}1{% else %}0{% endif %}"
        data-decl-url="{% url 'core:app_booking_declaration' club.slug b.id %}"
        onclick="openBookingSheet(this)">
-    <div style="width:38px;height:38px;border-radius:10px;background:{{ theme.confirmed|default:'#2563eb' }}1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:{{ theme.confirmed|default:'#2563eb' }};">
+    <div style="width:38px;height:38px;border-radius:10px;background:{{ theme.primary|default:'#2563eb' }}1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:{{ theme.primary|default:'#2563eb' }};">
       {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
     </div>
     <div class="app-list-main">

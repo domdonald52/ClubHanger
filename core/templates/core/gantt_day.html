@@ -15,8 +15,7 @@
   .legend{display:flex;gap:1.2rem;align-items:center;font-size:.8rem;color:#5b6573;margin:.25rem 0 .75rem}
   .legend .hint{margin-left:auto;color:#8a93a0}
   .dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem}
-  .dot.departed{background:var(--departed)}.dot.returned{background:var(--returned)}.dot.completed-paid{background:var(--completed-paid)}
-  .dot.confirmed{background:var(--confirmed)}.dot.pending{background:var(--pending)}
+  .dot.pending{background:color-mix(in srgb,var(--primary) 35%,#fff)}.dot.confirmed{background:color-mix(in srgb,var(--primary) 55%,#fff)}.dot.departed{background:var(--primary)}.dot.returned{background:color-mix(in srgb,var(--primary) 50%,#fff)}.dot.completed{background:#b4b2a9}
   .grid-scroll{overflow-x:auto;border:1px solid #e3e6ea;border-radius:10px;background:#fff}
   .grid{width:100%;position:relative;}
   .grid-row{display:flex;align-items:stretch;border-bottom:1px solid #eef1f4}
@@ -63,26 +62,39 @@
   .bo-badge.soft{color:#e67e22}
   .band span{position:absolute;top:2px;left:4px;font-size:.6rem;font-weight:600;color:#1f2933;opacity:.9;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
   .track.bookable{cursor:copy}
-  .pill{position:absolute;top:4px;height:36px;border-radius:5px;padding:.2rem .4rem;overflow:hidden;cursor:grab;color:#fff;box-shadow:0 1px 2px rgba(16,24,40,.18);user-select:none;box-sizing:border-box;z-index:5}
+  /* Lifecycle ramp — single primary hue at varying intensities */
+  .pill{position:absolute;top:4px;height:36px;border-radius:5px;overflow:hidden;cursor:grab;user-select:none;box-sizing:border-box;z-index:5;display:flex;align-items:stretch;box-shadow:0 1px 2px rgba(16,24,40,.12);}
   .pill:active{cursor:grabbing}
-  .pill.confirmed{background:var(--confirmed)}
-  .pill.pending{background:var(--pending)}
-  .pill.departed{background:var(--departed)}
-  .pill.completed{background:var(--returned);cursor:pointer}
-  .pill.completed.paid{background:var(--completed-paid);cursor:pointer}
-  .pill .nm{font-size:.72rem;font-weight:650;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pill .sub{font-size:.62rem;opacity:.9;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize}
+  .pill.pending{background:color-mix(in srgb,var(--primary) 18%,#fff);border:1.5px dashed color-mix(in srgb,var(--primary) 50%,#fff);color:color-mix(in srgb,var(--primary) 80%,#000);}
+  .pill.confirmed{background:color-mix(in srgb,var(--primary) 42%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);}
+  .pill.departed{background:var(--primary);border:1px solid color-mix(in srgb,var(--primary) 80%,#000);color:#fff;}
+  .pill.completed{background:color-mix(in srgb,var(--primary) 52%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);cursor:pointer;}
+  .pill.completed.paid{background:#f1efe8;border:1px solid #b4b2a9;color:#444441;cursor:pointer;}
+  /* Dual-flight pairing — teal top-edge accent */
+  .pill.dual{border-top:3px solid var(--dual-accent);}
+  .pill.dual-hover{outline:2px solid var(--dual-accent);outline-offset:-1px;}
+  /* Exception left-spine */
+  .pill-spine{flex:0 0 5px;width:5px;align-self:stretch;}
+  .pill-spine.conflict{background:#e24b4a;}
+  .pill-spine.declaration{background-image:repeating-linear-gradient(135deg,#ba7517,#ba7517 3px,#fac775 3px,#fac775 6px);}
+  /* Body */
+  .pill-body{flex:1;min-width:0;padding:.2rem .35rem;display:flex;flex-direction:column;justify-content:center;overflow:hidden;}
+  .pill .nm{font-size:.72rem;font-weight:650;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pill .sub{font-size:.62rem;opacity:.9;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  /* Airborne wedge — darker fin on right edge */
+  .pill-wedge{flex:0 0 28px;width:28px;align-self:stretch;background:color-mix(in srgb,var(--primary) 70%,#000);clip-path:polygon(35% 0,100% 0,100% 100%,35% 100%);display:flex;align-items:center;justify-content:flex-end;padding-right:4px;}
+  .pill-wedge svg{width:12px;height:12px;flex-shrink:0;}
+  /* Watch marker */
+  .pill-watch{position:absolute;top:3px;right:6px;font-size:.6rem;font-weight:700;display:flex;align-items:center;gap:1px;pointer-events:none;line-height:1;opacity:.7;}
+  .pill-watch svg{width:9px;height:9px;}
+  /* Misc */
   .pill.drag{opacity:.9;box-shadow:0 8px 24px rgba(16,24,40,.35);z-index:100;cursor:grabbing}
   @keyframes pill-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
   .pill.shake{animation:pill-shake .35s ease;cursor:not-allowed;}
   .track.drag-over{outline:2px solid var(--primary);outline-offset:-2px}
   .pill.invalid{outline:2px solid #ffd43b;outline-offset:-2px}
-  .pill.conflict::before{content:'';position:absolute;top:0;left:0;bottom:0;width:4px;background:#e03131;border-radius:5px 0 0 5px;z-index:1;}
   .pill.override{box-shadow:0 0 0 2px #fff,0 0 0 4px #845ef7}
-  .pill-dot{position:absolute;top:4px;right:10px;width:7px;height:7px;border-radius:50%;background:#e03131;border:1.5px solid rgba(255,255,255,.75);pointer-events:none;}
-  .pill-dot-decl{background:#f59e0b;right:20px;}
-  .pill-dot-watch{background:#3b82f6;left:4px;right:auto;}
+  .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize;z-index:6;}
   .preview{position:absolute;top:4px;height:36px;border-radius:5px;border:2px dashed var(--primary);background:color-mix(in srgb, var(--primary) 15%, transparent);z-index:6;pointer-events:none}
   .preview span{position:absolute;top:11px;left:8px;font-size:.72rem;color:var(--primary);font-weight:600}
   .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500}
@@ -158,11 +170,11 @@
   {% endif %}
 
   <div class="legend">
-    <span><i class="dot confirmed"></i> Confirmed</span>
     <span><i class="dot pending"></i> Pending</span>
-    <span><i class="dot departed"></i> Departed</span>
+    <span><i class="dot confirmed"></i> Confirmed</span>
+    <span><i class="dot departed"></i> Airborne</span>
     <span><i class="dot returned"></i> Returned</span>
-    <span><i class="dot completed-paid"></i> Completed</span>
+    <span><i class="dot completed"></i> Completed</span>
     {% if wx %}
     <a href="{% url 'core:club_weather' club.slug %}" id="wx-pill" class="wx-pill{% if wx.stale %} wx-pill-stale{% endif %}" title="{{ wx.raw }}&#10;Click for full weather page">
       <span class="wx-pill-lbl">METAR</span>
@@ -421,13 +433,13 @@
         <span id="m-watch-label">Watch slot</span>
       </button>
       <button class="cbtn danger" id="m-delete" type="button" hidden>Cancel booking</button>
-      <button class="cbtn" id="m-confirm" type="button" hidden style="background:var(--confirmed);color:#fff;border-color:var(--confirmed);">Confirm booking</button>
+      <button class="cbtn" id="m-confirm" type="button" hidden style="background:color-mix(in srgb,var(--primary) 55%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);border-color:color-mix(in srgb,var(--primary) 65%,#fff);">Confirm booking</button>
       <button class="cbtn" id="m-decl-btn" type="button" hidden style="background:var(--banner);color:#fff;border-color:var(--banner);white-space:nowrap;">Declaration →</button>
-      <button class="cbtn" id="m-depart" type="button" hidden style="background:var(--departed);color:#fff;border-color:var(--departed);">Check out</button>
+      <button class="cbtn" id="m-depart" type="button" hidden style="background:var(--primary);color:#fff;border-color:color-mix(in srgb,var(--primary) 80%,#000);">Check out</button>
       <button class="cbtn" id="m-checkin-btn" type="button" hidden style="background:var(--primary);color:#fff;border-color:var(--primary);">Record return</button>
       <a class="cbtn" id="m-charges-link" href="#" hidden style="background:#6b7280;color:#fff;border-color:#6b7280;text-decoration:none;">View details →</a>
       <button class="cbtn" id="dv-back" type="button" hidden style="margin-right:auto;">← Back</button>
-      <button class="cbtn" id="dv-confirm" type="button" hidden style="background:var(--departed);color:#fff;border-color:var(--departed);">Confirm check out</button>
+      <button class="cbtn" id="dv-confirm" type="button" hidden style="background:var(--primary);color:#fff;border-color:color-mix(in srgb,var(--primary) 80%,#000);">Confirm check out</button>
       <button class="cbtn primary" id="m-save" type="button">Save</button>
     </div>
   </div>
@@ -605,7 +617,7 @@
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}?v=10"></script>
+<script src="{% static 'core/gantt.js' %}?v=11"></script>
 <script>
 (function() {
   // Unify all row labels to the width of the longest one.
@@ -617,6 +629,16 @@
   document.querySelectorAll('.row-label, .section-cell').forEach(el => {
     el.style.flex = '0 0 ' + labelW + 'px';
     el.style.width = labelW + 'px';
+  });
+
+  // Dual-flight hover: highlight all pills sharing the same booking on mouseenter
+  document.querySelectorAll('.pill.dual').forEach(function(pill) {
+    pill.addEventListener('mouseenter', function() {
+      document.querySelectorAll('.pill[data-id="' + pill.dataset.id + '"]').forEach(function(p) { p.classList.add('dual-hover'); });
+    });
+    pill.addEventListener('mouseleave', function() {
+      document.querySelectorAll('.pill[data-id="' + pill.dataset.id + '"]').forEach(function(p) { p.classList.remove('dual-hover'); });
+    });
   });
 
   {% if now_px is not None %}

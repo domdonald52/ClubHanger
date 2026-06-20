@@ -177,11 +177,18 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         if b.member and b.member.user:
             member_name = f"{b.member.user.first_name} {b.member.user.last_name}".strip()
         in_conflict, conflict_reason, issue_types = _check_live_conflict(b)
+        _decl_pending = (
+            getattr(b.flight_type, 'requires_declaration', False) and
+            b.status in ('pending', 'confirmed') and
+            not (hasattr(b, 'declaration') and not b.declaration.is_draft)
+        )
         return {
             'id': b.id,
             'left': left + PILL_GAP,
             'width': max(width - PILL_GAP * 2, 4),
             'status': b.status,
+            'conflict_kind': 'conflict' if in_conflict else ('declaration' if _decl_pending else ''),
+            'is_dual': bool(b.instructor_id),
             'member_name': member_name or 'Unknown',
             'member_user_id': b.member.user_id if b.member else '',
             'description': desc,
@@ -211,11 +218,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'client_name': b.client.name if b.client else '',
             'billed_to':   b.billed_to or '',
             'paid': (getattr(getattr(b, 'flight_completion', None), 'paid_at', None) is not None),
-            'decl_pending': (
-                getattr(b.flight_type, 'requires_declaration', False) and
-                b.status in ('pending', 'confirmed') and
-                not (hasattr(b, 'declaration') and not b.declaration.is_draft)
-            ),
+            'decl_pending': _decl_pending,
             'decl_url': (
                 f'/manage/{club_slug}/bookings/{b.id}/declaration/'
                 if getattr(b.flight_type, 'requires_declaration', False) and b.status in ('pending', 'confirmed')
@@ -2092,8 +2095,7 @@ def club_settings(request, club_slug, mode='settings'):
                 club.name = club_name
                 club.save(update_fields=['name'])
             for field in ['theme_banner', 'theme_primary', 'theme_accent',
-                          'theme_confirmed', 'theme_pending',
-                          'theme_departed', 'theme_returned', 'theme_completed_paid',
+                          'dual_accent',
                           'theme_weekend', 'theme_atypical']:
                 val = request.POST.get(field, '').strip()
                 if val:
@@ -2144,21 +2146,9 @@ def club_settings(request, club_slug, mode='settings'):
         ('theme_banner', 'Banner', config.theme_banner),
         ('theme_primary', 'Primary (buttons, links)', config.theme_primary),
         ('theme_accent', 'Accent', config.theme_accent),
-        ('theme_confirmed', 'Confirmed booking', config.theme_confirmed),
-        ('theme_pending', 'Pending booking', config.theme_pending),
-        ('theme_departed', 'Departed', config.theme_departed),
-        ('theme_returned', 'Returned (awaiting payment)', config.theme_returned),
-        ('theme_completed_paid', 'Completed & paid', config.theme_completed_paid),
+        ('dual_accent', 'Dual-flight accent', config.dual_accent),
         ('theme_weekend', 'Weekend shade', config.theme_weekend),
         ('theme_atypical', 'Outside typical hours', config.theme_atypical),
-    ]
-
-    status_color_fields = [
-        ('theme_confirmed',     'Confirmed',            config.theme_confirmed),
-        ('theme_pending',       'Pending',              config.theme_pending),
-        ('theme_departed',      'Departed',             config.theme_departed),
-        ('theme_returned',      'Returned',             config.theme_returned),
-        ('theme_completed_paid','Completed & paid',     config.theme_completed_paid),
     ]
 
     _BOOL_PERM_NAMES = ['can_access_manage', 'can_access_safety', 'can_access_fleet', 'can_access_reports', 'can_access_settings', 'is_superadmin', 'renewal_required']
@@ -2186,7 +2176,6 @@ def club_settings(request, club_slug, mode='settings'):
         'config': config,
         'font_options': font_options,
         'color_fields': color_fields,
-        'status_color_fields': status_color_fields,
         'all_blockout_types': BlockOutType.objects.filter(club=club, target='all'),
         'instructor_blockout_types': BlockOutType.objects.filter(club=club, target='instructor'),
         'aircraft_blockout_types': BlockOutType.objects.filter(club=club, target='aircraft'),
@@ -10296,11 +10285,16 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
         return max(0, min(TL_HEIGHT, round((hrs - DAY_START) * PX_PER_HR)))
 
     config = get_config(club)
+    def _blend(hex_color, pct):
+        r1,g1,b1 = int(hex_color[1:3],16),int(hex_color[3:5],16),int(hex_color[5:7],16)
+        f = pct/100
+        return '#{:02x}{:02x}{:02x}'.format(round(r1*f+255*(1-f)),round(g1*f+255*(1-f)),round(b1*f+255*(1-f)))
+    _p = config.theme_primary
     status_color = {
-        'pending':   config.theme_pending,
-        'confirmed': config.theme_confirmed,
-        'departed':  config.theme_departed,
-        'completed': config.theme_completed_paid,
+        'pending':   _blend(_p, 18),
+        'confirmed': _blend(_p, 42),
+        'departed':  _p,
+        'completed': '#f1efe8',
     }
 
     from .models import SlotWatch as _SlotWatch
@@ -10329,7 +10323,7 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
                     timezone.localtime(b.scheduled_start).strftime('%H:%M'),
                     timezone.localtime(b.scheduled_end).strftime('%H:%M')),
                 'status':        b.status,
-                'color':         status_color.get(b.status, config.theme_confirmed),
+                'color':         status_color.get(b.status, _blend(_p, 42)),
                 'solo':          not bool(b.instructor),
                 'instructor':    b.instructor.get_short_name() if b.instructor else None,
                 'aircraft_reg':  ac.registration,

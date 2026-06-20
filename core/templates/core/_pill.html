@@ -1,5 +1,5 @@
 {% load static %}
-<div class="pill {{ p.status }}{% if p.paid %} paid{% endif %}{% if p.conflict %} conflict{% endif %}{% if p.override %} override{% endif %}"
+<div class="pill {{ p.status }}{% if p.paid %} paid{% endif %}{% if p.is_dual %} dual{% endif %}{% if p.conflict %} conflict{% endif %}{% if p.override %} override{% endif %}"
      data-id="{{ p.id }}"
      data-decl-pending="{{ p.decl_pending|yesno:'true,false' }}"
      data-decl-url="{{ p.decl_url }}"
@@ -29,12 +29,14 @@
      data-total-time-method="{{ p.total_time_method }}"
      data-maint-time-source="{{ p.maint_time_source }}"
      data-paid="{{ p.paid|yesno:'true,false' }}"
-     title="{% if p.client_name %}{{ p.client_name }} (via {{ p.member_name }}){% else %}{{ p.member_name }}{% endif %} · {{ p.start_label }}–{{ p.end_label }}{% if p.member_not_current %} · ⚑ Member {{ p.member_standing }}{% endif %}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.override %} · booked over block-out{% endif %}{% if p.decl_pending %} · ⚑ Declaration not submitted{% endif %}"
+     title="{% if p.client_name %}{{ p.client_name }} (via {{ p.member_name }}){% else %}{{ p.member_name }}{% endif %} · {{ p.start_label }}–{{ p.end_label }}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.decl_pending %} · Declaration pending{% endif %}{% if p.override %} · booked over block-out{% endif %}"
      style="left:{{ p.left }}px;width:{{ p.width }}px;">
-  <div class="nm">{% if p.conflict %}⚠ {% endif %}{% if p.status == 'departed' %}✈ {% elif p.status == 'completed' %}{% if p.paid %}✓ {% else %}⏱ {% endif %}{% endif %}{% if p.client_name %}{{ p.client_name }}{% else %}{{ p.member_name }}{% endif %}</div>
-  <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · departed{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
-  {% if p.member_not_current %}<span class="pill-dot" title="Member {{ p.member_standing }}"></span>{% endif %}
-  {% if p.decl_pending %}<span class="pill-dot pill-dot-decl" title="Declaration required — not yet submitted"></span>{% endif %}
-  {% if p.watcher_count %}<span class="pill-dot pill-dot-watch" title="Watched by {{ p.watcher_count }} {{ p.watcher_count|pluralize:'person,people' }}"></span>{% endif %}
+  {% if p.conflict_kind %}<div class="pill-spine {{ p.conflict_kind }}"></div>{% endif %}
+  <div class="pill-body">
+    <div class="nm">{% if p.conflict %}⚠ {% endif %}{% if p.status == 'departed' %}✈ {% elif p.status == 'completed' %}{% if p.paid %}✓ {% else %}⏱ {% endif %}{% endif %}{% if p.client_name %}{{ p.client_name }}{% else %}{{ p.member_name }}{% endif %}</div>
+    <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · airborne{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
+  </div>
+  {% if p.status == 'departed' %}<div class="pill-wedge"><svg viewBox="0 0 24 24" fill="#fff" stroke="none" aria-hidden="true"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5 18 1 16 1 14.5 2.5L11 6 2.8 4.2 2 5l6.3 5.7L7.9 12 5 13.5 5 15l3 1 1 3 1.5 0 1.5-2.9 5.7 6.3z"/></svg></div>{% endif %}
+  {% if p.watcher_count %}<div class="pill-watch">{{ p.watcher_count }}</div>{% endif %}
   <div class="rs" data-resize></div>
 </div>

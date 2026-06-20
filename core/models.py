@@ -141,11 +141,7 @@ class ClubConfig(models.Model):
     theme_banner = models.CharField(max_length=7, default='#2b2b2b', help_text="Top banner background")
     theme_primary = models.CharField(max_length=7, default='#c0481c', help_text="Buttons, links, active controls")
     theme_accent = models.CharField(max_length=7, default='#d4732a', help_text="Accent / highlights")
-    theme_confirmed = models.CharField(max_length=7, default='#16a34a', help_text="Confirmed booking pills")
-    theme_pending = models.CharField(max_length=7, default='#e8a800', help_text="Pending booking pills")
-    theme_departed = models.CharField(max_length=7, default='#d97706', help_text="Departed booking pills")
-    theme_returned = models.CharField(max_length=7, default='#2563eb', help_text="Returned (awaiting payment) booking pills")
-    theme_completed_paid = models.CharField(max_length=7, default='#7c3aed', help_text="Completed & paid booking pills")
+    dual_accent = models.CharField(max_length=7, default='#1D9E75', help_text="Dual-flight pairing accent colour")
     theme_weekend = models.CharField(max_length=7, default='#fdf0e6', help_text="Weekend shading in search")
     theme_atypical = models.CharField(max_length=7, default='#f0f0f0', help_text="Outside-typical-hours shading")
     chart_colors = models.JSONField(

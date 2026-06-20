@@ -249,16 +249,12 @@
       <input type="hidden" name="theme_banner"   id="inp-banner"   value="{{ config.theme_banner }}">
       <input type="hidden" name="theme_primary"  id="inp-primary"  value="{{ config.theme_primary }}">
       <input type="hidden" name="theme_accent"   id="inp-accent"   value="{{ config.theme_accent }}">
-      <input type="hidden" name="theme_confirmed"      id="inp-theme_confirmed"      value="{{ config.theme_confirmed }}">
-      <input type="hidden" name="theme_pending"        id="inp-theme_pending"        value="{{ config.theme_pending }}">
-      <input type="hidden" name="theme_departed"       id="inp-theme_departed"       value="{{ config.theme_departed }}">
-      <input type="hidden" name="theme_returned"       id="inp-theme_returned"       value="{{ config.theme_returned }}">
-      <input type="hidden" name="theme_completed_paid" id="inp-theme_completed_paid" value="{{ config.theme_completed_paid }}">
+      <input type="hidden" name="dual_accent" id="inp-dual-accent" value="{{ config.dual_accent }}">
       <input type="hidden" name="theme_weekend"        value="{{ config.theme_weekend }}">
       <input type="hidden" name="theme_atypical"       value="{{ config.theme_atypical }}">
 
       <h2 class="sh2">Colour palette</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 1rem;">Pick a palette for the banner and primary colour. Fine-tune status colours below.</p>
+      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 1rem;">Pick a palette for the banner and primary colour. The primary colour is used for booking pills throughout the calendar — darker for airborne, lighter for pending/confirmed/returned.</p>
 
       <div class="palette-grid" id="palette-grid">
         <!-- Palettes defined by JS below; current values pre-select the matching one -->
@@ -284,24 +280,15 @@
                    maxlength="7" placeholder="#rrggbb">
           </div>
         </label>
-      </div>
-
-      <h2 class="sh2" style="margin-top:.4rem;">Booking status colours</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">Colours for booking pills and status chips throughout the calendar and reports.</p>
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
-        {% for slug, lbl, val in status_color_fields %}
-        <label class="flabel" style="min-width:140px;">{{ lbl }}
+        <label class="flabel">Dual-flight accent
           <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
-            <input type="color" value="{{ val }}"
-                   style="width:44px;height:36px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;"
-                   oninput="syncStatusColor('{{ slug }}',this.value)">
-            <input type="text" id="hex-{{ slug }}" value="{{ val }}"
+            <input type="color" id="pick-dual-accent" value="{{ config.dual_accent }}"
+                   style="width:44px;height:36px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
+            <input type="text" id="hex-dual-accent" value="{{ config.dual_accent }}"
                    style="width:90px;padding:.38rem;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:.85rem;"
-                   maxlength="7" placeholder="#rrggbb"
-                   oninput="syncStatusColor('{{ slug }}',this.value)">
+                   maxlength="7" placeholder="#rrggbb">
           </div>
         </label>
-        {% endfor %}
       </div>
 
       <h2 class="sh2" style="margin-top:.8rem;">Preview</h2>
@@ -317,10 +304,10 @@
         </div>
         <div style="padding:.6rem 1rem .75rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:flex-end;">
           <span style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;flex-basis:100%;margin-bottom:.15rem;">Calendar pills</span>
-          <span class="pv-pill confirmed">J. Smith · ZK-ABC</span>
           <span class="pv-pill pending">A. Jones · ZK-XYZ</span>
+          <span class="pv-pill confirmed">J. Smith · ZK-ABC</span>
           <span class="pv-pill departed">✈ T. Brown · ZK-ABC</span>
-          <span class="pv-pill returned">⏱ M. Lee · ZK-XYZ</span>
+          <span class="pv-pill completed">⏱ M. Lee · ZK-XYZ</span>
           <span class="pv-pill completed paid">✓ E. Wilson · ZK-ABC</span>
         </div>
       </div>
@@ -1708,14 +1695,13 @@
   details summary{list-style:none;}
   details summary::-webkit-details-marker{display:none;}
 
-  /* Pill previews in the appearance tab */
-  .pv-pill{display:inline-block;border-radius:5px;padding:.22rem .5rem;font-size:.72rem;font-weight:650;color:#fff;white-space:nowrap;}
-  .pv-pill.confirmed{background:var(--confirmed);}
-  .pv-pill.pending{background:var(--pending);}
-  .pv-pill.departed{background:var(--departed);}
-  .pv-pill.returned{background:var(--returned);}
-  .pv-pill.completed{background:var(--returned);}
-  .pv-pill.completed.paid{background:var(--completed-paid);}
+  /* Pill previews in the appearance tab — mirrors Gantt lifecycle ramp */
+  .pv-pill{display:inline-block;border-radius:5px;padding:.22rem .5rem;font-size:.72rem;font-weight:650;white-space:nowrap;}
+  .pv-pill.pending{background:color-mix(in srgb,var(--primary) 18%,#fff);border:1.5px dashed color-mix(in srgb,var(--primary) 50%,#fff);color:color-mix(in srgb,var(--primary) 80%,#000);}
+  .pv-pill.confirmed{background:color-mix(in srgb,var(--primary) 42%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);}
+  .pv-pill.departed{background:var(--primary);border:1px solid color-mix(in srgb,var(--primary) 80%,#000);color:#fff;}
+  .pv-pill.completed{background:color-mix(in srgb,var(--primary) 52%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);}
+  .pv-pill.completed.paid{background:#f1efe8;border:1px solid #b4b2a9;color:#444441;}
 
   .palette-grid{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem;}
   .palette-btn{display:flex;align-items:center;gap:0;border:2px solid #e3e6ea;border-radius:8px;overflow:hidden;cursor:pointer;background:none;padding:0;transition:border-color .15s;}
@@ -1780,21 +1766,6 @@
       chartColors:['#dc2626','#b91c1c','#f97316','#ea580c','#78716c','#fca5a5','#fed7aa','#57534e','#ef4444','#a8a29e'] },
   ];
 
-  // CSS var key → field slug mapping for status colours
-  const STATUS_SLUGS = ['theme_confirmed','theme_pending','theme_departed','theme_returned','theme_completed_paid'];
-  const STATUS_VARS  = ['--confirmed','--pending','--departed','--returned','--completed-paid'];
-
-  function applyStatusColours(p) {
-    const vals = [p.confirmed, p.pending, p.departed, p.returned, p.completedPaid];
-    STATUS_SLUGS.forEach((slug, i) => {
-      const inp = document.getElementById('inp-' + slug);
-      const hex = document.getElementById('hex-' + slug);
-      if (inp) inp.value = vals[i];
-      if (hex) hex.value = vals[i];
-      document.documentElement.style.setProperty(STATUS_VARS[i], vals[i]);
-    });
-  }
-
   function applyTheme(banner, primary, palette) {
     document.getElementById('inp-banner').value = banner;
     document.getElementById('inp-primary').value = primary;
@@ -1807,7 +1778,6 @@
     document.getElementById('pv-primary').style.background = primary;
     document.documentElement.style.setProperty('--banner', banner);
     document.documentElement.style.setProperty('--primary', primary);
-    if (palette) applyStatusColours(palette);
     if (palette && palette.chartColors && window.applyChartColors) applyChartColors(palette.chartColors);
   }
 
@@ -1832,18 +1802,6 @@
   }
   buildPalettes();
 
-  // Status colour pickers — update hidden input, CSS var, and hex field
-  window.syncStatusColor = function(slug, val) {
-    const h = val.startsWith('#') ? val : '#' + val;
-    if (!/^#[0-9a-fA-F]{6}$/.test(h)) return;
-    const inp = document.getElementById('inp-' + slug);
-    const hex = document.getElementById('hex-' + slug);
-    if (inp) inp.value = h;
-    if (hex && document.activeElement !== hex) hex.value = h;
-    const varIdx = STATUS_SLUGS.indexOf(slug);
-    if (varIdx >= 0) document.documentElement.style.setProperty(STATUS_VARS[varIdx], h);
-  };
-
   // Fine-tune pickers sync
   function syncPicker(pickerId, hexId, inpId, pvId) {
     const pick = document.getElementById(pickerId);
@@ -1866,6 +1824,25 @@
   }
   syncPicker('pick-banner',  'hex-banner',  'inp-banner',  'pv-banner');
   syncPicker('pick-primary', 'hex-primary', 'inp-primary', 'pv-primary');
+  // Dual-accent picker — also updates CSS var for live preview on Gantt
+  (function() {
+    const pick = document.getElementById('pick-dual-accent');
+    const hex  = document.getElementById('hex-dual-accent');
+    const inp  = document.getElementById('inp-dual-accent');
+    if (!pick) return;
+    function set(val) {
+      pick.value = val; hex.value = val; inp.value = val;
+      document.documentElement.style.setProperty('--dual-accent', val);
+    }
+    pick.addEventListener('input', () => set(pick.value));
+    hex.addEventListener('input', () => {
+      const v = hex.value.trim();
+      const h = v.startsWith('#') ? v : '#'+v;
+      if (/^#[0-9a-fA-F]{6}$/.test(h)) { set(h); hex.style.borderColor=''; }
+      else hex.style.borderColor='#e03131';
+    });
+    hex.addEventListener('blur', () => { hex.style.borderColor=''; if (!/^#[0-9a-fA-F]{6}$/.test(hex.value)) hex.value=pick.value; });
+  })();
 })();
 
 // ── Settings modal helpers ────────────────────────────────────────────────

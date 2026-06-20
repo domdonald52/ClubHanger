@@ -22,11 +22,7 @@
             --banner: {{ theme.banner|default:'#1d3a5f' }};
             --primary: {{ theme.primary|default:'#2f7dd1' }};
             --accent: {{ theme.accent|default:'#e8943a' }};
-            --confirmed: {{ theme.confirmed|default:'#2f9e44' }};
-            --pending: {{ theme.pending|default:'#f08c00' }};
-            --departed: {{ theme.departed|default:'#d97706' }};
-            --returned: {{ theme.returned|default:'#2563eb' }};
-            --completed-paid: {{ theme.completed_paid|default:'#7c3aed' }};
+            --dual-accent: {{ theme.dual_accent|default:'#1D9E75' }};
             --weekend: {{ theme.weekend|default:'#fbf3e6' }};
             --atypical: {{ theme.atypical|default:'#eef1f4' }};
             --font: {{ theme.font_family|default:"system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"|safe }};
@@ -491,8 +487,8 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 /* ── Table row action links (manage pages) ── */
 .row-action-btn{display:inline-flex;align-items:center;font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;transition:background .15s,color .15s;}
 .row-action-btn:hover{background:#f3f5f7;color:#1f2933;text-decoration:none;}
-.row-action-returned{background:var(--returned);color:#fff;border-color:var(--returned);}
-.row-action-returned:hover{background:color-mix(in srgb,var(--returned) 85%,#000);color:#fff;filter:none;}
+.row-action-returned{background:color-mix(in srgb,var(--primary) 55%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);border-color:color-mix(in srgb,var(--primary) 65%,#fff);}
+.row-action-returned:hover{background:color-mix(in srgb,var(--primary) 70%,#fff);color:color-mix(in srgb,var(--primary) 90%,#000);filter:none;}
 /* ── Tab bar (shared style for both top-nav tabs and in-page sub-tabs) ── */
 /* .mnav = manage page top nav;  .stab-bar = in-page sub-tabs (detail views, settings) */
 /* Both use the same font, size, and active indicator so they look identical. */
@@ -548,11 +544,11 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 /* ── Booking status chips — canonical colours used everywhere ── */
 .status-chip{display:inline-block;font-size:.75rem;font-weight:600;padding:.18rem .55rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
 /* Both conventions: .status-chip.pending and .status-chip.status-pending */
-.status-chip.pending,.status-chip.status-pending{background:color-mix(in srgb,var(--pending) 15%,#fff);color:var(--pending);}
-.status-chip.confirmed,.status-chip.status-confirmed{background:color-mix(in srgb,var(--confirmed) 18%,#fff);color:color-mix(in srgb,var(--confirmed) 85%,#000);}
-.status-chip.departed,.status-chip.status-departed{background:color-mix(in srgb,var(--departed) 15%,#fff);color:var(--departed);}
-.status-chip.returned,.status-chip.status-returned{background:color-mix(in srgb,var(--returned) 15%,#fff);color:var(--returned);}
-.status-chip.completed,.status-chip.status-completed{background:color-mix(in srgb,var(--completed-paid) 15%,#fff);color:var(--completed-paid);}
+.status-chip.pending,.status-chip.status-pending{background:color-mix(in srgb,var(--primary) 15%,#fff);color:color-mix(in srgb,var(--primary) 70%,#000);}
+.status-chip.confirmed,.status-chip.status-confirmed{background:color-mix(in srgb,var(--primary) 25%,#fff);color:color-mix(in srgb,var(--primary) 80%,#000);}
+.status-chip.departed,.status-chip.status-departed{background:var(--primary);color:#fff;}
+.status-chip.returned,.status-chip.status-returned{background:color-mix(in srgb,var(--primary) 40%,#fff);color:color-mix(in srgb,var(--primary) 80%,#000);}
+.status-chip.completed,.status-chip.status-completed{background:#f1efe8;color:#444441;}
 .status-chip.cancelled,.status-chip.status-cancelled{background:#f3f5f7;color:#8a93a0;}
 /* ── Modal validation ── */
 .modal-notice{padding:.5rem .8rem;border-radius:6px;font-size:.84rem;font-weight:500;margin-bottom:.85rem;display:none;}

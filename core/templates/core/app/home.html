@@ -46,7 +46,7 @@
 <!-- ── Next flight ── -->
 {% if next_booking %}
 {% with b=next_booking %}
-<div class="app-card" style="border-left:4px solid {{ theme.confirmed|default:'#2563eb' }};margin-top:.65rem;">
+<div class="app-card" style="border-left:4px solid {{ theme.primary|default:'#2563eb' }};margin-top:.65rem;">
   <div class="app-card-title">Next flight</div>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
     <div>

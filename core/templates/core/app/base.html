@@ -113,10 +113,10 @@
 
   /* ── Status pills ── */
   .st-pill { display: inline-block; font-size: .65rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
-  .st-pending   { background: color-mix(in srgb, {{ theme.pending|default:'#f59e0b' }} 15%, #fff); color: {{ theme.pending|default:'#92400e' }}; }
-  .st-confirmed { background: color-mix(in srgb, {{ theme.confirmed|default:'#2563eb' }} 12%, #fff); color: {{ theme.confirmed|default:'#1e40af' }}; }
-  .st-departed  { background: color-mix(in srgb, {{ theme.departed|default:'#7c3aed' }} 12%, #fff); color: {{ theme.departed|default:'#5b21b6' }}; }
-  .st-completed { background: color-mix(in srgb, {{ theme.completed_paid|default:'#2a7a3b' }} 12%, #fff); color: {{ theme.completed_paid|default:'#166534' }}; }
+  .st-pending   { background: color-mix(in srgb, {{ theme.primary|default:'#2f7dd1' }} 15%, #fff); color: color-mix(in srgb, {{ theme.primary|default:'#2f7dd1' }} 70%, #000); }
+  .st-confirmed { background: color-mix(in srgb, {{ theme.primary|default:'#2f7dd1' }} 25%, #fff); color: color-mix(in srgb, {{ theme.primary|default:'#2f7dd1' }} 80%, #000); }
+  .st-departed  { background: {{ theme.primary|default:'#2f7dd1' }}; color: #fff; }
+  .st-completed { background: #f1efe8; color: #444441; }
 
   /* ── Buttons ── */
   .app-btn {
