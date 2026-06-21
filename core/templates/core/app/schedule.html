@@ -157,17 +157,22 @@
     border-radius: 7px;
     padding: 3px 6px;
     font-size: .68rem; line-height: 1.3;
-    color: #fff;
     overflow: hidden;
     cursor: pointer;
     box-shadow: 0 1px 3px rgba(0,0,0,.18);
     transition: filter .1s;
   }
   .bk:active { filter: brightness(.88); }
-  .bk.mine { outline: 2px solid #fff; outline-offset: -3px; }
+  /* Text colour by lifecycle state */
+  .bk-pending,
+  .bk-confirmed  { color: color-mix(in srgb, var(--primary) 50%, #000); }
+  .bk-departed   { color: #fff; }
+  .bk-completed  { color: #555; }
+  .bk.mine { outline: 2px solid rgba(255,255,255,.8); outline-offset: -3px; }
+  .bk-departed.mine { outline-color: #fff; }
   .bk-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bk-time { opacity: .85; font-size: .62rem; }
-  .bk-solo { opacity: .75; font-size: .6rem; }
+  .bk-sub  { opacity: .75; font-size: .6rem; }
 
   /* ── Bottom nav override for schedule page ── */
   .app-nav { z-index: 20; }
@@ -292,7 +297,7 @@
          data-ac-id="{{ ad.ac.id }}"
          data-ac-reg="{{ ad.ac.registration }}">
       {% for blk in ad.blocks %}
-      <div class="bk {% if blk.is_mine %}mine{% endif %}"
+      <div class="bk bk-{{ blk.status }}{% if blk.is_mine %} mine{% endif %}"
            style="top:{{ blk.top|add:1 }}px;height:{{ blk.height|add:"-2" }}px;background:{{ blk.color }};"
            data-booking-id="{{ blk.id }}"
            data-is-mine="{{ blk.is_mine|yesno:'true,false' }}"
@@ -305,8 +310,8 @@
            onclick="openBookingSheet(this)">
         <div class="bk-name">{{ blk.name }}</div>
         <div class="bk-time">{{ blk.time }}</div>
-        {% if blk.solo %}<div class="bk-solo">Solo</div>
-        {% elif blk.instructor %}<div class="bk-solo">{{ blk.instructor }}</div>{% endif %}
+        {% if blk.solo %}<div class="bk-sub">Solo</div>
+        {% elif blk.instructor %}<div class="bk-sub">{{ blk.instructor }}</div>{% endif %}
       </div>
       {% endfor %}
     </div>
@@ -592,14 +597,15 @@ const CSRF = '{{ csrf_token }}';
 const STATUS_LABEL = {
   pending:   'Pending',
   confirmed: 'Confirmed',
-  departed:  'Checked out',
+  departed:  'Airborne',
   completed: 'Returned',
 };
+const PRIMARY = '{{ theme.primary|default:"#2f7dd1" }}';
 const STATUS_BG = {
-  pending:   '#f59e0b',
-  confirmed: 'var(--banner)',
-  departed:  '#f97316',
-  completed: '#6b7280',
+  pending:   PRIMARY,
+  confirmed: PRIMARY,
+  departed:  PRIMARY,
+  completed: '#b4b2a9',
 };
 
 function openBookingSheet(el) {
