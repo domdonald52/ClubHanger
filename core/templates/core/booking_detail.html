@@ -45,6 +45,13 @@
     </div>
   </div>
 
+  {% if requires_decl and not has_submitted_decl and booking.status in 'pending confirmed' %}
+  <div class="notice warn" style="margin-bottom:.75rem;">
+    <strong>Declaration pending</strong> — This flight type requires a pre-departure declaration.
+    {% if booking.status == 'confirmed' %}The member has not yet submitted one.{% else %}One will be required before departure.{% endif %}
+  </div>
+  {% endif %}
+
   {% if watchers %}
   <div style="font-size:.82rem;color:#374151;margin-bottom:.75rem;padding:.5rem .75rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
     <span style="color:#1d4ed8;">&#128065;</span> Watched by {{ watchers|length }} {{ watchers|length|pluralize:"person,people" }}:

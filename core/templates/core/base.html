@@ -939,9 +939,9 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
   }
 
   function attachHandlers(baseUrl) {
-    // ✕ Close and ← Back both pop the stack (or close if at root)
-    body.querySelectorAll('[data-close-overlay], [data-overlay-back]').forEach(el => {
-      el.addEventListener('click', e => { e.preventDefault(); popOrClose(); });
+    // ✕ Close always closes the entire overlay
+    body.querySelectorAll('[data-close-overlay]').forEach(el => {
+      el.addEventListener('click', e => { e.preventDefault(); _doCloseOverlay(); });
     });
 
     // Intercept all same-site link clicks to stay in the overlay

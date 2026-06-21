@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    User, Club, ClubMember, MemberCredential,
+    User, Club, ClubMember, MemberCredential, CredentialType,
     Aircraft, AircraftMaintenanceItem,
     FlightType, ChargeRate, Account,
     Booking, BookingAuditLog, FlightCompletion,
@@ -25,11 +25,18 @@ class ClubMemberAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__last_name', 'caa_number')
     readonly_fields = ('is_current', 'join_date')
 
+@admin.register(CredentialType)
+class CredentialTypeAdmin(admin.ModelAdmin):
+    list_display = ('region', 'code', 'name', 'category', 'expires', 'display_order')
+    list_filter = ('region', 'category', 'expires')
+    search_fields = ('code', 'name')
+    ordering = ('region', 'display_order', 'name')
+
 @admin.register(MemberCredential)
 class MemberCredentialAdmin(admin.ModelAdmin):
-    list_display = ('club_member', 'credential_type', 'expiry_date', 'is_expired')
-    list_filter = ('credential_type', 'expiry_date')
-    search_fields = ('club_member__user__last_name',)
+    list_display = ('member', 'credential_type', 'expiry_date', 'is_expired')
+    list_filter = ('credential_type__category', 'expiry_date')
+    search_fields = ('member__last_name',)
 
 @admin.register(Aircraft)
 class AircraftAdmin(admin.ModelAdmin):

@@ -46,7 +46,7 @@ _completed_unpaid   = (Booking.objects.filter(club=_club, status='completed',
                                               flight_completion__paid_at__isnull=True)
                        .values_list('id', flat=True).first())
 _decl_ft            = FlightType.objects.filter(club=_club, requires_declaration=True).values_list('id', flat=True).first()
-_member_with_creds  = MemberCredential.objects.filter(club_member__club=_club).values_list('club_member_id', flat=True).first()
+_member_with_creds  = ClubMember.objects.filter(club=_club, user__credentials__isnull=False).values_list('id', flat=True).first()
 _member_neg_balance = Account.objects.filter(club_member__club=_club, balance__lt=0).values_list('club_member_id', flat=True).first()
 
 

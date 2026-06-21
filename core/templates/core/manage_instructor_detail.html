@@ -5,7 +5,7 @@
 {% block content %}
 <div style="max-width:960px;margin:0 auto;padding:2rem;">
 
-  <a href="{% url 'core:manage_instructors' club.slug %}" class="back-link">
+  <a href="{% if request.GET.back %}{{ request.GET.back }}{% else %}{% url 'core:manage_instructors' club.slug %}{% endif %}" class="back-link">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg>
     Instructors
   </a>

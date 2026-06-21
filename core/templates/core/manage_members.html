@@ -89,7 +89,7 @@
         </td>
         <td style="font-size:.83rem;color:#8a93a0;">{{ m.join_date }}</td>
         <td>
-          <a href="{% url 'core:manage_member_detail' club.slug m.id %}" class="row-action-btn" data-overlay>Manage →</a>
+          <a href="{% url 'core:manage_member_detail' club.slug m.id %}?back={% url 'core:manage_members' club.slug %}&back_label=Members" class="row-action-btn" data-overlay>Manage →</a>
         </td>
       </tr>
       {% empty %}

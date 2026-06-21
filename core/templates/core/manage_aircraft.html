@@ -39,7 +39,7 @@
           <span class="status-badge status-online">Active</span>
         </td>
         <td style="text-align:right;">
-          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}" class="row-action-btn" data-overlay>Manage →</a>
+          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}?back={% url 'core:manage_aircraft' club.slug %}&back_label=Aircraft" class="row-action-btn" data-overlay>Manage →</a>
         </td>
       </tr>
       {% endfor %}
@@ -58,7 +58,7 @@
           <span class="status-badge status-retired">Retired</span>
         </td>
         <td style="text-align:right;">
-          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}" class="row-action-btn" data-overlay>Manage →</a>
+          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}?back={% url 'core:manage_aircraft' club.slug %}&back_label=Aircraft" class="row-action-btn" data-overlay>Manage →</a>
         </td>
       </tr>
       {% endfor %}

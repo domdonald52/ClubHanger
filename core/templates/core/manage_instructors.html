@@ -26,7 +26,7 @@
         </td>
         <td style="text-align:right;">
           <div style="display:inline-flex;gap:.3rem;">
-            <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}?tab=availability" class="row-action-btn" data-overlay>Manage →</a>
+            <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}?tab=availability&back={% url 'core:manage_instructors' club.slug %}&back_label=Instructors" class="row-action-btn" data-overlay>Manage →</a>
             {% if club_member.is_admin %}
             <button type="button" class="cbtn-sm cbtn-danger"
               title="Remove from roster — this does not delete the instructor or their history"

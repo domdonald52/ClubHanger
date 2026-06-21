@@ -39,7 +39,7 @@ from core.models import (
     AccountTransaction, Aircraft, AircraftType, ChargeRate, FlightType,
     Booking, BookingStatus, FlightCompletion, FlightChargeItem, FlightPayment,
     Invoice, InvoiceLineItem, BlockOutType, BlockOut, OccurrenceReport,
-    Aerodrome, AerodromeFeeType, MemberCredential,
+    Aerodrome, AerodromeFeeType, MemberCredential, CredentialType,
     AircraftMaintenanceItem,
 )
 
@@ -1077,14 +1077,18 @@ class Command(BaseCommand):
         from core.models import AircraftType
         ac_types = {t.name: t for t in AircraftType.objects.filter(club=club)}
 
+        ct_map = {ct.code: ct for ct in CredentialType.objects.filter(region='NZ-CAA')}
         created = 0
         for username, creds in INSTR_CREDS.items():
             member = next((m for m in members if m.user.username == username), None)
             if not member:
                 continue
-            for cred_type, name, issue, expiry, cert_num in creds:
-                ac_type = ac_types.get(name) if cred_type == 'type' else None
-                lookup = dict(club_member=member, credential_type=cred_type, name=name)
+            for cred_code, name, issue, expiry, cert_num in creds:
+                ct = ct_map.get(cred_code)
+                if not ct:
+                    continue
+                ac_type = ac_types.get(name) if cred_code == 'type' else None
+                lookup = dict(member=member.user, credential_type=ct, name=name)
                 defaults = dict(issue_date=issue, expiry_date=expiry, certificate_number=cert_num)
                 if ac_type:
                     defaults['aircraft_type'] = ac_type
@@ -1120,37 +1124,44 @@ class Command(BaseCommand):
         ac_map = {ac.registration: ac for ac in aircraft}
 
         # ── Credentials ──────────────────────────────────────────────────────
+        ct_map = {ct.code: ct for ct in CredentialType.objects.filter(region='NZ-CAA')}
+        ct_type = ct_map.get('type')
+        ct_dlr9 = ct_map.get('dlr9')
+        ct_tw   = ct_map.get('tailwheel')
         # Type ratings for fleet aircraft
-        for reg, label in [("ZK-WAC", "PA38 Tomahawk"), ("ZK-TAW", "Cessna 152"),
-                            ("ZK-BCX", "Cessna 172S")]:
-            ac = ac_map.get(reg)
-            if ac:
-                MemberCredential.objects.get_or_create(
-                    club_member=dom, credential_type='type', aircraft_type=ac.aircraft_type,
-                    defaults={'name': label, 'issue_date': date(2021, 3, 15)},
-                )
-        # PA28 — not in current fleet, name-only
-        MemberCredential.objects.get_or_create(
-            club_member=dom, credential_type='type', name='Piper PA28 Warrior',
-            defaults={'issue_date': date(2019, 8, 20)},
-        )
+        if ct_type:
+            for reg, label in [("ZK-WAC", "PA38 Tomahawk"), ("ZK-TAW", "Cessna 152"),
+                                ("ZK-BCX", "Cessna 172S")]:
+                ac = ac_map.get(reg)
+                if ac:
+                    MemberCredential.objects.get_or_create(
+                        member=dom.user, credential_type=ct_type, aircraft_type=ac.aircraft_type,
+                        defaults={'name': label, 'issue_date': date(2021, 3, 15)},
+                    )
+            # PA28 — not in current fleet, name-only
+            MemberCredential.objects.get_or_create(
+                member=dom.user, credential_type=ct_type, name='Piper PA28 Warrior',
+                defaults={'issue_date': date(2019, 8, 20)},
+            )
         # DLR9 medical — expires 11 months 15 days from today
-        med_m = today.month + 11
-        med_expiry = date(today.year + (med_m - 1) // 12, (med_m - 1) % 12 + 1, today.day) \
-                     + timedelta(days=15)
-        MemberCredential.objects.get_or_create(
-            club_member=dom, credential_type='dlr9',
-            defaults={
-                'issue_date': date(today.year - 2, today.month, today.day),
-                'expiry_date': med_expiry,
-                'certificate_number': 'NZ-DLR9-2024-04521',
-            },
-        )
+        if ct_dlr9:
+            med_m = today.month + 11
+            med_expiry = date(today.year + (med_m - 1) // 12, (med_m - 1) % 12 + 1, today.day) \
+                         + timedelta(days=15)
+            MemberCredential.objects.get_or_create(
+                member=dom.user, credential_type=ct_dlr9,
+                defaults={
+                    'issue_date': date(today.year - 2, today.month, today.day),
+                    'expiry_date': med_expiry,
+                    'certificate_number': 'NZ-DLR9-2024-04521',
+                },
+            )
         # Tailwheel endorsement
-        MemberCredential.objects.get_or_create(
-            club_member=dom, credential_type='tailwheel',
-            defaults={'issue_date': date(2018, 5, 10)},
-        )
+        if ct_tw:
+            MemberCredential.objects.get_or_create(
+                member=dom.user, credential_type=ct_tw,
+                defaults={'issue_date': date(2018, 5, 10)},
+            )
 
         # ── Bookings ─────────────────────────────────────────────────────────
         wac = ac_map.get("ZK-WAC")

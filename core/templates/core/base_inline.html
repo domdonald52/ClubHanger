@@ -1,11 +1,8 @@
 <span hidden aria-hidden="true">{% block title %}{% endblock %}</span>
 <div class="pi-wrap">
   <div class="pi-header">
-    <div class="pi-title">{% autoescape off %}{% block inline_title %}{% endblock %}{% endautoescape %}</div>
-    <div style="display:flex;gap:.4rem;align-items:center;">
-      <button class="pi-close" data-overlay-back style="display:none;">← Back</button>
-      <button class="pi-close" data-close-overlay>✕ Close</button>
-    </div>
+    <div class="pi-title">{% if request.GET.back_label %}{{ request.GET.back_label }}<span class="crumb-sep"> ›</span> {% endif %}<span class="crumb-cur">{% autoescape off %}{% block inline_title %}{% endblock %}{% endautoescape %}</span></div>
+    <button class="pi-close" data-close-overlay>Close</button>
   </div>
   <div class="pi-body">{% block content %}{% endblock %}</div>
 </div>

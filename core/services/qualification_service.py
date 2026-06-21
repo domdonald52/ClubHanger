@@ -86,7 +86,7 @@ def check_eligibility(booking, config=None) -> EligibilityResult:
         return result
 
     today = date.today()
-    credentials = list(member.credentials.all())
+    credentials = list(member.user.credentials.select_related('credential_type', 'aircraft_type').all())
 
     _check_ppl(result, credentials, today)
     _check_medical(result, credentials, today, config, member)
@@ -102,8 +102,7 @@ def check_eligibility(booking, config=None) -> EligibilityResult:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _check_ppl(result: EligibilityResult, credentials, today: date) -> None:
-    from ..models import CredentialType
-    ppl = _latest(credentials, CredentialType.PPL)
+    ppl = _latest(credentials, 'ppl')
     if ppl is None:
         result.items.append(EligibilityItem(
             check='ppl', label='PPL',
@@ -125,16 +124,14 @@ def _check_ppl(result: EligibilityResult, credentials, today: date) -> None:
 
 def _check_medical(result: EligibilityResult, credentials, today: date,
                    config, member) -> None:
-    from ..models import CredentialType
-
     MEDICAL_TYPES = [
-        (CredentialType.MEDICAL_C1, 'Class 1 Medical',
+        ('medical_c1', 'Class 1 Medical',
          config.medical_class1_under40, config.medical_class1_over40),
-        (CredentialType.MEDICAL_C2, 'Class 2 Medical',
+        ('medical_c2', 'Class 2 Medical',
          config.medical_class2_under40, config.medical_class2_over40),
-        (CredentialType.MEDICAL_C3, 'Class 3 Medical',
+        ('medical_c3', 'Class 3 Medical',
          config.medical_class3_under40, config.medical_class3_over40),
-        (CredentialType.MEDICAL_DLR9, 'DLR9 Medical', None, None),
+        ('dlr9', 'DLR9 Medical', None, None),
     ]
 
     # Find the best (highest-class) current medical
@@ -190,9 +187,7 @@ def _check_medical(result: EligibilityResult, credentials, today: date,
 
 
 def _check_bfr(result: EligibilityResult, credentials, today: date, config) -> None:
-    from ..models import CredentialType
-
-    fr = _latest(credentials, CredentialType.FLIGHT_REVIEW)
+    fr = _latest(credentials, 'fr')
     if fr is None:
         result.items.append(EligibilityItem(
             check='bfr', label='Flight Review',
@@ -246,8 +241,6 @@ def _check_bfr(result: EligibilityResult, credentials, today: date, config) -> N
 
 
 def _check_type_rating(result: EligibilityResult, credentials, today: date, booking) -> None:
-    from ..models import CredentialType
-
     aircraft_type = booking.aircraft.aircraft_type if booking.aircraft else None
     if aircraft_type is None:
         result.items.append(EligibilityItem(
@@ -258,7 +251,7 @@ def _check_type_rating(result: EligibilityResult, credentials, today: date, book
 
     type_ratings = [
         c for c in credentials
-        if c.credential_type == CredentialType.TYPE_RATING
+        if c.credential_type.category == 'type_rating'
         and c.aircraft_type_id == aircraft_type.id
     ]
     if not type_ratings:
@@ -327,9 +320,9 @@ def _check_recency(result: EligibilityResult, booking, today: date, config) -> N
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _latest(credentials, cred_type):
-    """Return the most recently issued credential of a given type, or None."""
-    matching = [c for c in credentials if c.credential_type == cred_type]
+def _latest(credentials, code):
+    """Return the most recently issued credential of a given type code, or None."""
+    matching = [c for c in credentials if c.credential_type.code == code]
     if not matching:
         return None
     return sorted(matching, key=lambda c: c.issue_date or date.min, reverse=True)[0]

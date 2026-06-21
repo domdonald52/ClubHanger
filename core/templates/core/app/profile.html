@@ -120,7 +120,7 @@
   <summary>
     <div class="cred-dot" style="background:{% if not c.expiry_date %}#c8cdd4{% elif c.is_expired %}#e03131{% elif c.is_expiring_soon %}#f59e0b{% else %}#2a7a3b{% endif %};"></div>
     <div class="cred-main">
-      <div class="cred-type-name">{{ c.get_credential_type_display }}{% if c.aircraft_type %} — {{ c.aircraft_type.name }}{% endif %}</div>
+      <div class="cred-type-name">{{ c.credential_type.name }}{% if c.aircraft_type %} — {{ c.aircraft_type.name }}{% endif %}</div>
       <div class="cred-sub">
         {% if c.expiry_date %}
           {% if c.is_expired %}Expired {{ c.expiry_date|date:"j M Y" }}

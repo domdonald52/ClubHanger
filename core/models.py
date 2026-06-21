@@ -625,61 +625,72 @@ class Announcement(models.Model):
 # REGULATORY TRACKING
 # ============================================================================
 
-class CredentialType(models.TextChoices):
-    """NZ CAA pilot credential categories."""
-    # Licences
-    PPL         = 'ppl',         'Private Pilot Licence (PPL)'
-    CPL         = 'cpl',         'Commercial Pilot Licence (CPL)'
-    ATPL        = 'atpl',        'Air Transport Pilot Licence (ATPL)'
-    # Ratings & endorsements within a licence
-    CROSS_COUNTRY = 'xc',        'Cross Country Endorsement'
-    NIGHT_VFR   = 'night_vfr',   'Night VFR Endorsement'
-    INSTRUMENT  = 'ir',          'Instrument Rating (IR)'
-    MULTI_ENGINE = 'me',         'Multi-Engine Rating'
-    TYPE_RATING = 'type',        'Type Rating'
-    TAILWHEEL   = 'tailwheel',   'Tailwheel Endorsement'
-    AEROBATIC   = 'aerobatic',   'Aerobatic Endorsement'
-    SEAPLANE    = 'seaplane',    'Seaplane Rating'
-    # Instructor certificates (NZ: C-Cat, B-Cat, A-Cat, Examiner)
-    INSTRUCTOR_C = 'instr_c',    'Instructor Certificate — C-Cat'
-    INSTRUCTOR_B = 'instr_b',    'Instructor Certificate — B-Cat'
-    INSTRUCTOR_A = 'instr_a',    'Instructor Certificate — A-Cat'
-    EXAMINER    = 'examiner',    'Flight Examiner'
-    # Medical certificates
-    MEDICAL_C1  = 'medical_c1',  'Medical Certificate — Class 1'
-    MEDICAL_C2  = 'medical_c2',  'Medical Certificate — Class 2'
-    MEDICAL_C3  = 'medical_c3',  'Medical Certificate — Class 3'
-    MEDICAL_DLR9 = 'dlr9',       'DLR9 Medical'
-    # Reviews (every 24 months for PPL/CPL/ATPL holders — formerly BFR)
-    FLIGHT_REVIEW = 'fr',        'Flight Review (BFR)'
-    OTHER       = 'other',       'Other'
+class CredentialCategory(models.TextChoices):
+    LICENCE            = 'licence',            'Licence'
+    INSTRUCTOR_RATING  = 'instructor_rating',  'Instructor Rating'
+    MEDICAL            = 'medical',            'Medical'
+    ENDORSEMENT        = 'endorsement',        'Endorsement'
+    OPERATIONAL_RATING = 'operational_rating', 'Operational Rating'
+    TYPE_RATING        = 'type_rating',        'Type Rating'
+    STATUS             = 'status',             'Status'
+
+
+class CredentialType(models.Model):
+    """
+    Region-scoped credential catalogue. System-managed (superuser only) — club admins cannot
+    create new types, only assign existing ones to members.
+    """
+    region   = models.CharField(max_length=20, default='NZ-CAA', db_index=True,
+                                help_text="Jurisdiction, e.g. NZ-CAA, AU-CASA")
+    code     = models.CharField(max_length=20,
+                                help_text="Short stable identifier, e.g. 'ppl', 'medical_c2'")
+    name     = models.CharField(max_length=100)
+    category = models.CharField(max_length=20, choices=CredentialCategory.choices)
+    expires  = models.BooleanField(default=False)
+    default_validity_months = models.IntegerField(
+        null=True, blank=True,
+        help_text="Convenience default for pre-filling expiry date; actual expiry stored per-credential")
+    requires_aircraft_type = models.BooleanField(
+        default=False,
+        help_text="True for type ratings — member credential must reference a specific aircraft type")
+    display_order = models.IntegerField(default=0)
+
+    class Meta:
+        unique_together = [('region', 'code')]
+        ordering = ['display_order', 'name']
+        verbose_name = 'Credential type'
+        verbose_name_plural = 'Credential types'
+
+    def __str__(self):
+        return f'[{self.region}] {self.name}'
 
 
 class MemberCredential(models.Model):
     """
-    Tracks pilot licences, ratings, endorsements, medicals, and flight reviews.
-    Multiple records of the same type are allowed (e.g. two type ratings).
+    Tracks a pilot's licences, ratings, endorsements, medicals, and reviews.
+    Lives on the User (not the club membership) so credentials are shared across clubs.
+    Multiple records of the same type are allowed (e.g. several type ratings).
     """
-    club_member = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='credentials')
-    credential_type = models.CharField(max_length=20, choices=CredentialType.choices)
+    member          = models.ForeignKey('User', on_delete=models.CASCADE, related_name='credentials')
+    credential_type = models.ForeignKey(CredentialType, on_delete=models.PROTECT,
+                                        related_name='member_credentials')
 
     # For type ratings — links to the managed aircraft type list
     aircraft_type = models.ForeignKey('AircraftType', on_delete=models.SET_NULL,
                                        null=True, blank=True, related_name='type_ratings')
 
-    # Sub-type name — required for OTHER, optional elsewhere; for type ratings prefer aircraft_type FK
-    name = models.CharField(max_length=100, blank=True,
-                            help_text="Specific name — required for Other; supplementary for Type Rating (e.g. specific aircraft reg)")
+    # Sub-type name — required for Other; supplementary for Type Rating (e.g. specific reg)
+    name = models.CharField(max_length=100, blank=True)
 
     # Validity
-    issue_date = models.DateField(null=True, blank=True)
+    issue_date  = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
 
     # Document tracking
     certificate_number = models.CharField(max_length=50, blank=True)
-    notes = models.TextField(blank=True)
+    notes              = models.TextField(blank=True)
 
-    # Photo/scan evidence (licence, medical cert, etc.) — FileField to allow PDFs
+    # Photo/scan evidence (licence, medical cert, etc.)
     evidence = models.FileField(upload_to='credentials/', null=True, blank=True)
 
     # Who recorded it
@@ -691,17 +702,17 @@ class MemberCredential(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['credential_type', '-expiry_date']
+        ordering = ['credential_type__display_order', 'credential_type__name', '-expiry_date']
 
     def __str__(self):
-        label = self.get_credential_type_display()
+        label = self.credential_type.name if self.credential_type_id else ''
         if self.name:
             label += f' — {self.name}'
-        return f"{self.club_member.user.last_name}: {label}"
+        return f"{self.member.last_name}: {label}"
 
     @property
     def display_name(self):
-        label = self.get_credential_type_display()
+        label = self.credential_type.name if self.credential_type_id else ''
         return f"{label} — {self.name}" if self.name else label
 
     @property

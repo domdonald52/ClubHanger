@@ -90,9 +90,9 @@
   <!-- Instructor (dual only) -->
   {% if mode == 'dual' %}
   <div class="confirm-field">
-    <div class="confirm-label">Instructor <span style="font-weight:400;font-size:.68rem;color:#6b7280;">(optional — leave blank if not yet confirmed)</span></div>
-    <select name="instructor" class="confirm-select">
-      <option value="">— No preference —</option>
+    <div class="confirm-label">Instructor</div>
+    <select name="instructor" class="confirm-select" required>
+      <option value="" disabled{% if not inst_id %} selected{% endif %}>— Select an instructor —</option>
       {% for inst in instructors %}
       <option value="{{ inst.id }}"{% if inst_id and inst.id|stringformat:"s" == inst_id %} selected{% endif %}>
         {{ inst.user.get_full_name }}

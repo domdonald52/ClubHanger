@@ -658,15 +658,15 @@ def _credential_checks(booking):
     member = booking.member
     ft = booking.flight_type
     today = _d.today()
-    creds = member.credentials.all()
+    creds = member.user.credentials.all()
 
-    LICENCE_TYPES = ('ppl', 'cpl', 'atpl', 'instr_c', 'instr_b', 'instr_a', 'examiner')
-    MEDICAL_TYPES  = ('medical_c1', 'medical_c2', 'medical_c3', 'dlr9')
-    SOLO_MEDICAL   = ('medical_c1', 'medical_c2', 'dlr9')  # Class 2+ for solo/private
+    LICENCE_CODES = ('ppl', 'cpl', 'atpl', 'instr_c', 'instr_b', 'instr_a',
+                     'instr_d', 'instr_e', 'examiner')
+    MEDICAL_CODES = ('medical_c1', 'medical_c2', 'medical_c3', 'dlr9')
 
-    def latest_valid(*types):
+    def latest_valid(*codes):
         return (creds
-                .filter(credential_type__in=types)
+                .filter(credential_type__code__in=codes)
                 .filter(_Q(expiry_date__isnull=True) | _Q(expiry_date__gte=today))
                 .order_by('-expiry_date')
                 .first())
@@ -674,15 +674,15 @@ def _credential_checks(booking):
     checks = []
 
     # ── Medical ──────────────────────────────────────────────────────────────
-    med = latest_valid(*MEDICAL_TYPES)
+    med = latest_valid(*MEDICAL_CODES)
     if not med:
         checks.append({'label': 'Medical certificate',
                        'status': 'warn',
                        'detail': 'No current medical certificate on record'})
-    elif ft.is_solo and med.credential_type == 'medical_c3':
+    elif ft.is_solo and med.credential_type.code == 'medical_c3':
         checks.append({'label': 'Medical certificate',
                        'status': 'warn',
-                       'detail': f'Class 3 medical only — Class 2 or better is required for private solo flying'})
+                       'detail': 'Class 3 medical only — Class 2 or better is required for private solo flying'})
     else:
         exp = f', valid to {med.expiry_date}' if med.expiry_date else ''
         checks.append({'label': 'Medical certificate', 'status': 'ok',
@@ -690,7 +690,7 @@ def _credential_checks(booking):
 
     if ft.is_solo:
         # ── Pilot licence ─────────────────────────────────────────────────────
-        licence = latest_valid(*LICENCE_TYPES)
+        licence = latest_valid(*LICENCE_CODES)
         if not licence:
             checks.append({'label': 'Pilot licence',
                            'status': 'warn',
@@ -714,7 +714,6 @@ def _credential_checks(booking):
     if ft.is_solo:
         if member.date_of_birth:
             age = (today - member.date_of_birth).days // 365
-            # NZ CAA: solo minimum 16, PPL minimum 17
             min_age = 16 if ft.is_training else 17
             if age < min_age:
                 checks.append({'label': 'Minimum age',
@@ -3579,8 +3578,9 @@ def booking_detail(request, club_slug, booking_id):
 
 
 def _inline_redirect(request, view_name, saved=False, error='', **kwargs):
-    """Redirect back to the same page, preserving ?inline=1 and optionally ?saved=1 or ?err=..."""
+    """Redirect back to the same page, preserving ?inline=1, ?saved=1, ?err=..., ?back=, ?back_label="""
     from django.urls import reverse
+    from urllib.parse import quote
     url = reverse(view_name, kwargs=kwargs)
     params = []
     if not saved and request.GET.get('inline') == '1':
@@ -3588,8 +3588,13 @@ def _inline_redirect(request, view_name, saved=False, error='', **kwargs):
     if saved:
         params.append('saved=1')
     if error:
-        from urllib.parse import quote
         params.append(f'err={quote(error)}')
+    back = request.GET.get('back', '')
+    if back:
+        params.append(f'back={quote(back, safe="/")}')
+    back_label = request.GET.get('back_label', '')
+    if back_label:
+        params.append(f'back_label={quote(back_label)}')
     if params:
         url += '?' + '&'.join(params)
     return redirect(url)
@@ -3780,8 +3785,9 @@ def manage_member_detail(request, club_slug, member_id):
             pass  # notes field not yet on model — placeholder
 
         elif action in ('add_credential', 'edit_credential') and (actor.is_admin or actor.is_instructor):
-            from .models import MemberCredential
-            cred_type = request.POST.get('credential_type', '').strip()
+            from .models import MemberCredential, CredentialType as _CT
+            ct_id = request.POST.get('credential_type', '').strip()
+            ct_obj = _CT.objects.filter(id=ct_id).first() if ct_id else None
             name = request.POST.get('cred_name', '').strip()
             cert_num = request.POST.get('certificate_number', '').strip()
             issue_str = request.POST.get('issue_date', '').strip() or None
@@ -3789,10 +3795,10 @@ def manage_member_detail(request, club_slug, member_id):
             notes = request.POST.get('notes', '').strip()
             ac_type_id = request.POST.get('cred_aircraft_type_id', '').strip()
             ac_type_obj = (AircraftType.objects.filter(club=club, id=ac_type_id).first()
-                           if ac_type_id and cred_type == 'type' else None)
-            if action == 'add_credential' and cred_type:
+                           if ac_type_id and ct_obj and ct_obj.category == 'type_rating' else None)
+            if action == 'add_credential' and ct_obj:
                 cred = MemberCredential(
-                    club_member=member, credential_type=cred_type, name=name,
+                    member=member.user, credential_type=ct_obj, name=name,
                     aircraft_type=ac_type_obj,
                     certificate_number=cert_num, issue_date=issue_str,
                     expiry_date=expiry_str, notes=notes, created_by=request.user,
@@ -3802,10 +3808,10 @@ def manage_member_detail(request, club_slug, member_id):
                 cred.save()
             elif action == 'edit_credential':
                 cred_id = request.POST.get('cred_id')
-                cred = MemberCredential.objects.filter(club_member=member, id=cred_id).first()
+                cred = MemberCredential.objects.filter(member=member.user, id=cred_id).first()
                 if cred:
-                    if cred_type:
-                        cred.credential_type = cred_type
+                    if ct_obj:
+                        cred.credential_type = ct_obj
                     cred.aircraft_type = ac_type_obj
                     cred.name = name
                     cred.certificate_number = cert_num
@@ -3818,7 +3824,7 @@ def manage_member_detail(request, club_slug, member_id):
 
         elif action == 'delete_credential' and (actor.is_admin or actor.is_instructor):
             from .models import MemberCredential
-            MemberCredential.objects.filter(club_member=member, id=request.POST.get('cred_id')).delete()
+            MemberCredential.objects.filter(member=member.user, id=request.POST.get('cred_id')).delete()
 
         elif action == 'set_credit_limit' and actor.is_admin:
             from .models import Account as _Account
@@ -3987,7 +3993,10 @@ def manage_member_detail(request, club_slug, member_id):
                      .exclude(status='cancelled')
                      .select_related('aircraft', 'instructor', 'flight_type', 'flight_completion')
                      .order_by('-scheduled_start')[:20])
-    credentials = MemberCredential.objects.filter(club_member=member).order_by('expiry_date')
+    credentials = (MemberCredential.objects
+                   .filter(member=member.user)
+                   .select_related('credential_type', 'aircraft_type')
+                   .order_by('expiry_date'))
     roles = Role.objects.filter(club=club)
 
     try:
@@ -4003,6 +4012,7 @@ def manage_member_detail(request, club_slug, member_id):
                    .order_by('user__last_name'))
 
     from .models import CredentialType
+    credential_types = CredentialType.objects.filter(region='NZ-CAA').order_by('display_order')
     frequent_passengers = _FP.objects.filter(club_member=member).order_by('name')
     _is_inline = request.GET.get('inline') == '1'
     membership_history = member.membership_history.select_related('changed_by').order_by('-changed_at')
@@ -4044,7 +4054,7 @@ def manage_member_detail(request, club_slug, member_id):
         'credentials': credentials, 'account': account, 'transactions': transactions,
         'all_members': all_members, 'roles': roles,
         'standing_choices': ClubMember.STANDING_CHOICES,
-        'credential_types': CredentialType.choices,
+        'credential_types': credential_types,
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'frequent_passengers': frequent_passengers,
         'membership_history': membership_history,
@@ -5394,7 +5404,10 @@ def manage_instructor_detail(request, club_slug, member_id):
                      .prefetch_related('instructors', 'blockout_type'))
     instr_blockouts = [bo for bo in all_instr_bos if instr.user in bo.instructors.all()]
 
-    credentials = MemberCredential.objects.filter(club_member=instr).order_by('credential_type', 'expiry_date')
+    credentials = (MemberCredential.objects
+                   .filter(member=instr.user)
+                   .select_related('credential_type', 'aircraft_type')
+                   .order_by('credential_type__display_order', 'expiry_date'))
     instructor_grades = InstructorGrade.objects.filter(club=club).order_by('display_order')
     instructor_blockout_types = BlockOutType.objects.filter(club=club).exclude(target='aircraft')
 
@@ -7448,20 +7461,10 @@ def _instructor_cred_issues(club, on_date):
 
     Returns list of dicts: {cm, lapsed: [str], bookings: [Booking]}
     """
-    from .models import MemberCredential, CredentialType, ClubConfig
+    from .models import MemberCredential, ClubConfig
 
-    INSTR_CERT_TYPES = {
-        CredentialType.INSTRUCTOR_C,
-        CredentialType.INSTRUCTOR_B,
-        CredentialType.INSTRUCTOR_A,
-        CredentialType.EXAMINER,
-    }
-    MEDICAL_TYPES = {
-        CredentialType.MEDICAL_C1,
-        CredentialType.MEDICAL_C2,
-        CredentialType.MEDICAL_C3,
-        CredentialType.MEDICAL_DLR9,
-    }
+    INSTR_CERT_CODES = {'instr_a', 'instr_b', 'instr_c', 'instr_d', 'instr_e', 'examiner'}
+    MEDICAL_CODES    = {'medical_c1', 'medical_c2', 'medical_c3', 'dlr9'}
 
     instructor_ids = list(
         Booking.objects
@@ -7479,16 +7482,16 @@ def _instructor_cred_issues(club, on_date):
         ClubMember.objects
         .filter(club=club, user_id__in=instructor_ids, is_on_instructor_roster=True)
         .select_related('user')
-        .prefetch_related('credentials')
+        .prefetch_related('user__credentials__credential_type')
     )
 
     issues = []
     for instr in instructors:
-        creds = list(instr.credentials.all())
+        creds = list(instr.user.credentials.all())
         lapsed = []
 
         # Instructor certificate
-        ic = [c for c in creds if c.credential_type in INSTR_CERT_TYPES]
+        ic = [c for c in creds if c.credential_type.code in INSTR_CERT_CODES]
         if not ic:
             lapsed.append('No instructor certificate recorded')
         else:
@@ -7498,7 +7501,7 @@ def _instructor_cred_issues(club, on_date):
                 lapsed.append(f'Instructor certificate expired {latest.expiry_date:%d %b %Y}')
 
         # Medical
-        med = [c for c in creds if c.credential_type in MEDICAL_TYPES]
+        med = [c for c in creds if c.credential_type.code in MEDICAL_CODES]
         if not med:
             lapsed.append('No medical certificate recorded')
         else:
@@ -7508,7 +7511,7 @@ def _instructor_cred_issues(club, on_date):
                 lapsed.append(f'Medical expired {latest.expiry_date:%d %b %Y}')
 
         # Flight review
-        fr = [c for c in creds if c.credential_type == CredentialType.FLIGHT_REVIEW]
+        fr = [c for c in creds if c.credential_type.code == 'fr']
         if not fr:
             lapsed.append('No Flight Review recorded')
         else:
@@ -7672,24 +7675,30 @@ def manage_exceptions(request, club_slug):
         .values_list('member_id', flat=True)
         .distinct()
     )
-    expired_cred_member_ids = (
+    future_user_ids = (
+        ClubMember.objects
+        .filter(id__in=future_member_ids)
+        .values_list('user_id', flat=True)
+    )
+    expired_cred_user_ids = (
         MemberCredential.objects
-        .filter(club_member__club=club,
-                club_member_id__in=future_member_ids,
-                expiry_date__lt=today)
-        .values_list('club_member_id', flat=True)
+        .filter(member_id__in=future_user_ids, expiry_date__lt=today)
+        .values_list('member_id', flat=True)
         .distinct()
     )
     members_lapsed_creds = (
         ClubMember.objects
-        .filter(id__in=expired_cred_member_ids)
+        .filter(club=club, user_id__in=expired_cred_user_ids)
         .select_related('user')
-        .prefetch_related('credentials')
         .order_by('user__last_name')
     )
     lapsed_creds_data = []
     for cm in members_lapsed_creds:
-        expired = [c for c in cm.credentials.all() if c.expiry_date and c.expiry_date < today]
+        expired = list(
+            MemberCredential.objects
+            .filter(member=cm.user, expiry_date__lt=today)
+            .select_related('credential_type')
+        )
         upcoming = (Booking.objects
                     .filter(club=club, member=cm, scheduled_start__date__gte=today)
                     .exclude(status__in=['cancelled', 'completed'])
@@ -8752,16 +8761,17 @@ def export_data(request, club_slug, export_type):
 
     def credentials_data():
         from .models import MemberCredential
+        club_user_ids = ClubMember.objects.filter(club=club).values_list('user_id', flat=True)
         hdrs = ['Member', 'Type', 'Name / Aircraft type', 'Issue date',
                 'Expiry date', 'Certificate number', 'Notes']
         rows = []
         for c in (MemberCredential.objects
-                  .filter(club_member__club=club)
-                  .select_related('club_member__user', 'aircraft_type')
-                  .order_by('club_member__user__last_name', 'credential_type')):
+                  .filter(member_id__in=club_user_ids)
+                  .select_related('member', 'credential_type', 'aircraft_type')
+                  .order_by('member__last_name', 'credential_type__display_order')):
             name = c.name or (c.aircraft_type.name if c.aircraft_type else '')
-            rows.append([c.club_member.user.get_full_name(),
-                         c.get_credential_type_display(), name,
+            rows.append([c.member.get_full_name(),
+                         c.credential_type.name if c.credential_type_id else '', name,
                          c.issue_date or '', c.expiry_date or '',
                          c.certificate_number, c.notes])
         return hdrs, rows
@@ -10186,10 +10196,10 @@ def app_home(request, club_slug):
     # Credentials expiring within 60 days
     expiry_threshold = today + _td(days=60)
     expiring_creds = list(_Cred.objects.filter(
-        club_member=actor,
+        member=actor.user,
         expiry_date__isnull=False,
         expiry_date__lte=expiry_threshold,
-    ).order_by('expiry_date'))
+    ).select_related('credential_type').order_by('expiry_date'))
 
     # Active announcements (pinned first, then newest)
     from django.db.models import Q as _Q
@@ -10532,8 +10542,8 @@ def app_profile(request, club_slug):
             return redirect(_profile_url + '?saved=1#notifications')
 
     credentials = list(MemberCredential.objects
-                       .filter(club_member=actor)
-                       .select_related('aircraft_type')
+                       .filter(member=actor.user)
+                       .select_related('credential_type', 'aircraft_type')
                        .order_by('expiry_date'))
     if any(c.is_expired for c in credentials):
         cred_status = 'red'
@@ -10674,7 +10684,8 @@ def app_credential_add(request, club_slug):
     from django.urls import reverse as _rev
 
     if request.method == 'POST':
-        cred_type = request.POST.get('credential_type', '').strip()
+        ct_id = request.POST.get('credential_type', '').strip()
+        ct_obj = CredentialType.objects.filter(id=ct_id).first() if ct_id else None
         ac_type_id = request.POST.get('cred_aircraft_type_id', '').strip() or None
         name = request.POST.get('cred_name', '').strip()
         cert_num = request.POST.get('certificate_number', '').strip()
@@ -10689,29 +10700,30 @@ def app_credential_add(request, club_slug):
             except ValueError:
                 return None
 
-        cred = MemberCredential(
-            club_member=actor,
-            credential_type=cred_type,
-            name=name,
-            certificate_number=cert_num,
-            issue_date=_pd(issue_str),
-            expiry_date=_pd(expiry_str),
-            notes=notes,
-        )
-        if ac_type_id:
-            try:
-                cred.aircraft_type_id = int(ac_type_id)
-            except (ValueError, TypeError):
-                pass
-        if 'evidence' in request.FILES:
-            cred.evidence = request.FILES['evidence']
-        cred.save()
+        if ct_obj:
+            cred = MemberCredential(
+                member=actor.user,
+                credential_type=ct_obj,
+                name=name,
+                certificate_number=cert_num,
+                issue_date=_pd(issue_str),
+                expiry_date=_pd(expiry_str),
+                notes=notes,
+            )
+            if ac_type_id and ct_obj.category == 'type_rating':
+                try:
+                    cred.aircraft_type_id = int(ac_type_id)
+                except (ValueError, TypeError):
+                    pass
+            if 'evidence' in request.FILES:
+                cred.evidence = request.FILES['evidence']
+            cred.save()
         return redirect(_rev('core:app_profile', args=[club.slug]) + '?saved=1')
 
     aircraft_types = AircraftType.objects.filter(club=club).order_by('name')
     return render(request, 'core/app/credential_add.html', {
         'club': club, 'club_member': actor,
-        'credential_types': CredentialType.choices,
+        'credential_types': CredentialType.objects.filter(region='NZ-CAA').order_by('display_order'),
         'aircraft_type_list': aircraft_types,
     })
 
@@ -10725,10 +10737,11 @@ def app_credential_edit(request, club_slug, cred_id):
     from .models import MemberCredential, CredentialType, AircraftType
     from django.urls import reverse as _rev
 
-    cred = get_object_or_404(MemberCredential, id=cred_id, club_member=actor)
+    cred = get_object_or_404(MemberCredential, id=cred_id, member=actor.user)
 
     if request.method == 'POST':
-        cred_type = request.POST.get('credential_type', '').strip()
+        ct_id = request.POST.get('credential_type', '').strip()
+        ct_obj = CredentialType.objects.filter(id=ct_id).first() if ct_id else None
         ac_type_id = request.POST.get('cred_aircraft_type_id', '').strip() or None
         name = request.POST.get('cred_name', '').strip()
         cert_num = request.POST.get('certificate_number', '').strip()
@@ -10743,14 +10756,15 @@ def app_credential_edit(request, club_slug, cred_id):
             except ValueError:
                 return None
 
-        cred.credential_type = cred_type
+        if ct_obj:
+            cred.credential_type = ct_obj
         cred.name = name
         cred.certificate_number = cert_num
         cred.issue_date = _pd(issue_str)
         cred.expiry_date = _pd(expiry_str)
         cred.notes = notes
         cred.aircraft_type_id = None
-        if ac_type_id:
+        if ac_type_id and ct_obj and ct_obj.category == 'type_rating':
             try:
                 cred.aircraft_type_id = int(ac_type_id)
             except (ValueError, TypeError):
@@ -10766,7 +10780,7 @@ def app_credential_edit(request, club_slug, cred_id):
     aircraft_types = AircraftType.objects.filter(club=club).order_by('name')
     return render(request, 'core/app/credential_edit.html', {
         'club': club, 'club_member': actor, 'cred': cred,
-        'credential_types': CredentialType.choices,
+        'credential_types': CredentialType.objects.filter(region='NZ-CAA').order_by('display_order'),
         'aircraft_type_list': aircraft_types,
     })
 
@@ -10780,7 +10794,7 @@ def app_credential_delete(request, club_slug, cred_id):
     from .models import MemberCredential
     from django.urls import reverse as _rev
 
-    cred = get_object_or_404(MemberCredential, id=cred_id, club_member=actor)
+    cred = get_object_or_404(MemberCredential, id=cred_id, member=actor.user)
     if request.method == 'POST':
         cred.delete()
     return redirect(_rev('core:app_profile', args=[club.slug]) + '?saved=1')
@@ -10871,10 +10885,10 @@ def app_book_availability(request, club_slug):
         })
 
     # Member type ratings → set of AircraftType IDs they hold
-    from .models import MemberCredential, CredentialType
+    from .models import MemberCredential
     rated_type_ids = set(
         MemberCredential.objects
-        .filter(club_member=actor, credential_type=CredentialType.TYPE_RATING)
+        .filter(member=actor.user, credential_type__code='type')
         .values_list('aircraft_type_id', flat=True)
     )
     rated_type_ids.discard(None)  # credentials without an aircraft_type are non-restrictive
@@ -11058,12 +11072,14 @@ def app_book_confirm(request, club_slug):
             ft = None
 
         inst_user = None
-        if mode == 'dual' and inst_id:
+        if mode == 'dual' and not inst_id:
+            errors.append('Please select an instructor.')
+        elif mode == 'dual' and inst_id:
             try:
                 inst_member = ClubMember.objects.get(id=int(inst_id), club=club)
                 inst_user = inst_member.user
             except (ClubMember.DoesNotExist, ValueError):
-                pass
+                errors.append('Instructor not found.')
 
         try:
             sh, sm = [int(x) for x in start_str.split(':')]

@@ -136,7 +136,7 @@
   <div style="font-size:.78rem;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;">Credentials expiring soon</div>
   {% for c in expiring_creds %}
   <div style="display:flex;align-items:center;justify-content:space-between;{% if not forloop.first %}margin-top:.4rem;{% endif %}">
-    <span style="font-size:.84rem;font-weight:600;">{{ c.get_credential_type_display }}</span>
+    <span style="font-size:.84rem;font-weight:600;">{{ c.credential_type.name }}</span>
     {% if c.expiry_date %}
     <span style="font-size:.78rem;{% if c.is_expired %}color:#e03131;font-weight:700;{% else %}color:#d97706;{% endif %}">
       {% if c.is_expired %}Expired{% else %}{{ c.days_until_expiry }}d{% endif %} · {{ c.expiry_date|date:"j M Y" }}
