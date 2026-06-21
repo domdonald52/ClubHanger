@@ -475,7 +475,6 @@
     conflictNotice.hidden = true;
     conflictNotice.innerHTML = "";
     if (instrConflictNotice) instrConflictNotice.hidden = true;
-    const _dn = document.getElementById("m-decl-notice"); if (_dn) _dn.hidden = true;
     modal.hidden = false;
     removePreview();
     previewEl = document.createElement("div");
@@ -754,17 +753,6 @@
     } else {
       conflictNotice.hidden = true;
       conflictNotice.innerHTML = "";
-    }
-
-    // Declaration pending notice (amber, separate from red conflict notice)
-    const _declNotice = document.getElementById("m-decl-notice");
-    const _declLink   = document.getElementById("m-decl-link");
-    if (_declNotice) {
-      const _showDecl = declPendingOnOpen && !isDeparted && !isCompleted;
-      _declNotice.hidden = !_showDecl;
-      if (_showDecl && _declLink) {
-        _declLink.href = pill.dataset.declUrl || "#";
-      }
     }
 
     // Plain members editing their own booking: lock member + instructor fields
@@ -1401,7 +1389,7 @@
       track.addEventListener("click", (e) => {
         if (_recentDrag || e.target.closest(".pill")) return;
         const rect = track.getBoundingClientRect();
-        const x = e.clientX - rect.left;
+        const x = (e.clientX - rect.left) / (window._ganttScale || 1);
         const hardBand = hardBandAtX(track, x);
         if (hardBand) {
           if (!cfg.canManage) {
@@ -1638,7 +1626,7 @@
 
       if (mode === "resize") {
         const dx = e.clientX - startX;
-        pill.style.width = Math.max(minToPx(SLOT), origWidth + dx) + "px";
+        pill.style.width = Math.max(minToPx(SLOT), origWidth + dx / (window._ganttScale || 1)) + "px";
         pill.classList.toggle("invalid", overlapsInTrack(pill.parentElement, origLeft, parseFloat(pill.style.width), pill.dataset.id));
         return;
       }
@@ -1701,10 +1689,11 @@
       if (finishedMode === "move") {
         const target = trackAtY(e.clientY, origRowType) || origParent;
         // Ghost screen-left = e.clientX - cursorOffsetX; subtract track's screen-left for track-relative px
+        // Divide by scale since track content is scaleX'd — screen px → natural px
         const rawLeft = (e.clientX - cursorOffsetX) - target.getBoundingClientRect().left;
         _clearDragState();
         if (target !== origParent) target.appendChild(pill);
-        pill.style.left = Math.max(0, rawLeft) + "px";
+        pill.style.left = Math.max(0, rawLeft / (window._ganttScale || 1)) + "px";
         newTrack = target;
       } else {
         _clearDragState();
