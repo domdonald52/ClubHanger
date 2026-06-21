@@ -10430,9 +10430,11 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
                 continue
             _bo_iv = _bo.interval_on(selected)
             if _bo_iv:
-                _bo_top = to_px(_bo_iv[0])
-                _bo_bot = to_px(_bo_iv[1])
-                _bars = _subtract_blockout_from_bars(_bars, _bo_top, _bo_bot)
+                _bars = _subtract_blockout_from_bars(_bars, to_px(_bo_iv[0]), to_px(_bo_iv[1]))
+        # Subtract existing bookings assigned to this instructor
+        for _bk in day_bookings:
+            if _bk.instructor_id == _instr.user_id:
+                _bars = _subtract_blockout_from_bars(_bars, to_px(_bk.scheduled_start), to_px(_bk.scheduled_end))
         instructor_bars.append({
             'initials': _initials,
             'name':     _instr.user.get_short_name(),
@@ -11171,6 +11173,12 @@ def app_book_confirm(request, club_slug):
             ).prefetch_related('instructors')
             if bo.applies_on(_conf_date)
         ]
+        _conf_bookings = list(
+            Booking.objects
+            .filter(club=club, scheduled_start__date=_conf_date, instructor__isnull=False)
+            .exclude(status='cancelled')
+            .values_list('instructor_id', 'scheduled_start', 'scheduled_end')
+        )
         def _instr_ok(cm):
             wins = list(cm.availability_windows.all())
             if wins:
@@ -11187,6 +11195,9 @@ def app_book_confirm(request, club_slug):
                     continue
                 biv = bo.interval_on(_conf_date)
                 if biv and biv[0] <= _sched_s < biv[1]:
+                    return False
+            for instr_id, bk_s, bk_e in _conf_bookings:
+                if instr_id == cm.user_id and bk_s <= _sched_s < bk_e:
                     return False
             return True
         instructors = [i for i in _instr_all if _instr_ok(i)]
