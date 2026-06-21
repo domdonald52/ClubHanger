@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
 <style>
   html,body{overflow-x:hidden}
-  .cal-wrap{font-feature-settings:"tnum";max-width:none;color:#1f2933}
+  .cal-wrap{font-feature-settings:"tnum";max-width:none;color:#1f2933;overflow-x:hidden}
   .cal-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.5rem;flex-wrap:wrap;background:transparent}
   .cal-date{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
   .cal-date h1{margin:0;font-size:1.35rem;font-weight:650;letter-spacing:-.01em;color:var(--banner);min-width:11ch}
@@ -335,8 +335,7 @@
       <input type="hidden" id="m-booking-id">
       <label><span id="m-member-lbl">Member</span>
         <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;">
-          <span id="m-member-display" style="flex:1;font-size:.88rem;padding:.4rem .55rem;border:1px solid #d6dae0;border-radius:7px;background:#f9fafb;color:#8a93a0;display:flex;align-items:center;min-height:2.1rem;">— select member —</span>
-          <button type="button" id="m-find-member" class="cbtn-sm" style="flex-shrink:0;white-space:nowrap;">Find member</button>
+          <span id="m-member-display" style="flex:1;font-size:.88rem;padding:.4rem .55rem;border:1px solid #d6dae0;border-radius:7px;background:#f9fafb;color:#8a93a0;display:flex;align-items:center;min-height:2.1rem;cursor:pointer;" title="Click to search members">— select member —</span>
         </div>
         <select id="m-member" hidden></select>
       </label>

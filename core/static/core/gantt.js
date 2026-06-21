@@ -382,16 +382,16 @@
   }
 
   if (findMemberModal) {
-    if (fFindMemberBtn) {
-      fFindMemberBtn.addEventListener("click", () => {
-        _fmSelected = null;
-        if (fmApply) fmApply.disabled = true;
-        if (fmSearch) fmSearch.value = "";
-        renderFmList("");
-        findMemberModal.hidden = false;
-        setTimeout(() => fmSearch && fmSearch.focus(), 50);
-      });
+    function _openFindMember() {
+      _fmSelected = null;
+      if (fmApply) fmApply.disabled = true;
+      if (fmSearch) fmSearch.value = "";
+      renderFmList("");
+      findMemberModal.hidden = false;
+      setTimeout(() => fmSearch && fmSearch.focus(), 50);
     }
+    if (fMemberDisplay) fMemberDisplay.addEventListener("click", _openFindMember);
+    if (fFindMemberBtn) fFindMemberBtn.addEventListener("click", _openFindMember);
     if (fmSearch) {
       fmSearch.addEventListener("input", () => renderFmList(fmSearch.value));
       fmSearch.addEventListener("keydown", e => {
@@ -760,6 +760,7 @@
     fMember.disabled = _memberOwned;
     fMember.style.opacity = _memberOwned ? ".5" : "";
     if (fFindMemberBtn) { fFindMemberBtn.disabled = _memberOwned; fFindMemberBtn.style.opacity = _memberOwned ? ".5" : ""; }
+    if (fMemberDisplay) { fMemberDisplay.style.opacity = _memberOwned ? ".5" : ""; fMemberDisplay.style.cursor = _memberOwned ? "default" : "pointer"; }
     fInstructor.disabled = _memberOwned;
     if (fInstructorLabel) fInstructorLabel.style.opacity = _memberOwned ? ".5" : "";
 
@@ -772,6 +773,7 @@
     removePreview();
     fMember.disabled = false; fMember.style.opacity = "";
     if (fFindMemberBtn) { fFindMemberBtn.disabled = false; fFindMemberBtn.style.opacity = ""; }
+    if (fMemberDisplay) { fMemberDisplay.style.opacity = ""; fMemberDisplay.style.cursor = "pointer"; }
     fInstructor.disabled = false;
     if (fInstructorLabel) fInstructorLabel.style.opacity = "";
     if (fClient) fClient.value = "";

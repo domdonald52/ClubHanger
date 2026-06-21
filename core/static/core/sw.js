@@ -1,4 +1,28 @@
-// ClubHangar Service Worker — handles Web Push notifications
+// ClubHangar Service Worker — push notifications + image caching
+
+var IMAGE_CACHE = 'ch-images-v1';
+
+// Cache images (media uploads + static img) on first fetch, serve from cache thereafter.
+// Stale-while-revalidate: return cached copy immediately, update in background.
+self.addEventListener('fetch', function(event) {
+  var url = event.request.url;
+  if (event.request.method !== 'GET') return;
+  if (event.request.destination !== 'image') return;
+  // Only cache our own images — media uploads and static img files
+  if (url.indexOf('/media/') === -1 && url.indexOf('/static/core/img/') === -1) return;
+
+  event.respondWith(
+    caches.open(IMAGE_CACHE).then(function(cache) {
+      return cache.match(event.request).then(function(cached) {
+        var networkFetch = fetch(event.request).then(function(resp) {
+          if (resp.ok) cache.put(event.request, resp.clone());
+          return resp;
+        }).catch(function() { return cached; });
+        return cached || networkFetch;
+      });
+    })
+  );
+});
 
 self.addEventListener('push', function(event) {
   if (!event.data) return;
