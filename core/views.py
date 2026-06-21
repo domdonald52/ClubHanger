@@ -458,7 +458,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     if selected_date == today:
         now_dt = timezone.now()
         raw_px = (now_dt - day_start).total_seconds() / 60 * px_per_min
-        now_px = max(0, min(track_width, int(raw_px)))
+        now_px = max(0, min(track_width - 2, int(raw_px)))
 
     zoom_param = request.GET.get('zoom', '')
     can_manage = club_member.is_instructor or club_member.is_admin
@@ -2424,20 +2424,19 @@ def manage_bookings(request, club_slug):
         .values_list('id', flat=True)
     )
 
-    # ── Needs-attention section (no status/date filter — always shows urgent items) ──
+    # ── Needs-attention section (aircraft/instructor filters apply; status filter applies on active tab) ──
     from django.db.models import F as _F
     _near_cutoff = today + timedelta(days=7)
-    _attn_list = list(
-        _base_qs
-        .filter(
-            _Q2(status='departed') |
-            _Q2(status='completed', flight_completion__paid_at__isnull=True) |
-            _Q2(status__in=['pending', 'confirmed'], scheduled_start__date__lte=_near_cutoff) |
-            _Q2(id__in=_clashing_ids) |
-            _Q2(status='completed', flight_completion__amount_paid__gt=_F('flight_completion__total_charge'))
-        )
-        .order_by('scheduled_start')
+    _attn_qs = _base_qs.filter(
+        _Q2(status='departed') |
+        _Q2(status='completed', flight_completion__paid_at__isnull=True) |
+        _Q2(status__in=['pending', 'confirmed'], scheduled_start__date__lte=_near_cutoff) |
+        _Q2(id__in=_clashing_ids) |
+        _Q2(status='completed', flight_completion__amount_paid__gt=_F('flight_completion__total_charge'))
     )
+    if f_status:
+        _attn_qs = _attn_qs.filter(status=f_status)
+    _attn_list = list(_attn_qs.order_by('scheduled_start'))
     _attn_list.sort(key=lambda b: (_STATUS_ORDER.get(b.status, 9), b.scheduled_start))
     attention_data = [{'b': b, 'reasons': conflict_reasons(b)} for b in _attn_list]
 

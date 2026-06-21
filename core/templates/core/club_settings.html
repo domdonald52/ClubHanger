@@ -800,9 +800,10 @@
             <form method="post" style="display:inline;">
               {% csrf_token %}<input type="hidden" name="action" value="toggle_occurrence_type">
               <input type="hidden" name="ot_id" value="{{ ot.id }}">
-              <button type="submit" class="cbtn sm" style="{% if ot.is_active %}color:#216c2a;{% else %}color:#8a93a0;{% endif %}">
-                {% if ot.is_active %}Active{% else %}Inactive{% endif %}
-              </button>
+              <label class="tog-sw">
+                <input type="checkbox" {% if ot.is_active %}checked{% endif %} onchange="this.form.submit()">
+                <span class="tog-track"></span>
+              </label>
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
@@ -813,6 +814,8 @@
               <input type="hidden" name="ot_id" value="{{ ot.id }}">
               <button type="submit" class="cbtn sm danger">Delete</button>
             </form>
+            {% else %}
+            <span style="font-size:.72rem;color:#9ca3af;cursor:default;" title="Cannot delete — reports exist using this type. Deactivate it instead.">Has reports</span>
             {% endif %}
           </td>
         </tr>

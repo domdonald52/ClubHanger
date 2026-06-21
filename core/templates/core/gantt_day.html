@@ -661,7 +661,8 @@
     const totalMins = {{ total_minutes }};
     function update() {
       const diffMin = Math.max(0, Math.min(totalMins, (new Date() - dayStart) / 60000));
-      overlay.style.left = (labelW + Math.round(diffMin * pxPerMin)) + 'px';
+      const px = Math.min(Math.round(diffMin * pxPerMin), totalMins * pxPerMin - 2);
+      overlay.style.left = (labelW + px) + 'px';
     }
     update();
     setInterval(update, 30000);

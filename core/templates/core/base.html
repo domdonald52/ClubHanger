@@ -385,6 +385,9 @@
 .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
 textarea.finput{resize:vertical;}
 select.finput{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b7280' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65rem center;background-size:.55rem;padding-right:2rem;cursor:pointer;}
+input[type=file].finput{padding:.2rem .35rem;}
+input[type=file].finput::file-selector-button,input[type=file].finput::-webkit-file-upload-button{background:var(--primary);color:#fff;border:none;border-radius:5px;padding:.28rem .7rem;font-size:.82rem;font-weight:600;font-family:inherit;cursor:pointer;margin-right:.55rem;transition:opacity .15s;}
+input[type=file].finput::file-selector-button:hover,input[type=file].finput::-webkit-file-upload-button:hover{opacity:.85;}
 /* ── Availability search: sticky filter + calendar bar ── */
 .avail-sticky{position:sticky;top:0;z-index:50;background:#fff;padding-bottom:.5rem;border-bottom:2px solid #eef1f4;}
 @media(min-width:900px){.avail-sticky{top:52px;}}

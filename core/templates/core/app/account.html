@@ -27,14 +27,10 @@
 
 <!-- Outstanding amounts -->
 {% if unpaid_flights or unpaid_invoices %}
-<div class="app-section gap-sm">
-  <span class="app-section-title" style="color:#e03131;">Outstanding amounts</span>
-</div>
 
 {% if unpaid_flights %}
-<div style="padding:0 .75rem .2rem;display:flex;align-items:baseline;justify-content:space-between;">
-  <span style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Flights awaiting payment</span>
-  <span style="font-size:.82rem;font-weight:700;color:#e03131;">${{ unpaid_flights_total|floatformat:2|intcomma }}</span>
+<div class="app-section gap-sm">
+  <span class="app-section-title">Flights awaiting payment</span>
 </div>
 <div class="app-list">
   {% for fc in unpaid_flights %}
@@ -68,9 +64,8 @@
 {% endif %}
 
 {% if unpaid_invoices %}
-<div style="padding:.6rem .75rem .2rem;display:flex;align-items:baseline;justify-content:space-between;">
-  <span style="font-size:.72rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">Unpaid invoices</span>
-  <span style="font-size:.82rem;font-weight:700;color:#e03131;">${{ unpaid_invoices_total|floatformat:2|intcomma }}</span>
+<div class="app-section gap-sm">
+  <span class="app-section-title">Unpaid invoices</span>
 </div>
 <div class="app-list">
   {% for inv in unpaid_invoices %}
@@ -80,9 +75,9 @@
     <div class="app-list-main">
       <div class="app-list-title" style="font-size:.87rem;">{{ inv.display_number }} &middot; {{ inv.issue_date|date:"j M Y" }}</div>
       <div class="app-list-sub" style="color:{% if inv.needs_attention %}#e03131{% else %}#6b7280{% endif %};">
-        {% if inv.is_overdue %}Overdue — due {{ inv.due_date|date:"j M" }}
+        {% if inv.is_overdue %}Overdue by {{ inv.days_overdue }} day{{ inv.days_overdue|pluralize }} — due {{ inv.due_date|date:"j M" }}
         {% elif inv.needs_attention %}Issued 30+ days ago — please follow up
-        {% else %}Awaiting reconciliation — payments may take a few days to appear{% endif %}
+        {% else %}Due {{ inv.due_date|date:"j M" }}{% endif %}
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:.4rem;">

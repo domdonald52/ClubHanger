@@ -1363,7 +1363,7 @@ class Contact(models.Model):
 
 class BookingStatus(models.TextChoices):
     """Booking lifecycle states."""
-    PENDING = 'pending', 'Pending Confirmation'
+    PENDING = 'pending', 'Pending'
     CONFIRMED = 'confirmed', 'Confirmed'
     DEPARTED = 'departed', 'Departed'
     COMPLETED = 'completed', 'Returned'

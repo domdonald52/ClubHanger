@@ -219,13 +219,14 @@
     </div>
     {% endif %}
     {% if credentials %}
+    <div style="overflow-x:auto;">
     <table class="cred-table">
       <thead><tr><th>Type</th><th>Name / sub-type</th><th>Certificate #</th><th>Issued</th><th>Expires</th><th>Status</th><th>Evidence</th>{% if club_member.is_admin or club_member.is_instructor %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for c in credentials %}
         <tr>
           <td style="white-space:nowrap;">{{ c.get_credential_type_display }}</td>
-          <td style="color:#5b6573;font-size:.82rem;">
+          <td style="color:#5b6573;font-size:.82rem;white-space:nowrap;">
             {% if c.credential_type == 'type' and c.aircraft_type %}{{ c.aircraft_type.name }}{% if c.name and c.name != c.aircraft_type.name %} <span style="color:#b0b8c4;">({{ c.name }})</span>{% endif %}
             {% else %}{{ c.name|default:"—" }}{% endif %}
           </td>
@@ -261,6 +262,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}
     <p style="color:#8a93a0;font-size:.85rem;">No credentials recorded.</p>
     {% endif %}
@@ -309,7 +311,7 @@
           <textarea name="notes" class="finput" rows="2" placeholder="Optional — any relevant notes"></textarea>
         </label>
         <label class="flabel" style="margin-top:.4rem;">Evidence photo/scan <span style="font-weight:400;">(optional — JPG, PNG or PDF)</span>
-          <input type="file" name="evidence" accept="image/*,.pdf" class="finput" style="padding:.3rem;">
+          <input type="file" name="evidence" accept="image/*,.pdf" class="finput">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
           <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true">✕ Close</button>
@@ -363,7 +365,7 @@
           <textarea name="notes" id="ecm-notes" class="finput" rows="2"></textarea>
         </label>
         <label class="flabel" style="margin-top:.4rem;">Replace evidence photo/scan <span style="font-weight:400;">(leave blank to keep existing)</span>
-          <input type="file" name="evidence" accept="image/*,.pdf" class="finput" style="padding:.3rem;">
+          <input type="file" name="evidence" accept="image/*,.pdf" class="finput">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
           <button type="button" class="cbtn" onclick="document.getElementById('edit-cred-modal').hidden=true">✕ Close</button>
@@ -639,7 +641,7 @@
   .cred-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .cred-table tr:last-child td{border-bottom:0;}
 
-  .cred-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
+  .cred-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;white-space:nowrap;}
   .cred-chip.ok{background:#e6f4ea;color:#2a7a3b;}
   .cred-chip.soon{background:#fff3e0;color:#e65100;}
   .cred-chip.expired{background:#fee2e2;color:#c0392b;}
