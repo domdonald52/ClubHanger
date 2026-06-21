@@ -329,6 +329,12 @@
       <span id="m-status-text">This flight is complete.</span>
     </div>
 
+    <!-- Declaration pending notice (edit view only; hidden for departed/completed/new) -->
+    <div id="m-decl-notice" hidden style="background:#fff8e6;border:1px solid #fcd34d;border-radius:7px;padding:.5rem .75rem;margin-bottom:.7rem;font-size:.83rem;color:#92400e;display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;">
+      <span>⚑ <strong>Declaration pending</strong> — This flight type requires a pre-departure declaration.</span>
+      <button id="m-decl-notice-btn" type="button" class="cbtn-sm" style="color:var(--banner);border-color:var(--banner);white-space:nowrap;flex-shrink:0;">Open declaration →</button>
+    </div>
+
     <!-- Standard edit fields (hidden for departed/completed) -->
     <div id="m-edit-fields">
       <input type="hidden" id="m-booking-id">

@@ -121,6 +121,8 @@
   const btnCheckin = document.getElementById("m-checkin-btn");
   const btnCharges = document.getElementById("m-charges-link");
   const btnDeclLink = document.getElementById("m-decl-btn");
+  const mDeclNotice = document.getElementById("m-decl-notice");
+  const mDeclNoticeBtn = document.getElementById("m-decl-notice-btn");
   const btnWatch = document.getElementById("m-watch");
   const editFields = document.getElementById("m-edit-fields");
   const checkinFields = document.getElementById("m-checkin-fields");
@@ -573,9 +575,11 @@
       btnDeclLink.hidden = true;  // always hidden in footer; "Open declaration →" is inside the inline panel
       btnDeclLink.dataset.declUrl = pill.dataset.declUrl || "";
     }
+    if (mDeclNoticeBtn) mDeclNoticeBtn.dataset.declUrl = pill.dataset.declUrl || "";
     // departed: hide edit fields, show check-in panel
     const isDeparted = (st === "departed");
     const isCompleted = (st === "completed");
+    if (mDeclNotice) mDeclNotice.hidden = !(declPendingOnOpen && !isDeparted && !isCompleted);
     editFields.style.display = (isDeparted || isCompleted) ? "none" : "";
     checkinFields.hidden = !isDeparted;
     btnCheckin.hidden = !isDeparted;
@@ -783,6 +787,7 @@
     btnConfirm.hidden = true;
     btnDepart.hidden = true;
     if (btnDeclLink) btnDeclLink.hidden = true;
+    if (mDeclNotice) mDeclNotice.hidden = true;
     btnCheckin.hidden = true;
     btnCharges.hidden = true;
     document.getElementById("m-status-notice").hidden = true;
@@ -1193,6 +1198,7 @@
     openDetailOverlay(url);
   }
   if (btnDeclLink) btnDeclLink.addEventListener("click", () => openDeclOverlay());
+  if (mDeclNoticeBtn) mDeclNoticeBtn.addEventListener("click", () => openDeclOverlay(mDeclNoticeBtn.dataset.declUrl));
 
   const dvDeclOpenBtn = document.getElementById("dv-decl-open");
   if (dvDeclOpenBtn) dvDeclOpenBtn.addEventListener("click", () => openDeclOverlay(dvDeclOpenBtn.dataset.declUrl));
