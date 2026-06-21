@@ -7,7 +7,7 @@
   {% if request.GET.err %}<div class="notice err" style="margin-bottom:1rem;">{{ request.GET.err }}</div>{% endif %}
 
   <!-- Back link -->
-  <a href="{% if request.GET.back %}{{ request.GET.back }}{% else %}{% url 'core:manage_members' club.slug %}{% endif %}" style="font-size:.82rem;color:#8a93a0;text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;margin-bottom:1rem;">
+  <a href="{% if request.GET.back %}{{ request.GET.back }}{% else %}{% url 'core:manage_members' club.slug %}{% endif %}" class="back-link">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg>
     Back
   </a>

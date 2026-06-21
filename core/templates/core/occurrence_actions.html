@@ -45,7 +45,7 @@
           <span style="font-size:.84rem;color:#1f2933;">{{ oa.description }}</span>
         </td>
         <td style="white-space:nowrap;">
-          <a href="{% url 'core:occurrence_detail' club.slug oa.report_id %}" style="font-size:.83rem;color:var(--primary);">
+          <a href="{% url 'core:occurrence_detail' club.slug oa.report_id %}?back={% url 'core:occurrence_actions' club.slug %}&back_label=Action items" style="font-size:.83rem;color:var(--primary);" data-overlay>
             {{ oa.report.occurrence_type.name }}<br>
             <span style="color:#8a93a0;font-weight:400;">{{ oa.report.date_of_occurrence|date:"j M Y" }}</span>
           </a>
@@ -65,6 +65,7 @@
           {% endif %}
         </td>
         <td style="white-space:nowrap;text-align:right;">
+          <a href="{% url 'core:occurrence_detail' club.slug oa.report_id %}?back={% url 'core:occurrence_actions' club.slug %}&back_label=Action items" class="cbtn-sm" data-overlay>View →</a>
           <button type="button" class="cbtn-sm" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="confirmComplete({{ oa.id }})">Complete</button>
           <form id="complete-form-{{ oa.id }}" method="post" style="display:none;">
             {% csrf_token %}

@@ -939,9 +939,16 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
   }
 
   function attachHandlers(baseUrl) {
-    // ✕ Close always closes the entire overlay
+    // ✕ Close always closes the entire overlay; anchor variant also navigates to its href
     body.querySelectorAll('[data-close-overlay]').forEach(el => {
-      el.addEventListener('click', e => { e.preventDefault(); _doCloseOverlay(); });
+      el.addEventListener('click', e => {
+        e.preventDefault();
+        const href = (el.tagName === 'A') ? el.getAttribute('href') : null;
+        _stack = []; _currentUrl = null;
+        overlay.hidden = true;
+        document.body.style.overflow = '';
+        if (href) { location.href = href; } else if (didChange) { location.reload(); }
+      });
     });
 
     // Intercept all same-site link clicks to stay in the overlay

@@ -3571,7 +3571,7 @@ def booking_detail(request, club_slug, booking_id):
         'rostered_instructors': rostered_instructors,
         'online_aircraft': Aircraft.objects.filter(club=club, status='online').order_by('registration'),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
-        'inline_title': f'Manage <span class="crumb-sep">›</span> Bookings <span class="crumb-sep">›</span> <span class="crumb-cur">{booking.member.user.get_full_name()} · {booking.aircraft.registration}</span>',
+        'inline_title': f'{booking.member.user.get_full_name()} · {booking.aircraft.registration}',
         'watchers': list(SlotWatch.objects.filter(booking=booking).select_related('club_member__user')) if actor.can_access_manage else [],
     }
     return render(request, 'core/booking_detail.html', ctx)
@@ -4064,7 +4064,7 @@ def manage_member_detail(request, club_slug, member_id):
         'prorata_amount': _prorata_amount,
         'existing_sub_invoice': _existing_sub_inv,
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
-        'inline_title': f'Manage <span class="crumb-sep">›</span> Members <span class="crumb-sep">›</span> <span class="crumb-cur">{member.user.get_full_name()}</span>',
+        'inline_title': member.user.get_full_name(),
     })
 
 
@@ -5165,7 +5165,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'flight_history': flight_history,
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
-        'inline_title': f'Manage <span class="crumb-sep">›</span> Aircraft <span class="crumb-sep">›</span> <span class="crumb-cur">{ac.registration}</span>',
+        'inline_title': ac.registration,
         'records_instruments': [
             ('records_hobbs',      'Hobbs meter',  ac.records_hobbs),
             ('records_tacho',      'Tachometer',   ac.records_tacho),
@@ -5430,7 +5430,7 @@ def manage_instructor_detail(request, club_slug, member_id):
         'instructor_blockout_types': instructor_blockout_types,
         'upcoming_bookings': upcoming_bookings,
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
-        'inline_title': f'Manage <span class="crumb-sep">›</span> Instructors <span class="crumb-sep">›</span> <span class="crumb-cur">{instr.user.get_full_name()}</span>',
+        'inline_title': instr.user.get_full_name(),
     })
 
 
