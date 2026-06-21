@@ -46,7 +46,7 @@
 <!-- ── Next flight ── -->
 {% if next_booking %}
 {% with b=next_booking %}
-<div class="app-card" style="border-left:4px solid {{ theme.primary|default:'#2563eb' }};margin-top:.65rem;">
+<div class="app-card" style="border-left:4px solid {% if b.status == 'departed' %}var(--primary){% elif b.status == 'completed' %}#b4b2a9{% else %}color-mix(in srgb,var(--primary) 60%,#fff){% endif %};margin-top:.65rem;">
   <div class="app-card-title">Next flight</div>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
     <div>
@@ -61,7 +61,7 @@
       <div style="font-size:.82rem;color:#4a5568;margin-top:.2rem;">Solo</div>
       {% endif %}
     </div>
-    <span class="st-pill st-{{ b.status }}">{{ b.get_status_display }}</span>
+    <span class="st-pill st-{{ b.status }}">{% if b.status == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.status == 'completed' %}<i class="ti ti-plane-arrival"></i> {% endif %}{{ b.get_status_display }}</span>
   </div>
   {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}
   <div class="gap-sm"></div>

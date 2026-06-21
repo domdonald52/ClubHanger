@@ -14,7 +14,7 @@
 <div class="app-section"><span class="app-section-title">Upcoming</span></div>
 <div class="app-list" style="margin-bottom:.5rem;">
   {% for b in upcoming %}
-  <div class="app-list-row" id="booking-{{ b.id }}" style="cursor:pointer;"
+  <div class="app-list-row bk-{{ b.status }}" id="booking-{{ b.id }}" style="cursor:pointer;"
        data-id="{{ b.id }}"
        data-reg="{{ b.aircraft.registration }}"
        data-status="{{ b.status }}"
@@ -27,12 +27,12 @@
        data-needs-decl="{% if b.flight_type.requires_declaration and b.status in 'pending confirmed' and not b.declaration or b.flight_type.requires_declaration and b.status in 'pending confirmed' and b.declaration.is_draft %}1{% else %}0{% endif %}"
        data-decl-url="{% url 'core:app_booking_declaration' club.slug b.id %}"
        onclick="openBookingSheet(this)">
-    <div style="width:38px;height:38px;border-radius:10px;background:{{ theme.primary|default:'#2563eb' }}1a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:{{ theme.primary|default:'#2563eb' }};">
+    <div class="bk-date-badge">
       {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
     </div>
     <div class="app-list-main">
       <div class="app-list-title">{{ b.aircraft.registration }}
-        &nbsp;<span class="st-pill st-{{ b.status }}">{{ b.get_status_display }}</span>
+        &nbsp;<span class="st-pill st-{{ b.status }}">{% if b.status == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.status == 'completed' %}<i class="ti ti-plane-arrival"></i> {% endif %}{{ b.get_status_display }}</span>
       </div>
       <div class="app-list-sub">
         {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}

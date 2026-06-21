@@ -10,6 +10,7 @@
 <meta name="theme-color" content="{{ theme.banner|default:'#1d3a5f' }}">
 <meta name="vapid-public-key" content="{{ vapid_public_key }}">
 <title>{% block title %}ClubHangar{% endblock %}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
 {% if theme.logo %}
 <link rel="icon" href="{{ theme.logo.url }}" type="image/png">
 {% else %}
@@ -113,10 +114,26 @@
 
   /* ── Status pills ── */
   .st-pill { display: inline-block; font-size: .65rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
-  .st-pending   { background: color-mix(in srgb, {{ theme.primary|default:'#2f7dd1' }} 15%, #fff); color: color-mix(in srgb, {{ theme.primary|default:'#2f7dd1' }} 70%, #000); }
-  .st-confirmed { background: color-mix(in srgb, {{ theme.primary|default:'#2f7dd1' }} 25%, #fff); color: color-mix(in srgb, {{ theme.primary|default:'#2f7dd1' }} 80%, #000); }
-  .st-departed  { background: {{ theme.primary|default:'#2f7dd1' }}; color: #fff; }
+  .st-pill .ti { font-size: .72rem; vertical-align: -.05em; }
+  .st-pending   { background: color-mix(in srgb, var(--primary) 15%, #fff); color: color-mix(in srgb, var(--primary) 50%, #000); }
+  .st-confirmed { background: color-mix(in srgb, var(--primary) 28%, #fff); color: color-mix(in srgb, var(--primary) 50%, #000); }
+  .st-departed  { background: var(--primary); color: #fff; }
   .st-completed { background: #f1efe8; color: #444441; }
+
+  /* ── Booking list row — lifecycle left border + date badge ── */
+  .bk-pending   { border-left: 3px dashed color-mix(in srgb, var(--primary) 50%, #fff); }
+  .bk-confirmed { border-left: 3px solid color-mix(in srgb, var(--primary) 65%, #fff); }
+  .bk-departed  { border-left: 3px solid var(--primary); background: color-mix(in srgb, var(--primary) 5%, #f4f6f9); }
+  .bk-completed { border-left: 3px solid #b4b2a9; }
+  .bk-date-badge {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: .8rem; font-weight: 700; line-height: 1.15; text-align: center;
+  }
+  .bk-pending .bk-date-badge   { background: color-mix(in srgb, var(--primary) 15%, #fff); color: color-mix(in srgb, var(--primary) 55%, #000); }
+  .bk-confirmed .bk-date-badge { background: color-mix(in srgb, var(--primary) 32%, #fff); color: color-mix(in srgb, var(--primary) 55%, #000); }
+  .bk-departed .bk-date-badge  { background: var(--primary); color: #fff; }
+  .bk-completed .bk-date-badge { background: #f4f6f9; color: #8a93a0; }
 
   /* ── Buttons ── */
   .app-btn {
