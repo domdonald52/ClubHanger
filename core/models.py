@@ -1916,6 +1916,7 @@ class Notification(models.Model):
         ('instructor_booking_upcoming','New booking assigned'),
         ('maintenance_alert',          'Maintenance alert'),
         ('lapsed_credentials',         'Lapsed credentials — flight today'),
+        ('safety_action',              'Safety action assigned'),
     ]
     club_member       = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='notifications')
     notification_type = models.CharField(max_length=40, choices=TYPES)

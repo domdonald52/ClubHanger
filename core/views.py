@@ -102,12 +102,23 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     bookings = bookings.annotate(watcher_count=_GCount('watchers'))
 
     # Pixel geometry for absolute-positioned pills
-    px_per_min = float(request.GET.get('zoom') or 2)
+    total_minutes = int((day_end - day_start).total_seconds() // 60)
+    _explicit_zoom = request.GET.get('zoom', '')
+    if _explicit_zoom:
+        px_per_min = float(_explicit_zoom)
+    else:
+        # Auto-fit to viewport if browser has sent us the width cookie
+        _vw = int(request.COOKIES.get('vw', 0) or 0)
+        if _vw > 0 and total_minutes > 0:
+            # Reserve ~175px for row labels and ~50px for padding/scrollbar gutter
+            _avail = max(400, _vw - 225)
+            px_per_min = round(max(0.8, min(3.0, _avail / total_minutes)), 3)
+        else:
+            px_per_min = 2.0
     # Atypical-hours boundaries in pixels from day_start (for calendar shading)
     _slot_win_s, _slot_win_e = config.slot_window()
     typ_start_dt = _aware(datetime.combine(selected_date, _slot_win_s))
     typ_end_dt = _aware(datetime.combine(selected_date, _slot_win_e))
-    total_minutes = int((day_end - day_start).total_seconds() // 60)
     track_width = int(total_minutes * px_per_min)
     typical_start_px = max(0, int((typ_start_dt - day_start).total_seconds() / 60 * px_per_min))
     typical_end_px = min(track_width, int((typ_end_dt - day_start).total_seconds() / 60 * px_per_min))
@@ -9930,9 +9941,10 @@ def occurrence_detail(request, club_slug, report_id):
                     from .models import Notification as _Notif
                     from django.urls import reverse as _rev
                     _Notif.objects.create(
-                        club=club, recipient=assigned,
-                        title='Safety action assigned to you',
-                        message=f"Action: {desc[:120]}",
+                        club_member=assigned,
+                        notification_type='safety_action',
+                        subject='Safety action assigned to you',
+                        body=f"Action: {desc[:120]}",
                         action_url=_rev('core:occurrence_detail', args=[club.slug, report.id]),
                     )
 
