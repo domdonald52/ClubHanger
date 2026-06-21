@@ -1457,9 +1457,12 @@
     });
   });
 
-  // ---- pill click to edit ---------------------------------------------
+  // ---- pill open-edit: dblclick for draggable pills, click for completed ----
+  // Draggable pills use dblclick so an aborted drag doesn't accidentally open
+  // the edit dialog. Completed pills can't be dragged so single-click is fine.
   document.querySelectorAll(".pill").forEach((pill) => {
-    pill.addEventListener("click", (e) => {
+    const evtName = (cfg.canManage && pill.dataset.status !== "completed") ? "dblclick" : "click";
+    pill.addEventListener(evtName, (e) => {
       if (pill._didDrag) { pill._didDrag = false; return; }
       e.stopPropagation();
       if (cfg.canManage) {
@@ -1475,10 +1478,8 @@
         const st    = pill.dataset.status;
         const isActive = st !== "cancelled" && st !== "completed";
         if (isOwn && st === "pending") {
-          // Member can edit their own unconfirmed booking
           openEdit(pill);
         } else if (isOwn && st === "confirmed") {
-          // Confirmed — show contact notice
           const phone = cfg.clubPhone;
           const msg = phone
             ? `This booking is confirmed. To make changes please contact the club on ${phone}.`
