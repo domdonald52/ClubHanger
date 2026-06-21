@@ -76,7 +76,7 @@
   .pill-spine.conflict{background:#e24b4a;}
   .pill-spine.declaration{background-image:repeating-linear-gradient(135deg,#ba7517,#ba7517 3px,#fac775 3px,#fac775 6px);}
   /* Body */
-  .pill-body{flex:1;min-width:0;padding:.2rem .35rem;display:flex;flex-direction:column;justify-content:center;overflow:hidden;}
+  .pill-body{flex:1;min-width:0;padding:.2rem .35rem;display:flex;flex-direction:column;justify-content:center;overflow:hidden;transform:scaleX(var(--pill-unscale,1));transform-origin:0 0;}
   .pill .nm{font-size:.72rem;font-weight:650;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .pill .sub{font-size:.62rem;opacity:.9;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* Wedge fins (right edge) — dep = airborne, ret = returned */
@@ -715,6 +715,7 @@
       t.style.transform = doScale ? ('scaleX(' + _curScale.toFixed(5) + ')') : '';
       t.style.transformOrigin = '0 0';
       t.style.zoom = '';
+      t.style.setProperty('--pill-unscale', doScale ? (1 / _curScale).toFixed(5) : '');
     });
     window._ganttScale = _curScale;
     _updateOverlay();
