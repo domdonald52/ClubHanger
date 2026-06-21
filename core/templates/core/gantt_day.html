@@ -13,10 +13,10 @@
   .cal-nav{display:flex;gap:.4rem;align-items:center}
   .cal-nav .cbtn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 .6rem;line-height:1;}
   .cdate{height:38px;padding:0 .6rem;border:1px solid #d6dae0;border-radius:8px;font-size:.9rem;font-family:inherit;color:#1f2933;background:#fff;cursor:pointer}
-  .legend{display:flex;gap:1.2rem;align-items:center;font-size:.8rem;color:#5b6573;margin:.25rem 0 .75rem}
+  .legend{display:flex;gap:.7rem 1.2rem;align-items:center;font-size:.8rem;color:#5b6573;margin:.25rem 0 .75rem;flex-wrap:wrap;}
   .legend .hint{margin-left:auto;color:#8a93a0}
   .dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem}
-  .dot.pending{background:color-mix(in srgb,var(--primary) 35%,#fff)}.dot.confirmed{background:color-mix(in srgb,var(--primary) 55%,#fff)}.dot.departed{background:var(--primary)}.dot.returned{background:color-mix(in srgb,var(--primary) 50%,#fff)}.dot.completed{background:#b4b2a9}
+  .dot.pending{background:color-mix(in srgb,var(--primary) 35%,#fff)}.dot.confirmed{background:color-mix(in srgb,var(--primary) 55%,#fff)}.dot.departed{background:color-mix(in srgb,var(--primary) 60%,#fff)}.dot.returned{background:color-mix(in srgb,var(--primary) 50%,#fff)}.dot.completed{background:#b4b2a9}
   .grid-scroll{overflow-x:auto;border:1px solid #e3e6ea;border-radius:10px;background:#fff}
   .grid{width:100%;position:relative;}
   .grid-row{display:flex;align-items:stretch;border-bottom:1px solid #eef1f4}
@@ -68,7 +68,7 @@
   .pill:active{cursor:grabbing}
   .pill.pending{background:color-mix(in srgb,var(--primary) 18%,#fff);border:1.5px dashed color-mix(in srgb,var(--primary) 55%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);}
   .pill.confirmed{background:color-mix(in srgb,var(--primary) 42%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);}
-  .pill.departed{background:var(--primary);border:1px solid color-mix(in srgb,var(--primary) 70%,#000);color:#fff;}
+  .pill.departed{background:color-mix(in srgb,var(--primary) 60%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);}
   .pill.completed{background:color-mix(in srgb,var(--primary) 60%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);cursor:pointer;}
   .pill.completed.paid{background:#f1efe8;border:1px solid #b4b2a9;color:#444441;cursor:pointer;}
   /* Exception left-spine */

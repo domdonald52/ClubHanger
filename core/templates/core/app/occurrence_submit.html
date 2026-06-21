@@ -1,13 +1,13 @@
 {% extends "core/app/base.html" %}
-{% block title %}Report Issue · {{ club.name }}{% endblock %}
-{% block page_title %}Report a Safety Issue{% endblock %}
+{% block title %}Report Event · {{ club.name }}{% endblock %}
+{% block page_title %}Report an Event{% endblock %}
 
 {% block app_bar_brand %}{% endblock %}
 {% block app_bar %}
 <a href="{% url 'core:app_home' club.slug %}" class="app-bar-action" style="margin-left:-.2rem;">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
 </a>
-<span class="app-bar-title">Report Issue</span>
+<span class="app-bar-title">Report Event</span>
 {% endblock %}
 
 {% block extra_style %}
@@ -31,13 +31,10 @@
 {% endblock %}
 
 {% block content %}
-{% if request.GET.saved %}
-<div class="success-banner" style="margin:.75rem;">Report submitted. Thank you — the safety officer has been notified.</div>
-{% endif %}
 {% if error %}<div class="error-banner">{{ error }}</div>{% endif %}
 
 <p style="padding:.75rem .75rem 0;font-size:.82rem;color:#8a93a0;line-height:1.5;">
-  Use this form to report snags, near misses, hazards, or anything worth recording. All reports are confidential and reviewed by the safety officer.
+  Use this form to report events, near misses, hazards, or anything worth recording. All reports are confidential and reviewed by the safety officer.
 </p>
 
 <form method="post" action="{% url 'core:app_snag' club.slug %}" style="padding:.75rem;">
@@ -45,7 +42,7 @@
   <input type="hidden" name="_from_app" value="1">
 
   <div class="occ-field">
-    <label class="occ-label" for="occ_type">Type of occurrence *</label>
+    <label class="occ-label" for="occ_type">Type of event *</label>
     <select name="occurrence_type" id="occ_type" class="occ-select" required>
       <option value="">— select —</option>
       {% for ot in occ_types %}

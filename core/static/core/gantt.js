@@ -856,6 +856,11 @@
         if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱] /, "⏱ ");
         const sub = pill.querySelector(".sub");
         if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · returned"; }
+        pill.querySelectorAll(".pill-wedge").forEach(w => w.remove());
+        const wedge = document.createElement("div");
+        wedge.className = "pill-wedge ret";
+        wedge.innerHTML = '<i class="ti ti-plane-arrival" aria-hidden="true"></i>';
+        pill.appendChild(wedge);
       });
       closeModal();
       showToast("Flight returned — charges ready");
@@ -1075,8 +1080,12 @@
         if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱] /, "");
         if (nm && !nm.textContent.startsWith("✈")) nm.textContent = "✈ " + nm.textContent;
         const sub = pill.querySelector(".sub");
-        if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · checked out"; }
-        pill.querySelectorAll(".pill-dot-decl").forEach(el => el.remove());
+        if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · airborne"; }
+        pill.querySelectorAll(".pill-dot-decl,.pill-wedge").forEach(el => el.remove());
+        const wedge = document.createElement("div");
+        wedge.className = "pill-wedge dep";
+        wedge.innerHTML = '<i class="ti ti-plane-departure" aria-hidden="true"></i>';
+        pill.appendChild(wedge);
       });
       closeModal();
       showToast("Booking marked as departed");

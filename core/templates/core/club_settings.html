@@ -790,13 +790,12 @@
 
     {% if occurrence_types %}
     <table class="ft-table" style="margin-bottom:1.5rem;">
-      <thead><tr><th>Name</th><th>Description</th><th>Order</th><th>Active</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Description</th><th>Active</th><th></th></tr></thead>
       <tbody>
         {% for ot in occurrence_types %}
         <tr>
           <td><strong>{{ ot.name }}</strong></td>
           <td style="color:#8a93a0;font-size:.83rem;">{{ ot.description|default:"—" }}</td>
-          <td style="color:#8a93a0;">{{ ot.sort_order }}</td>
           <td>
             <form method="post" style="display:inline;">
               {% csrf_token %}<input type="hidden" name="action" value="toggle_occurrence_type">
@@ -807,7 +806,7 @@
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditOccType({{ ot.id }},'{{ ot.name }}','{{ ot.description }}',{{ ot.sort_order }})">Edit</button>
+            <button type="button" class="cbtn sm" onclick="openEditOccType({{ ot.id }},'{{ ot.name }}','{{ ot.description }}')">Edit</button>
             {% if not ot.reports.exists %}
             <form method="post" style="display:inline;" data-confirm="Delete {{ ot.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_occurrence_type">
@@ -847,11 +846,8 @@
           <label class="flabel" style="margin-bottom:.7rem;">Name
             <input type="text" name="ot_name" id="edit-ot-name" class="finput" required>
           </label>
-          <label class="flabel" style="margin-bottom:.7rem;">Description
+          <label class="flabel" style="margin-bottom:.9rem;">Description
             <input type="text" name="ot_desc" id="edit-ot-desc" class="finput">
-          </label>
-          <label class="flabel" style="margin-bottom:.9rem;">Sort order
-            <input type="number" name="ot_sort" id="edit-ot-sort" class="finput" style="width:80px;" min="0">
           </label>
           <div class="modal-actions">
             <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true">✕ Close</button>
@@ -862,11 +858,10 @@
       </div>
     </div>
     <script>
-    function openEditOccType(id, name, desc, sort) {
+    function openEditOccType(id, name, desc) {
       document.getElementById('edit-ot-id').value   = id;
       document.getElementById('edit-ot-name').value = name;
       document.getElementById('edit-ot-desc').value = desc;
-      document.getElementById('edit-ot-sort').value = sort;
       document.getElementById('edit-occ-type-modal').hidden = false;
     }
     document.getElementById('edit-occ-type-modal').addEventListener('click', function(e){ if(e.target===this) this.hidden=true; });

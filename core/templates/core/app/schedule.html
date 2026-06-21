@@ -173,6 +173,20 @@
   .bk-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .bk-time { opacity: .85; font-size: .62rem; }
   .bk-sub  { opacity: .75; font-size: .6rem; }
+  /* Right-side wedge for airborne/returned — mirrors Gantt pill wedge */
+  .bk-departed::after,
+  .bk-completed::after {
+    content: '';
+    position: absolute; right: 0; top: 0; bottom: 0; width: 24px;
+    clip-path: polygon(38% 0, 100% 0, 100% 100%, 38% 100%);
+    background: color-mix(in srgb, var(--primary) 30%, #000);
+    pointer-events: none; z-index: 1;
+  }
+  .bk-wedge-icon {
+    position: absolute; right: 3px; bottom: 4px;
+    font-size: 10px; color: #fff; line-height: 1;
+    pointer-events: none; z-index: 2;
+  }
 
   /* ── Bottom nav override for schedule page ── */
   .app-nav { z-index: 20; }
@@ -312,6 +326,7 @@
         <div class="bk-time">{{ blk.time }}</div>
         {% if blk.solo %}<div class="bk-sub">Solo</div>
         {% elif blk.instructor %}<div class="bk-sub">{{ blk.instructor }}</div>{% endif %}
+        {% if blk.status == 'departed' %}<i class="ti ti-plane-departure bk-wedge-icon" aria-hidden="true"></i>{% elif blk.status == 'completed' %}<i class="ti ti-plane-arrival bk-wedge-icon" aria-hidden="true"></i>{% endif %}
       </div>
       {% endfor %}
     </div>

@@ -9,6 +9,10 @@
 {% block content %}
 <div class="gap-sm"></div>
 
+{% if request.GET.event_reported %}
+<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:.5rem .75rem 0;font-size:.83rem;font-weight:600;">Event report submitted — thank you.</div>
+{% endif %}
+
 <!-- Greeting -->
 <div style="padding:0 .75rem .1rem;">
   <div style="font-size:1.05rem;font-weight:700;color:#1f2933;">{{ greeting_word }}, {{ club_member.user.first_name }}.</div>
@@ -23,10 +27,10 @@
   {% endif %}
   <!-- CH roundel — bottom left -->
   <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="" style="position:absolute;bottom:.6rem;left:.65rem;width:30px;height:30px;opacity:.9;pointer-events:none;">
-  <!-- Report snag — bottom right -->
+  <!-- Report event — bottom right -->
   <a href="{% url 'core:app_snag' club.slug %}" style="position:absolute;bottom:.65rem;right:.65rem;display:inline-flex;align-items:center;gap:.3rem;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);color:#fff;text-decoration:none;font-size:.78rem;font-weight:600;padding:.35rem .65rem;border-radius:20px;border:1px solid rgba(255,255,255,.25);">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    Report snag
+    Report event
   </a>
 </div>
 

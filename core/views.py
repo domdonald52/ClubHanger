@@ -9745,6 +9745,9 @@ def occurrence_submit(request, club_slug):
                 OccurrenceAuditEntry.objects.create(report=report, actor=actor, verb='Submitted')
                 from .email_notifications import occurrence_submitted as _email_occ
                 _email_occ(report)
+                if request.path.startswith('/app/'):
+                    from django.urls import reverse as _rev
+                    return redirect(_rev('core:app_home', kwargs={'club_slug': club_slug}) + '?event_reported=1')
                 return redirect(f"{request.path}?saved=1")
             except Exception as e:
                 error = f'Error saving report: {e}'
