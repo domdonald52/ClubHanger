@@ -36,6 +36,7 @@ urlpatterns = [
     path('manage/<slug:club_slug>/members/<int:member_id>/', views.manage_member_detail, name='manage_member_detail'),
     path('manage/<slug:club_slug>/aircraft/', views.manage_aircraft, name='manage_aircraft'),
     path('manage/<slug:club_slug>/aircraft/<int:aircraft_id>/', views.manage_aircraft_detail, name='manage_aircraft_detail'),
+    path('manage/<slug:club_slug>/aircraft/<int:aircraft_id>/maintenance-log/', views.aircraft_maintenance_log, name='aircraft_maintenance_log'),
     path('manage/<slug:club_slug>/instructors/', views.manage_instructors, name='manage_instructors'),
     path('manage/<slug:club_slug>/instructors/<int:member_id>/', views.manage_instructor_detail, name='manage_instructor_detail'),
     path('manage/<slug:club_slug>/contacts/', views.manage_contacts, name='manage_contacts'),

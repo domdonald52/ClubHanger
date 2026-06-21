@@ -456,7 +456,10 @@
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
       <h2 class="sh2" style="margin:0;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100 entries)</span></h2>
-      {% if club_member.is_admin %}<button type="button" class="cbtn-add" onclick="document.getElementById('add-manual-log-modal').hidden=false">+ Log manual entry</button>{% endif %}
+      <div style="display:flex;gap:.4rem;align-items:center;">
+        <a href="{% url 'core:aircraft_maintenance_log' club.slug ac.id %}" target="_blank" class="cbtn-sm">Full log / print →</a>
+        {% if club_member.is_admin %}<button type="button" class="cbtn-add" onclick="document.getElementById('add-manual-log-modal').hidden=false">+ Log manual entry</button>{% endif %}
+      </div>
     </div>
     <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .8rem;">Auto-recorded at each check-in. Manual entries explain meter gaps (ground runs, tows, corrections, errors).</p>
     {% if maint_log %}

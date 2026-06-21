@@ -42,6 +42,49 @@
     </div>
   </div>
 
+  <h2 class="sh2" style="margin-top:2rem;">Maintenance logs</h2>
+  <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 1rem;">Full instrument reading log per aircraft — shows hobbs/tacho/airswitch start and end for every flight, with gap highlighting. Printable and downloadable as CSV.</p>
+  <div style="display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem;border:1px solid #e3e6ea;border-radius:10px;background:#fff;margin-bottom:.5rem;flex-wrap:wrap;">
+    <div style="flex-shrink:0;width:1.8rem;display:flex;align-items:center;justify-content:center;color:#4a5568;">
+      <svg width="20" height="20" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2.5a3 3 0 0 0-4.2 4.2L4 11.5a1 1 0 1 0 1.4 1.4l4.8-4.8A3 3 0 0 0 13 2.5z"/><line x1="11" y1="4" x2="12.5" y2="5.5"/>
+      </svg>
+    </div>
+    <div style="flex:1;min-width:140px;">
+      <div style="font-size:.88rem;font-weight:650;margin-bottom:.25rem;">Aircraft maintenance log</div>
+      <select id="mlog-ac-select" style="font-size:.84rem;padding:.28rem .55rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;color:#1f2933;min-width:160px;">
+        <option value="">— select aircraft —</option>
+        {% for ac in aircraft_list %}
+        <option value="{{ ac.id }}">{{ ac.registration }}{% if ac.aircraft_type %} · {{ ac.aircraft_type.name }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div style="display:flex;gap:.4rem;flex-shrink:0;" id="mlog-btns">
+      <a id="mlog-csv-btn" href="#" class="cbtn-sm" style="pointer-events:none;opacity:.4;">↓ CSV</a>
+      <a id="mlog-print-btn" href="#" target="_blank" class="cbtn-sm" style="pointer-events:none;opacity:.4;">⎙ Print / view</a>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var tpl = "{% url 'core:aircraft_maintenance_log' club.slug 0 %}";
+    var sel = document.getElementById('mlog-ac-select');
+    var csvBtn = document.getElementById('mlog-csv-btn');
+    var printBtn = document.getElementById('mlog-print-btn');
+    function update() {
+      var id = sel.value;
+      if (id) {
+        var url = tpl.replace('/aircraft/0/', '/aircraft/' + id + '/');
+        csvBtn.href = url + '?fmt=csv';
+        printBtn.href = url;
+        [csvBtn, printBtn].forEach(function(b){ b.style.opacity='1'; b.style.pointerEvents=''; });
+      } else {
+        [csvBtn, printBtn].forEach(function(b){ b.style.opacity='.4'; b.style.pointerEvents='none'; b.href='#'; });
+      }
+    }
+    sel.addEventListener('change', update);
+  })();
+  </script>
+
   <h2 class="sh2" style="margin-top:2rem;">Import</h2>
   <div style="display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem;border:1px solid #e3e6ea;border-radius:10px;background:#fff;margin-bottom:.5rem;">
     <div style="flex-shrink:0;width:1.8rem;display:flex;align-items:center;justify-content:center;color:#4a5568;">

@@ -5175,6 +5175,90 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
 
 
 @login_required
+def aircraft_maintenance_log(request, club_slug, aircraft_id):
+    import csv as _csv
+    from decimal import Decimal as _D
+    from django.http import HttpResponse as _HR
+
+    club = get_object_or_404(Club, slug=club_slug)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if err := require_admin(actor, club, request): return err
+
+    ac = get_object_or_404(Aircraft, id=aircraft_id, club=club)
+
+    entries_qs = (
+        ac.maint_log
+        .select_related('flight_completion__booking__member__user')
+        .order_by('date', 'id')
+    )
+
+    rows = []
+    prev_hobbs_end = None
+    for e in entries_qs:
+        fc = e.flight_completion
+        hobbs_start = fc.hobbs_start if fc else None
+        hobbs_end   = fc.hobbs_end   if fc else None
+        tacho_start = fc.tacho_start if fc else None
+        tacho_end   = fc.tacho_end   if fc else None
+        as_start    = fc.airswitch_start if fc else None
+        as_end      = fc.airswitch_end   if fc else None
+        member_name = fc.booking.member.user.get_full_name() if (fc and fc.booking and fc.booking.member) else None
+
+        gap = None
+        if hobbs_start is not None and prev_hobbs_end is not None:
+            g = _D(str(hobbs_start)) - _D(str(prev_hobbs_end))
+            if abs(g) > _D('0.001'):
+                gap = g
+
+        rows.append({
+            'date': e.date,
+            'member': member_name,
+            'is_manual': fc is None,
+            'notes': e.notes,
+            'hobbs_start': hobbs_start,
+            'hobbs_end': hobbs_end,
+            'hobbs_gap': gap,
+            'tacho_start': tacho_start,
+            'tacho_end': tacho_end,
+            'as_start': as_start,
+            'as_end': as_end,
+            'maint_flight': e.maint_hours_flight,
+            'maint_total': e.maint_hours_total,
+        })
+        prev_hobbs_end = e.hobbs_reading  # MaintenanceLogEntry stores end reading
+
+    if request.GET.get('fmt') == 'csv':
+        resp = _HR(content_type='text/csv; charset=utf-8-sig')
+        resp['Content-Disposition'] = f'attachment; filename="{ac.registration}_maintenance_log.csv"'
+        w = _csv.writer(resp)
+        w.writerow(['Date', 'Member/Note', 'Hobbs start', 'Hobbs end', 'Hobbs gap',
+                    'Tacho start', 'Tacho end', 'Air sw. start', 'Air sw. end',
+                    'Maint hrs (flight)', 'Maint hrs (total)'])
+        for r in rows:
+            w.writerow([
+                r['date'],
+                r['member'] or (f"Manual — {r['notes']}" if r['notes'] else 'Manual'),
+                r['hobbs_start'] or '',
+                r['hobbs_end'] or '',
+                r['hobbs_gap'] or '',
+                r['tacho_start'] or '',
+                r['tacho_end'] or '',
+                r['as_start'] or '',
+                r['as_end'] or '',
+                r['maint_flight'],
+                r['maint_total'],
+            ])
+        return resp
+
+    return render(request, 'core/aircraft_maintenance_log.html', {
+        'club': club, 'club_member': actor, 'ac': ac, 'rows': rows,
+    })
+
+
+@login_required
 def manage_instructors(request, club_slug):
     club = get_object_or_404(Club, slug=club_slug)
     try:
@@ -8350,9 +8434,11 @@ def data_page(request, club_slug):
         ('occurrences', f'<svg {_ico}><path d="M7.5 2 2 12.5h11z"/><line x1="7.5" y1="6" x2="7.5" y2="9"/><circle cx="7.5" cy="11" r=".5" fill="currentColor"/></svg>',
                         'Occurrences',    'Safety occurrence reports — type, date, description, status, review notes'),
     ]
+    aircraft_list = Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration')
     return render(request, 'core/data_page.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'export_types': export_types,
+        'aircraft_list': aircraft_list,
     })
 
 
