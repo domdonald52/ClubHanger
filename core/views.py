@@ -959,6 +959,17 @@ def create_booking(request):
         if not actor:
             return JsonResponse({'error': 'Not a club member'}, status=403)
 
+        # Use club_slug from POST (sent by Gantt JS) to ensure the right club is used
+        # when the user is a member of multiple clubs.
+        _club_slug = request.POST.get('club_slug', '').strip()
+        if _club_slug:
+            from .models import Club as _Club
+            _slug_club = _Club.objects.filter(slug=_club_slug).first()
+            if _slug_club:
+                _slug_actor = ClubMember.objects.filter(user=request.user, club=_slug_club).first()
+                if _slug_actor:
+                    actor = _slug_actor
+
         club     = actor.club
         config   = get_config(club)
         aircraft_id   = request.POST.get('aircraft_id')

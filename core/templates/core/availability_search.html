@@ -187,8 +187,10 @@ function avSubmit() { if (_availForm) _availForm.submit(); }
     const opt = acSel.options[acSel.selectedIndex];
     if (opt && opt.value && opt.dataset.type) {
       typeSel.value = opt.dataset.type;
-      applyTypeFilter();
+    } else {
+      typeSel.value = '';
     }
+    applyTypeFilter();
     avSubmit();
   }
   typeSel.addEventListener('change', applyTypeFilter);

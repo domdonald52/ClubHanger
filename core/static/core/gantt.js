@@ -197,7 +197,7 @@
     const blank = document.createElement("option"); blank.value = ""; fFlightType.appendChild(blank);
     const memberFTs  = FLIGHT_TYPES.filter(ft => !ft.for_contacts);
     const contactFTs = FLIGHT_TYPES.filter(ft =>  ft.for_contacts);
-    if (cfg.isInstructor && contactFTs.length) {
+    if ((cfg.isInstructor || cfg.canManage) && contactFTs.length) {
       const mg = document.createElement("optgroup"); mg.label = "Member flights";
       memberFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ft.name; mg.appendChild(o); });
       const cg = document.createElement("optgroup"); cg.label = "Contact flights";
@@ -475,6 +475,7 @@
     conflictNotice.hidden = true;
     conflictNotice.innerHTML = "";
     if (instrConflictNotice) instrConflictNotice.hidden = true;
+    const _dn = document.getElementById("m-decl-notice"); if (_dn) _dn.hidden = true;
     modal.hidden = false;
     removePreview();
     previewEl = document.createElement("div");
@@ -755,6 +756,17 @@
       conflictNotice.innerHTML = "";
     }
 
+    // Declaration pending notice (amber, separate from red conflict notice)
+    const _declNotice = document.getElementById("m-decl-notice");
+    const _declLink   = document.getElementById("m-decl-link");
+    if (_declNotice) {
+      const _showDecl = declPendingOnOpen && !isDeparted && !isCompleted;
+      _declNotice.hidden = !_showDecl;
+      if (_showDecl && _declLink) {
+        _declLink.href = pill.dataset.declUrl || "#";
+      }
+    }
+
     // Plain members editing their own booking: lock member + instructor fields
     const _memberOwned = !cfg.canManage && (pill.dataset.memberUserId === String(cfg.currentUserId));
     fMember.disabled = _memberOwned;
@@ -981,6 +993,7 @@
       description: fDesc.value,
       client_id: fClient ? (fClient.value || "") : "",
       billed_to: fBilledTo ? (fBilledTo.value || "") : "",
+      club_slug: cfg.clubSlug,
     };
     const url = id ? `/api/booking/${id}/edit/` : cfgCreateUrl();
     const doSave = () => {

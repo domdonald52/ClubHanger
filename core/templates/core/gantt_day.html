@@ -68,7 +68,7 @@
   .pill:active{cursor:grabbing}
   .pill.pending{background:color-mix(in srgb,var(--primary) 18%,#fff);border:1.5px dashed color-mix(in srgb,var(--primary) 55%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);}
   .pill.confirmed{background:color-mix(in srgb,var(--primary) 42%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);}
-  .pill.departed{background:color-mix(in srgb,var(--primary) 60%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);}
+  .pill.departed{background:color-mix(in srgb,var(--primary) 75%,#fff);border:1px solid color-mix(in srgb,var(--primary) 80%,#fff);color:#fff;}
   .pill.completed{background:color-mix(in srgb,var(--primary) 60%,#fff);border:1px solid color-mix(in srgb,var(--primary) 65%,#fff);color:color-mix(in srgb,var(--primary) 50%,#000);cursor:pointer;}
   .pill.completed.paid{background:#f1efe8;border:1px solid #b4b2a9;color:#444441;cursor:pointer;}
   /* Exception left-spine */
@@ -197,7 +197,7 @@
         <div class="row-label"></div>
         <div class="track">
           {% for tick in ticks %}
-            <div class="tick" style="left: {{ tick.left }}px;"><span>{{ tick.label }}</span></div>
+            <div class="tick" data-left="{{ tick.left }}" style="left: {{ tick.left }}px;"><span>{{ tick.label }}</span></div>
           {% endfor %}
         </div>
       </div>
@@ -223,7 +223,7 @@
           </div>
           <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="instructor" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true" data-ghost-reason="{{ row.ghost_reason }}"{% endif %}>
             {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
-            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
+            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" data-left="{{ b.left }}" data-width="{{ b.width }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
             {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
           </div>
         </div>
@@ -244,7 +244,7 @@
           </div>
           <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="aircraft" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true"{% endif %}>
             {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
-            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
+            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" data-left="{{ b.left }}" data-width="{{ b.width }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
             {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
           </div>
         </div>
@@ -323,6 +323,14 @@
       <button class="modal-x" id="m-cancel" type="button">✕ Close</button>
     </div>
     <div id="m-conflict-notice" hidden style="margin-bottom:.8rem;border-radius:7px;overflow:hidden;border:1px solid #fca5a5;background:#fff5f5;font-size:.82rem;"></div>
+    <div id="m-decl-notice" hidden style="margin-bottom:.8rem;border-radius:7px;overflow:hidden;border:1px solid #fcd34d;background:#fff8e1;font-size:.82rem;padding:.55rem .75rem;display:flex;gap:.5rem;align-items:flex-start;">
+      <span style="font-size:1rem;line-height:1.3;flex-shrink:0;">⚑</span>
+      <div>
+        <strong style="font-size:.82rem;color:#b06800;">Declaration not submitted</strong>
+        <div style="color:#92400e;margin:.1rem 0 .2rem;">A pre-flight declaration is required for this booking.</div>
+        <div style="color:#92400e;font-style:italic;"><a id="m-decl-link" href="#" style="color:#b06800;font-weight:600;">Open declaration →</a></div>
+      </div>
+    </div>
 
     <!-- Status notice (shown for completed bookings) -->
     <div id="m-status-notice" hidden style="background:#f3f4f6;border-radius:7px;padding:.5rem .8rem;font-size:.83rem;color:#6b7280;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem;">
@@ -620,7 +628,7 @@
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}?v=11"></script>
+<script src="{% static 'core/gantt.js' %}?v=12"></script>
 <script>
 (function() {
   // Unify all row labels to the width of the longest one.
@@ -652,22 +660,71 @@
     });
   })();
 
+  // Stagger labels of overlapping blockout bands so they don't print on top of each other
+  (function staggerBandLabels() {
+    document.querySelectorAll('.track').forEach(function(track) {
+      var bands = Array.from(track.querySelectorAll('.band'))
+        .sort(function(a, b) { return parseFloat(a.dataset.left||0) - parseFloat(b.dataset.left||0); });
+      for (var i = 0; i < bands.length; i++) {
+        var li = parseFloat(bands[i].dataset.left||0), ri = li + parseFloat(bands[i].dataset.width||0);
+        var offset = 0;
+        for (var j = i + 1; j < bands.length; j++) {
+          var lj = parseFloat(bands[j].dataset.left||0);
+          if (lj >= ri) break;
+          offset += 10;
+          var sp = bands[j].querySelector('span');
+          if (sp) sp.style.top = (2 + offset) + 'px';
+        }
+      }
+    });
+  })();
+
+  // ── Live-resize: scale track content to fit viewport (Paper Aviator style) ──
+  // Tracks have a fixed natural width (totalMins × pxPerMin). We apply CSS `zoom`
+  // to shrink content proportionally so the Gantt always fills the viewport.
+  // Below MIN_PX_PER_MIN the scrollbar appears (content can't be squished further).
+  const _gridScroll = document.querySelector('.grid-scroll');
+  const _pxPerMin   = {{ px_per_min }};
+  const _totalMins  = {{ total_minutes }};
+  const _MIN_PX     = 0.4;  // minimum px/min before scrollbar is allowed
+  const _naturalW   = _totalMins * _pxPerMin;
+  let   _curScale   = 1;
+
+  function _syncScale() {
+    if (!_gridScroll || !_naturalW) return;
+    const avail = _gridScroll.clientWidth - labelW - 4;
+    if (avail <= 0) return;
+    const minW  = _totalMins * _MIN_PX;
+    const target = Math.max(minW, Math.min(_naturalW, avail));
+    _curScale = target / _naturalW;
+    const zoomVal = _curScale < 0.999 ? _curScale.toFixed(5) : '';
+    document.querySelectorAll('.track').forEach(function(t) {
+      t.style.width  = _naturalW + 'px';
+      t.style.flex   = 'none';
+      t.style.zoom   = zoomVal;
+    });
+    _updateOverlay();
+  }
 
   {% if now_px is not None %}
-  const overlay = document.getElementById('now-overlay');
-  if (overlay) {
-    const dayStart = new Date("{{ day_start_iso }}");
-    const pxPerMin = {{ px_per_min }};
-    const totalMins = {{ total_minutes }};
-    function update() {
-      const diffMin = Math.max(0, Math.min(totalMins, (new Date() - dayStart) / 60000));
-      const px = Math.min(Math.round(diffMin * pxPerMin), totalMins * pxPerMin - 2);
-      overlay.style.left = (labelW + px) + 'px';
-    }
-    update();
-    setInterval(update, 30000);
+  const _overlay  = document.getElementById('now-overlay');
+  const _dayStart = new Date("{{ day_start_iso }}");
+  function _updateOverlay() {
+    if (!_overlay) return;
+    const diffMin = Math.max(0, Math.min(_totalMins, (new Date() - _dayStart) / 60000));
+    const px = Math.round(diffMin * _pxPerMin * _curScale);
+    _overlay.style.left = (labelW + px) + 'px';
   }
+  _updateOverlay();
+  setInterval(_updateOverlay, 30000);
+  {% else %}
+  function _updateOverlay() {}
   {% endif %}
+
+  if (_gridScroll) {
+    _syncScale();
+    new ResizeObserver(_syncScale).observe(_gridScroll);
+  }
 })();
 </script>
 
