@@ -1461,7 +1461,7 @@
   // Draggable pills use dblclick so an aborted drag doesn't accidentally open
   // the edit dialog. Completed pills can't be dragged so single-click is fine.
   document.querySelectorAll(".pill").forEach((pill) => {
-    const evtName = (cfg.canManage && pill.dataset.status !== "completed") ? "dblclick" : "click";
+    const evtName = cfg.canManage ? "dblclick" : "click";
     pill.addEventListener(evtName, (e) => {
       if (pill._didDrag) { pill._didDrag = false; return; }
       e.stopPropagation();
