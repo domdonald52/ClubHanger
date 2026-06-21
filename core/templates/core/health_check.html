@@ -85,7 +85,7 @@
     {% if g.ok %}
     <div style="display:flex;flex-wrap:wrap;gap:.4rem;{% if g.issues %}margin-top:.5rem;{% endif %}">
       {% for name in g.ok %}
-      <span class="notice ok" style="margin:0;display:inline-block;">✓ {{ name }}</span>
+      <span class="notice ok" data-no-toast style="margin:0;display:inline-block;">✓ {{ name }}</span>
       {% endfor %}
     </div>
     {% endif %}

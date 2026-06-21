@@ -599,7 +599,8 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
       history.replaceState({}, '', u);
     }
     // Convert any inline success notices to toasts and remove them
-    document.querySelectorAll('.notice.ok, .snotice.ok').forEach(el => {
+    // Elements with data-no-toast stay on the page (e.g. persistent result lists)
+    document.querySelectorAll('.notice.ok:not([data-no-toast]), .snotice.ok:not([data-no-toast])').forEach(el => {
       const msg = el.textContent.trim();
       if (msg) window.toast(msg);
       el.remove();
