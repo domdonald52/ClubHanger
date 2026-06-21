@@ -10362,14 +10362,14 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
         for h in range(DAY_START, DAY_END + 1)
     ]
 
-    # Block-outs for the selected day
+    # Block-outs for the selected day (prefetch instructors M2M for affects_instructor())
     from .models import BlockOut as _AppBlockOut
     from django.db.models import Q as _Q
     _bo_candidates = list(_AppBlockOut.objects.filter(club=club).filter(
         _Q(recurrence='one_off', date=selected) |
         _Q(recurrence='weekly') |
         _Q(recurrence='daily')
-    ).select_related('blockout_type'))
+    ).select_related('blockout_type').prefetch_related('instructors'))
     full_blockouts = [
         bo for bo in _bo_candidates
         if bo.scope == 'all' and bo.applies_on(selected)
@@ -10391,6 +10391,22 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
         .prefetch_related('availability_windows')
         .order_by('user__last_name')
     )
+
+    def _subtract_blockout_from_bars(bars, bo_top_px, bo_bot_px):
+        """Remove a block-out pixel range from a list of {top, height} bars."""
+        result = []
+        for bar in bars:
+            bar_top = bar['top']
+            bar_bot = bar['top'] + bar['height']
+            if bo_top_px >= bar_bot or bo_bot_px <= bar_top:
+                result.append(bar)
+            else:
+                if bar_top < bo_top_px:
+                    result.append({'top': bar_top, 'height': bo_top_px - bar_top})
+                if bo_bot_px < bar_bot:
+                    result.append({'top': bo_bot_px, 'height': bar_bot - bo_bot_px})
+        return result
+
     instructor_bars = []
     for _i, _instr in enumerate(_roster):
         _color    = _INSTR_COLORS[_i % len(_INSTR_COLORS)]
@@ -10406,6 +10422,17 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
                     _top = to_px(_iv[0])
                     _h   = max(4, to_px(_iv[1]) - _top)
                     _bars.append({'top': _top, 'height': _h})
+        # Subtract block-outs that affect this instructor
+        for _bo in _bo_candidates:
+            if not _bo.applies_on(selected):
+                continue
+            if not _bo.affects_instructor(_instr.user):
+                continue
+            _bo_iv = _bo.interval_on(selected)
+            if _bo_iv:
+                _bo_top = to_px(_bo_iv[0])
+                _bo_bot = to_px(_bo_iv[1])
+                _bars = _subtract_blockout_from_bars(_bars, _bo_top, _bo_bot)
         instructor_bars.append({
             'initials': _initials,
             'name':     _instr.user.get_short_name(),
@@ -11117,10 +11144,54 @@ def app_book_confirm(request, club_slug):
         aircraft_list = all_ac
 
     flight_types = FlightType.objects.filter(club=club).order_by('name')
-    instructors  = (ClubMember.objects
-                    .filter(club=club, is_on_instructor_roster=True)
-                    .select_related('user')
-                    .order_by('user__last_name'))
+
+    # Filter instructors to those available at the requested slot start time.
+    # "Available" = on roster for that day (or no schedule defined) AND no block-out.
+    from .models import BlockOut as _ConfBO
+    from django.db.models import Q as _ConfQ
+    from datetime import datetime as _cdt, time as _ct
+    _instr_all = list(
+        ClubMember.objects
+        .filter(club=club, is_on_instructor_roster=True)
+        .select_related('user')
+        .prefetch_related('availability_windows')
+        .order_by('user__last_name')
+    )
+    try:
+        _conf_date = _d.fromisoformat(date_str)
+        _csh, _csm = [int(x) for x in start_str.split(':')]
+        _sched_s   = timezone.make_aware(_cdt.combine(_conf_date, _ct(_csh, _csm)))
+        _conf_day_s = timezone.make_aware(_cdt.combine(_conf_date, _ct(7,  0)))
+        _conf_day_e = timezone.make_aware(_cdt.combine(_conf_date, _ct(20, 0)))
+        _conf_bos = [
+            bo for bo in _ConfBO.objects.filter(club=club).filter(
+                _ConfQ(recurrence='one_off', date=_conf_date) |
+                _ConfQ(recurrence='weekly') |
+                _ConfQ(recurrence='daily')
+            ).prefetch_related('instructors')
+            if bo.applies_on(_conf_date)
+        ]
+        def _instr_ok(cm):
+            wins = list(cm.availability_windows.all())
+            if wins:
+                on_roster = False
+                for w in wins:
+                    iv = w.interval_on(_conf_date, _conf_day_s, _conf_day_e)
+                    if iv and iv[0] <= _sched_s < iv[1]:
+                        on_roster = True
+                        break
+                if not on_roster:
+                    return False
+            for bo in _conf_bos:
+                if not bo.affects_instructor(cm.user):
+                    continue
+                biv = bo.interval_on(_conf_date)
+                if biv and biv[0] <= _sched_s < biv[1]:
+                    return False
+            return True
+        instructors = [i for i in _instr_all if _instr_ok(i)]
+    except (ValueError, TypeError, AttributeError):
+        instructors = _instr_all  # fall back to all if times can't be parsed
 
     default_ft = None
     if mode == 'solo':
