@@ -6426,11 +6426,62 @@ def generate_invoice(request, club_slug, booking_id):
         fc.invoice_issued = True
         fc.save(update_fields=['invoice_issued'])
 
+    # Also generate invoices for other outstanding FCs the user checked
+    _other_fc_ids = request.POST.getlist('other_fc_ids')
+    if _other_fc_ids:
+        for _ofc_id in _other_fc_ids:
+            try:
+                _ofc = FlightCompletion.objects.select_related(
+                    'booking__flight_type', 'booking'
+                ).get(id=_ofc_id, booking__member=booking.member, booking__club=club)
+            except FlightCompletion.DoesNotExist:
+                continue
+            if Invoice.objects.filter(flight_completion=_ofc).exclude(status='void').exists():
+                continue  # already invoiced
+            if not _ofc.charge_items.exists():
+                continue  # nothing to invoice
+            _ofc_balance = max(_D('0'), _D(str(_ofc.total_charge or 0)) - _D(str(_ofc.amount_paid or 0)))
+            with transaction.atomic():
+                _omax = Invoice.objects.filter(club=club).aggregate(m=_Max('invoice_number'))['m'] or 0
+                _onum = max(config.invoice_number_next, _omax + 1)
+                ClubConfig.objects.filter(pk=config.pk).update(invoice_number_next=_onum + 1)
+                config.invoice_number_next = _onum + 1
+                _oinv = Invoice.objects.create(
+                    club=club,
+                    member=booking.member,
+                    flight_completion=_ofc,
+                    invoice_number=_onum,
+                    issue_date=today,
+                    due_date=due,
+                    description=_ofc.booking.flight_type.name if _ofc.booking.flight_type else '',
+                    gst_rate=config.gst_rate,
+                    created_by=request.user,
+                    status='sent',
+                    sent_at=_now,
+                )
+            for _oord, _oci in enumerate(_ofc.charge_items.all()):
+                InvoiceLineItem.objects.create(
+                    invoice=_oinv,
+                    description=_oci.description or _oci.get_item_type_display(),
+                    quantity=1,
+                    unit=UNIT_MAP.get(_oci.item_type, 'Ea'),
+                    rate=_oci.amount,
+                    amount=_oci.amount,
+                    sort_order=_oord,
+                    charge_item=_oci,
+                )
+            _ofc.invoice_issued = True
+            _ofc.save(update_fields=['invoice_issued'])
+            from .services import notification_service as _ns
+            _ns.notify_invoice_issued(_oinv)
+            created.append(_oinv)
+
     if len(created) == 1:
         return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _inv_qs(created[0].id))
 
     from django.contrib import messages as _msg
-    _msg.success(request, f'{len(created)} invoice(s) generated.')
+    _inv_nums = ', '.join(str(i.invoice_number) for i in created)
+    _msg.success(request, f'{len(created)} invoice(s) issued: {_inv_nums}.')
     _back = _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id})
     return redirect(_back + '?saved=1')
 

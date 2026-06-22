@@ -948,7 +948,6 @@
                 <option value="eftpos">EFTPOS</option>
                 <option value="cash">Cash</option>
                 <option value="credit">Account balance</option>
-                <option value="invoice">Invoice / bank transfer</option>
               </select>
             </label>
 
@@ -1045,6 +1044,20 @@
             });
             if (arrearsChk) arrearsChk.addEventListener('change', recalc);
             recalc();
+
+            // When issuing an invoice, carry across any checked other-flight IDs
+            var issueForm = document.getElementById('issue-invoice-form');
+            if (issueForm) {
+              issueForm.addEventListener('submit', function() {
+                issueForm.querySelectorAll('[data-injected-fc]').forEach(function(el) { el.remove(); });
+                document.querySelectorAll('#multi-pay-form input[name="other_fc_ids"]:checked').forEach(function(chk) {
+                  var h = document.createElement('input');
+                  h.type = 'hidden'; h.name = 'other_fc_ids'; h.value = chk.value;
+                  h.setAttribute('data-injected-fc', '1');
+                  issueForm.appendChild(h);
+                });
+              });
+            }
           })();
           </script>
           {% endif %}{% endif %}
@@ -1155,10 +1168,10 @@
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
             <div style="margin-top:.4rem;">
               {% if total %}
-              <form method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
-                    data-confirm="Issue invoice to {{ booking.member.user.get_full_name }} for ${{ balance_owing|floatformat:2 }}? This will mark the flight as Completed and send the invoice.">
+              <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
+                    data-confirm="Issue invoice{% if other_unpaid_list or other_outstanding_list %}s{% endif %} to {{ booking.member.user.get_full_name }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and any selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}? The member will be notified and the flight will be marked Completed.">
                 {% csrf_token %}
-                <button type="submit" class="cbtn" style="font-size:.8rem;">Issue invoice{% if fc_payments|length > 1 %}s{% endif %}</button>
+                <button type="submit" class="cbtn" style="font-size:.8rem;">Issue invoice{% if other_unpaid_list or other_outstanding_list or fc_payments|length > 1 %}s{% endif %}</button>
               </form>
               {% else %}
               <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Issue invoice</span>
