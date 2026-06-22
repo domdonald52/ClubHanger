@@ -103,6 +103,12 @@
   </div>
 </div>
 
+<!-- Flight log link -->
+<a href="{% url 'core:app_flight_log' club.slug %}" class="app-section" style="display:flex;align-items:center;gap:.4rem;text-decoration:none;color:inherit;">
+  <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">Flight log</span>
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+</a>
+
 <!-- Training notes link -->
 <a href="{% url 'core:app_training' club.slug %}" class="app-section" style="display:flex;align-items:center;gap:.4rem;text-decoration:none;color:inherit;">
   <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">Training notes</span>

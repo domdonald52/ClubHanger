@@ -1,0 +1,66 @@
+{% extends "core/app/base.html" %}
+{% block title %}Flight log — {{ club.name }}{% endblock %}
+{% block content %}
+
+<div class="app-section" style="display:flex;align-items:center;justify-content:space-between;padding:.9rem .9rem .3rem;">
+  <h1 style="font-size:1.05rem;font-weight:700;margin:0;">Flight log</h1>
+  <a href="{% url 'core:app_profile' club.slug %}" class="app-btn-sm" style="font-size:.78rem;padding:.3rem .7rem;">← Profile</a>
+</div>
+
+<!-- Summary stats -->
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;padding:.3rem .9rem .9rem;">
+  <div style="background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:.75rem .6rem;text-align:center;">
+    <div style="font-size:1.35rem;font-weight:780;color:#1a2332;line-height:1;">{{ total_hrs|floatformat:1 }}</div>
+    <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-top:3px;">Total hrs</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:.75rem .6rem;text-align:center;">
+    <div style="font-size:1.35rem;font-weight:780;color:#1a2332;line-height:1;">{{ dual_hrs|floatformat:1 }}</div>
+    <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-top:3px;">Dual</div>
+  </div>
+  <div style="background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:.75rem .6rem;text-align:center;">
+    <div style="font-size:1.35rem;font-weight:780;color:#1a2332;line-height:1;">{{ solo_hrs|floatformat:1 }}</div>
+    <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-top:3px;">Solo / P1</div>
+  </div>
+</div>
+
+{% if by_aircraft|length > 1 %}
+<!-- By aircraft breakdown -->
+<div style="padding:0 .9rem .6rem;">
+  <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:.4rem;">By aircraft</div>
+  <div style="background:#fff;border:1px solid #e3e6ea;border-radius:12px;overflow:hidden;">
+    {% for reg, hrs in by_aircraft %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:.55rem .85rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
+      <span style="font-size:.88rem;font-weight:600;color:#1a2332;">{{ reg }}</span>
+      <span style="font-size:.84rem;color:#5b6573;">{{ hrs|floatformat:1 }} hrs</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Flight list -->
+{% if completions %}
+<div style="padding:.2rem .9rem .9rem;">
+  <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:.4rem;">All flights</div>
+  {% for fc in completions %}
+  <div style="background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:.75rem .85rem;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;">
+    <div style="min-width:0;">
+      <div style="font-size:.92rem;font-weight:700;color:#1a2332;">{{ fc.booking.scheduled_start|date:"j M Y" }}</div>
+      <div style="font-size:.78rem;color:#8a93a0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        {{ fc.booking.aircraft.registration|default:"—" }}
+        {% if fc.booking.booking_type %} · {{ fc.booking.booking_type.name }}{% endif %}
+        {% if fc.booking.instructor %} · {{ fc.booking.instructor.get_full_name }}{% endif %}
+      </div>
+    </div>
+    <div style="text-align:right;flex-shrink:0;">
+      <div style="font-size:.95rem;font-weight:700;color:#1a2332;">{{ fc.actual_flight_hours|floatformat:1 }}</div>
+      <div style="font-size:.68rem;color:#9ca3af;">hrs</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="app-empty" style="padding:2rem .9rem;text-align:center;color:#8a93a0;font-size:.85rem;">No completed flights yet.</div>
+{% endif %}
+
+{% endblock %}

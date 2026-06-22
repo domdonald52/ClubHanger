@@ -4143,6 +4143,37 @@ def app_training(request, club_slug):
 
 
 @login_required
+def app_flight_log(request, club_slug):
+    from django.db.models import Sum
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    completions = (FlightCompletion.objects
+                   .filter(booking__member=actor, booking__club=club, booking__status='completed')
+                   .select_related('booking__aircraft', 'booking__instructor', 'booking__booking_type')
+                   .order_by('-booking__scheduled_start'))
+    totals = completions.aggregate(total=Sum('actual_flight_hours'))
+    dual_qs   = completions.filter(booking__instructor__isnull=False)
+    solo_qs   = completions.filter(booking__instructor__isnull=True)
+    dual_hrs  = dual_qs.aggregate(t=Sum('actual_flight_hours'))['t'] or 0
+    solo_hrs  = solo_qs.aggregate(t=Sum('actual_flight_hours'))['t'] or 0
+    total_hrs = totals['total'] or 0
+    # Group by aircraft type for the summary breakdown
+    by_aircraft = {}
+    for fc in completions:
+        reg = fc.booking.aircraft.registration if fc.booking.aircraft else '—'
+        by_aircraft[reg] = by_aircraft.get(reg, 0) + float(fc.actual_flight_hours or 0)
+    return render(request, 'core/app/flight_log.html', {
+        'club': club, 'club_member': actor,
+        'completions': completions,
+        'total_hrs': total_hrs,
+        'dual_hrs': dual_hrs,
+        'solo_hrs': solo_hrs,
+        'by_aircraft': sorted(by_aircraft.items(), key=lambda x: -x[1]),
+    })
+
+
+@login_required
 def my_profile(request, club_slug):
     club = get_object_or_404(Club, slug=club_slug)
     try:
