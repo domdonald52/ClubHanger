@@ -1493,14 +1493,12 @@ class Booking(models.Model):
 
     @property
     def display_status(self):
-        """Human label that distinguishes returned-unpaid from completed-paid."""
+        """Human label: Completed once paid or invoiced; Returned if charges outstanding with no invoice."""
         if self.status == 'completed':
             try:
                 fc = self.flight_completion
-                if fc.is_paid:
+                if fc.is_paid or fc.invoice_issued:
                     return 'Completed'
-                if fc.invoice_issued:
-                    return 'Invoiced'
             except Exception:
                 pass
             return 'Returned'
@@ -1508,14 +1506,11 @@ class Booking(models.Model):
 
     @property
     def display_status_key(self):
-        """CSS class key for display_status."""
         if self.status == 'completed':
             try:
                 fc = self.flight_completion
-                if fc.is_paid:
+                if fc.is_paid or fc.invoice_issued:
                     return 'completed'
-                if fc.invoice_issued:
-                    return 'invoiced'
             except Exception:
                 pass
             return 'returned'

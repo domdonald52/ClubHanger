@@ -104,7 +104,7 @@
           <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
           <td>{% for r in item.reasons %}<span class="reason-chip">{{ r }}</span>{% endfor %}</td>
           <td style="text-align:right;white-space:nowrap;">
-            {% if b.display_status_key == 'returned' or b.display_status_key == 'invoiced' %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn row-action-returned" data-overlay data-overlay-wide>Charges →</a>
+            {% if b.display_status_key == 'returned' %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn row-action-returned" data-overlay data-overlay-wide>Charges →</a>
             {% else %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn" data-overlay data-overlay-wide>View →</a>{% endif %}
           </td>
         </tr>
@@ -147,7 +147,7 @@
           <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
           <td>{% for r in item.reasons %}<span class="reason-chip">{{ r }}</span>{% endfor %}</td>
           <td style="text-align:right;white-space:nowrap;">
-            {% if b.display_status_key == 'returned' or b.display_status_key == 'invoiced' %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn row-action-returned" data-overlay data-overlay-wide>Charges →</a>
+            {% if b.display_status_key == 'returned' %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn row-action-returned" data-overlay data-overlay-wide>Charges →</a>
             {% else %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn" data-overlay data-overlay-wide>View →</a>{% endif %}
           </td>
         </tr>
