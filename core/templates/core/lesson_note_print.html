@@ -1,0 +1,308 @@
+{% load currency_filters %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Training note — {{ note.booking.scheduled_start|date:"j M Y" }} — {{ club.name }}</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  color: #1a1a1a;
+  background: #d1d5db;
+  min-height: 100vh;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: .6rem;
+  padding: .85rem 1.5rem;
+  background: #f3f4f6;
+  border-bottom: 1px solid #d1d5db;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.toolbar a, .toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font: 600 .82rem/1 'Helvetica Neue', Arial, sans-serif;
+  padding: .48rem 1rem;
+  border-radius: 5px;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: background .15s;
+}
+.btn-print {
+  background: {{ theme.primary|default:'#2563eb' }};
+  color: #fff;
+  border-color: {{ theme.primary|default:'#2563eb' }};
+}
+.btn-print:hover { filter: brightness(1.1); }
+.btn-back {
+  background: #fff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+.btn-back:hover { background: #f9fafb; }
+
+.paper-wrap { padding: 1.5rem 1rem 3rem; }
+.paper {
+  background: #fff;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  box-shadow: 0 4px 32px rgba(0,0,0,.22);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.accent-bar {
+  height: 5px;
+  background: {{ theme.primary|default:'#2563eb' }};
+  flex-shrink: 0;
+}
+
+.inner {
+  padding: 14mm 16mm 16mm;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.hdr {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 9mm;
+}
+.hdr .brand-name {
+  font-size: 15pt;
+  font-weight: 800;
+  color: {{ theme.primary|default:'#2563eb' }};
+  letter-spacing: -.01em;
+}
+.hdr .supplier {
+  text-align: right;
+  font-size: 9pt;
+  line-height: 1.75;
+  color: #4b5563;
+}
+
+/* Banner */
+.banner {
+  text-align: center;
+  font-size: 13pt;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: {{ theme.primary|default:'#2563eb' }};
+  padding: 4pt 0;
+  border-top: 1.5px solid {{ theme.primary|default:'#2563eb' }};
+  border-bottom: 1.5px solid {{ theme.primary|default:'#2563eb' }};
+  margin-bottom: 9mm;
+}
+
+/* Meta row */
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8mm;
+  gap: 8mm;
+}
+.member-block .lbl {
+  font-size: 7.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #9ca3af;
+  margin-bottom: 3pt;
+}
+.member-block .name {
+  font-size: 13pt;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.2;
+}
+.member-block .detail {
+  font-size: 9pt;
+  color: #6b7280;
+  margin-top: 3pt;
+  line-height: 1.65;
+}
+
+.fields-block table { border-collapse: collapse; font-size: 9pt; }
+.fields-block td { padding: 2.5pt 0; vertical-align: middle; }
+.fields-block td.lbl {
+  color: #9ca3af;
+  text-align: right;
+  padding-right: 10pt;
+  white-space: nowrap;
+  font-size: 8pt;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.fields-block td.val {
+  font-weight: 700;
+  color: #111;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Sections */
+.note-section {
+  margin-bottom: 7mm;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 4mm;
+}
+.note-section:first-of-type { border-top: none; padding-top: 0; }
+.section-label {
+  font-size: 7.5pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: #9ca3af;
+  margin-bottom: 3mm;
+}
+.section-body {
+  font-size: 10.5pt;
+  line-height: 1.7;
+  color: #1a1a1a;
+  white-space: pre-wrap;
+}
+
+/* Footer */
+.footer {
+  margin-top: auto;
+  padding-top: 6mm;
+  border-top: 1px solid #e5e7eb;
+  font-size: 8pt;
+  color: #9ca3af;
+  display: flex;
+  justify-content: space-between;
+}
+
+@media print {
+  body { background: #fff; }
+  .toolbar { display: none !important; }
+  .paper-wrap { padding: 0; }
+  .paper { box-shadow: none; width: 100%; min-height: 0; }
+  .accent-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { margin: 0; size: A4 portrait; }
+}
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <a href="javascript:history.back()" class="btn-back">← Back</a>
+  <button class="btn-print" onclick="window.print()">Print / Save PDF</button>
+</div>
+
+<div class="paper-wrap">
+<div class="paper">
+  <div class="accent-bar"></div>
+  <div class="inner">
+
+    <!-- Header -->
+    <div class="hdr">
+      <div>
+        {% if config.logo %}
+        <img src="{{ config.logo.url }}" alt="{{ club.name }}" style="max-height:60px;max-width:140px;display:block;margin-bottom:4pt;">
+        {% else %}
+        <div class="brand-name">{{ club.name }}</div>
+        {% endif %}
+      </div>
+      <div class="supplier">
+        {% if config.billing_name %}<div style="font-weight:700;color:#111;font-size:10.5pt;">{{ config.billing_name }}</div>{% endif %}
+        {% if config.address %}{{ config.address }}<br>{% endif %}
+        {% if config.phone %}{{ config.phone }}<br>{% endif %}
+        {% if config.email %}{{ config.email }}{% endif %}
+      </div>
+    </div>
+
+    <!-- Banner -->
+    <div class="banner">Training note</div>
+
+    <!-- Meta -->
+    <div class="meta-row">
+      <div class="member-block">
+        <div class="lbl">Student</div>
+        <div class="name">{{ note.booking.member.user.get_full_name }}</div>
+        <div class="detail">
+          {% if note.booking.member.user.email %}{{ note.booking.member.user.email }}<br>{% endif %}
+        </div>
+      </div>
+      <div class="fields-block">
+        <table>
+          <tr>
+            <td class="lbl">Date</td>
+            <td class="val">{{ note.booking.scheduled_start|date:"j F Y" }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Aircraft</td>
+            <td class="val">{{ note.booking.aircraft.registration|default:"—" }}</td>
+          </tr>
+          {% if fc %}
+          <tr>
+            <td class="lbl">Flight time</td>
+            <td class="val">{{ fc.hobbs_time|floatformat:1 }} hrs</td>
+          </tr>
+          {% endif %}
+          <tr>
+            <td class="lbl">Instructor</td>
+            <td class="val">{{ note.author.get_full_name|default:"—" }}</td>
+          </tr>
+          <tr>
+            <td class="lbl">Note date</td>
+            <td class="val">{{ note.updated_at|date:"j F Y" }}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <!-- Note sections -->
+    {% if note.exercises_covered %}
+    <div class="note-section">
+      <div class="section-label">Exercises covered</div>
+      <div class="section-body">{{ note.exercises_covered }}</div>
+    </div>
+    {% endif %}
+
+    {% if note.debrief_notes %}
+    <div class="note-section">
+      <div class="section-label">Debrief</div>
+      <div class="section-body">{{ note.debrief_notes }}</div>
+    </div>
+    {% endif %}
+
+    {% if note.next_lesson_plan %}
+    <div class="note-section">
+      <div class="section-label">Next lesson plan</div>
+      <div class="section-body">{{ note.next_lesson_plan }}</div>
+    </div>
+    {% endif %}
+
+    <!-- Footer -->
+    <div class="footer">
+      <span>{{ club.name }}</span>
+      <span>Training note — {{ note.booking.member.user.get_full_name }} — {{ note.booking.scheduled_start|date:"j M Y" }}</span>
+    </div>
+
+  </div><!-- /inner -->
+</div><!-- /paper -->
+</div><!-- /paper-wrap -->
+</body>
+</html>

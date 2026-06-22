@@ -3974,6 +3974,35 @@ def manage_member_detail(request, club_slug, member_id):
             return _inline_redirect(request, 'core:manage_member_detail',
                                     club_slug=club_slug, member_id=member_id, saved=True)
 
+        elif action in ('save_lesson_note', 'delete_lesson_note', 'email_lesson_note') and (actor.is_instructor or actor.is_admin):
+            from .models import LessonNote as _LN
+            from django.urls import reverse as _rev3
+            _detail_base = _rev3('core:manage_member_detail', kwargs={'club_slug': club_slug, 'member_id': member_id})
+            if action == 'save_lesson_note':
+                _booking_id = request.POST.get('booking_id')
+                _booking_obj = get_object_or_404(Booking, id=_booking_id, club=club, member=member)
+                _note_id = request.POST.get('note_id')
+                if _note_id:
+                    _note = get_object_or_404(_LN, id=_note_id)
+                else:
+                    _note, _ = _LN.objects.get_or_create(booking=_booking_obj)
+                if _booking_obj.instructor:
+                    _note.author = _booking_obj.instructor
+                _note.exercises_covered = request.POST.get('exercises_covered', '').strip()
+                _note.debrief_notes     = request.POST.get('debrief_notes', '').strip()
+                _note.next_lesson_plan  = request.POST.get('next_lesson_plan', '').strip()
+                _note.save()
+                return redirect(_detail_base + '?saved=1#training')
+            elif action == 'delete_lesson_note':
+                _note = get_object_or_404(_LN, id=request.POST.get('note_id'), booking__club=club)
+                _note.delete()
+                return redirect(_detail_base + '#training')
+            elif action == 'email_lesson_note':
+                _note = get_object_or_404(_LN, id=request.POST.get('note_id'), booking__club=club)
+                from .email_notifications import lesson_note_emailed as _email_note
+                _email_note(_note, club)
+                return redirect(_detail_base + '?saved=1#training')
+
         return _inline_redirect(request, 'core:manage_member_detail', club_slug=club_slug, member_id=member_id, saved=_saved)
 
     from .models import MemberCredential, AccountTransaction, FrequentPassenger as _FP
@@ -4047,6 +4076,17 @@ def manage_member_detail(request, club_slug, member_id):
         description__startswith='Membership subscription',
     ).exclude(status__in=['paid', 'void']).first()
 
+    from .models import LessonNote as _LN
+    lesson_notes = (_LN.objects.filter(booking__member=member, booking__club=club)
+                    .select_related('booking__aircraft', 'booking__instructor', 'author')
+                    .order_by('-booking__scheduled_start'))
+    dual_bookings = (Booking.objects
+                     .filter(member=member, club=club, status='completed', instructor__isnull=False)
+                     .select_related('aircraft', 'instructor')
+                     .order_by('-scheduled_start')[:50])
+    _edit_note_id = request.GET.get('edit_note')
+    edit_note = _LN.objects.filter(id=_edit_note_id, booking__club=club).first() if _edit_note_id else None
+
     return render(request, 'core/manage_member_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'member': member, 'upcoming_bookings': upcoming_bookings, 'past_bookings': past_bookings,
@@ -4064,6 +4104,41 @@ def manage_member_detail(request, club_slug, member_id):
         'existing_sub_invoice': _existing_sub_inv,
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
         'inline_title': member.user.get_full_name(),
+        'lesson_notes': lesson_notes,
+        'dual_bookings': dual_bookings,
+        'edit_note': edit_note,
+    })
+
+
+@login_required
+def lesson_note_print(request, club_slug, note_id):
+    from .models import LessonNote
+    club = get_object_or_404(Club, slug=club_slug)
+    note = get_object_or_404(LessonNote, id=note_id, booking__club=club)
+    try:
+        actor = ClubMember.objects.get(user=request.user, club=club)
+    except ClubMember.DoesNotExist:
+        return redirect('login')
+    if err := require_staff(actor, club, request): return err
+    config = get_config(club)
+    fc = getattr(note.booking, 'flight_completion', None)
+    return render(request, 'core/lesson_note_print.html', {
+        'club': club, 'note': note, 'config': config, 'fc': fc,
+    })
+
+
+@login_required
+def app_training(request, club_slug):
+    from .models import LessonNote
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    notes = (LessonNote.objects
+             .filter(booking__member=actor, booking__club=club)
+             .select_related('booking__aircraft', 'booking__flight_completion', 'author')
+             .order_by('-booking__scheduled_start'))
+    return render(request, 'core/app/training.html', {
+        'club': club, 'club_member': actor, 'notes': notes,
     })
 
 

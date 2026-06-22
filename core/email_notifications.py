@@ -361,3 +361,39 @@ def invoice_sent(invoice):
            'line_items': line_items, 'status_label': status_label}
     body_html = render_to_string('email/invoice_sent.html', ctx)
     _send(subject, body, email, from_email, body_html=body_html)
+
+
+def lesson_note_emailed(note, club):
+    """Email a lesson note to the member after the instructor shares it."""
+    member = note.booking.member
+    if not member:
+        return
+    email = member.user.email
+    if not email:
+        return
+    from_email = _from_addr(club)
+    date_str = note.booking.scheduled_start.strftime('%-d %B %Y') if note.booking.scheduled_start else '?'
+    author_name = note.author.get_full_name() if note.author else 'Your instructor'
+    subject = f'Training note — {date_str} — {club.name}'
+    body = f'Hi {member.user.first_name},\n\n{author_name} has shared training notes from your flight on {date_str}.\n\n'
+    if note.exercises_covered:
+        body += f'Exercises covered:\n{note.exercises_covered}\n\n'
+    if note.debrief_notes:
+        body += f'Debrief:\n{note.debrief_notes}\n\n'
+    if note.next_lesson_plan:
+        body += f'Next lesson plan:\n{note.next_lesson_plan}\n\n'
+    body += f'{club.name}'
+    sections = []
+    if note.exercises_covered:
+        sections.append(('Exercises covered', note.exercises_covered))
+    if note.debrief_notes:
+        sections.append(('Debrief', note.debrief_notes))
+    if note.next_lesson_plan:
+        sections.append(('Next lesson plan', note.next_lesson_plan))
+    fc = getattr(note.booking, 'flight_completion', None)
+    body_html = render_to_string('email/lesson_note.html', {
+        'club': club, 'note': note, 'fc': fc,
+        'member': member, 'author_name': author_name,
+        'date_str': date_str, 'sections': sections,
+    })
+    _send(subject, body, email, from_email, body_html=body_html)

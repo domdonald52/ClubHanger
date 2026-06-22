@@ -1682,6 +1682,28 @@ class FlightCompletion(models.Model):
         self.save(update_fields=['amount_paid', 'paid_at', 'payment_method'])
 
 
+class LessonNote(models.Model):
+    """Instructor debrief note written after a dual training flight."""
+    booking = models.OneToOneField(
+        'Booking', on_delete=models.CASCADE, related_name='lesson_note'
+    )
+    author = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='authored_lesson_notes'
+    )
+    exercises_covered = models.TextField(blank=True)
+    debrief_notes     = models.TextField(blank=True)
+    next_lesson_plan  = models.TextField(blank=True)
+    created_at        = models.DateTimeField(auto_now_add=True)
+    updated_at        = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-booking__scheduled_start']
+
+    def __str__(self):
+        return f"Lesson note — {self.booking}"
+
+
 class FlightSegment(models.Model):
     """
     One pilot's portion of a split flight.  Meter readings are contiguous —

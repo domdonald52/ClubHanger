@@ -94,7 +94,7 @@
     <!-- Results -->
     {% if search_performed %}
     <div style="padding:1rem 1.4rem 2rem;">
-        <h2 style="margin:0 0 .8rem;">{{ result_count }} free slot{{ result_count|pluralize }} across {{ results|length }} day{{ results|length|pluralize }}</h2>
+        <h2 style="margin:0 0 .8rem;">Available across {{ results|length }} day{{ results|length|pluralize }}</h2>
 
         {% if results %}
             <div class="slots-grid" style="margin-top:1rem;">

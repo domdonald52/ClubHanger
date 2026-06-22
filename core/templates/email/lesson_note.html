@@ -1,0 +1,52 @@
+{% extends "email/_base.html" %}
+{% block title %}Training note — {{ date_str }} — {{ club.name }}{% endblock %}
+{% block content %}
+<p style="margin:0 0 18px;">Hi {{ member.user.first_name }},</p>
+<p style="margin:0 0 22px;font-size:15px;">
+  <strong>{{ author_name }}</strong> has shared training notes from your flight on <strong>{{ date_str }}</strong>.
+</p>
+
+<!-- Flight meta -->
+<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#f6f8fa;border-radius:8px;border:1px solid #e3e6ea;margin-bottom:20px;">
+  <tr>
+    <td style="padding:14px 18px 10px;">
+      <table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#6b7785;width:110px;">Date</td>
+          <td style="padding:4px 0;font-size:14px;font-weight:600;color:#1a2332;">{{ date_str }}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#6b7785;">Aircraft</td>
+          <td style="padding:4px 0;font-size:14px;color:#1a2332;">{{ note.booking.aircraft.registration|default:"—" }}</td>
+        </tr>
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#6b7785;">Instructor</td>
+          <td style="padding:4px 0;font-size:14px;color:#1a2332;">{{ author_name }}</td>
+        </tr>
+        {% if fc %}
+        <tr>
+          <td style="padding:4px 0;font-size:13px;color:#6b7785;">Flight time</td>
+          <td style="padding:4px 0;font-size:14px;color:#1a2332;">{{ fc.hobbs_time|floatformat:1 }} hrs</td>
+        </tr>
+        {% endif %}
+      </table>
+    </td>
+  </tr>
+</table>
+
+<!-- Note sections -->
+{% for label, body in sections %}
+<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;margin-bottom:16px;">
+  <tr>
+    <td>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#8a93a0;margin-bottom:6px;">{{ label }}</div>
+      <div style="font-size:14px;color:#1a2332;line-height:1.65;white-space:pre-wrap;background:#f6f8fa;border-radius:8px;padding:12px 14px;border:1px solid #e3e6ea;">{{ body }}</div>
+    </td>
+  </tr>
+</table>
+{% endfor %}
+
+<p style="margin:24px 0 0;font-size:13px;color:#6b7785;">
+  {{ club.name }}
+</p>
+{% endblock %}

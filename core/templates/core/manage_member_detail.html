@@ -54,6 +54,7 @@
     <button class="stab-btn" id="tabBtn-account"      data-tab="account">Account</button>
     <button class="stab-btn" id="tabBtn-passengers"   data-tab="passengers">Passengers</button>
     <button class="stab-btn" id="tabBtn-bookings"     data-tab="bookings">Bookings</button>
+    <button class="stab-btn" id="tabBtn-training"     data-tab="training">Training</button>
     <button class="stab-btn" id="tabBtn-history"      data-tab="history">History</button>
   </div>
 
@@ -663,7 +664,7 @@
 
 <script>
 (function(){
-  const TABS = ['contact','membership','credentials','account','passengers','bookings','history'];
+  const TABS = ['contact','membership','credentials','account','passengers','bookings','training','history'];
 
   // Scope element lookups to this stab-bar's container. Both the outer page
   // (e.g. Attention) and this page can have a [data-managed] stab-bar; take
@@ -756,6 +757,92 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
 
 <!-- ── HISTORY ── -->
 <div style="max-width:900px;margin:0 auto;padding:0 1rem;">
+<section id="tab-training" class="stab-panel detail-section">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
+    <h2 class="sh2" style="margin:0;">Training records</h2>
+    {% if club_member.is_instructor or club_member.is_admin %}
+    <button type="button" class="cbtn-sm" id="note-form-toggle" onclick="document.getElementById('note-form-wrap').hidden=!document.getElementById('note-form-wrap').hidden;this.textContent=document.getElementById('note-form-wrap').hidden?'+ New note':'Cancel'">{% if edit_note %}Cancel{% else %}+ New note{% endif %}</button>
+    {% endif %}
+  </div>
+
+  {% if club_member.is_instructor or club_member.is_admin %}
+  <div id="note-form-wrap" {% if not edit_note %}hidden{% endif %} style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:10px;padding:1rem 1.1rem;margin-bottom:1.2rem;">
+    <form method="post">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="save_lesson_note">
+      {% if edit_note %}<input type="hidden" name="note_id" value="{{ edit_note.id }}">{% endif %}
+      {% if edit_note %}
+      <div style="font-size:.84rem;color:#5b6573;margin-bottom:.7rem;padding:.5rem .75rem;background:#fff;border:1px solid #e3e6ea;border-radius:7px;">
+        <strong>{{ edit_note.booking.scheduled_start|date:"j M Y" }}</strong> · {{ edit_note.booking.aircraft.registration|default:"?" }} · {{ edit_note.booking.instructor.get_full_name|default:"?" }}
+      </div>
+      <input type="hidden" name="booking_id" value="{{ edit_note.booking_id }}">
+      {% else %}
+      <label class="flabel" style="margin-bottom:.7rem;">Flight
+        <select name="booking_id" class="finput" required>
+          {% for b in dual_bookings %}
+          <option value="{{ b.id }}" {% if forloop.first %}selected{% endif %}>
+            {{ b.scheduled_start|date:"j M Y" }} · {{ b.aircraft.registration|default:"?" }} · {{ b.instructor.get_full_name|default:"?" }}
+          </option>
+          {% empty %}
+          <option value="" disabled>No completed dual flights found</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <label class="flabel" style="margin-bottom:.6rem;">Exercises covered
+        <textarea name="exercises_covered" class="finput" rows="3" style="resize:vertical;">{{ edit_note.exercises_covered|default:"" }}</textarea>
+      </label>
+      <label class="flabel" style="margin-bottom:.6rem;">Debrief notes
+        <textarea name="debrief_notes" class="finput" rows="4" style="resize:vertical;">{{ edit_note.debrief_notes|default:"" }}</textarea>
+      </label>
+      <label class="flabel" style="margin-bottom:.8rem;">Next lesson plan
+        <textarea name="next_lesson_plan" class="finput" rows="3" style="resize:vertical;">{{ edit_note.next_lesson_plan|default:"" }}</textarea>
+      </label>
+      <div style="display:flex;gap:.5rem;">
+        <button type="submit" class="cbtn primary">Save note</button>
+        <button type="button" class="cbtn" onclick="document.getElementById('note-form-wrap').hidden=true;document.getElementById('note-form-toggle').textContent='+ New note'">Cancel</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if lesson_notes %}
+  <table class="cred-table">
+    <thead><tr><th>Date</th><th>Aircraft</th><th>Instructor</th><th>Exercises</th><th></th></tr></thead>
+    <tbody>
+    {% for note in lesson_notes %}
+    <tr>
+      <td style="white-space:nowrap;color:#5b6573;">{{ note.booking.scheduled_start|date:"j M Y" }}</td>
+      <td>{{ note.booking.aircraft.registration|default:"—" }}</td>
+      <td style="color:#8a93a0;font-size:.84rem;">{{ note.author.get_full_name|default:"—" }}</td>
+      <td style="font-size:.81rem;color:#5b6573;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ note.exercises_covered|truncatechars:55 }}</td>
+      <td style="white-space:nowrap;text-align:right;">
+        <div style="display:inline-flex;gap:.3rem;">
+          <a href="{% url 'core:lesson_note_print' club.slug note.id %}" target="_blank" class="cbtn-sm">Print</a>
+          <form method="post" style="display:inline;" data-confirm="Email this note to {{ note.booking.member.user.email }}?">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="email_lesson_note">
+            <input type="hidden" name="note_id" value="{{ note.id }}">
+            <button type="submit" class="cbtn-sm">Email</button>
+          </form>
+          <a href="?edit_note={{ note.id }}#training" class="cbtn-sm">Edit</a>
+          <form method="post" style="display:inline;" data-confirm="Delete this lesson note?">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete_lesson_note">
+            <input type="hidden" name="note_id" value="{{ note.id }}">
+            <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:#8a93a0;font-size:.85rem;">No training notes yet.</p>
+  {% endif %}
+</section>
+
 <section id="tab-history" class="stab-panel detail-section">
   <h2 class="sh2">Membership history</h2>
   {% if membership_history %}
