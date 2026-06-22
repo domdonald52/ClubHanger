@@ -3,7 +3,7 @@
 
 {% block content %}
 <style>
-.mlog-wrap{max-width:1200px;margin:0 auto;padding:2rem;}
+.mlog-wrap{max-width:1300px;margin:0 auto;padding:2rem;}
 .mlog-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
 .mlog-actions{display:flex;gap:.5rem;flex-shrink:0;}
 .mlog-table{width:100%;border-collapse:collapse;font-size:.82rem;}
@@ -13,15 +13,14 @@
 .mlog-table tr.manual-row td{background:#fffbeb;}
 .gap-pos{color:#c0392b;font-weight:600;}
 .gap-neg{color:#2563eb;font-weight:600;}
-.inst-pair{display:flex;gap:.2rem;align-items:center;white-space:nowrap;}
-.inst-sep{color:#d6dae0;}
 .manual-badge{display:inline-block;font-size:.7rem;font-weight:600;background:#fff3cd;color:#856404;border:1px solid #fcd34d;border-radius:4px;padding:.1rem .35rem;margin-bottom:.15rem;}
 .mlog-meta{font-size:.82rem;color:#5b6573;margin-bottom:.2rem;}
+.col-sep{border-left:1px solid #e3e6ea;}
 @media print {
   .no-print{display:none!important;}
   .mlog-wrap{padding:.5rem;}
-  .mlog-table{font-size:.75rem;}
-  .mlog-table th,.mlog-table td{padding:.28rem .4rem;}
+  .mlog-table{font-size:.72rem;}
+  .mlog-table th,.mlog-table td{padding:.25rem .35rem;}
   body{font-size:11px;}
 }
 </style>
@@ -30,18 +29,16 @@
   <div class="mlog-hdr">
     <div>
       <div style="font-size:.8rem;color:#8a93a0;margin-bottom:.25rem;">
-        <a href="{% url 'core:manage_aircraft' club.slug %}" style="color:#8a93a0;text-decoration:none;">Aircraft</a>
-        <span style="margin:0 .3rem;">›</span>
-        <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}?tab=maintenance" style="color:#8a93a0;text-decoration:none;">{{ ac.registration }}</a>
+        <span style="color:#8a93a0;">Aircraft › {{ ac.registration }}</span>
       </div>
       <h1 style="margin:0 0 .2rem;font-size:1.3rem;">{{ ac.registration }} — Maintenance log</h1>
       {% if ac.aircraft_type %}<div class="mlog-meta">{{ ac.aircraft_type.name }}{% if ac.serial_number %} · s/n {{ ac.serial_number }}{% endif %}</div>{% endif %}
-      <div class="mlog-meta">{{ rows|length }} entr{{ rows|length|pluralize:"y,ies" }} · exported {{ club.name }}</div>
+      <div class="mlog-meta">{{ rows|length }} entr{{ rows|length|pluralize:"y,ies" }} · {{ club.name }}</div>
     </div>
     <div class="mlog-actions no-print">
       <a href="?fmt=csv" class="cbtn-sm">↓ CSV</a>
       <button onclick="window.print()" class="cbtn-sm">⎙ Print</button>
-      <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}?tab=maintenance" class="cbtn-sm">← Back</a>
+      <button onclick="window.close()" class="cbtn-sm">✕ Close</button>
     </div>
   </div>
 
@@ -52,11 +49,12 @@
       <tr>
         <th>Date</th>
         <th>Flight / Note</th>
-        {% if ac.records_hobbs %}<th>Hobbs start</th><th>Hobbs end</th><th>Gap</th>{% endif %}
-        {% if ac.records_tacho %}<th>Tacho start</th><th>Tacho end</th>{% endif %}
-        {% if ac.records_airswitch %}<th>Air sw. start</th><th>Air sw. end</th>{% endif %}
-        <th style="text-align:right;">Maint (flight)</th>
-        <th style="text-align:right;">Maint (total)</th>
+        {% if ac.records_hobbs %}<th class="col-sep">Hobbs start</th><th>Hobbs end</th><th>Gap</th>{% endif %}
+        {% if ac.records_tacho %}<th class="col-sep">Tacho start</th><th>Tacho end</th>{% endif %}
+        {% if ac.records_airswitch %}<th class="col-sep">Air sw. start</th><th>Air sw. end</th>{% endif %}
+        <th class="col-sep" style="text-align:right;">Flight hrs</th>
+        <th style="text-align:right;">Maint hrs</th>
+        <th style="text-align:right;">Total maint</th>
       </tr>
     </thead>
     <tbody>
@@ -70,7 +68,7 @@
           {% if r.notes and not r.is_manual %}<span style="font-size:.75rem;color:#8a93a0;display:block;">{{ r.notes }}</span>{% endif %}
         </td>
         {% if ac.records_hobbs %}
-        <td style="font-variant-numeric:tabular-nums;">{{ r.hobbs_start|default:"—" }}</td>
+        <td class="col-sep" style="font-variant-numeric:tabular-nums;">{{ r.hobbs_start|default:"—" }}</td>
         <td style="font-variant-numeric:tabular-nums;">{{ r.hobbs_end|default:"—" }}</td>
         <td style="font-variant-numeric:tabular-nums;">
           {% if r.hobbs_gap %}
@@ -80,13 +78,14 @@
         </td>
         {% endif %}
         {% if ac.records_tacho %}
-        <td style="font-variant-numeric:tabular-nums;">{{ r.tacho_start|default:"—" }}</td>
+        <td class="col-sep" style="font-variant-numeric:tabular-nums;">{{ r.tacho_start|default:"—" }}</td>
         <td style="font-variant-numeric:tabular-nums;">{{ r.tacho_end|default:"—" }}</td>
         {% endif %}
         {% if ac.records_airswitch %}
-        <td style="font-variant-numeric:tabular-nums;">{{ r.as_start|default:"—" }}</td>
+        <td class="col-sep" style="font-variant-numeric:tabular-nums;">{{ r.as_start|default:"—" }}</td>
         <td style="font-variant-numeric:tabular-nums;">{{ r.as_end|default:"—" }}</td>
         {% endif %}
+        <td class="col-sep" style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.flight_hrs|default:"—" }}</td>
         <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.maint_flight }}</td>
         <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500;">{{ r.maint_total }}</td>
       </tr>

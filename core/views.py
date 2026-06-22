@@ -5213,6 +5213,16 @@ def aircraft_maintenance_log(request, club_slug, aircraft_id):
             if abs(g) > _D('0.001'):
                 gap = g
 
+        # Flight hours from the billing instrument (hobbs/tacho/airswitch)
+        flight_hrs = None
+        ttm = ac.total_time_method
+        if ttm == 'hobbs' and hobbs_start is not None and hobbs_end is not None:
+            flight_hrs = _D(str(hobbs_end)) - _D(str(hobbs_start))
+        elif ttm == 'tacho' and tacho_start is not None and tacho_end is not None:
+            flight_hrs = _D(str(tacho_end)) - _D(str(tacho_start))
+        elif ttm == 'airswitch' and as_start is not None and as_end is not None:
+            flight_hrs = _D(str(as_end)) - _D(str(as_start))
+
         rows.append({
             'date': e.date,
             'member': member_name,
@@ -5225,6 +5235,7 @@ def aircraft_maintenance_log(request, club_slug, aircraft_id):
             'tacho_end': tacho_end,
             'as_start': as_start,
             'as_end': as_end,
+            'flight_hrs': flight_hrs,
             'maint_flight': e.maint_hours_flight,
             'maint_total': e.maint_hours_total,
         })
@@ -5236,7 +5247,7 @@ def aircraft_maintenance_log(request, club_slug, aircraft_id):
         w = _csv.writer(resp)
         w.writerow(['Date', 'Member/Note', 'Hobbs start', 'Hobbs end', 'Hobbs gap',
                     'Tacho start', 'Tacho end', 'Air sw. start', 'Air sw. end',
-                    'Maint hrs (flight)', 'Maint hrs (total)'])
+                    'Flight hrs', 'Maint hrs (flight)', 'Maint hrs (total)'])
         for r in rows:
             w.writerow([
                 r['date'],
@@ -5248,6 +5259,7 @@ def aircraft_maintenance_log(request, club_slug, aircraft_id):
                 r['tacho_end'] or '',
                 r['as_start'] or '',
                 r['as_end'] or '',
+                r['flight_hrs'] or '',
                 r['maint_flight'],
                 r['maint_total'],
             ])
