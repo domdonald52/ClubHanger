@@ -8331,6 +8331,7 @@ def health_check(request, club_slug):
                         f"({fcs[i]['booking__departed_at'].strftime('%d %b %y') if fcs[i]['booking__departed_at'] else '?'})"
                     ),
                     'url': _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': fcs[i]['booking__id']}),
+                    'link_label': 'Edit readings →',
                 })
     if meter_gaps:
         _issue('operations', 'warn',

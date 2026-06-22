@@ -17,36 +17,13 @@
   <div class="snotice ok" style="margin-bottom:1rem;">✓ Marked {{ request.GET.lapsed }} member{{ request.GET.lapsed|pluralize }} as Lapsed.</div>
   {% endif %}
 
-  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.4rem;">
-    <p style="font-size:.85rem;margin:0;">
-      {% if total_issues == 0 %}
-      <strong style="color:#2a7a3b;">✓ All checks passed.</strong>
-      {% else %}
-      <strong style="color:#b91c1c;">{{ total_issues }} issue{{ total_issues|pluralize }} found — see tabs below.</strong>
-      {% endif %}
-    </p>
-    {% if total_issues %}
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-      <form method="post" style="margin:0;" data-confirm="Recompute all account balances from their transaction history and save? This cannot be undone.">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="fix_balance_drift">
-        <button type="submit" class="cbtn cbtn-sm">Fix balance drift</button>
-      </form>
-      <form method="post" style="margin:0;" data-confirm="Sync all flight completion payment totals from their payment records? This cannot be undone.">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="fix_payment_drift">
-        <button type="submit" class="cbtn cbtn-sm">Fix payment drift</button>
-      </form>
-      {% if lapsed_active_count %}
-      <form method="post" style="margin:0;" data-confirm="Mark {{ lapsed_active_count }} member{{ lapsed_active_count|pluralize }} with expired subscriptions as Lapsed? This updates their standing and will block departures until renewed.">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="mark_lapsed">
-        <button type="submit" class="cbtn cbtn-sm">Mark {{ lapsed_active_count }} lapsed</button>
-      </form>
-      {% endif %}
-    </div>
+  <p style="font-size:.85rem;margin-bottom:1.4rem;">
+    {% if total_issues == 0 %}
+    <strong style="color:#2a7a3b;">✓ All checks passed.</strong>
+    {% else %}
+    <strong style="color:#b91c1c;">{{ total_issues }} issue{{ total_issues|pluralize }} found — see tabs below.</strong>
     {% endif %}
-  </div>
+  </p>
 
   <div class="stab-bar">
     {% for key, g in groups.items %}
@@ -75,7 +52,7 @@
       {% for row in issue.rows %}
       <div style="padding:.3rem 0;display:flex;align-items:baseline;gap:.8rem;{% if not forloop.last %}border-bottom:1px solid #eef0f3;{% endif %}">
         <span style="flex:1;word-break:break-word;">{{ row.text }}</span>
-        {% if row.url %}<a href="{{ row.url }}" data-overlay data-overlay-wide style="white-space:nowrap;color:#4a6fa5;font-weight:500;text-decoration:none;font-size:.75rem;flex-shrink:0;">View →</a>{% endif %}
+        {% if row.url %}<a href="{{ row.url }}" data-overlay data-overlay-wide style="white-space:nowrap;color:#4a6fa5;font-weight:500;text-decoration:none;font-size:.75rem;flex-shrink:0;">{{ row.link_label|default:"View →" }}</a>{% endif %}
       </div>
       {% endfor %}
     </div>
@@ -92,6 +69,32 @@
     {% if not g.issues and not g.ok %}
     <p style="color:#8a93a0;font-size:.85rem;">No checks configured for this tab.</p>
     {% endif %}
+
+    {% if key == 'financial' and g.issues %}
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;">
+      <form method="post" style="margin:0;" data-confirm="Recompute all account balances from their transaction history and save? This cannot be undone.">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="fix_balance_drift">
+        <button type="submit" class="cbtn cbtn-sm">Fix balance drift</button>
+      </form>
+      <form method="post" style="margin:0;" data-confirm="Sync all flight completion payment totals from their payment records? This cannot be undone.">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="fix_payment_drift">
+        <button type="submit" class="cbtn cbtn-sm">Fix payment drift</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if key == 'members' and lapsed_active_count %}
+    <div style="margin-top:1rem;">
+      <form method="post" style="margin:0;" data-confirm="Mark {{ lapsed_active_count }} member{{ lapsed_active_count|pluralize }} with expired subscriptions as Lapsed? This updates their standing and will block departures until renewed.">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="mark_lapsed">
+        <button type="submit" class="cbtn cbtn-sm">Mark {{ lapsed_active_count }} lapsed</button>
+      </form>
+    </div>
+    {% endif %}
+
   </div>
   {% endfor %}
 </div>
