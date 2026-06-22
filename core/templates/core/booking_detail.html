@@ -909,68 +909,115 @@
             {% for inv in fc_invoices %}<a href="{% url 'core:invoice_detail' club.slug inv.id %}" style="color:#1e40af;">{{ inv.display_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
           </div>
           {% elif fc_segments %}
-          <!-- Split flight — per-member payment forms -->
-          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_paid_total }}">
-            {% for seg in fc_segments %}
-            {% if seg.suggested_payment > 0 %}
-            <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
-              <div style="font-size:.88rem;font-weight:500;margin-bottom:.4rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
-              <form method="post" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="record_new_payee">
-                <input type="hidden" name="member_id" value="{{ seg.member.id }}">
-                <select name="payment_method" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
+          <!-- Split flight — unified contributors panel, pre-populated from segments -->
+          <form method="post" id="multi-pay-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="record_segment_payments">
+
+            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
+              <div style="padding:.28rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">This flight</div>
+              <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;background:#f0f4ff;">
+                <span style="font-size:.82rem;color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
+                <span style="font-weight:600;color:#2b333d;">${{ total|currency }}</span>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;padding:.3rem 0 .65rem;border-top:1px solid #eaecef;">
+              <span style="color:#5b6573;font-weight:600;">Total</span>
+              <span style="font-weight:700;color:#2b333d;">${{ total|currency }}</span>
+            </div>
+
+            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Who's paying</div>
+            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.45rem;">
+
+              {% if fc_segments_primary %}
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;">
+                <div>
+                  <input type="hidden" name="segment_member_0" value="{{ fc_segments_primary.member.id }}">
+                  <div style="font-size:.85rem;font-weight:500;">{{ fc_segments_primary.member.user.get_full_name }}</div>
+                  <div style="font-size:.74rem;color:#8a93a0;">${{ fc_segments_primary.charge_total|currency }} hire</div>
+                </div>
+                <select name="segment_method_0" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
                   <option value="cash">Cash</option>
                   <option value="credit">Account balance</option>
-                  <option value="invoice">Invoice / bank transfer</option>
                 </select>
-                <div class="money-wrap" style="margin-top:0;">
-                  <span class="money-sym">$</span>
-                  <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.suggested_payment }}" class="finput money-input split-alloc-input" style="width:80px;" required>
+                <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
+                  <input type="number" id="seg-primary-amt" name="segment_amount_0"
+                         step="0.01" min="0" class="finput money-input"
+                         style="width:80px;background:#f0f4ff;" tabindex="-1"
+                         value="{{ fc_segments_primary.suggested_payment }}" readonly>
                 </div>
-                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Record payment</button>
-              </form>
+              </div>
+              {% endif %}
+
+              {% for seg in fc_segments_secondary %}
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;">
+                <div>
+                  <input type="hidden" name="segment_member_{{ forloop.counter }}" value="{{ seg.member.id }}">
+                  <div style="font-size:.85rem;font-weight:500;">{{ seg.member.user.get_full_name }}</div>
+                  <div style="font-size:.74rem;color:#8a93a0;">${{ seg.charge_total|currency }} hire</div>
+                </div>
+                <select name="segment_method_{{ forloop.counter }}" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
+                  <option value="eftpos">EFTPOS</option>
+                  <option value="cash">Cash</option>
+                  <option value="credit">Account balance</option>
+                </select>
+                <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
+                  <input type="number" name="segment_amount_{{ forloop.counter }}"
+                         step="0.01" min="0.01" class="finput money-input seg-secondary"
+                         style="width:80px;"
+                         value="{{ seg.suggested_payment }}" required>
+                </div>
+              </div>
+              {% endfor %}
+
             </div>
-            {% endif %}
-            {% endfor %}
-          </div>
-          <p id="split-alloc-total" style="font-size:.77rem;margin:.2rem 0 .6rem;"></p>
+
+            <p id="mp-alloc-status" style="font-size:.78rem;color:#c0392b;margin:0 0 .4rem;display:none;"></p>
+            <button type="submit" id="mp-submit-btn" class="btn">Record payments</button>
+          </form>
+          <script>
+          (function(){
+            var form = document.getElementById('multi-pay-form');
+            var primaryAmtEl = document.getElementById('seg-primary-amt');
+            var statusEl = document.getElementById('mp-alloc-status');
+            var submitBtn = document.getElementById('mp-submit-btn');
+            var grandTotal = {{ total }};
+            function recalc() {
+              var sec = 0;
+              form.querySelectorAll('.seg-secondary').forEach(function(el){ sec += parseFloat(el.value) || 0; });
+              if (primaryAmtEl) primaryAmtEl.value = Math.max(0, grandTotal - sec).toFixed(2);
+              if (sec > grandTotal + 0.005) {
+                statusEl.textContent = 'Amounts exceed total by $' + (sec - grandTotal).toFixed(2) + '. Reduce an amount.';
+                statusEl.style.display = ''; submitBtn.disabled = true;
+              } else {
+                statusEl.style.display = 'none'; submitBtn.disabled = false;
+              }
+            }
+            form.querySelectorAll('.seg-secondary').forEach(function(el){
+              el.addEventListener('input', recalc); el.addEventListener('change', recalc);
+            });
+            recalc();
+          })();
+          </script>
           {% else %}
-          <!-- Multi-payment form — current flight + selectable outstanding others -->
+          <!-- Unified payment: current flight + optional outstanding + split contributors -->
           <form method="post" id="multi-pay-form">
             {% csrf_token %}
             <input type="hidden" name="action" value="record_multi_payment">
 
-            <label class="flabel" style="margin-bottom:.6rem;">Method
-              <select name="payment_method" class="finput" id="mp-method">
-                <option value="eftpos">EFTPOS</option>
-                <option value="cash">Cash</option>
-                <option value="credit">Account balance</option>
-              </select>
-            </label>
-
-            {% if member_account %}
-            <div id="mp-acct-balance" style="font-size:.78rem;color:#8a93a0;margin:-.2rem 0 .5rem;">
-              Account balance: <strong style="color:{% if member_account.has_warning %}#c0392b{% elif member_account.balance < 0 %}#b06800{% else %}#2a7a3b{% endif %};">${{ member_account.balance|currency }}</strong>
-              {% if member_account.credit_limit is not None %} · credit limit ${{ member_account.credit_limit|currency }}{% endif %}
-            </div>
-            {% endif %}
-
-            <!-- Payment rows -->
+            <!-- Amounts box: this flight + optional outstanding -->
             <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
-              <!-- Section header: this flight -->
-              <div style="padding:.3rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">This flight</div>
-              <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;background:#f0f4ff;{% if other_unpaid_list or other_outstanding_list %}border-bottom:1px solid #e3e6ea;{% endif %}">
-                <span style="width:15px;"></span>
+              <div style="padding:.28rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">This flight</div>
+              <div class="mp-row" style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if other_unpaid_list or other_outstanding_list %}border-bottom:1px solid #e3e6ea;{% endif %}background:#f0f4ff;">
                 <span style="font-size:.82rem;color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
-                <div class="money-wrap"><span class="money-sym">$</span><input type="number" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ balance_owing }}" style="width:80px;" readonly></div>
+                <div class="money-wrap"><span class="money-sym">$</span><input type="number" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ balance_owing }}" style="width:80px;" readonly tabindex="-1"></div>
               </div>
               {% if other_unpaid_list or other_outstanding_list %}
-              <!-- Section header: other outstanding -->
-              <div style="padding:.35rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;border-top:1px solid #e3e6ea;">
-                <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Other outstanding charges</div>
-                <div style="font-size:.72rem;color:#adb5bd;margin-top:.1rem;">{{ booking.member.user.get_full_name }} · tick to include in this payment session</div>
+              <div style="padding:.3rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;border-top:1px solid #e3e6ea;">
+                <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Other outstanding</div>
+                <div style="font-size:.72rem;color:#adb5bd;margin-top:.1rem;">{{ booking.member.user.get_full_name }} · tick to include</div>
               </div>
               {% for item in other_unpaid_list %}
               <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if not forloop.last or other_outstanding_list %}border-bottom:1px solid #f0f2f4;{% endif %}">
@@ -990,42 +1037,79 @@
             </div>
 
             {% if arrears_clearable %}
-            <div id="mp-arrears-row" style="display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;background:#fff8e1;border:1px solid #fcd34d;border-radius:7px;margin-bottom:.5rem;">
-              <input type="checkbox" name="include_arrears" id="mp-arrears-chk" value="1"
-                     style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;">
+            <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;background:#fff8e1;border:1px solid #fcd34d;border-radius:7px;margin-bottom:.4rem;">
+              <input type="checkbox" name="include_arrears" id="mp-arrears-chk" value="1" style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;">
               <input type="hidden" name="arrears_amount" id="mp-arrears-amt" value="{{ member_account.balance|floatformat:2|slice:'1:' }}">
               <label for="mp-arrears-chk" style="font-size:.82rem;color:#92400e;cursor:pointer;flex:1;">
-                Collect arrears <strong>${{ member_account.balance|currency|slice:'1:' }}</strong>
-                — account is ${{ member_account.balance|currency|slice:'1:' }} over credit limit of ${{ member_account.credit_limit|currency }}
+                Collect arrears <strong>${{ member_account.balance|currency|slice:'1:' }}</strong> — account is over credit limit
               </label>
             </div>
             {% endif %}
 
-            <div style="display:flex;justify-content:space-between;font-size:.8rem;color:#5b6573;margin-bottom:.3rem;">
-              <span>Total entered</span><span id="mp-total-entered" style="font-weight:600;">${{ balance_owing|add:other_total|currency }}</span>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;padding:.3rem 0 .65rem;border-top:1px solid #eaecef;">
+              <span style="color:#5b6573;font-weight:600;">Total</span>
+              <span id="mp-grand-total" style="font-weight:700;color:#2b333d;">${{ balance_owing|add:other_total|currency }}</span>
             </div>
-            <label class="flabel" style="margin-bottom:.5rem;">Amount received
-              <div class="money-wrap" style="margin-top:.25rem;">
-                <span class="money-sym">$</span>
-                <input type="number" name="amount_received" id="mp-received" step="0.01" min="0.01"
-                       class="finput money-input" style="width:110px;"
-                       value="{{ balance_owing|add:other_total }}" required>
+
+            <!-- Who's paying -->
+            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Who's paying</div>
+            <div id="contributors-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.45rem;">
+              <!-- Primary: booking member — amount auto-adjusted by JS -->
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;">
+                <span style="font-size:.85rem;font-weight:500;">{{ booking.member.user.get_full_name }}</span>
+                <select name="payment_method_0" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
+                  <option value="eftpos">EFTPOS</option>
+                  <option value="cash">Cash</option>
+                  <option value="credit">Account balance</option>
+                </select>
+                <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
+                  <input type="number" id="contrib-amount-0" name="contributor_amount_0"
+                         step="0.01" min="0" class="finput money-input"
+                         style="width:80px;background:#f0f4ff;"
+                         value="{{ balance_owing|add:other_total }}" readonly tabindex="-1">
+                </div>
               </div>
-            </label>
-            <p style="font-size:.75rem;color:#8a93a0;margin:.1rem 0 .6rem;">Each amount is recorded separately against its own flight. If the amount received is less than the total, it goes to this flight first.</p>
-            <button type="submit" class="btn">Record payment{% if other_unpaid_list or other_outstanding_list %}s{% endif %}</button>
+            </div>
+
+            {% if member_account %}
+            <p style="font-size:.78rem;color:#8a93a0;margin:0 0 .4rem;">
+              {{ booking.member.user.get_short_name }}'s balance: <strong style="color:{% if member_account.has_warning %}#c0392b{% elif member_account.balance < 0 %}#b06800{% else %}#2a7a3b{% endif %};">${{ member_account.balance|currency }}</strong>{% if member_account.credit_limit is not None %} · limit ${{ member_account.credit_limit|currency }}{% endif %}
+            </p>
+            {% endif %}
+
+            {% if actor.is_admin %}
+            <button type="button" id="add-payee-btn" class="cbtn-sm" style="margin-bottom:.5rem;">+ Add payee</button>
+            {% endif %}
+
+            <p id="split-method-note" style="font-size:.75rem;color:#8a93a0;margin:0 0 .5rem;display:none;">
+              Split payments accept EFTPOS, cash, or account balance only. A receipt invoice can be generated for each contributor once payment is recorded.
+            </p>
+            <p id="mp-alloc-status" style="font-size:.78rem;margin:0 0 .4rem;display:none;"></p>
+
+            <input type="hidden" id="mp-received" name="amount_received" value="{{ balance_owing|add:other_total }}">
+            <button type="submit" id="mp-submit-btn" class="btn">Record payment</button>
           </form>
 
           <script>
           (function(){
-            var rows = document.querySelectorAll('#multi-pay-form .mp-row');
-            var totalEl = document.getElementById('mp-total-entered');
+            var form = document.getElementById('multi-pay-form');
+            var contPanel = document.getElementById('contributors-panel');
+            var grandTotalEl = document.getElementById('mp-grand-total');
             var receivedEl = document.getElementById('mp-received');
+            var statusEl = document.getElementById('mp-alloc-status');
+            var submitBtn = document.getElementById('mp-submit-btn');
+            var addBtn = document.getElementById('add-payee-btn');
+            var splitNote = document.getElementById('split-method-note');
             var arrearsChk = document.getElementById('mp-arrears-chk');
             var arrearsAmt = document.getElementById('mp-arrears-amt');
-            function recalc() {
+            var primaryAmtEl = document.getElementById('contrib-amount-0');
+            var payeeIdx = 0;
+            var currentFlightBalance = {{ balance_owing }};
+            var allMembers = [{% for m in club_members %}{id:{{ m.id }},name:"{{ m.user.get_full_name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+            function recalcTotal() {
               var t = 0;
-              rows.forEach(function(row) {
+              form.querySelectorAll('.mp-row').forEach(function(row) {
                 var chk = row.querySelector('.mp-check');
                 var amt = row.querySelector('.mp-amount');
                 if (!chk || chk.checked) t += parseFloat(amt.value) || 0;
@@ -1034,34 +1118,108 @@
               if (arrearsChk && arrearsChk.checked && arrearsAmt)
                 t += parseFloat(arrearsAmt.value) || 0;
               var fmt = t.toFixed(2);
-              totalEl.textContent = '$' + fmt;
+              grandTotalEl.textContent = '$' + fmt;
               receivedEl.value = fmt;
+              recalcAllocation(t);
             }
-            document.querySelectorAll('#multi-pay-form .mp-check, #multi-pay-form .mp-amount').forEach(function(el){
-              el.addEventListener('change', recalc);
-              el.addEventListener('input', recalc);
-            });
-            if (arrearsChk) arrearsChk.addEventListener('change', recalc);
-            recalc();
 
-            // Keep other-flight IDs synced into issue-invoice-form whenever checkboxes change.
-            // Must be pre-populated (not injected at submit time) because the overlay's form
-            // handler captures FormData before any submit listener can inject inputs.
+            function recalcAllocation(grandTotal) {
+              if (grandTotal === undefined)
+                grandTotal = parseFloat(grandTotalEl.textContent.replace(/[$,]/g,'')) || 0;
+              var secondaryTotal = 0;
+              form.querySelectorAll('.contrib-secondary').forEach(function(el) {
+                secondaryTotal += parseFloat(el.value) || 0;
+              });
+              var primaryAmt = Math.max(0, grandTotal - secondaryTotal);
+              primaryAmtEl.value = primaryAmt.toFixed(2);
+              var hasPayees = !!contPanel.querySelector('.contrib-row-added');
+              if (!hasPayees) { statusEl.style.display = 'none'; submitBtn.disabled = false; return; }
+              if (secondaryTotal > grandTotal + 0.005) {
+                statusEl.textContent = 'Payee amounts exceed total by $' + (secondaryTotal - grandTotal).toFixed(2) + ' — reduce an amount.';
+                statusEl.style.color = '#c0392b'; statusEl.style.display = ''; submitBtn.disabled = true;
+              } else if (secondaryTotal > currentFlightBalance + 0.005) {
+                statusEl.textContent = 'Payee amounts ($' + secondaryTotal.toFixed(2) + ') exceed this flight\'s balance ($' + currentFlightBalance.toFixed(2) + '). Reduce the payee amount.';
+                statusEl.style.color = '#c0392b'; statusEl.style.display = ''; submitBtn.disabled = true;
+              } else {
+                statusEl.style.display = 'none'; submitBtn.disabled = false;
+              }
+            }
+
+            function addPayee() {
+              payeeIdx++;
+              var idx = payeeIdx;
+              var row = document.createElement('div');
+              row.className = 'contrib-row-added';
+              row.style.cssText = 'display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;';
+              var memberSel = document.createElement('select');
+              memberSel.name = 'contributor_member_' + idx;
+              memberSel.className = 'finput'; memberSel.required = true;
+              memberSel.style.cssText = 'font-size:.82rem;padding:.3rem .5rem;';
+              var blank = document.createElement('option'); blank.value = ''; blank.textContent = '— member —';
+              memberSel.appendChild(blank);
+              allMembers.forEach(function(m) {
+                var o = document.createElement('option'); o.value = m.id; o.textContent = m.name;
+                memberSel.appendChild(o);
+              });
+              var methSel = document.createElement('select');
+              methSel.name = 'payment_method_' + idx; methSel.className = 'finput';
+              methSel.style.cssText = 'font-size:.82rem;padding:.3rem .5rem;width:auto;';
+              [['eftpos','EFTPOS'],['cash','Cash'],['credit','Account balance']].forEach(function(pair) {
+                var o = document.createElement('option'); o.value = pair[0]; o.textContent = pair[1];
+                methSel.appendChild(o);
+              });
+              var amtWrap = document.createElement('div');
+              amtWrap.className = 'money-wrap'; amtWrap.style.marginTop = '0';
+              var sym = document.createElement('span'); sym.className = 'money-sym'; sym.textContent = '$';
+              var amtEl = document.createElement('input');
+              amtEl.type = 'number'; amtEl.step = '0.01'; amtEl.min = '0.01';
+              amtEl.name = 'contributor_amount_' + idx;
+              amtEl.className = 'finput money-input contrib-secondary';
+              amtEl.style.width = '80px'; amtEl.value = '0'; amtEl.required = true;
+              amtEl.addEventListener('input', function() { recalcAllocation(); });
+              amtEl.addEventListener('change', function() { recalcAllocation(); });
+              amtWrap.appendChild(sym); amtWrap.appendChild(amtEl);
+              var rmBtn = document.createElement('button');
+              rmBtn.type = 'button'; rmBtn.className = 'cbtn';
+              rmBtn.style.cssText = 'font-size:.78rem;padding:.15rem .4rem;color:#c0392b;border-color:#c0392b;';
+              rmBtn.textContent = '✕'; rmBtn.title = 'Remove payee';
+              rmBtn.addEventListener('click', function() {
+                contPanel.removeChild(row);
+                if (!contPanel.querySelector('.contrib-row-added') && splitNote)
+                  splitNote.style.display = 'none';
+                recalcAllocation();
+              });
+              row.appendChild(memberSel); row.appendChild(methSel);
+              row.appendChild(amtWrap); row.appendChild(rmBtn);
+              contPanel.appendChild(row);
+              if (splitNote) splitNote.style.display = '';
+              recalcAllocation();
+            }
+
+            if (addBtn) addBtn.addEventListener('click', addPayee);
+
+            form.querySelectorAll('.mp-check,.mp-amount').forEach(function(el) {
+              el.addEventListener('change', recalcTotal);
+              el.addEventListener('input', recalcTotal);
+            });
+            if (arrearsChk) arrearsChk.addEventListener('change', recalcTotal);
+
             var issueForm = document.getElementById('issue-invoice-form');
             function syncIssueInvoiceFcIds() {
               if (!issueForm) return;
               issueForm.querySelectorAll('[data-injected-fc]').forEach(function(el) { el.remove(); });
-              document.querySelectorAll('#multi-pay-form input[name="other_fc_ids"]:checked').forEach(function(chk) {
+              form.querySelectorAll('input[name="other_fc_ids"]:checked').forEach(function(chk) {
                 var h = document.createElement('input');
                 h.type = 'hidden'; h.name = 'other_fc_ids'; h.value = chk.value;
-                h.setAttribute('data-injected-fc', '1');
+                h.setAttribute('data-injected-fc','1');
                 issueForm.appendChild(h);
               });
             }
-            document.querySelectorAll('#multi-pay-form input[name="other_fc_ids"]').forEach(function(chk) {
+            form.querySelectorAll('input[name="other_fc_ids"]').forEach(function(chk) {
               chk.addEventListener('change', syncIssueInvoiceFcIds);
             });
-            syncIssueInvoiceFcIds();
+
+            recalcTotal();
           })();
           </script>
           {% endif %}{% endif %}
@@ -1096,47 +1254,10 @@
           </details>
           {% endif %}
 
-          <!-- Add payee (for split payment) -->
-          {% if not fc.is_paid and actor.is_admin %}
-          <details style="margin-top:.7rem;">
-            <summary style="font-size:.82rem;color:#5b6573;cursor:pointer;">+ Split / add payee</summary>
-            <form method="post" style="margin-top:.6rem;padding:.7rem;background:#f8f9fb;border-radius:6px;border:1px solid #e3e6ea;">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="add_payee">
-              <label class="flabel" style="margin-bottom:.4rem;">Member
-                <select name="member_id" class="finput" required>
-                  <option value="">— select member —</option>
-                  {% for m in club_members %}
-                  <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
-                  {% endfor %}
-                </select>
-              </label>
-              <label class="flabel" style="margin-bottom:.2rem;">Amount
-                <div class="money-wrap" style="margin-top:.25rem;">
-                  <span class="money-sym">$</span>
-                  <input type="number" name="payment_amount" step="0.01" min="0.01"
-                         class="finput money-input" style="width:100px;" required
-                         value="{{ balance_owing }}"
-                         oninput="(function(el){var rem={{ balance_owing }}-parseFloat(el.value||0);var sp=document.getElementById('split-bill-rem');if(!sp)return;sp.textContent=rem<-0.005?'Over by $'+Math.abs(rem).toFixed(2):rem>0.005?'$'+rem.toFixed(2)+' remaining':'Matches balance ✓';sp.style.color=rem<-0.005?'#c0392b':rem>0.005?'#b06800':'#2a7a3b';})(this)">
-                </div>
-              </label>
-              <p id="split-bill-rem" style="font-size:.77rem;margin:0 0 .4rem;color:#b06800;">${{ balance_owing|floatformat:2 }} remaining</p>
-              <label class="flabel" style="margin-bottom:.5rem;">Method
-                <select name="payment_method" class="finput">
-                  <option value="eftpos">EFTPOS</option>
-                  <option value="cash">Cash</option>
-                  <option value="credit">Account balance</option>
-                  <option value="invoice">Invoice / bank transfer</option>
-                </select>
-              </label>
-              <button type="submit" class="btn" style="font-size:.85rem;">Add payee</button>
-            </form>
-          </details>
-          {% endif %}
         </div>
 
-        <!-- Invoice — secondary: hide entirely if paid via direct payment and no invoices exist -->
-        {% if fc_invoices or not fc.is_paid %}
+        <!-- Invoice / receipts panel -->
+        {% if fc_invoices or not fc.is_paid or fc_payments_paid %}
         <div style="margin-top:.7rem;padding:.7rem 1rem;border:1px solid #e3e6ea;border-radius:8px;background:#fafbfc;">
           {% if fc_invoices %}
           {% for inv in fc_invoices %}
@@ -1162,6 +1283,15 @@
             </form>
           </div>
           {% endif %}
+          {% elif fc.is_paid %}
+          {# Paid directly — offer receipt generation per contributor #}
+          <p style="font-size:.78rem;font-weight:600;color:#5b6573;margin:0 0 .35rem;">Receipts</p>
+          <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
+                data-confirm="Generate receipt invoice{{ fc_payments_paid|length|pluralize }} for {{ fc_payments_paid|length }} contributor{{ fc_payments_paid|length|pluralize }}? Each will be notified by email.">
+            {% csrf_token %}
+            <button type="submit" class="cbtn" style="font-size:.8rem;">Generate receipt{{ fc_payments_paid|length|pluralize }}</button>
+          </form>
+          <p style="font-size:.73rem;color:#adb5bd;margin:.3rem 0 0;">A paid receipt invoice will be emailed to each contributor as confirmation of payment.</p>
           {% else %}
           <details>
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
@@ -1179,7 +1309,7 @@
           </details>
           {% endif %}
         </div>
-        {% endif %}{# fc_invoices or not fc.is_paid #}
+        {% endif %}{# fc_invoices or not fc.is_paid or fc_payments_paid #}
       </div><!-- /right -->
     </div><!-- /ch-grid -->
 

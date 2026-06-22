@@ -3131,26 +3131,6 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
-        elif action == 'add_payee' and booking.status == 'completed':
-            fc = getattr(booking, 'flight_completion', None)
-            if fc:
-                from .models import ClubMember as _CM
-                member_id = request.POST.get('member_id', '').strip()
-                amount_str = request.POST.get('payment_amount', '').strip()
-                method = request.POST.get('payment_method', 'eftpos')
-                try:
-                    payee = _CM.objects.get(id=member_id, club=club)
-                except _CM.DoesNotExist:
-                    error = 'Member not found'
-                else:
-                    result = charging_service.allocate_payment(
-                        fc, booking, request.user, amount_str, method=method, member=payee
-                    )
-                    if result.ok:
-                        success = 'Payee added.'
-                    else:
-                        error = result.error
-
         elif action == 'record_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc:
@@ -3229,6 +3209,76 @@ def booking_detail(request, club_slug, booking_id):
                         else:
                             error = result.error
 
+        elif action == 'record_segment_payments' and booking.status == 'completed':
+            fc = getattr(booking, 'flight_completion', None)
+            if fc and actor.is_admin:
+                from decimal import Decimal as _D, InvalidOperation
+                from .models import ClubMember as _CM, FlightPayment as _FP
+                from django.utils import timezone as _tz
+
+                _payments = []
+                _idx = 0
+                _parse_error = None
+                while True:
+                    _mk = f'segment_method_{_idx}'
+                    if _mk not in request.POST:
+                        break
+                    _mid = request.POST.get(f'segment_member_{_idx}', '').strip()
+                    _astr = request.POST.get(f'segment_amount_{_idx}', '').strip()
+                    _mval = request.POST.get(_mk, 'eftpos').strip()
+                    try:
+                        _mobj = _CM.objects.get(id=_mid, club=club)
+                    except (_CM.DoesNotExist, ValueError):
+                        _parse_error = f'Member not found for row {_idx + 1}.'
+                        break
+                    try:
+                        _adec = round(_D(_astr), 2)
+                    except (InvalidOperation, ValueError):
+                        _parse_error = f'Invalid amount for row {_idx + 1}.'
+                        break
+                    if _adec > 0:
+                        _payments.append((_mobj, _mval, _adec))
+                    _idx += 1
+
+                if _parse_error:
+                    error = _parse_error
+                elif not _payments:
+                    error = 'No payment details submitted.'
+                else:
+                    _owed = _D(str(fc.balance_owing))
+                    _paid_total = sum(_a for _, _, _a in _payments)
+                    if abs(_paid_total - _owed) > _D('0.05'):
+                        error = (f'Payment amounts (${_paid_total:.2f}) do not match '
+                                 f'balance owing (${_owed:.2f}).')
+                    if not error:
+                        _mids = [_m.id for _m, _, _ in _payments]
+                        if len(_mids) != len(set(_mids)):
+                            error = 'The same member appears more than once.'
+                    if not error:
+                        from .models import Account as _Acct
+                        for _pm, _pmeth, _pamt in _payments:
+                            if _pmeth == 'credit':
+                                _sacct, _ = _Acct.objects.get_or_create(club_member=_pm, defaults={'balance': 0})
+                                _cerr = charging_service._check_credit_headroom(_sacct, _pamt)
+                                if _cerr:
+                                    error = f'{_pm.user.get_full_name()}: {_cerr}'
+                                    break
+                    if not error:
+                        for _pm, _pmeth, _pamt in _payments:
+                            _FP.objects.create(
+                                completion=fc,
+                                member=_pm,
+                                amount=_pamt,
+                                method=_pmeth,
+                                paid_at=_tz.now(),
+                                recorded_by=request.user,
+                            )
+                            if _pmeth == 'credit':
+                                _sacct, _ = _Acct.objects.get_or_create(club_member=_pm, defaults={'balance': 0})
+                                charging_service._debit_account(_sacct, booking, fc, _pamt, _pmeth, request.user)
+                            fc._sync_payment_cache()
+                        success = 'Segment payments recorded.'
+
         elif action == 'remove_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc and actor.is_admin:
@@ -3247,26 +3297,56 @@ def booking_detail(request, club_slug, booking_id):
                     error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
                     from decimal import Decimal as _D, InvalidOperation
-                    method = request.POST.get('payment_method', 'eftpos')
-                    received_str = request.POST.get('amount_received', '').strip()
-                    try:
-                        received = _D(received_str)
-                    except InvalidOperation:
-                        error = 'Invalid amount received'
+                    from .models import ClubMember as _CM, FlightPayment as _FP, Account as _Acct
+                    from django.utils import timezone as _tz
+
+                    # Parse contributor rows. Row 0 = booking member (primary); rows 1+ = secondary payees.
+                    # Each row submits payment_method_N and contributor_amount_N.
+                    # Secondary rows also submit contributor_member_N.
+                    contributors = []
+                    _cidx = 0
+                    _parse_error = None
+                    while True:
+                        _mk = f'payment_method_{_cidx}'
+                        _ak = f'contributor_amount_{_cidx}'
+                        if _mk not in request.POST:
+                            break
+                        _mval = request.POST.get(_mk, 'eftpos').strip()
+                        _astr = request.POST.get(_ak, '').strip()
+                        try:
+                            _adec = round(_D(_astr), 2)
+                        except (InvalidOperation, ValueError):
+                            _parse_error = f'Invalid amount for contributor {_cidx + 1}'
+                            break
+                        if _cidx == 0:
+                            _mobj = booking.member
+                        else:
+                            _mid = request.POST.get(f'contributor_member_{_cidx}', '').strip()
+                            try:
+                                _mobj = _CM.objects.get(id=_mid, club=club)
+                            except (_CM.DoesNotExist, ValueError):
+                                _parse_error = f'Invalid member for contributor {_cidx + 1}'
+                                break
+                            if _mval not in ('eftpos', 'cash', 'credit'):
+                                _mval = 'eftpos'
+                        contributors.append((_mobj, _mval, _adec))
+                        _cidx += 1
+
+                    if _parse_error:
+                        error = _parse_error
+                    elif not contributors:
+                        error = 'No payment details submitted.'
                     else:
-                        # Arrears clearance — separate from flight amounts
+                        # Arrears (always by booking member)
                         try:
                             arrears_clear_amt = _D(request.POST.get('arrears_amount', '0') or '0')
                         except InvalidOperation:
                             arrears_clear_amt = _D('0')
-                        include_arrears = bool(
-                            request.POST.get('include_arrears') and arrears_clear_amt > 0
-                        )
-                        received_for_flights = received - arrears_clear_amt if include_arrears else received
+                        include_arrears = bool(request.POST.get('include_arrears') and arrears_clear_amt > 0)
 
-                        # Build ordered list: current flight first, then selected others by date
-                        fc_amounts = [(fc, booking, fc.balance_owing)]
+                        # Build other-FC list
                         selected_ids = request.POST.getlist('other_fc_ids')
+                        other_fcs_data = []
                         if selected_ids:
                             _other_fcs = (FlightCompletion.objects
                                           .filter(id__in=selected_ids,
@@ -3274,36 +3354,94 @@ def booking_detail(request, club_slug, booking_id):
                                                   booking__club=club)
                                           .select_related('booking__aircraft', 'booking')
                                           .order_by('booking__scheduled_start'))
-                            for ofc in _other_fcs:
-                                amt_str = request.POST.get(f'other_amount_{ofc.id}', '').strip()
+                            for _ofc in _other_fcs:
+                                _ostr = request.POST.get(f'other_amount_{_ofc.id}', '').strip()
                                 try:
-                                    amt = _D(amt_str)
+                                    _oamt = _D(_ostr)
                                 except InvalidOperation:
-                                    amt = ofc.balance_owing
-                                fc_amounts.append((ofc, ofc.booking, amt))
-                        result = charging_service.record_multi_payment(
-                            fc, booking, request.user, method, fc_amounts, received_for_flights
-                        )
-                        if result.ok:
-                            if include_arrears:
-                                from .models import AccountTransaction as _AT
-                                try:
-                                    _acct2 = booking.member.account
-                                    _AT.objects.create(
-                                        account=_acct2,
-                                        transaction_type='deposit',
-                                        direction='credit',
-                                        amount=arrears_clear_amt,
-                                        payment_method=method,
-                                        description='Arrears clearance — collected with flight payment',
-                                        created_by=request.user,
-                                    )
-                                    _acct2.apply_transaction(arrears_clear_amt, 'credit')
-                                except Exception:
-                                    pass
-                            success = result.data['message']
-                        else:
-                            error = result.error
+                                    _oamt = _D(str(_ofc.balance_owing))
+                                other_fcs_data.append((_ofc, _ofc.booking, _oamt))
+
+                        # Validation 1: secondary amounts must not exceed this flight's balance
+                        _sec_total = sum(_a for _, _, _a in contributors[1:]) if len(contributors) > 1 else _D('0')
+                        if _sec_total > _D(str(fc.balance_owing)) + _D('0.01'):
+                            error = (f'Payee amounts (${_sec_total:.2f}) exceed '
+                                     f"this flight's balance (${fc.balance_owing:.2f}).")
+
+                        # Validation 2: total contributed matches total owed
+                        if not error:
+                            _total_owed = (_D(str(fc.balance_owing))
+                                           + sum(_a for _, _, _a in other_fcs_data)
+                                           + (arrears_clear_amt if include_arrears else _D('0')))
+                            _total_contribs = sum(_a for _, _, _a in contributors)
+                            if abs(_total_contribs - _total_owed) > _D('0.05'):
+                                error = (f'Contributor amounts (${_total_contribs:.2f}) do not match '
+                                         f'total owed (${_total_owed:.2f}).')
+
+                        # Validation 3: no duplicate members
+                        if not error:
+                            _mids = [_m.id for _m, _, _ in contributors]
+                            if len(_mids) != len(set(_mids)):
+                                error = 'The same member appears more than once in the contributor list.'
+
+                        # Step 1: record secondary contributors against current FC immediately
+                        if not error and len(contributors) > 1:
+                            for _sm, _smeth, _samt in contributors[1:]:
+                                if _samt <= 0:
+                                    continue
+                                if _smeth == 'credit':
+                                    _sacct, _ = _Acct.objects.get_or_create(club_member=_sm, defaults={'balance': 0})
+                                    _cerr = charging_service._check_credit_headroom(_sacct, _samt)
+                                    if _cerr:
+                                        error = f'{_sm.user.get_full_name()}: {_cerr}'
+                                        break
+                                _FP.objects.create(
+                                    completion=fc,
+                                    member=_sm,
+                                    amount=_samt,
+                                    method=_smeth,
+                                    paid_at=_tz.now(),
+                                    recorded_by=request.user,
+                                )
+                                if _smeth == 'credit':
+                                    _sacct, _ = _Acct.objects.get_or_create(club_member=_sm, defaults={'balance': 0})
+                                    charging_service._debit_account(_sacct, booking, fc, _samt, _smeth, request.user)
+                                fc._sync_payment_cache()
+
+                        # Step 2: primary distributes across all FCs (balance_owing updated by step 1)
+                        if not error:
+                            _pm, _pmeth, _ptotal = contributors[0]
+                            _recv_for_flights = _ptotal - arrears_clear_amt if include_arrears else _ptotal
+                            _fc_amounts = [(fc, booking, _D(str(fc.balance_owing)))]
+                            _fc_amounts.extend(other_fcs_data)
+                            if _recv_for_flights > 0:
+                                result = charging_service.record_multi_payment(
+                                    fc, booking, request.user, _pmeth, _fc_amounts, _recv_for_flights
+                                )
+                                if result.ok:
+                                    if include_arrears:
+                                        from .models import AccountTransaction as _AT
+                                        try:
+                                            _acct2 = booking.member.account
+                                            _AT.objects.create(
+                                                account=_acct2,
+                                                transaction_type='deposit',
+                                                direction='credit',
+                                                amount=arrears_clear_amt,
+                                                payment_method=_pmeth,
+                                                description='Arrears clearance — collected with flight payment',
+                                                created_by=request.user,
+                                            )
+                                            _acct2.apply_transaction(arrears_clear_amt, 'credit')
+                                        except Exception:
+                                            pass
+                                    success = result.data['message']
+                                else:
+                                    error = result.error
+                            else:
+                                # Primary pays nothing — secondary covered the whole flight
+                                fc._sync_payment_cache()
+                                success = 'Split payment recorded.'
 
         elif action == 'void_checkin' and booking.status == 'completed' and actor.is_admin:
             fc = getattr(booking, 'flight_completion', None)
@@ -3420,6 +3558,10 @@ def booking_detail(request, club_slug, booking_id):
     fc_payments = list(fc.payments.select_related('member__user').order_by('created_at')) if fc else []
     _allocated_member_ids = {fp.member_id for fp in fc_payments}
     fc_segments_pending = [s for s in fc_segments if s.member_id not in _allocated_member_ids]
+    # Unified segment payment panel helpers
+    _bm_seg = next((s for s in fc_segments if s.member_id == booking.member_id), fc_segments[0] if fc_segments else None)
+    fc_segments_primary = _bm_seg
+    fc_segments_secondary = [s for s in fc_segments if s is not _bm_seg and s.suggested_payment > 0]
     fc_payments_pending = [fp for fp in fc_payments if not fp.paid_at]
     fc_payments_paid = [fp for fp in fc_payments if fp.paid_at]
     fc_payments_paid_total = sum(fp.amount for fp in fc_payments_paid)
@@ -3593,6 +3735,8 @@ def booking_detail(request, club_slug, booking_id):
         'fc': fc,
         'fc_segments': fc_segments,
         'fc_segments_pending': fc_segments_pending,
+        'fc_segments_primary': fc_segments_primary,
+        'fc_segments_secondary': fc_segments_secondary,
         'charge_items': charge_items,
         'contacts': contacts,
         'total': total,
