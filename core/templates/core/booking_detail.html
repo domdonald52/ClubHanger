@@ -1142,7 +1142,8 @@
           {% endif %}
         </div>
 
-        <!-- Invoice — secondary -->
+        <!-- Invoice — secondary: hide entirely if paid via direct payment and no invoices exist -->
+        {% if fc_invoices or not fc.is_paid %}
         <div style="margin-top:.7rem;padding:.7rem 1rem;border:1px solid #e3e6ea;border-radius:8px;background:#fafbfc;">
           {% if fc_invoices %}
           {% for inv in fc_invoices %}
@@ -1174,7 +1175,7 @@
             <div style="margin-top:.4rem;">
               {% if total %}
               <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
-                    data-confirm="Issue invoice{% if other_unpaid_list or other_outstanding_list %}s{% endif %} to {{ booking.member.user.get_full_name }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and any selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}? The member will be notified and the flight will be marked Completed.">
+                    data-confirm="Issue invoice{% if other_unpaid_list or other_outstanding_list %}s{% endif %} to {{ booking.member.user.get_full_name }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and any selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}? The member will be notified{% if not fc.is_paid %} and the flight will be marked Completed{% endif %}.">
                 {% csrf_token %}
                 <button type="submit" class="cbtn" style="font-size:.8rem;">Issue invoice{% if other_unpaid_list or other_outstanding_list or fc_payments|length > 1 %}s{% endif %}</button>
               </form>
@@ -1185,6 +1186,7 @@
           </details>
           {% endif %}
         </div>
+        {% endif %}{# fc_invoices or not fc.is_paid #}
       </div><!-- /right -->
     </div><!-- /ch-grid -->
 

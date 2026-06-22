@@ -3365,7 +3365,10 @@ def booking_detail(request, club_slug, booking_id):
 
         is_inline = request.POST.get('inline') == '1' or request.GET.get('inline') == '1'
         if error:
-            pass  # fall through to re-render with error
+            if is_inline:
+                from urllib.parse import quote as _q
+                return redirect(f'{request.path}?inline=1&err={_q(error)}')
+            # else fall through to re-render with error
         elif success and not error:
             if is_inline:
                 return redirect(f'{request.path}?inline=1&saved=1')
@@ -3373,6 +3376,7 @@ def booking_detail(request, club_slug, booking_id):
             return redirect(_rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id}) + '?saved=1')
 
     is_inline = request.GET.get('inline') == '1'
+    error = request.GET.get('err', '') or None
 
     # GET — build context
     fc = getattr(booking, 'flight_completion', None)
