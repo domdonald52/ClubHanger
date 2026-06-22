@@ -485,6 +485,37 @@
 
             <button type="button" id="split-add-btn" class="cbtn-sm" onclick="addSplitSeg()" style="margin-top:.3rem;">+ Add another person</button>
           </div>
+
+          <!-- Special time logging -->
+          <details style="margin-top:.75rem;" id="special-time-details">
+            <summary class="cbtn" style="font-size:.82rem;cursor:pointer;list-style:none;display:inline-block;">Log special time</summary>
+            <div style="margin-top:.6rem;padding:.7rem .85rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
+              <p style="font-size:.76rem;color:#8a93a0;margin:0 0 .6rem;">Optional. Each value must not exceed total flight time. Values may overlap (e.g. a flight can have both I/F and night time).</p>
+              <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+                <label class="flabel">I/F simulated
+                  <input type="number" name="time_if_simulated" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
+                         value="{{ fc.time_if_simulated|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
+                </label>
+                <label class="flabel">I/F actual
+                  <input type="number" name="time_if_actual" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
+                         value="{{ fc.time_if_actual|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
+                </label>
+                <label class="flabel">Night
+                  <input type="number" name="time_night" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
+                         value="{{ fc.time_night|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
+                </label>
+                <label class="flabel">Low flying
+                  <input type="number" name="time_low_flying" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
+                         value="{{ fc.time_low_flying|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
+                </label>
+                <label class="flabel">Terrain awareness
+                  <input type="number" name="time_terrain_awareness" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
+                         value="{{ fc.time_terrain_awareness|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
+                </label>
+              </div>
+              <div id="special-time-warn" style="display:none;margin-top:.4rem;font-size:.78rem;color:#c0392b;font-weight:600;"></div>
+            </div>
+          </details>
         </div>
 
         <!-- RIGHT: charge preview only — payment recorded on the charges screen after check-in -->
@@ -1313,6 +1344,28 @@ function checkMeterGap(inp) {
   } else {
     wrap.style.display = 'none';
     expl.required = false;
+  }
+}
+
+function validateSpecialTime(inp) {
+  var total = 0;
+  var endEl = document.getElementById('ci-hobbs-end');
+  var startEl = document.getElementById('ci-hobbs-start');
+  if (endEl && startEl && endEl.value && startEl.value) {
+    total = parseFloat(endEl.value) - parseFloat(startEl.value);
+  }
+  var warnEl = document.getElementById('special-time-warn');
+  var val = parseFloat(inp.value);
+  if (!isNaN(val) && total > 0 && val > total) {
+    inp.style.borderColor = '#c0392b';
+    if (warnEl) { warnEl.style.display = ''; warnEl.textContent = 'Value exceeds total flight time (' + total.toFixed(1) + ' hrs)'; }
+  } else {
+    inp.style.borderColor = '';
+    var anyOver = Array.from(document.querySelectorAll('.special-time-input')).some(function(el) {
+      var v = parseFloat(el.value);
+      return !isNaN(v) && total > 0 && v > total;
+    });
+    if (warnEl) { warnEl.style.display = anyOver ? '' : 'none'; }
   }
 }
 

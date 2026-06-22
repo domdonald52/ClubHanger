@@ -129,6 +129,10 @@
         body.compact .sh2 { font-size: .95rem; margin-bottom: .6rem; }
         body.compact h2 { font-size: 1.1rem; }
         body.compact h3 { font-size: .95rem; }
+        /* Remove number-input spinners on finput fields — arrow buttons are noise for decimal entry */
+        input[type=number].finput::-webkit-inner-spin-button,
+        input[type=number].finput::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number].finput { -moz-appearance: textfield; appearance: textfield; }
     </style>
     <script>const CHART_PALETTE = {{ theme.chart_colors|default:"[]"|safe }};const CHART_MAX_BAR = 52;</script>
 </head>

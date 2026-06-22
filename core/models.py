@@ -1639,6 +1639,13 @@ class FlightCompletion(models.Model):
     amount_paid = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     paid_at = models.DateTimeField(null=True, blank=True)
 
+    # Special time logging (NZ CAA logbook requirements)
+    time_if_simulated      = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Simulated instrument flight time (hrs)")
+    time_if_actual         = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Actual instrument flight time (hrs)")
+    time_night             = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Night flying time (hrs)")
+    time_low_flying        = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Low flying time (hrs)")
+    time_terrain_awareness = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Terrain awareness flying time (hrs)")
+
     # Meter gap — recorded when the start reading doesn't follow on from the previous end
     meter_gap_note = models.TextField(
         blank=True, default='',

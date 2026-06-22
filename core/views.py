@@ -904,6 +904,21 @@ def checkin_booking(request, booking_id):
     )
     if not result.ok:
         return JsonResponse({'error': result.error}, status=400)
+    _special_fields = ['time_if_simulated', 'time_if_actual', 'time_night', 'time_low_flying', 'time_terrain_awareness']
+    if any(request.POST.get(f, '').strip() for f in _special_fields):
+        try:
+            _fc = FlightCompletion.objects.get(booking=booking)
+            _total = float(_fc.actual_flight_hours or 0)
+            for _sf in _special_fields:
+                _sv = request.POST.get(_sf, '').strip()
+                if _sv:
+                    _fval = float(_sv)
+                    setattr(_fc, _sf, _fval if _fval <= _total else _total)
+                else:
+                    setattr(_fc, _sf, None)
+            _fc.save(update_fields=_special_fields)
+        except (FlightCompletion.DoesNotExist, ValueError):
+            pass
     return JsonResponse({'success': True, 'status': 'completed',
                          'charges_url': result.data.get('charges_url', '')})
 
@@ -2980,6 +2995,10 @@ def booking_detail(request, club_slug, booking_id):
                     fc.airswitch_end    = airswitch_end
                     fc.outcome          = outcome
                     fc.outcome_notes    = outcome_notes
+                    _special_fields = ['time_if_simulated', 'time_if_actual', 'time_night', 'time_low_flying', 'time_terrain_awareness']
+                    for _sf in _special_fields:
+                        _sv = request.POST.get(_sf, '').strip()
+                        setattr(fc, _sf, float(_sv) if _sv else None)
                     method = ac.total_time_method
                     try:
                         if method == 'hobbs' and hobbs_start and hobbs_end:
@@ -4142,34 +4161,70 @@ def app_training(request, club_slug):
     })
 
 
-@login_required
-def app_flight_log(request, club_slug):
-    from django.db.models import Sum
+def app_credentials(request, club_slug):
+    from .models import MemberCredential
     club, actor = _app_actor(request, club_slug)
     if not actor:
         return redirect('login')
-    completions = (FlightCompletion.objects
-                   .filter(booking__member=actor, booking__club=club, booking__status='completed')
-                   .select_related('booking__aircraft', 'booking__instructor', 'booking__flight_type')
-                   .order_by('-booking__scheduled_start'))
-    totals = completions.aggregate(total=Sum('actual_flight_hours'))
-    dual_qs   = completions.filter(booking__instructor__isnull=False)
-    solo_qs   = completions.filter(booking__instructor__isnull=True)
-    dual_hrs  = dual_qs.aggregate(t=Sum('actual_flight_hours'))['t'] or 0
-    solo_hrs  = solo_qs.aggregate(t=Sum('actual_flight_hours'))['t'] or 0
-    total_hrs = totals['total'] or 0
-    # Group by aircraft type for the summary breakdown
-    by_aircraft = {}
-    for fc in completions:
-        reg = fc.booking.aircraft.registration if fc.booking.aircraft else '—'
-        by_aircraft[reg] = by_aircraft.get(reg, 0) + float(fc.actual_flight_hours or 0)
+    credentials = (MemberCredential.objects
+                   .filter(member=actor.user)
+                   .select_related('credential_type', 'aircraft_type')
+                   .order_by('credential_type__display_order', 'expiry_date'))
+    return render(request, 'core/app/credentials.html', {
+        'club': club, 'club_member': actor,
+        'credentials': credentials,
+        'saved': request.GET.get('saved') == '1',
+    })
+
+
+@login_required
+def app_flight_log(request, club_slug):
+    from django.db.models import Sum
+    from django.core.paginator import Paginator
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    base_qs = (FlightCompletion.objects
+               .filter(booking__member=actor, booking__club=club, booking__status='completed')
+               .select_related('booking__aircraft', 'booking__instructor', 'booking__flight_type')
+               .order_by('-booking__scheduled_start'))
+
+    # Year filter
+    year_param = request.GET.get('year', '')
+    years = (base_qs.dates('booking__scheduled_start', 'year')
+             .values_list('booking__scheduled_start__year', flat=True).distinct().order_by('-booking__scheduled_start__year'))
+    years = sorted(set(base_qs.values_list('booking__scheduled_start__year', flat=True).distinct()), reverse=True)
+    filtered_qs = base_qs.filter(booking__scheduled_start__year=year_param) if year_param else base_qs
+
+    # Totals over the filtered set
+    agg = filtered_qs.aggregate(
+        total=Sum('actual_flight_hours'),
+        dual=Sum('actual_flight_hours', filter=models.Q(booking__instructor__isnull=False)),
+        solo=Sum('actual_flight_hours', filter=models.Q(booking__instructor__isnull=True)),
+        if_sim=Sum('time_if_simulated'),
+        if_act=Sum('time_if_actual'),
+        night=Sum('time_night'),
+    )
+    total_hrs = agg['total'] or 0
+    dual_hrs  = agg['dual']  or 0
+    solo_hrs  = agg['solo']  or 0
+    if_hrs    = (agg['if_sim'] or 0) + (agg['if_act'] or 0)
+    night_hrs = agg['night'] or 0
+
+    # Pagination
+    paginator = Paginator(filtered_qs, 30)
+    page_obj  = paginator.get_page(request.GET.get('page', 1))
+
     return render(request, 'core/app/flight_log.html', {
         'club': club, 'club_member': actor,
-        'completions': completions,
+        'page_obj': page_obj,
         'total_hrs': total_hrs,
         'dual_hrs': dual_hrs,
         'solo_hrs': solo_hrs,
-        'by_aircraft': sorted(by_aircraft.items(), key=lambda x: -x[1]),
+        'if_hrs': if_hrs,
+        'night_hrs': night_hrs,
+        'years': years,
+        'year_param': year_param,
     })
 
 
@@ -10932,7 +10987,7 @@ def app_credential_add(request, club_slug):
             if 'evidence' in request.FILES:
                 cred.evidence = request.FILES['evidence']
             cred.save()
-        return redirect(_rev('core:app_profile', args=[club.slug]) + '?saved=1')
+        return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1')
 
     aircraft_types = AircraftType.objects.filter(club=club).order_by('name')
     return render(request, 'core/app/credential_add.html', {
@@ -10989,7 +11044,7 @@ def app_credential_edit(request, club_slug, cred_id):
             cred.evidence.delete(save=False)
             cred.evidence = None
         cred.save()
-        return redirect(_rev('core:app_profile', args=[club.slug]) + '?saved=1')
+        return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1')
 
     aircraft_types = AircraftType.objects.filter(club=club).order_by('name')
     return render(request, 'core/app/credential_edit.html', {
@@ -11011,7 +11066,7 @@ def app_credential_delete(request, club_slug, cred_id):
     cred = get_object_or_404(MemberCredential, id=cred_id, member=actor.user)
     if request.method == 'POST':
         cred.delete()
-    return redirect(_rev('core:app_profile', args=[club.slug]) + '?saved=1')
+    return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1')
 
 
 @login_required
