@@ -429,7 +429,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="action" value="mark_maintenance_done">
                 <input type="hidden" name="maint_id" value="{{ m.id }}">
-                <button type="submit" class="cbtn-sm cbtn-ok">✓ Done</button>
+                <button type="submit" class="cbtn-sm cbtn-ok">Mark done</button>
               </form>
               <button type="button" class="cbtn-sm"
                       onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|default:'' }}','{{ m.last_completed_hours|default:'' }}','{{ m.interval_days|default:'' }}','{{ m.interval_hours|default:'' }}','{{ m.warn_days|default:'' }}','{{ m.alert_days|default:'' }}','{{ m.warn_hours|default:'' }}','{{ m.alert_hours|default:'' }}')">Edit</button>
