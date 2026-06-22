@@ -3062,43 +3062,59 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'add_charge' and booking.status == 'completed' and (actor.is_admin or actor.is_instructor):
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                item_type = request.POST.get('item_type', 'one_off')
-                description = request.POST.get('description', '').strip()
-                amount = request.POST.get('amount', '').strip()
-                ae_id  = request.POST.get('aerodrome_id', '')
-                ft_id  = request.POST.get('fee_type_id', '')
-                from .models import AerodromeFeeType
-                ae = Aerodrome.objects.filter(club=club, id=ae_id).first() if ae_id else None
-                fee_type = AerodromeFeeType.objects.filter(id=ft_id).first() if ft_id else None
-                result = charging_service.add_charge(
-                    fc, item_type, description, amount,
-                    aerodrome=ae, fee_type=fee_type,
-                    custom_icao=request.POST.get('custom_icao', '').strip(),
-                    custom_name=request.POST.get('custom_name', '').strip(),
-                    quantity=int(request.POST.get('quantity', 1) or 1),
-                    unit_amount=request.POST.get('unit_amount', amount) or amount,
-                )
-                if result.ok:
-                    _inv_count = fc.invoices.exclude(status='void').count()
-                    success = 'Charge added.' + (
-                        f' ⚠ This flight has {_inv_count} issued invoice(s) — '
-                        'the invoice total no longer matches. Update or re-issue the invoice.'
-                        if _inv_count else ''
-                    )
+                _active_inv = fc.invoices.exclude(status='void')
+                if _active_inv.filter(amount_paid__gt=0).exists():
+                    error = ('Cannot add a charge — a payment has been recorded against an invoice for this flight. '
+                             'Issue a separate invoice for any additional charges.')
                 else:
-                    error = result.error
+                    _voided_inv = _active_inv.count()
+                    if _voided_inv:
+                        _active_inv.update(status='void')
+                        fc.invoice_issued = False
+                        fc.save(update_fields=['invoice_issued'])
+                    item_type = request.POST.get('item_type', 'one_off')
+                    description = request.POST.get('description', '').strip()
+                    amount = request.POST.get('amount', '').strip()
+                    ae_id  = request.POST.get('aerodrome_id', '')
+                    ft_id  = request.POST.get('fee_type_id', '')
+                    from .models import AerodromeFeeType
+                    ae = Aerodrome.objects.filter(club=club, id=ae_id).first() if ae_id else None
+                    fee_type = AerodromeFeeType.objects.filter(id=ft_id).first() if ft_id else None
+                    result = charging_service.add_charge(
+                        fc, item_type, description, amount,
+                        aerodrome=ae, fee_type=fee_type,
+                        custom_icao=request.POST.get('custom_icao', '').strip(),
+                        custom_name=request.POST.get('custom_name', '').strip(),
+                        quantity=int(request.POST.get('quantity', 1) or 1),
+                        unit_amount=request.POST.get('unit_amount', amount) or amount,
+                    )
+                    if result.ok:
+                        success = 'Charge added.' + (
+                            f' Invoice voided — re-issue once charges are finalised.'
+                            if _voided_inv else ''
+                        )
+                    else:
+                        error = result.error
 
         elif action == 'delete_charge' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                result = charging_service.delete_charge(fc, request.POST.get('item_id'))
-                if result.ok:
-                    _inv_count = fc.invoices.exclude(status='void').count()
-                    success = 'Charge removed.' + (
-                        f' ⚠ This flight has {_inv_count} issued invoice(s) — '
-                        'the invoice total no longer matches. Update or re-issue the invoice.'
-                        if _inv_count else ''
-                    )
+                _active_inv = fc.invoices.exclude(status='void')
+                if _active_inv.filter(amount_paid__gt=0).exists():
+                    error = ('Cannot remove a charge — a payment has been recorded against an invoice for this flight. '
+                             'Reverse the invoice payment first.')
+                else:
+                    _voided_inv = _active_inv.count()
+                    if _voided_inv:
+                        _active_inv.update(status='void')
+                        fc.invoice_issued = False
+                        fc.save(update_fields=['invoice_issued'])
+                    result = charging_service.delete_charge(fc, request.POST.get('item_id'))
+                    if result.ok:
+                        success = 'Charge removed.' + (
+                            ' Invoice voided — re-issue once charges are finalised.'
+                            if _voided_inv else ''
+                        )
 
         elif action == 'confirm_payment' and booking.status == 'completed':
             # Quick single-payment record (default to booking member)
@@ -3312,6 +3328,7 @@ def booking_detail(request, club_slug, booking_id):
                     fc.outcome_notes = ''
                     fc.total_charge = 0
                     fc.meter_gap_note = ''
+                    fc.invoice_issued = False
                     fc.save()
                     booking.status = 'departed'
                     booking.arrived_at = None
@@ -6288,9 +6305,9 @@ def generate_invoice(request, club_slug, booking_id):
             _qs_data = {'inline': '1', 'back': _booking_url}
         return '?' + _up.urlencode(_qs_data)
 
-    if not fc.charge_items.exists() or not fc.total_charge:
+    if not fc.charge_items.exists():
         from django.contrib import messages as _msg
-        _msg.error(request, 'Cannot generate a $0 invoice — add charge items first.')
+        _msg.error(request, 'Cannot generate an invoice — add charge items first.')
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
     config = get_config(club)
@@ -6312,19 +6329,21 @@ def generate_invoice(request, club_slug, booking_id):
     fp_list = list(fc.payments.all())
     existing_member_ids = set(fc.invoices.values_list('member_id', flat=True))
 
+    from decimal import Decimal as _D
     if fp_list:
         payees = [
             (fp.member, fp.amount, fp.amount if fp.paid_at else 0, fp.paid_at,
              _FP_METHOD_MAP.get(fp.method, 'bank_transfer'))
             for fp in fp_list
-            if fp.amount > 0 and fp.member_id not in existing_member_ids
+            if fp.member_id not in existing_member_ids
         ]
         is_split = len(fp_list) > 1
     else:
         if booking.member.id not in existing_member_ids:
             _fp0 = fc.payments.filter(paid_at__isnull=False).first()
             _m0 = _FP_METHOD_MAP.get(_fp0.method, 'bank_transfer') if _fp0 else 'bank_transfer'
-            payees = [(booking.member, fc.total_charge, fc.amount_paid or 0, fc.paid_at, _m0)]
+            _balance = max(_D('0'), _D(str(fc.total_charge or 0)) - _D(str(fc.amount_paid or 0)))
+            payees = [(booking.member, _balance, 0, None, _m0)]
         else:
             payees = []
         is_split = False
@@ -6394,6 +6413,10 @@ def generate_invoice(request, club_slug, booking_id):
             invoice._sync_payment_cache()
 
         created.append(invoice)
+
+    if created:
+        fc.invoice_issued = True
+        fc.save(update_fields=['invoice_issued'])
 
     if len(created) == 1:
         return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _inv_qs(created[0].id))
@@ -6552,6 +6575,12 @@ def invoice_detail(request, club_slug, invoice_id):
         elif action == 'void' and invoice.status in ('draft', 'sent'):
             invoice.status = 'void'
             invoice.save(update_fields=['status'])
+            # Clear invoice_issued on the FC if no active invoices remain
+            if invoice.flight_completion_id:
+                _fc_v = invoice.flight_completion
+                if not _fc_v.invoices.exclude(status='void').exists():
+                    _fc_v.invoice_issued = False
+                    _fc_v.save(update_fields=['invoice_issued'])
             return redirect(_stay_url)
 
     line_items = invoice.line_items.all()

@@ -1496,8 +1496,11 @@ class Booking(models.Model):
         """Human label that distinguishes returned-unpaid from completed-paid."""
         if self.status == 'completed':
             try:
-                if self.flight_completion.is_paid:
+                fc = self.flight_completion
+                if fc.is_paid:
                     return 'Completed'
+                if fc.invoice_issued:
+                    return 'Invoiced'
             except Exception:
                 pass
             return 'Returned'
@@ -1508,8 +1511,11 @@ class Booking(models.Model):
         """CSS class key for display_status."""
         if self.status == 'completed':
             try:
-                if self.flight_completion.is_paid:
+                fc = self.flight_completion
+                if fc.is_paid:
                     return 'completed'
+                if fc.invoice_issued:
+                    return 'invoiced'
             except Exception:
                 pass
             return 'returned'
@@ -1638,6 +1644,7 @@ class FlightCompletion(models.Model):
     )
     amount_paid = models.DecimalField(max_digits=8, decimal_places=2, default=0)
     paid_at = models.DateTimeField(null=True, blank=True)
+    invoice_issued = models.BooleanField(default=False, help_text="True when at least one active invoice exists for this flight")
 
     # Special time logging (NZ CAA logbook requirements)
     time_if_simulated      = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text="Simulated instrument flight time (hrs)")
