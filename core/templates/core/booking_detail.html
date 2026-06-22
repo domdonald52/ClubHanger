@@ -1045,19 +1045,24 @@
             if (arrearsChk) arrearsChk.addEventListener('change', recalc);
             recalc();
 
-            // When issuing an invoice, carry across any checked other-flight IDs
+            // Keep other-flight IDs synced into issue-invoice-form whenever checkboxes change.
+            // Must be pre-populated (not injected at submit time) because the overlay's form
+            // handler captures FormData before any submit listener can inject inputs.
             var issueForm = document.getElementById('issue-invoice-form');
-            if (issueForm) {
-              issueForm.addEventListener('submit', function() {
-                issueForm.querySelectorAll('[data-injected-fc]').forEach(function(el) { el.remove(); });
-                document.querySelectorAll('#multi-pay-form input[name="other_fc_ids"]:checked').forEach(function(chk) {
-                  var h = document.createElement('input');
-                  h.type = 'hidden'; h.name = 'other_fc_ids'; h.value = chk.value;
-                  h.setAttribute('data-injected-fc', '1');
-                  issueForm.appendChild(h);
-                });
+            function syncIssueInvoiceFcIds() {
+              if (!issueForm) return;
+              issueForm.querySelectorAll('[data-injected-fc]').forEach(function(el) { el.remove(); });
+              document.querySelectorAll('#multi-pay-form input[name="other_fc_ids"]:checked').forEach(function(chk) {
+                var h = document.createElement('input');
+                h.type = 'hidden'; h.name = 'other_fc_ids'; h.value = chk.value;
+                h.setAttribute('data-injected-fc', '1');
+                issueForm.appendChild(h);
               });
             }
+            document.querySelectorAll('#multi-pay-form input[name="other_fc_ids"]').forEach(function(chk) {
+              chk.addEventListener('change', syncIssueInvoiceFcIds);
+            });
+            syncIssueInvoiceFcIds();
           })();
           </script>
           {% endif %}{% endif %}

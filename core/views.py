@@ -3579,7 +3579,7 @@ def booking_detail(request, club_slug, booking_id):
     rostered_instructors = [(_m, _instr_avail(_m)) for _m in _rostered]
 
     ctx = {
-        'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
+        'club': club, 'club_member': actor, 'actor': actor, 'is_instructor': actor.is_instructor,
         'booking': booking,
         'member_account': _acct,
         'arrears_clearable': _arrears_clearable,
