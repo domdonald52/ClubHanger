@@ -1143,17 +1143,25 @@
           {% endfor %}
           {% if fc_has_uninvoiced_payees %}
           <div style="margin-top:.4rem;">
-            <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="cbtn" style="font-size:.8rem;" data-overlay>Generate remaining invoices</a>
+            <form method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
+                  data-confirm="Issue invoices for all uninvoiced payees? Each will be notified and the flight will be marked Completed.">
+              {% csrf_token %}
+              <button type="submit" class="cbtn" style="font-size:.8rem;">Issue remaining invoices</button>
+            </form>
           </div>
           {% endif %}
           {% else %}
           <details>
-            <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Need a formal invoice?</summary>
+            <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
             <div style="margin-top:.4rem;">
               {% if total %}
-              <a href="{% url 'core:generate_invoice' club.slug booking.id %}" class="cbtn" style="font-size:.8rem;" data-overlay>Generate invoice{% if fc_payments|length > 1 %}s{% endif %}</a>
+              <form method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
+                    data-confirm="Issue invoice to {{ booking.member.user.get_full_name }} for ${{ balance_owing|floatformat:2 }}? This will mark the flight as Completed and send the invoice.">
+                {% csrf_token %}
+                <button type="submit" class="cbtn" style="font-size:.8rem;">Issue invoice{% if fc_payments|length > 1 %}s{% endif %}</button>
+              </form>
               {% else %}
-              <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Generate invoice</span>
+              <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Issue invoice</span>
               {% endif %}
             </div>
           </details>

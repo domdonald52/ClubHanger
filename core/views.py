@@ -6290,6 +6290,9 @@ def generate_invoice(request, club_slug, booking_id):
         return redirect('login')
     if err := require_staff(actor, club, request): return err
 
+    if request.method != 'POST':
+        return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
+
     fc = getattr(booking, 'flight_completion', None)
     if not fc:
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
@@ -6317,6 +6320,7 @@ def generate_invoice(request, club_slug, booking_id):
     ClubConfig = config.__class__
 
     today = timezone.localdate()
+    _now  = timezone.now()
     due   = today + _td(days=config.payment_terms_days)
     description = booking.flight_type.name if booking.flight_type else ''
 
@@ -6374,6 +6378,8 @@ def generate_invoice(request, club_slug, booking_id):
                 description=description,
                 gst_rate=config.gst_rate,
                 created_by=request.user,
+                status='sent',
+                sent_at=_now,
             )
 
         # Line items: for split, one summary line per payee; for single, snapshot all charge items
@@ -6413,6 +6419,8 @@ def generate_invoice(request, club_slug, booking_id):
             invoice._sync_payment_cache()
 
         created.append(invoice)
+        from .services import notification_service as _ns
+        _ns.notify_invoice_issued(invoice)
 
     if created:
         fc.invoice_issued = True

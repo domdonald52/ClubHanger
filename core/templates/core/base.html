@@ -808,13 +808,20 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
   });
   modal.addEventListener('click', function(e){ if(e.target===modal) modal.hidden=true; });
   document.addEventListener('keydown', function(e){ if(!modal.hidden && e.key==='Escape') modal.hidden=true; });
-  // Intercept any form with data-confirm before it submits
+  // Intercept any form with data-confirm before it submits.
+  // Uses requestSubmit() so the overlay's own submit handler can catch the confirmed submission.
+  // _confirmed flag prevents re-triggering on the synthetic re-submit.
   document.addEventListener('submit', function(e){
     var form = e.target;
+    if (form._confirmed) { form._confirmed = false; return; }
     var msg  = form.getAttribute('data-confirm');
     if(!msg) return;
     e.preventDefault();
-    window.showAppConfirm(msg, function(){ form.submit(); });
+    e.stopPropagation();
+    window.showAppConfirm(msg, function(){
+      form._confirmed = true;
+      if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+    });
   }, true);
 })();
 </script>
