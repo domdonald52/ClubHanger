@@ -4179,7 +4179,7 @@ def app_credentials(request, club_slug):
 
 @login_required
 def app_flight_log(request, club_slug):
-    from django.db.models import Sum
+    from django.db.models import Sum, Q as _Q
     from django.core.paginator import Paginator
     club, actor = _app_actor(request, club_slug)
     if not actor:
@@ -4199,8 +4199,8 @@ def app_flight_log(request, club_slug):
     # Totals over the filtered set
     agg = filtered_qs.aggregate(
         total=Sum('actual_flight_hours'),
-        dual=Sum('actual_flight_hours', filter=models.Q(booking__instructor__isnull=False)),
-        solo=Sum('actual_flight_hours', filter=models.Q(booking__instructor__isnull=True)),
+        dual=Sum('actual_flight_hours', filter=_Q(booking__instructor__isnull=False)),
+        solo=Sum('actual_flight_hours', filter=_Q(booking__instructor__isnull=True)),
         if_sim=Sum('time_if_simulated'),
         if_act=Sum('time_if_actual'),
         night=Sum('time_night'),
@@ -8166,10 +8166,11 @@ def manage_vouchers(request, club_slug):
                     payment_method='other',
                     created_by=request.user,
                 )
+                from django.db.models import Sum as _Sum
                 acct.balance = acct.transactions.filter(direction='credit').aggregate(
-                    s=models.Sum('amount'))['s'] or 0
+                    s=_Sum('amount'))['s'] or 0
                 acct.balance -= acct.transactions.filter(direction='debit').aggregate(
-                    s=models.Sum('amount'))['s'] or 0
+                    s=_Sum('amount'))['s'] or 0
                 acct.save(update_fields=['balance'])
                 v.is_redeemed = True
                 v.redeemed_by = member
@@ -10832,7 +10833,8 @@ def app_notifications(request, club_slug):
     club, actor = _app_actor(request, club_slug)
     if not actor:
         return redirect('login')
-    _notif_url = reverse('core:app_notifications', args=[club_slug])
+    from django.urls import reverse as _rev
+    _notif_url = _rev('core:app_notifications', args=[club_slug])
     if request.method == 'POST':
         pref, _ = _NP.objects.get_or_create(club_member=actor)
         _toggle_fields = [
