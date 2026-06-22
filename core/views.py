@@ -4150,7 +4150,7 @@ def app_flight_log(request, club_slug):
         return redirect('login')
     completions = (FlightCompletion.objects
                    .filter(booking__member=actor, booking__club=club, booking__status='completed')
-                   .select_related('booking__aircraft', 'booking__instructor', 'booking__booking_type')
+                   .select_related('booking__aircraft', 'booking__instructor', 'booking__flight_type')
                    .order_by('-booking__scheduled_start'))
     totals = completions.aggregate(total=Sum('actual_flight_hours'))
     dual_qs   = completions.filter(booking__instructor__isnull=False)

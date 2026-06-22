@@ -48,7 +48,7 @@
       <div style="font-size:.92rem;font-weight:700;color:#1a2332;">{{ fc.booking.scheduled_start|date:"j M Y" }}</div>
       <div style="font-size:.78rem;color:#8a93a0;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
         {{ fc.booking.aircraft.registration|default:"—" }}
-        {% if fc.booking.booking_type %} · {{ fc.booking.booking_type.name }}{% endif %}
+        {% if fc.booking.flight_type %} · {{ fc.booking.flight_type.name }}{% endif %}
         {% if fc.booking.instructor %} · {{ fc.booking.instructor.get_full_name }}{% endif %}
       </div>
     </div>
