@@ -425,7 +425,7 @@
           <td style="text-align:right;">
             {% if club_member.is_admin %}
             <div style="display:inline-flex;gap:.3rem;">
-              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Mark {{ m.name|escapejs }} as done today?')">
+              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Mark {{ m.name|escapejs }} as done today?','Mark done',false)">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="mark_maintenance_done">
                 <input type="hidden" name="maint_id" value="{{ m.id }}">
@@ -795,12 +795,12 @@
   <!-- Delete confirmation modal (reused by all delete buttons on this page) -->
   <div id="del-confirm-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(360px,94vw);">
-      <h2 id="dcm-title">Delete?</h2>
+      <h2 id="dcm-title">Confirm</h2>
       <p id="dcm-msg" style="font-size:.88rem;color:#4a5568;margin:.2rem 0 1.2rem;"></p>
       <div class="modal-actions">
         <button type="button" class="cbtn" id="dcm-cancel">Cancel</button>
         <span style="flex:1"></span>
-        <button type="button" class="cbtn cbtn-danger" id="dcm-confirm">Delete</button>
+        <button type="button" class="cbtn cbtn-danger" id="dcm-confirm">Confirm</button>
       </div>
     </div>
   </div>
@@ -1079,11 +1079,19 @@ window.toggleBoTime = function(cb) {
 };
 
 // In-app delete confirmation — replaces browser confirm() dialogs.
-// Usage: onsubmit="return dcModal(this,'Message')" or onclick="return dcModal(form,'Message')"
+// Usage: onsubmit="return dcModal(this,'Message')" — optional 3rd arg is confirm button label
+// Defaults: label='Delete', danger=true. Pass label='Mark done' for non-destructive actions.
 var _dcPending = null;
-window.dcModal = function(form, msg) {
+window.dcModal = function(form, msg, confirmLabel, isDanger) {
   _dcPending = form;
   document.getElementById('dcm-msg').textContent = msg;
+  var btn = document.getElementById('dcm-confirm');
+  btn.textContent = confirmLabel || 'Delete';
+  if (isDanger === false) {
+    btn.className = 'cbtn primary';
+  } else {
+    btn.className = 'cbtn cbtn-danger';
+  }
   document.getElementById('del-confirm-modal').hidden = false;
   return false;
 };
