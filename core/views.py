@@ -1383,9 +1383,8 @@ def availability_search(request, club_slug):
             result_count = sum(len(day['slot_rows']) for day in results)
         else:
             result_count = sum(
-                len(ir['slot_rows'])
+                len({s['start_label'] for ir in day['instructor_rows'] for s in ir['slot_rows']})
                 for day in results
-                for ir in day['instructor_rows']
             )
 
         # Build flat day list for the calendar band widget
