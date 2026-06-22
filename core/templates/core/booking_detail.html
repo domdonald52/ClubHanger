@@ -630,14 +630,17 @@
             </div>
             <button type="submit" class="btn secondary" style="font-size:.85rem;">Save &amp; recalculate charges</button>
           </form>
-          {% if not fc.amount_paid or fc.amount_paid == 0 %}
-          <form method="post" style="margin-top:.5rem;" data-confirm="Void this check-in? All charge items will be deleted and the flight will return to departed.">
+          {% if not fc.amount_paid or fc.amount_paid == 0 and not fc_any_invoice_paid %}
+          <form method="post" style="margin-top:.5rem;" data-confirm="{% if fc_invoices %}Void this check-in? All charge items will be deleted, any invoices issued against this flight will be voided, and the flight will return to departed. The invoice(s) will need to be re-issued after re-check-in.{% else %}Void this check-in? All charge items will be deleted and the flight will return to departed.{% endif %}">
             {% csrf_token %}
             <input type="hidden" name="action" value="void_checkin">
             <button type="submit" class="cbtn" style="font-size:.8rem;color:#c0392b;border-color:#c0392b;">Void check-in (return to departed)</button>
           </form>
           {% else %}
-          <p style="font-size:.78rem;color:#c0392b;margin:.4rem 0 0;">Void is blocked — ${{ fc.amount_paid|currency }} recorded. Reverse payment first.</p>
+          <p style="font-size:.78rem;color:#c0392b;margin:.4rem 0 0;">
+            {% if fc_any_invoice_paid %}Void is blocked — a payment has been recorded against an invoice for this flight. Reverse the invoice payment first.
+            {% else %}Void is blocked — ${{ fc.amount_paid|currency }} payment recorded. Reverse the payment first.{% endif %}
+          </p>
           {% endif %}
           </div>
         </details>

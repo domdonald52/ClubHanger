@@ -3292,9 +3292,15 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'void_checkin' and booking.status == 'completed' and actor.is_admin:
             fc = getattr(booking, 'flight_completion', None)
             if fc:
-                if fc.amount_paid and fc.amount_paid > 0:
-                    error = 'Cannot void check-in while a payment is recorded. Reverse the payment first.'
+                _active_invoices = fc.invoices.exclude(status='void')
+                _inv_paid = _active_invoices.filter(amount_paid__gt=0).exists()
+                if (fc.amount_paid and fc.amount_paid > 0) or _inv_paid:
+                    error = ('Cannot void check-in — a payment has been recorded against this flight or one of its invoices. '
+                             'Reverse all payments first, then void.')
                 else:
+                    # Void any outstanding invoices first
+                    _voided_count = _active_invoices.count()
+                    _active_invoices.update(status='void')
                     # Clear all charge items, segments, and meter data, reset status to departed
                     fc.charge_items.all().delete()
                     fc.segments.all().delete()
@@ -3311,7 +3317,11 @@ def booking_detail(request, club_slug, booking_id):
                     booking.arrived_at = None
                     booking.save(update_fields=['status', 'arrived_at'])
                     _audit(booking, request.user, 'void_checkin')
-                    success = 'Check-in voided — flight is back to departed.'
+                    if _voided_count:
+                        success = (f'Check-in voided — flight is back to departed. '
+                                   f'{_voided_count} invoice(s) voided and will need to be re-issued after re-check-in.')
+                    else:
+                        success = 'Check-in voided — flight is back to departed.'
 
         elif action == 'reverse_payment' and booking.status == 'completed' and actor.is_admin:
             fc = getattr(booking, 'flight_completion', None)
@@ -3397,6 +3407,9 @@ def booking_detail(request, club_slug, booking_id):
     # Attach invoice to each FlightPayment for template convenience
     for _fp in fc_payments:
         _fp.flight_invoice = _invoice_by_member.get(_fp.member_id)
+
+    # True if any active invoice has a payment recorded (blocks void_checkin)
+    fc_any_invoice_paid = any(inv.amount_paid > 0 for inv in _fc_invoices if inv.status != 'void')
 
     # True if any payee with a non-zero payment has no invoice yet
     fc_has_uninvoiced_payees = any(
@@ -3567,6 +3580,7 @@ def booking_detail(request, club_slug, booking_id):
         'fc_payments_paid_total': fc_payments_paid_total,
         'fc_invoices': fc_invoices,
         'fc_has_uninvoiced_payees': fc_has_uninvoiced_payees,
+        'fc_any_invoice_paid': fc_any_invoice_paid,
         'club_members': club_members,
         'other_unpaid_list': other_unpaid_list,
         'other_outstanding_list': other_outstanding_list,
