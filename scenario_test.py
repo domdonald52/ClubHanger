@@ -173,6 +173,8 @@ def make_invoice(fc, member, logged_by=None):
             invoice=inv, description=ci.description,
             quantity=D('1'), unit='', rate=ci.amount, amount=ci.amount,
         )
+    fc.invoice_issued = True
+    fc.save(update_fields=['invoice_issued'])
     return inv
 
 _hobbs_cursor = 1000.0  # running hobbs counter across scenarios
@@ -272,6 +274,9 @@ try:
     check("Invoice created (draft)", inv.status == 'draft')
     check("Invoice number assigned", inv.invoice_number > 0)
     check("Line items match charge items", inv.line_items.count() == charge_count)
+    fc.refresh_from_db()
+    check("invoice_issued set on FC after invoice created", fc.invoice_issued)
+    check("display_status_key == 'completed' once invoice issued", b.display_status_key == 'completed')
 
     sub("Admin marks invoice as sent")
     inv.status = 'sent'; inv.sent_at = timezone.now()
@@ -756,12 +761,11 @@ try:
     fc10.save()
     b10.status='completed'; b10.arrived_at=timezone.now(); b10.save(update_fields=['status','arrived_at'])
     inv10 = make_invoice(fc10, student_m)
+    fc10.refresh_from_db()
     check("$0 invoice created (no charges configured)", inv10.total == D('0'))
-    note_gap(
-        "A $0 invoice can be generated and sent when no rates are configured. "
-        "Members receive a $0 invoice which looks like an error. "
-        "Should warn or block invoice generation when total = $0."
-    )
+    check("invoice_issued set even on $0 invoice", fc10.invoice_issued)
+    check("display_status_key == 'completed' after $0 invoice issued", b10.display_status_key == 'completed')
+    # $0 invoices are intentionally allowed as proof-of-payment receipts
 
     sub("10b. Overpayment on invoice")
     inv10.status = 'sent'; inv10.save(update_fields=['status'])
@@ -784,6 +788,32 @@ try:
         "This creates gaps in the invoice sequence (INV-001, INV-003, INV-005...). "
         "For NZ GST compliance, gaps in invoice sequences may require explanation to IRD."
     )
+
+    sub("10d. Voiding invoice restores 'returned' display status")
+    b10d = make_booking(student_m, ac1, dual_ft, instructor=instr_m)
+    fc10d = depart(b10d)
+    hs, he = next_hobbs(1.0)
+    fc10d.hobbs_start=D(str(hs)); fc10d.hobbs_end=D(str(he))
+    fc10d.actual_flight_hours=D('1.0'); fc10d.outcome='completed'; fc10d.logged_by=admin_m.user
+    fc10d.save()
+    FlightChargeItem.objects.get_or_create(
+        flight_completion=fc10d, item_type='hire',
+        defaults={'description': 'Hire charge', 'amount': D('150.00')},
+    )
+    fc10d.total_charge = D('150.00'); fc10d.save(update_fields=['total_charge'])
+    b10d.status='completed'; b10d.arrived_at=timezone.now(); b10d.save(update_fields=['status','arrived_at'])
+    inv10d = make_invoice(fc10d, student_m)
+    fc10d.refresh_from_db()
+    check("invoice_issued=True after make_invoice (10d)", fc10d.invoice_issued)
+    check("display_status_key='completed' once invoice issued (10d)", b10d.display_status_key == 'completed')
+    # Void the invoice (simulate what auto-void does when a charge is edited)
+    inv10d.status = 'void'; inv10d.save(update_fields=['status'])
+    _active_remain = Invoice.objects.filter(flight_completion=fc10d).exclude(status='void').exists()
+    if not _active_remain:
+        fc10d.invoice_issued = False; fc10d.save(update_fields=['invoice_issued'])
+    fc10d.refresh_from_db()
+    check("invoice_issued=False after all invoices voided (10d)", not fc10d.invoice_issued)
+    check("display_status_key back to 'returned' after invoice void (10d)", b10d.display_status_key == 'returned')
 
     # ──────────────────────────────────────────────────────────────────────────
     head("S11: OCCURRENCE ACTION ITEMS")
@@ -1735,8 +1765,11 @@ try:
     # sees it on the bank statement and records it.
     b19a, fc19a = _make_charged_fc(D('180.00'))
     inv19a = make_invoice(fc19a, student_m)
+    fc19a.refresh_from_db()
     check("Invoice created in draft", inv19a.status == Invoice.STATUS_DRAFT)
     check("Invoice total matches FC charge", inv19a.total == D('180.00'))
+    check("invoice_issued set on FC after invoice created (19a)", fc19a.invoice_issued)
+    check("display_status_key == 'completed' once invoice issued (19a)", b19a.display_status_key == 'completed')
 
     # Admin sends invoice
     inv19a.status = Invoice.STATUS_SENT
