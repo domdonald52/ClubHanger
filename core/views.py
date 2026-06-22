@@ -3301,7 +3301,7 @@ def booking_detail(request, club_slug, booking_id):
                     fc.hobbs_start = fc.hobbs_end = None
                     fc.tacho_start = fc.tacho_end = None
                     fc.airswitch_start = fc.airswitch_end = None
-                    fc.actual_flight_hours = None
+                    fc.actual_flight_hours = 0
                     fc.outcome = 'completed'
                     fc.outcome_notes = ''
                     fc.total_charge = 0
