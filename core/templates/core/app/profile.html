@@ -103,17 +103,25 @@
   </div>
 </div>
 
-<!-- Flight log link -->
-<a href="{% url 'core:app_flight_log' club.slug %}" class="app-section" style="display:flex;align-items:center;gap:.4rem;text-decoration:none;color:inherit;">
-  <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">Flight log</span>
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-</a>
-
-<!-- Training notes link -->
-<a href="{% url 'core:app_training' club.slug %}" class="app-section" style="display:flex;align-items:center;gap:.4rem;text-decoration:none;color:inherit;">
-  <span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">Training notes</span>
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-</a>
+<!-- Quick-nav tiles -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;padding:.25rem .75rem .75rem;">
+  <a href="{% url 'core:app_flight_log' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.1rem .5rem;text-decoration:none;color:#1a2332;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5S18 1 16.5 3L13 6.5 4.8 6.2c-.5 0-.9.3-1.1.7l-.3.7c-.2.5-.1 1 .3 1.3L9 13l-2 3.5c-.3.5-.2 1.1.1 1.5l.4.4c.4.4 1 .5 1.5.1L13 16l4.1 4.3c.4.4 1 .5 1.4.1l.7-.7c.4-.4.5-1 .1-1.5z"/>
+    </svg>
+    <span style="font-size:.78rem;font-weight:700;color:#374151;">Flight log</span>
+  </a>
+  <a href="{% url 'core:app_training' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.1rem .5rem;text-decoration:none;color:#1a2332;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <polyline points="10 9 9 9 8 9"/>
+    </svg>
+    <span style="font-size:.78rem;font-weight:700;color:#374151;">Training notes</span>
+  </a>
+</div>
 
 <!-- Credentials -->
 <div class="app-section gap-sm" style="display:flex;align-items:center;justify-content:space-between;padding-right:.75rem;">
