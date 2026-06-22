@@ -107,8 +107,8 @@
   </div>
   {% endif %}
 
-  <!-- ── Declaration (shown whenever one exists or is required, but not when override reason already shown inline) ── -->
-  {% if not booking.departed_without_declaration and requires_decl or not booking.departed_without_declaration and has_submitted_decl %}
+  <!-- ── Declaration (only if submitted, or required and booking not yet completed) ── -->
+  {% if not booking.departed_without_declaration and has_submitted_decl or not booking.departed_without_declaration and requires_decl and booking.status != 'completed' %}
   <div class="section" style="padding:.9rem 1.2rem;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
       <div style="font-size:.88rem;">
@@ -562,41 +562,40 @@
   <!-- ── COMPLETED: Charges ── -->
   {% if booking.status == 'completed' and fc %}
   <div class="section">
-    <h2 class="sh2">
-      Charges
-      {% if fc.is_paid %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>{% endif %}
-    </h2>
-
-    <!-- Meter summary row -->
-    {% if fc.actual_flight_hours %}
-    <div style="font-size:.83rem;color:#5b6573;margin-bottom:.8rem;display:flex;gap:1.2rem;flex-wrap:wrap;">
-      <span>{{ fc.actual_flight_hours }}h billed
-        ({{ booking.aircraft.get_total_time_method_display }})</span>
-      {% if fc.hobbs_start and fc.hobbs_end %}<span style="color:#8a93a0;">Hobbs {{ fc.hobbs_start }} → {{ fc.hobbs_end }}</span>{% endif %}
-      {% if fc.tacho_start and fc.tacho_end %}<span style="color:#8a93a0;">Tacho {{ fc.tacho_start }} → {{ fc.tacho_end }}</span>{% endif %}
-      {% if fc.airswitch_start and fc.airswitch_end %}<span style="color:#8a93a0;">Air switch {{ fc.airswitch_start }} → {{ fc.airswitch_end }}</span>{% endif %}
-    </div>
-    {% endif %}
-    {% if fc.departed_with_aircraft and fc.departed_with_aircraft != booking.aircraft %}
-    <div class="notice warn" style="margin-bottom:.6rem;font-size:.82rem;">
-      ✈ Departed in <strong>{{ fc.departed_with_aircraft.registration }}</strong> — aircraft changed to {{ booking.aircraft.registration }} mid-flight. Maintenance hours logged against {{ fc.departed_with_aircraft.registration }}.
-    </div>
-    {% endif %}
-    {% if fc.departed_with_instructor and fc.departed_with_instructor != booking.instructor %}
-    <div class="notice" style="margin-bottom:.6rem;font-size:.82rem;background:#f0f4ff;border-color:#c7d4f5;color:#2b333d;">
-      Departed with instructor <strong>{{ fc.departed_with_instructor.get_full_name }}</strong> — instructor changed to {{ booking.instructor.get_full_name|default:"none" }} mid-flight.
-    </div>
-    {% endif %}
-
-    {% if fc.outcome != 'completed' %}
-    <div class="notice warn" style="margin-bottom:.8rem;">
-      Outcome: <strong>{{ fc.get_outcome_display }}</strong>{% if fc.outcome_notes %} — {{ fc.outcome_notes }}{% endif %}
-    </div>
-    {% endif %}
-
     <div class="ch-grid">
       <!-- LEFT: charges + add-charge forms -->
       <div>
+        <h2 class="sh2" style="margin-top:0;">
+          Charges
+          {% if fc.is_paid %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>{% endif %}
+        </h2>
+
+        <!-- Meter summary row -->
+        {% if fc.actual_flight_hours %}
+        <div style="font-size:.83rem;color:#5b6573;margin-bottom:.8rem;display:flex;gap:1.2rem;flex-wrap:wrap;">
+          <span>{{ fc.actual_flight_hours }}h billed
+            ({{ booking.aircraft.get_total_time_method_display }})</span>
+          {% if fc.hobbs_start and fc.hobbs_end %}<span style="color:#8a93a0;">Hobbs {{ fc.hobbs_start }} → {{ fc.hobbs_end }}</span>{% endif %}
+          {% if fc.tacho_start and fc.tacho_end %}<span style="color:#8a93a0;">Tacho {{ fc.tacho_start }} → {{ fc.tacho_end }}</span>{% endif %}
+          {% if fc.airswitch_start and fc.airswitch_end %}<span style="color:#8a93a0;">Air switch {{ fc.airswitch_start }} → {{ fc.airswitch_end }}</span>{% endif %}
+        </div>
+        {% endif %}
+        {% if fc.departed_with_aircraft and fc.departed_with_aircraft != booking.aircraft %}
+        <div class="notice warn" style="margin-bottom:.6rem;font-size:.82rem;">
+          ✈ Departed in <strong>{{ fc.departed_with_aircraft.registration }}</strong> — aircraft changed to {{ booking.aircraft.registration }} mid-flight. Maintenance hours logged against {{ fc.departed_with_aircraft.registration }}.
+        </div>
+        {% endif %}
+        {% if fc.departed_with_instructor and fc.departed_with_instructor != booking.instructor %}
+        <div class="notice" style="margin-bottom:.6rem;font-size:.82rem;background:#f0f4ff;border-color:#c7d4f5;color:#2b333d;">
+          Departed with instructor <strong>{{ fc.departed_with_instructor.get_full_name }}</strong> — instructor changed to {{ booking.instructor.get_full_name|default:"none" }} mid-flight.
+        </div>
+        {% endif %}
+        {% if fc.outcome != 'completed' %}
+        <div class="notice warn" style="margin-bottom:.8rem;">
+          Outcome: <strong>{{ fc.get_outcome_display }}</strong>{% if fc.outcome_notes %} — {{ fc.outcome_notes }}{% endif %}
+        </div>
+        {% endif %}
+
         {% if club_member.is_admin %}
         <details style="margin-bottom:.8rem;">
           <summary class="cbtn-sm" style="cursor:pointer;display:inline-block;list-style:none;">Edit check-in details</summary>
@@ -1067,14 +1066,8 @@
           </script>
           {% endif %}{% endif %}
 
-          <!-- Fully paid confirmation -->
-          {% if fc.is_paid %}
-          <div class="notice" style="background:#edfdf3;border-color:#a3e6bb;color:#1a6335;margin-bottom:.5rem;">
-            <strong>Fully paid</strong> — ${{ fc.amount_paid|currency }} received · {{ fc.paid_at|date:"j M Y H:i" }}
-          </div>
-          {% if actor.is_admin %}
-          <p style="font-size:.8rem;color:#5b6573;margin:.1rem 0 .5rem;">Need to add a missed charge? Use <strong>Reverse</strong> on a payment row below to reopen the flight, add the charge, then re-record payment.</p>
-          {% endif %}
+          {% if fc.is_paid and actor.is_admin %}
+          <p style="font-size:.8rem;color:#5b6573;margin:.4rem 0 .5rem;">Need to add a missed charge? Use <strong>Reverse</strong> on a payment row below to reopen the flight, add the charge, then re-record payment.</p>
           {% endif %}
 
           {% if overpayment and overpayment > 0 and actor.is_admin %}

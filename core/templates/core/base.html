@@ -995,7 +995,8 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
           }
           const finalUrl = new URL(resp.url, location.href);
           const wasSaved = finalUrl.searchParams.has('saved');
-          if (finalUrl.origin === location.origin &&
+          const wantClose = finalUrl.searchParams.has('close_overlay');
+          if (!wantClose && finalUrl.origin === location.origin &&
               !finalUrl.pathname.startsWith('/app/') &&
               !finalUrl.pathname.startsWith('/accounts/') &&
               finalUrl.pathname !== '/logout/' && finalUrl.pathname !== '/logout') {

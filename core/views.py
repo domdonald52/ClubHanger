@@ -3371,6 +3371,9 @@ def booking_detail(request, club_slug, booking_id):
             # else fall through to re-render with error
         elif success and not error:
             if is_inline:
+                if action == 'depart':
+                    # Close the overlay after checkout — no need to show the check-in screen
+                    return redirect(f'{request.path}?close_overlay=1&saved=1')
                 return redirect(f'{request.path}?inline=1&saved=1')
             from django.urls import reverse as _rev
             return redirect(_rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id}) + '?saved=1')
@@ -3624,7 +3627,12 @@ def booking_detail(request, club_slug, booking_id):
         'rostered_instructors': rostered_instructors,
         'online_aircraft': Aircraft.objects.filter(club=club, status='online').order_by('registration'),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
-        'inline_title': f'{booking.member.user.get_full_name()} · {booking.aircraft.registration}',
+        'inline_title': (
+            f'{booking.member.user.get_full_name()} · {booking.aircraft.registration}'
+            + (' — Check out' if booking.status == 'confirmed' else
+               ' — Check in' if booking.status == 'departed' else
+               ' — Charges' if booking.status == 'completed' else '')
+        ),
         'watchers': list(SlotWatch.objects.filter(booking=booking).select_related('club_member__user')) if actor.can_access_manage else [],
     }
     return render(request, 'core/booking_detail.html', ctx)
