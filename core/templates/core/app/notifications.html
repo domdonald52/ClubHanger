@@ -1,0 +1,126 @@
+{% extends "core/app/base.html" %}
+{% block title %}Notifications — {{ club.name }}{% endblock %}
+{% block content %}
+
+<div class="app-section" style="display:flex;align-items:center;justify-content:space-between;padding:.9rem .9rem .3rem;">
+  <h1 style="font-size:1.05rem;font-weight:700;margin:0;">Notifications</h1>
+  <a href="{% url 'core:app_profile' club.slug %}" class="app-btn-sm" style="font-size:.78rem;padding:.3rem .7rem;">← Profile</a>
+</div>
+
+{% if saved %}
+<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:.5rem .75rem;font-size:.83rem;font-weight:600;">✓ Saved.</div>
+{% endif %}
+
+<!-- Email / in-app notification toggles -->
+<div style="padding:.3rem .75rem 0;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;">Alerts</div>
+<form method="post" action="{% url 'core:app_notifications' club.slug %}" id="notif-form">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="save_notifications">
+  <div class="app-list" style="margin:.4rem .75rem 0;">
+    {% for tog in notification_toggle_fields %}
+    <label class="app-list-row" style="cursor:pointer;gap:.75rem;padding:.75rem 1rem;">
+      <div class="app-list-main">
+        <div class="app-list-title" style="font-size:.86rem;">{{ tog.label }}</div>
+      </div>
+      <span class="notif-sw">
+        <input type="checkbox" name="{{ tog.field }}" value="on"{% if tog.enabled %} checked{% endif %} onchange="this.closest('form').submit()">
+        <span class="notif-sw-track"></span>
+      </span>
+    </label>
+    {% empty %}
+    <div class="app-list-row"><div class="app-list-main app-list-title" style="font-size:.86rem;color:#9ca3af;">No notification options available</div></div>
+    {% endfor %}
+  </div>
+</form>
+
+<!-- Push notifications -->
+<div style="padding:.9rem .75rem 0;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;">Push notifications</div>
+<div class="app-card" style="margin-top:.4rem;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:.88rem;font-weight:600;">Device push</div>
+      <div id="push-status-text" style="font-size:.76rem;color:#9ca3af;margin-top:.15rem;">Checking…</div>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-shrink:0;">
+      <button id="push-test-btn" class="app-btn-sm ghost" style="display:none;font-size:.75rem;padding:.3rem .65rem;" onclick="testPush()">Send test</button>
+      <button id="push-toggle-btn" class="app-btn-sm" style="min-width:80px;" onclick="togglePush()">…</button>
+    </div>
+  </div>
+</div>
+
+<div style="height:1.5rem;"></div>
+
+<style>
+.notif-sw { position:relative;width:44px;height:26px;flex-shrink:0; }
+.notif-sw input { opacity:0;position:absolute;width:0;height:0; }
+.notif-sw-track { display:block;position:absolute;inset:0;border-radius:13px;background:#d1d5db;transition:background .2s;cursor:pointer; }
+.notif-sw input:checked + .notif-sw-track { background:var(--primary); }
+.notif-sw-track::after { content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.2); }
+.notif-sw input:checked + .notif-sw-track::after { left:21px; }
+</style>
+
+{% block extra_js %}
+<script>
+var _pushState = 'unknown';
+
+async function refreshPushUI() {
+  var state = await ClubPush.getState();
+  _pushState = state;
+  var statusEl = document.getElementById('push-status-text');
+  var btnEl    = document.getElementById('push-toggle-btn');
+  var testEl   = document.getElementById('push-test-btn');
+  btnEl.style.background = ''; btnEl.style.color = ''; btnEl.style.border = '';
+  if (state === 'unsupported') {
+    statusEl.textContent = 'Not supported on this browser';
+    btnEl.disabled = true; btnEl.textContent = 'N/A';
+    if (testEl) testEl.style.display = 'none';
+  } else if (state === 'denied') {
+    statusEl.textContent = 'Blocked — enable notifications in your browser settings';
+    btnEl.disabled = true; btnEl.textContent = 'Blocked';
+    if (testEl) testEl.style.display = 'none';
+  } else if (state === 'error') {
+    statusEl.textContent = 'Could not check status';
+    btnEl.textContent = 'Retry'; btnEl.disabled = false;
+    if (testEl) testEl.style.display = 'none';
+  } else if (state === 'subscribed') {
+    statusEl.textContent = 'Enabled — you\'ll get alerts for bookings, charges, and invoices';
+    btnEl.textContent = 'Turn off'; btnEl.disabled = false;
+    btnEl.style.background = 'transparent'; btnEl.style.color = '#e03131'; btnEl.style.border = '1.5px solid #e03131';
+    if (testEl) testEl.style.display = '';
+  } else {
+    statusEl.textContent = 'Get alerts for booking confirmations, charges, and invoices';
+    btnEl.textContent = 'Turn on'; btnEl.disabled = false;
+    if (testEl) testEl.style.display = 'none';
+  }
+}
+
+async function togglePush() {
+  var btn = document.getElementById('push-toggle-btn');
+  btn.disabled = true; btn.textContent = '…';
+  var result = (_pushState === 'subscribed') ? await ClubPush.unsubscribe() : await ClubPush.subscribe();
+  if (result === 'error') {
+    document.getElementById('push-status-text').textContent = 'Something went wrong — check browser console';
+    btn.disabled = false; btn.textContent = 'Retry';
+    return;
+  }
+  await refreshPushUI();
+}
+
+async function testPush() {
+  var btn = document.getElementById('push-test-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  var r = await ClubPush.sendTest();
+  if (r.ok) {
+    btn.textContent = 'Sent ✓';
+  } else {
+    btn.textContent = 'Failed';
+    document.getElementById('push-status-text').textContent = r.error || 'Send failed';
+  }
+  setTimeout(() => { btn.disabled = false; btn.textContent = 'Send test'; }, 3000);
+}
+
+refreshPushUI();
+</script>
+{% endblock %}
+
+{% endblock %}

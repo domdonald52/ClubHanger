@@ -105,22 +105,45 @@
 
 <!-- Quick-nav tiles -->
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;padding:.25rem .75rem .75rem;">
-  <a href="{% url 'core:app_flight_log' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.1rem .5rem;text-decoration:none;color:#1a2332;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+
+  <a href="{% url 'core:app_flight_log' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+    <!-- Airplane: simple clean side-view -->
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5S18 1 16.5 3L13 6.5 4.8 6.2c-.5 0-.9.3-1.1.7l-.3.7c-.2.5-.1 1 .3 1.3L9 13l-2 3.5c-.3.5-.2 1.1.1 1.5l.4.4c.4.4 1 .5 1.5.1L13 16l4.1 4.3c.4.4 1 .5 1.4.1l.7-.7c.4-.4.5-1 .1-1.5z"/>
+      <path d="M21 16l-9-4.5V4a2 2 0 1 0-4 0v7.5L0 16l2 1 5-2 1 5 2 1 1-5.5L21 16z"/>
     </svg>
-    <span style="font-size:.78rem;font-weight:700;color:#374151;">Flight log</span>
+    <span style="font-size:.75rem;font-weight:700;color:#374151;">Flight log</span>
   </a>
-  <a href="{% url 'core:app_training' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.45rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.1rem .5rem;text-decoration:none;color:#1a2332;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+
+  <a href="{% url 'core:app_training' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+    <!-- Clipboard with lines -->
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
-      <polyline points="10 9 9 9 8 9"/>
+      <rect x="9" y="2" width="6" height="3" rx="1"/>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+      <line x1="8" y1="11" x2="16" y2="11"/>
+      <line x1="8" y1="15" x2="14" y2="15"/>
     </svg>
-    <span style="font-size:.78rem;font-weight:700;color:#374151;">Training notes</span>
+    <span style="font-size:.75rem;font-weight:700;color:#374151;">Training notes</span>
   </a>
+
+  <a href="{% url 'core:app_credential_add' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+    <!-- ID card / credential -->
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <circle cx="8" cy="12" r="2"/>
+      <path d="M14 9h4M14 12h4M14 15h2"/>
+    </svg>
+    <span style="font-size:.75rem;font-weight:700;color:#374151;">Credentials</span>
+  </a>
+
+  <a href="{% url 'core:app_notifications' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+    <!-- Bell -->
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+    <span style="font-size:.75rem;font-weight:700;color:#374151;">Notifications</span>
+  </a>
+
 </div>
 
 <!-- Credentials -->
@@ -210,59 +233,6 @@
 
 <div class="gap-md"></div>
 
-<!-- Notifications -->
-<div class="app-section gap-sm" id="notifications" style="display:flex;align-items:center;justify-content:space-between;padding-right:.75rem;">
-  <button onclick="toggleNotifs()" style="display:flex;align-items:center;gap:.3rem;background:none;border:none;padding:0;cursor:pointer;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;">
-    Notifications
-    <svg id="notif-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
-  </button>
-</div>
-<div id="notif-section">
-
-<!-- Email notification toggles -->
-<style>
-.notif-sw { position:relative;width:44px;height:26px;flex-shrink:0; }
-.notif-sw input { opacity:0;position:absolute;width:0;height:0; }
-.notif-sw-track { display:block;position:absolute;inset:0;border-radius:13px;background:#d1d5db;transition:background .2s;cursor:pointer; }
-.notif-sw input:checked + .notif-sw-track { background:var(--primary); }
-.notif-sw-track::after { content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.2); }
-.notif-sw input:checked + .notif-sw-track::after { left:21px; }
-</style>
-<form method="post" action="{% url 'core:app_profile' club.slug %}#notifications" id="notif-form">
-  {% csrf_token %}
-  <input type="hidden" name="action" value="save_notifications">
-  <div class="app-list">
-    {% for tog in notification_toggle_fields %}
-    <label class="app-list-row" style="cursor:pointer;gap:.75rem;padding:.75rem 1rem;">
-      <div class="app-list-main">
-        <div class="app-list-title" style="font-size:.86rem;">{{ tog.label }}</div>
-      </div>
-      <span class="notif-sw">
-        <input type="checkbox" name="{{ tog.field }}" value="on"{% if tog.enabled %} checked{% endif %} onchange="this.closest('form').submit()">
-        <span class="notif-sw-track"></span>
-      </span>
-    </label>
-    {% empty %}
-    <div class="app-list-row"><div class="app-list-main app-list-title" style="font-size:.86rem;color:#9ca3af;">No notification options available</div></div>
-    {% endfor %}
-  </div>
-</form>
-
-<!-- Push notifications -->
-<div class="app-card" style="margin-top:.5rem;">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:.88rem;font-weight:600;">Push notifications</div>
-      <div id="push-status-text" style="font-size:.76rem;color:#9ca3af;margin-top:.15rem;">Checking…</div>
-    </div>
-    <div style="display:flex;gap:.5rem;align-items:center;flex-shrink:0;">
-      <button id="push-test-btn" class="app-btn-sm ghost" style="display:none;font-size:.75rem;padding:.3rem .65rem;" onclick="testPush()">Send test</button>
-      <button id="push-toggle-btn" class="app-btn-sm" style="min-width:80px;" onclick="togglePush()">…</button>
-    </div>
-  </div>
-</div>
-</div><!-- /notif-section -->
-
 {% if other_clubs %}
 <div class="app-section gap-sm"><span class="app-section-title">My clubs</span></div>
 <div class="app-card" style="padding:0;">
@@ -293,79 +263,6 @@ function toggleCreds() {
   sec.style.display = _credsOpen ? '' : 'none';
   chev.style.transform = _credsOpen ? '' : 'rotate(-90deg)';
 }
-var _notifsOpen = true;
-function toggleNotifs() {
-  var sec = document.getElementById('notif-section');
-  var chev = document.getElementById('notif-chev');
-  if (!sec) return;
-  _notifsOpen = !_notifsOpen;
-  sec.style.display = _notifsOpen ? '' : 'none';
-  chev.style.transform = _notifsOpen ? '' : 'rotate(-90deg)';
-}
-</script>
-<script>
-var _pushState = 'unknown';
-
-async function refreshPushUI() {
-  var state = await ClubPush.getState();
-  _pushState = state;
-  var statusEl = document.getElementById('push-status-text');
-  var btnEl    = document.getElementById('push-toggle-btn');
-  var testEl   = document.getElementById('push-test-btn');
-  // Reset button style
-  btnEl.style.background = ''; btnEl.style.color = ''; btnEl.style.border = '';
-  if (state === 'unsupported') {
-    statusEl.textContent = 'Not supported on this browser';
-    btnEl.disabled = true; btnEl.textContent = 'N/A';
-    if (testEl) testEl.style.display = 'none';
-  } else if (state === 'denied') {
-    statusEl.textContent = 'Blocked — enable notifications in your browser settings';
-    btnEl.disabled = true; btnEl.textContent = 'Blocked';
-    if (testEl) testEl.style.display = 'none';
-  } else if (state === 'error') {
-    statusEl.textContent = 'Could not check status — see browser console';
-    btnEl.textContent = 'Retry'; btnEl.disabled = false;
-    if (testEl) testEl.style.display = 'none';
-  } else if (state === 'subscribed') {
-    statusEl.textContent = 'Enabled — you\'ll get alerts for bookings, charges, and invoices';
-    btnEl.textContent = 'Turn off'; btnEl.disabled = false;
-    btnEl.style.background = 'transparent'; btnEl.style.color = '#e03131'; btnEl.style.border = '1.5px solid #e03131';
-    if (testEl) testEl.style.display = '';
-  } else {
-    statusEl.textContent = 'Get alerts for booking confirmations, charges, and invoices';
-    btnEl.textContent = 'Turn on'; btnEl.disabled = false;
-    if (testEl) testEl.style.display = 'none';
-  }
-}
-
-async function togglePush() {
-  var btn = document.getElementById('push-toggle-btn');
-  btn.disabled = true;
-  btn.textContent = '…';
-  var result = (_pushState === 'subscribed') ? await ClubPush.unsubscribe() : await ClubPush.subscribe();
-  if (result === 'error') {
-    document.getElementById('push-status-text').textContent = 'Something went wrong — check browser console for details';
-    btn.disabled = false;
-    btn.textContent = 'Retry';
-    return;
-  }
-  await refreshPushUI();
-}
-
-async function testPush() {
-  var btn = document.getElementById('push-test-btn');
-  btn.disabled = true; btn.textContent = 'Sending…';
-  var r = await ClubPush.sendTest();
-  if (r.ok) {
-    btn.textContent = 'Sent ✓';
-  } else {
-    btn.textContent = 'Failed';
-    document.getElementById('push-status-text').textContent = r.error || 'Send failed — check server logs';
-  }
-  setTimeout(function(){ btn.disabled = false; refreshPushUI(); }, 3000);
-}
-
-refreshPushUI();
 </script>
 {% endblock %}
 {% endblock %}

@@ -10731,19 +10731,6 @@ def app_profile(request, club_slug):
 
     if request.method == 'POST':
         action = request.POST.get('action', '')
-        if action == 'save_notifications':
-            pref, _ = _NP.objects.get_or_create(club_member=actor)
-            _toggle_fields = [
-                'booking_confirmed', 'booking_cancelled', 'booking_reminder',
-                'credential_expiring', 'subscription_expiring',
-                'instructor_booking_urgent', 'instructor_booking_upcoming',
-                'maintenance_alert', 'lapsed_credentials', 'slot_released',
-                'payment_reminder', 'invoice_sent',
-            ]
-            for f in _toggle_fields:
-                setattr(pref, f, request.POST.get(f) == 'on')
-            pref.save()
-            return redirect(_profile_url + '?saved=1#notifications')
 
     credentials = list(MemberCredential.objects
                        .filter(member=actor.user)
@@ -10773,34 +10760,6 @@ def app_profile(request, club_slug):
         else:
             sub_status = 'ok'
 
-    try:
-        notification_pref = actor.notification_prefs
-    except _NP.DoesNotExist:
-        notification_pref = None
-
-    _raw_toggles = [
-        ('booking_confirmed',     'Booking confirmed',                       True),
-        ('booking_cancelled',     'Booking cancelled',                       True),
-        ('booking_reminder',      'Booking reminder (day before)',            True),
-        ('credential_expiring',   'Credential expiring soon',                True),
-        ('subscription_expiring', 'Subscription expiring',                   True),
-        ('payment_reminder',      'Account balance reminder',                  True),
-        ('invoice_sent',          'Invoice issued to me',                      True),
-        ('slot_released',         'Slot freed up by another member (opt-in)', False),
-    ]
-    if actor.is_instructor:
-        _raw_toggles += [
-            ('instructor_booking_urgent',   'New booking assigned — urgent (≤2 days)',  True),
-            ('instructor_booking_upcoming', 'New booking assigned — upcoming (≤10 days)', True),
-            ('maintenance_alert',           'Maintenance alert (amber/red items)',        True),
-            ('lapsed_credentials',          'Member lapsed credentials — flying today',  True),
-        ]
-    notification_toggle_fields = [
-        {'field': f, 'label': l,
-         'enabled': getattr(notification_pref, f, default) if notification_pref else default}
-        for f, l, default in _raw_toggles
-    ]
-
     return render(request, 'core/app/profile.html', {
         'club': club, 'club_member': actor,
         'credentials': credentials,
@@ -10809,8 +10768,59 @@ def app_profile(request, club_slug):
         'saved': request.GET.get('saved') == '1',
         'sub_status': sub_status,
         'sub_days': sub_days,
-        'notification_pref': notification_pref,
+    })
+
+
+@login_required
+def app_notifications(request, club_slug):
+    from .models import NotificationPreference as _NP
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    _notif_url = reverse('core:app_notifications', args=[club_slug])
+    if request.method == 'POST':
+        pref, _ = _NP.objects.get_or_create(club_member=actor)
+        _toggle_fields = [
+            'booking_confirmed', 'booking_cancelled', 'booking_reminder',
+            'credential_expiring', 'subscription_expiring',
+            'instructor_booking_urgent', 'instructor_booking_upcoming',
+            'maintenance_alert', 'lapsed_credentials', 'slot_released',
+            'payment_reminder', 'invoice_sent',
+        ]
+        for f in _toggle_fields:
+            setattr(pref, f, request.POST.get(f) == 'on')
+        pref.save()
+        return redirect(_notif_url + '?saved=1')
+    try:
+        notification_pref = actor.notification_prefs
+    except _NP.DoesNotExist:
+        notification_pref = None
+    _raw_toggles = [
+        ('booking_confirmed',     'Booking confirmed',                        True),
+        ('booking_cancelled',     'Booking cancelled',                        True),
+        ('booking_reminder',      'Booking reminder (day before)',             True),
+        ('credential_expiring',   'Credential expiring soon',                 True),
+        ('subscription_expiring', 'Subscription expiring',                    True),
+        ('payment_reminder',      'Account balance reminder',                 True),
+        ('invoice_sent',          'Invoice issued to me',                     True),
+        ('slot_released',         'Slot freed up by another member (opt-in)', False),
+    ]
+    if actor.is_instructor:
+        _raw_toggles += [
+            ('instructor_booking_urgent',   'New booking assigned — urgent (≤2 days)',    True),
+            ('instructor_booking_upcoming', 'New booking assigned — upcoming (≤10 days)', True),
+            ('maintenance_alert',           'Maintenance alert (amber/red items)',         True),
+            ('lapsed_credentials',          'Member lapsed credentials — flying today',   True),
+        ]
+    notification_toggle_fields = [
+        {'field': f, 'label': l,
+         'enabled': getattr(notification_pref, f, default) if notification_pref else default}
+        for f, l, default in _raw_toggles
+    ]
+    return render(request, 'core/app/notifications.html', {
+        'club': club, 'club_member': actor,
         'notification_toggle_fields': notification_toggle_fields,
+        'saved': request.GET.get('saved') == '1',
     })
 
 
