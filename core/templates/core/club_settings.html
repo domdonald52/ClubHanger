@@ -1464,7 +1464,10 @@
       </label>
       <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
         <label class="flabel" style="flex:1;">Hourly rate
-          <input type="number" name="ig_rate" value="0" min="0" step="0.01" class="finput money-input">
+          <div class="money-wrap">
+            <span class="money-sym">$</span>
+            <input type="number" name="ig_rate" value="0" min="0" step="0.01" class="money-input">
+          </div>
         </label>
         <label class="flabel" style="width:90px;">Display order
           <input type="number" name="ig_order" value="0" min="0" class="finput">
@@ -1491,7 +1494,10 @@
       </label>
       <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
         <label class="flabel" style="flex:1;">Hourly rate
-          <input type="number" name="ig_rate" id="eig-rate" min="0" step="0.01" class="finput money-input">
+          <div class="money-wrap">
+            <span class="money-sym">$</span>
+            <input type="number" name="ig_rate" id="eig-rate" min="0" step="0.01" class="money-input">
+          </div>
         </label>
         <label class="flabel" style="width:90px;">Display order
           <input type="number" name="ig_order" id="eig-order" min="0" class="finput">
@@ -1519,9 +1525,9 @@
         <input type="text" name="st_desc" class="finput" placeholder="e.g. Additional insurance loading">
       </label>
       <label class="flabel" style="margin-top:.1rem;max-width:160px;">Amount/flight
-        <div style="display:flex;align-items:center;gap:.3rem;margin-top:.25rem;">
-          <span style="font-size:.9rem;color:#5b6573;flex-shrink:0;">$</span>
-          <input type="number" name="st_amount" value="0" min="0" step="0.01" class="finput money-input" style="text-align:right;">
+        <div class="money-wrap">
+          <span class="money-sym">$</span>
+          <input type="number" name="st_amount" value="0" min="0" step="0.01" class="money-input">
         </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
@@ -1547,9 +1553,9 @@
         <input type="text" name="st_desc" id="esc-desc" class="finput">
       </label>
       <label class="flabel" style="margin-top:.1rem;max-width:160px;">Amount/flight
-        <div style="display:flex;align-items:center;gap:.3rem;margin-top:.25rem;">
-          <span style="font-size:.9rem;color:#5b6573;flex-shrink:0;">$</span>
-          <input type="number" name="st_amount" id="esc-amount" min="0" step="0.01" class="finput money-input" style="text-align:right;">
+        <div class="money-wrap">
+          <span class="money-sym">$</span>
+          <input type="number" name="st_amount" id="esc-amount" min="0" step="0.01" class="money-input">
         </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
