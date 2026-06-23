@@ -42,7 +42,10 @@
     {% csrf_token %}
     <input type="hidden" name="action" value="add_rate">
     <label class="flabel">Rate ($/hr)
-      <input type="number" name="rate" placeholder="0.00" step="0.01" min="0" required class="finput money-input" style="width:110px;">
+      <div class="money-wrap" style="width:130px;">
+        <span class="money-sym">$</span>
+        <input type="number" name="rate" placeholder="0.00" step="0.01" min="0" required class="money-input">
+      </div>
     </label>
     <label class="flabel">Effective from
       <input type="date" name="effective_from" required class="finput" style="width:160px;">

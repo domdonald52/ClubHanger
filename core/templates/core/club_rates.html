@@ -78,7 +78,10 @@
         </select>
       </label>
       <label class="flabel">Rate ($/hr)
-        <input type="number" name="amount" step="0.01" min="0" required class="finput money-input" style="width:110px;">
+        <div class="money-wrap" style="width:130px;">
+          <span class="money-sym">$</span>
+          <input type="number" name="amount" step="0.01" min="0" required class="money-input">
+        </div>
       </label>
       <button type="submit" class="btn" style="flex-shrink:0;">Add rate</button>
     </form>
