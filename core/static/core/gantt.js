@@ -715,9 +715,9 @@
         });
     }
 
-    // Watch button: show for staff viewing someone else's active booking
+    // Watch button: show for staff viewing someone else's active (not yet departed) booking
     const isOwn = pill.dataset.memberUserId === String(cfg.currentUserId);
-    const isActive = pill.dataset.status !== "cancelled" && pill.dataset.status !== "completed";
+    const isActive = pill.dataset.status !== "cancelled" && pill.dataset.status !== "completed" && pill.dataset.status !== "departed";
     if (!isOwn && isActive) {
       const watching = watchedIds.has(pill.dataset.id);
       btnWatchLabel.textContent = watching ? "Watching ✓" : "Watch slot";
@@ -1561,9 +1561,9 @@
   }
 
   if (cfg.canManage) {
-    // Completed pills are not draggable — skip makeInteractive so click fires naturally
+    // Completed and departed pills are not draggable — skip makeInteractive so click fires naturally
     document.querySelectorAll(".pill").forEach((pill) => {
-      if (pill.dataset.status !== "completed") makeInteractive(pill);
+      if (pill.dataset.status !== "completed" && pill.dataset.status !== "departed") makeInteractive(pill);
     });
   }
 

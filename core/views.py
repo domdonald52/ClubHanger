@@ -3562,6 +3562,9 @@ def booking_detail(request, club_slug, booking_id):
     fc_payments_pending = [fp for fp in fc_payments if not fp.paid_at]
     fc_payments_paid = [fp for fp in fc_payments if fp.paid_at]
     fc_payments_paid_total = sum(fp.amount for fp in fc_payments_paid)
+    member_has_payment_on_fc = booking.member_id is not None and any(
+        fp.member_id == booking.member_id for fp in fc_payments_paid
+    )
 
     # Build per-member invoice lookup (ForeignKey now, one per member per FC)
     _fc_invoices = list(fc.invoices.all()) if fc else []
@@ -3772,6 +3775,7 @@ def booking_detail(request, club_slug, booking_id):
         'other_total': other_total,
         'other_total_count': other_total_count,
         'member_copaid_fcs': member_copaid_fcs,
+        'member_has_payment_on_fc': member_has_payment_on_fc,
         'aerodromes': aerodromes,
         'flight_types': flight_types,
         'requires_decl': requires_decl,
@@ -6505,6 +6509,8 @@ def generate_invoice(request, club_slug, booking_id):
     fp_list = list(fc.payments.all())
     existing_member_ids = set(fc.invoices.values_list('member_id', flat=True))
     _for_member_id = request.POST.get('for_member_id', '').strip()
+    # Read other_fc_ids early so we can skip the early-exit when they're present
+    _other_fc_ids = request.POST.getlist('other_fc_ids')
 
     from decimal import Decimal as _D
     if fp_list:
@@ -6526,7 +6532,7 @@ def generate_invoice(request, club_slug, booking_id):
             payees = []
         is_split = False
 
-    if not payees:
+    if not payees and not _other_fc_ids:
         # All payees already invoiced — redirect to first invoice
         first = fc.invoices.order_by('invoice_number').first()
         if first:
@@ -6600,14 +6606,15 @@ def generate_invoice(request, club_slug, booking_id):
         fc.invoice_issued = True
         fc.save(update_fields=['invoice_issued'])
 
-    # Also generate invoices for other outstanding FCs the user checked
-    _other_fc_ids = request.POST.getlist('other_fc_ids')
+    # Generate invoices/receipts for other FCs the user selected (co-paid or still outstanding)
     if _other_fc_ids:
+        # Determine which member's receipts these are for
+        _receipt_member = booking.member
         for _ofc_id in _other_fc_ids:
             try:
                 _ofc = FlightCompletion.objects.select_related(
                     'booking__flight_type', 'booking'
-                ).get(id=_ofc_id, booking__member=booking.member, booking__club=club)
+                ).get(id=_ofc_id, booking__member=_receipt_member, booking__club=club)
             except FlightCompletion.DoesNotExist:
                 continue
             if Invoice.objects.filter(flight_completion=_ofc).exclude(status='void').exists():
@@ -6622,7 +6629,7 @@ def generate_invoice(request, club_slug, booking_id):
                 config.invoice_number_next = _onum + 1
                 _oinv = Invoice.objects.create(
                     club=club,
-                    member=booking.member,
+                    member=_receipt_member,
                     flight_completion=_ofc,
                     invoice_number=_onum,
                     issue_date=today,
@@ -6644,6 +6651,18 @@ def generate_invoice(request, club_slug, booking_id):
                     sort_order=_oord,
                     charge_item=_oci,
                 )
+            # If member already paid this FC (co-paid scenario), auto-mark the invoice as paid
+            _ofc_fp = _ofc.payments.filter(member=_receipt_member, paid_at__isnull=False).first()
+            if _ofc_fp and _D(str(_ofc.amount_paid or 0)) >= _ofc_balance > 0:
+                from .models import InvoicePayment as _IP2
+                _IP2.objects.create(
+                    invoice=_oinv,
+                    amount=_ofc_balance,
+                    method=_FP_METHOD_MAP.get(_ofc_fp.method, 'bank_transfer'),
+                    paid_at=_ofc_fp.paid_at,
+                    recorded_by=request.user,
+                )
+                _oinv._sync_payment_cache()
             _ofc.invoice_issued = True
             _ofc.save(update_fields=['invoice_issued'])
             from .services import notification_service as _ns
