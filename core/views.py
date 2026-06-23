@@ -6556,7 +6556,7 @@ def generate_invoice(request, club_slug, booking_id):
     # Tuple: (member, invoice_total, amount_paid, paid_at, fp_method)
     _FP_METHOD_MAP = {'cash': 'cash', 'eftpos': 'eftpos', 'credit': 'account_credit'}
     fp_list = list(fc.payments.all())
-    existing_member_ids = set(fc.invoices.values_list('member_id', flat=True))
+    existing_member_ids = set(fc.invoices.exclude(status='void').values_list('member_id', flat=True))
     _for_member_id = request.POST.get('for_member_id', '').strip()
     # Read other_fc_ids early so we can skip the early-exit when they're present
     _other_fc_ids = request.POST.getlist('other_fc_ids')
@@ -6597,6 +6597,8 @@ def generate_invoice(request, club_slug, booking_id):
             inv_number = max(config.invoice_number_next, _existing_max + 1)
             ClubConfig.objects.filter(pk=config.pk).update(invoice_number_next=inv_number + 1)
             config.invoice_number_next = inv_number + 1  # keep in-memory copy in sync for multi-payee loops
+            # Clear any voided invoice for this member so the unique constraint doesn't block recreation
+            fc.invoices.filter(member=member, status='void').delete()
             try:
                 invoice = Invoice.objects.create(
                     club=club,
