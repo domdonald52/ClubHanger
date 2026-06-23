@@ -882,7 +882,7 @@
         pill.dataset.status = "completed";
         pill.dataset.paid = "false";
         const nm = pill.querySelector(".nm");
-        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱] /, "⏱ ");
+        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱⚠] /, "");
         const sub = pill.querySelector(".sub");
         if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · returned"; }
         pill.querySelectorAll(".pill-wedge").forEach(w => w.remove());
@@ -1107,8 +1107,7 @@
         pill.classList.add("departed");
         pill.dataset.status = "departed";
         const nm = pill.querySelector(".nm");
-        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱] /, "");
-        if (nm && !nm.textContent.startsWith("✈")) nm.textContent = "✈ " + nm.textContent;
+        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱⚠] /, "");
         const sub = pill.querySelector(".sub");
         if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · airborne"; }
         pill.querySelectorAll(".pill-dot-decl,.pill-wedge").forEach(el => el.remove());
