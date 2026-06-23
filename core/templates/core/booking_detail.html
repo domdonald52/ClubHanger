@@ -1307,6 +1307,15 @@
           </div>
           {% endwith %}
           {% endfor %}
+          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e3e6ea;padding-top:.45rem;margin-top:.3rem;">
+            <span style="font-size:.78rem;font-weight:700;color:#5b6573;">Total received</span>
+            <span style="font-size:.9rem;font-weight:700;color:{% if fc.is_paid %}#2a7a3b{% else %}#b06800{% endif %};">
+              ${{ fc.amount_paid|currency }}{% if fc.is_paid %} <span style="font-size:.73rem;font-weight:500;">✓ Paid in full</span>{% endif %}
+            </span>
+          </div>
+          {% if not fc.is_paid and balance_owing %}
+          <div style="text-align:right;font-size:.73rem;color:#b06800;margin-top:.1rem;">${{ balance_owing|currency }} of ${{ total|currency }} remaining</div>
+          {% endif %}
           {% if fc.is_paid and actor.is_admin and not fc_invoice_by_member %}
           <p style="font-size:.76rem;color:#8a93a0;margin:.5rem 0 0;">To add a missed charge: Reverse the payment, add the charge, then re-record payment.</p>
           {% endif %}

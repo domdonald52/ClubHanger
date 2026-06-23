@@ -892,14 +892,11 @@
         pill.appendChild(wedge);
       });
       closeModal();
-      showToast("Flight returned — charges ready");
-      // Open charges overlay (use base overlay which works everywhere)
-      if (res.data && res.data.charges_url) {
-        setTimeout(() => {
-          if (window.openPageOverlay) window.openPageOverlay(res.data.charges_url);
-          else openDetailOverlay(res.data.charges_url);
-        }, 400);
-      }
+      const _cUrl = res.data && res.data.charges_url;
+      const _linkHtml = _cUrl
+        ? ' <a href="' + _cUrl + '" onclick="event.preventDefault();(window.openPageOverlay||(u=>{location.href=u;}))(this.href);" style="color:inherit;font-weight:700;text-decoration:underline;">Process payment →</a>'
+        : '';
+      (window.toast || showToast)('Flight checked in' + _linkHtml, 'info');
     });
   });
 
