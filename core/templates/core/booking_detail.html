@@ -1150,10 +1150,9 @@
               var idx = payeeIdx;
               var row = document.createElement('div');
               row.className = 'contrib-row-added';
-              row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;';
-              // Wrapper div forces the 1fr column to actually shrink on narrow screens
+              row.style.cssText = 'display:flex;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;';
               var memberWrap = document.createElement('div');
-              memberWrap.style.cssText = 'min-width:0;overflow:hidden;';
+              memberWrap.style.cssText = 'flex:1;min-width:0;overflow:hidden;';
               var memberSel = document.createElement('select');
               memberSel.name = 'contributor_member_' + idx;
               memberSel.required = true;
@@ -1167,7 +1166,7 @@
               memberWrap.appendChild(memberSel);
               var methSel = document.createElement('select');
               methSel.name = 'payment_method_' + idx;
-              methSel.style.cssText = 'font-size:.82rem;padding:.3rem .5rem;border:1px solid #ddd;border-radius:6px;width:100px;';
+              methSel.style.cssText = 'flex-shrink:0;font-size:.82rem;padding:.3rem .5rem;border:1px solid #ddd;border-radius:6px;width:100px;';
               [['eftpos','EFTPOS'],['cash','Cash'],['credit','Account balance']].forEach(function(pair) {
                 var o = document.createElement('option'); o.value = pair[0]; o.textContent = pair[1];
                 methSel.appendChild(o);
@@ -1183,13 +1182,13 @@
                 }
               });
               var amtWrap = document.createElement('div');
-              amtWrap.className = 'money-wrap'; amtWrap.style.marginTop = '0';
+              amtWrap.className = 'money-wrap'; amtWrap.style.cssText = 'margin-top:0;flex-shrink:0;';
               var sym = document.createElement('span'); sym.className = 'money-sym'; sym.textContent = '$';
               var amtEl = document.createElement('input');
               amtEl.type = 'number'; amtEl.step = '0.01'; amtEl.min = '0.01';
               amtEl.name = 'contributor_amount_' + idx;
-              amtEl.className = 'finput money-input contrib-secondary';
-              amtEl.style.width = '80px'; amtEl.value = '0'; amtEl.required = true;
+              amtEl.className = 'money-input contrib-secondary';
+              amtEl.style.width = '70px'; amtEl.value = '0'; amtEl.required = true;
               amtEl.addEventListener('input', function() { recalcAllocation(); });
               amtEl.addEventListener('change', function() { recalcAllocation(); });
               amtWrap.appendChild(sym); amtWrap.appendChild(amtEl);

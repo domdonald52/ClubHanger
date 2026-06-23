@@ -11131,12 +11131,41 @@ def app_profile(request, club_slug):
 
 @login_required
 def app_notifications(request, club_slug):
+    """Mobile app — notification inbox. Bell goes here."""
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    from .models import Notification as _Notif
+    from django.urls import reverse as _rev
+    from django.http import JsonResponse as _JR
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'dismiss':
+            _nid = request.POST.get('notification_id')
+            _Notif.objects.filter(id=_nid, club_member=actor).delete()
+            return _JR({'ok': True})
+        if action == 'clear_all':
+            _Notif.objects.filter(club_member=actor).delete()
+        return redirect(_rev('core:app_notifications', args=[club_slug]))
+
+    notifications = list(_Notif.objects.filter(club_member=actor).order_by('-created_at')[:50])
+    _Notif.objects.filter(club_member=actor, is_read=False).update(is_read=True)
+    return render(request, 'core/app/notifications.html', {
+        'club': club, 'club_member': actor,
+        'notifications': notifications,
+    })
+
+
+@login_required
+def app_notification_settings(request, club_slug):
+    """Mobile app — notification preferences. Profile links here."""
     from .models import NotificationPreference as _NP
     club, actor = _app_actor(request, club_slug)
     if not actor:
         return redirect('login')
     from django.urls import reverse as _rev
-    _notif_url = _rev('core:app_notifications', args=[club_slug])
+    _settings_url = _rev('core:app_notification_settings', args=[club_slug])
     if request.method == 'POST':
         pref, _ = _NP.objects.get_or_create(club_member=actor)
         _toggle_fields = [
@@ -11149,7 +11178,7 @@ def app_notifications(request, club_slug):
         for f in _toggle_fields:
             setattr(pref, f, request.POST.get(f) == 'on')
         pref.save()
-        return redirect(_notif_url + '?saved=1')
+        return redirect(_settings_url + '?saved=1')
     try:
         notification_pref = actor.notification_prefs
     except _NP.DoesNotExist:
@@ -11161,7 +11190,7 @@ def app_notifications(request, club_slug):
         ('credential_expiring',   'Credential expiring soon',                 True),
         ('subscription_expiring', 'Subscription expiring',                    True),
         ('payment_reminder',      'Account balance reminder',                 True),
-        ('invoice_sent',          'Invoice issued to me',                     True),
+        ('invoice_sent',          'Invoice / receipt sent to me',             True),
         ('slot_released',         'Slot freed up by another member (opt-in)', False),
     ]
     if actor.is_instructor:
@@ -11176,14 +11205,9 @@ def app_notifications(request, club_slug):
          'enabled': getattr(notification_pref, f, default) if notification_pref else default}
         for f, l, default in _raw_toggles
     ]
-    from .models import Notification as _Notif
-    recent_notifications = list(_Notif.objects.filter(club_member=actor).order_by('-created_at')[:30])
-    # Mark all as read now that the member has opened this page
-    _Notif.objects.filter(club_member=actor, is_read=False).update(is_read=True)
-    return render(request, 'core/app/notifications.html', {
+    return render(request, 'core/app/notification_settings.html', {
         'club': club, 'club_member': actor,
         'notification_toggle_fields': notification_toggle_fields,
-        'recent_notifications': recent_notifications,
         'saved': request.GET.get('saved') == '1',
     })
 

@@ -1,0 +1,130 @@
+{% extends "core/app/base.html" %}
+{% block title %}Notification Settings — {{ club.name }}{% endblock %}
+
+{% block app_bar %}
+<a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+</a>
+<span class="app-bar-title">Notification Settings</span>
+{% endblock %}
+
+{% block content %}
+{% if saved %}
+<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Settings saved.</div>
+{% endif %}
+<div class="gap-sm"></div>
+
+<form method="post" id="pref-form">
+  {% csrf_token %}
+
+  <div class="app-section gap-sm"><span class="app-section-title">Notify me about</span></div>
+  <div class="app-card" style="padding:0;">
+    {% for toggle in notification_toggle_fields %}
+    <label style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid #f0f2f4;cursor:pointer;">
+      <span style="flex:1;font-size:.88rem;color:#1f2937;">{{ toggle.label }}</span>
+      <div class="toggle-wrap">
+        <input type="checkbox" name="{{ toggle.field }}" id="id_{{ toggle.field }}" {% if toggle.enabled %}checked{% endif %} class="toggle-input" onchange="document.getElementById('pref-form').submit()">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      </div>
+    </label>
+    {% endfor %}
+  </div>
+
+  <div class="gap-sm"></div>
+  <div class="app-section gap-sm"><span class="app-section-title">Push notifications</span></div>
+  <div class="app-card">
+    <div style="font-size:.84rem;color:#374151;margin-bottom:.75rem;">Receive notifications even when the app is closed.</div>
+    <div id="push-status" style="font-size:.78rem;color:#6b7280;margin-bottom:.75rem;"></div>
+    <button type="button" id="push-btn" class="app-btn" style="width:100%;">Enable push notifications</button>
+    <div id="push-msg" style="font-size:.78rem;color:#6b7280;margin-top:.5rem;display:none;"></div>
+  </div>
+
+</form>
+
+<div style="height:2rem;"></div>
+
+<style>
+.toggle-wrap { position:relative; display:inline-block; width:42px; height:24px; flex-shrink:0; }
+.toggle-input { opacity:0; width:0; height:0; position:absolute; }
+.toggle-track { position:absolute; inset:0; background:#d1d5db; border-radius:12px; transition:background .18s; }
+.toggle-input:checked + .toggle-track { background:var(--primary); }
+.toggle-thumb { position:absolute; left:3px; top:3px; width:18px; height:18px; background:#fff; border-radius:50%; transition:transform .18s; box-shadow:0 1px 3px rgba(0,0,0,.18); }
+.toggle-input:checked + .toggle-track .toggle-thumb { transform:translateX(18px); }
+</style>
+
+<script>
+(function(){
+  var btn = document.getElementById('push-btn');
+  var msg = document.getElementById('push-msg');
+  var status = document.getElementById('push-status');
+  var SUBSCRIBE_URL = '{% url "core:push_subscribe" club.slug %}';
+  var UNSUB_URL = '{% url "core:push_unsubscribe" club.slug %}';
+  var CSRF = '{{ csrf_token }}';
+  var VAPID_KEY = '{{ club.vapid_public_key|default:"" }}';
+
+  function b64(base64) {
+    var r = (base64 + '===').slice(0, base64.length + (4 - base64.length % 4) % 4).replace(/-/g,'+').replace(/_/g,'/');
+    var bin = atob(r), arr = new Uint8Array(bin.length);
+    for (var i=0; i<bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return arr;
+  }
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    btn.textContent = 'Push not supported by this browser';
+    btn.disabled = true;
+    return;
+  }
+
+  navigator.serviceWorker.ready.then(function(reg) {
+    reg.pushManager.getSubscription().then(function(sub) {
+      if (sub) {
+        btn.textContent = 'Disable push notifications';
+        status.textContent = 'Push notifications are enabled on this device.';
+        btn.onclick = function() { unsub(sub, reg); };
+      } else {
+        btn.textContent = 'Enable push notifications';
+        status.textContent = 'Push notifications are not enabled on this device.';
+        btn.onclick = function() { subscribe(reg); };
+      }
+    });
+  });
+
+  function subscribe(reg) {
+    if (!VAPID_KEY) { showMsg('Push not configured — contact the club.', true); return; }
+    Notification.requestPermission().then(function(perm) {
+      if (perm !== 'granted') { showMsg('Permission denied.', true); return; }
+      reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(VAPID_KEY) })
+        .then(function(sub) {
+          return fetch(SUBSCRIBE_URL, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+            body: JSON.stringify(sub.toJSON()),
+          });
+        })
+        .then(function(r) {
+          if (r.ok) { showMsg('Push notifications enabled.'); btn.textContent = 'Disable push notifications'; status.textContent = 'Push notifications are enabled on this device.'; }
+          else { showMsg('Could not save subscription.', true); }
+        }).catch(function(e) { showMsg('Error: ' + e.message, true); });
+    });
+  }
+
+  function unsub(sub, reg) {
+    sub.unsubscribe().then(function() {
+      return fetch(UNSUB_URL, {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'X-CSRFToken': CSRF, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: sub.endpoint }),
+      });
+    }).then(function() {
+      showMsg('Push notifications disabled.'); btn.textContent = 'Enable push notifications'; status.textContent = 'Push notifications are not enabled on this device.';
+    }).catch(function(e) { showMsg('Error: ' + e.message, true); });
+  }
+
+  function showMsg(text, err) {
+    msg.textContent = text;
+    msg.style.color = err ? '#e03131' : '#2a7a3b';
+    msg.style.display = '';
+  }
+})();
+</script>
+{% endblock %}

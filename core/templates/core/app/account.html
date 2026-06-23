@@ -100,14 +100,17 @@
 </div>
 <div class="app-list">
   {% for inv in paid_receipts %}
-  <div class="app-list-row" style="cursor:default;">
+  <a href="{% url 'core:invoice_detail' club.slug inv.id %}?back={{ request.path|urlencode }}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid #f0f2f4;text-decoration:none;color:inherit;background:#fff;">
     <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;background:#2a7a3b;"></div>
     <div class="app-list-main">
       <div class="app-list-title" style="font-size:.87rem;">{{ inv.display_number }}{% if inv.flight_completion %} · {{ inv.flight_completion.booking.aircraft.registration }}{% endif %}</div>
       <div class="app-list-sub">Paid {{ inv.paid_at|date:"j M Y" }} · receipt emailed</div>
     </div>
-    <div style="font-size:.92rem;font-weight:700;color:#2a7a3b;">${{ inv.total|floatformat:2 }}</div>
-  </div>
+    <div style="display:flex;align-items:center;gap:.4rem;">
+      <div style="font-size:.92rem;font-weight:700;color:#2a7a3b;">${{ inv.total|floatformat:2 }}</div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>
+  </a>
   {% endfor %}
 </div>
 {% endif %}

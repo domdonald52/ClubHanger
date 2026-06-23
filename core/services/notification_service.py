@@ -169,6 +169,25 @@ def notify_flight_charged(flight_completion):
     _push(booking.member, title, body, url=app_url)
 
 
+def notify_slot_released(booking):
+    """Notify all SlotWatch members that a slot has been freed up."""
+    from ..models import SlotWatch
+    from django.urls import reverse
+    watchers = SlotWatch.objects.filter(booking=booking).select_related('club_member')
+    if not watchers.exists():
+        return
+    ac  = booking.aircraft.registration if booking.aircraft else '?'
+    day = booking.scheduled_start.strftime('%a %-d %b')
+    time_range = (f'{booking.scheduled_start.strftime("%H:%M")}–'
+                  f'{booking.scheduled_end.strftime("%H:%M")}')
+    title = f'Slot freed — {ac} {day}'
+    body  = f'{time_range} is now available.'
+    app_url = reverse('core:app_schedule', kwargs={'club_slug': booking.club.slug})
+    for watch in watchers:
+        notify(watch.club_member, 'slot_released', title, body=body, action_url=app_url)
+        _push(watch.club_member, title, body, url=app_url)
+
+
 def notify_invoice_issued(invoice):
     """In-app + push notification when an invoice or receipt is sent to a member."""
     if not invoice.member:

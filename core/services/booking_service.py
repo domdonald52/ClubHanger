@@ -296,8 +296,10 @@ def cancel(booking, user, release_slot: bool = False,
         booking.slot_released_at = timezone.now()
         booking.slot_released_by = user
     booking.save()
-    from .notification_service import notify_booking_cancelled
+    from .notification_service import notify_booking_cancelled, notify_slot_released
     notify_booking_cancelled(booking)
+    if release_slot:
+        notify_slot_released(booking)
     return ServiceResult(ok=True)
 
 
