@@ -11,8 +11,31 @@
 <div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:.5rem .75rem;font-size:.83rem;font-weight:600;">✓ Saved.</div>
 {% endif %}
 
+<!-- Recent notifications inbox -->
+<div style="padding:.3rem .75rem 0;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;">Recent</div>
+<div class="app-list" style="margin:.4rem .75rem 0;">
+{% if recent_notifications %}
+  {% for notif in recent_notifications %}
+  <div class="app-list-row" style="align-items:flex-start;gap:.65rem;{% if not notif.is_read %}background:#f0f4ff;{% endif %}">
+    <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;background:{% if not notif.is_read %}var(--primary){% else %}#e5e7eb{% endif %};"></div>
+    <div class="app-list-main">
+      <div class="app-list-title" style="font-size:.85rem;">{{ notif.subject }}</div>
+      {% if notif.body %}<div class="app-list-sub" style="margin-top:.1rem;">{{ notif.body }}</div>{% endif %}
+      <div style="font-size:.72rem;color:#9ca3af;margin-top:.15rem;">{{ notif.created_at|timesince }} ago</div>
+    </div>
+    {% if notif.action_url %}
+    <a href="{{ notif.action_url }}" style="font-size:.75rem;color:var(--primary);white-space:nowrap;text-decoration:none;padding:.2rem 0;flex-shrink:0;">View →</a>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="app-list-row"><div class="app-list-main"><div class="app-list-title" style="font-size:.85rem;color:#9ca3af;">No notifications yet</div></div></div>
+{% endif %}
+</div>
+<div class="gap-sm"></div>
+
 <!-- Email / in-app notification toggles -->
-<div style="padding:.3rem .75rem 0;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;">Alerts</div>
+<div style="padding:.3rem .75rem 0;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;">Alert settings</div>
 <form method="post" action="{% url 'core:app_notifications' club.slug %}" id="notif-form">
   {% csrf_token %}
   <input type="hidden" name="action" value="save_notifications">

@@ -106,7 +106,7 @@
       <div class="app-list-title" style="font-size:.87rem;">{{ inv.display_number }}{% if inv.flight_completion %} · {{ inv.flight_completion.booking.aircraft.registration }}{% endif %}</div>
       <div class="app-list-sub">Paid {{ inv.paid_at|date:"j M Y" }} · receipt emailed</div>
     </div>
-    <div style="font-size:.92rem;font-weight:700;color:#2a7a3b;">${{ inv.total_amount|floatformat:2 }}</div>
+    <div style="font-size:.92rem;font-weight:700;color:#2a7a3b;">${{ inv.total|floatformat:2 }}</div>
   </div>
   {% endfor %}
 </div>

@@ -174,7 +174,12 @@ def notify_invoice_issued(invoice):
     if not invoice.member:
         return
     from django.urls import reverse
-    title = f'Invoice {invoice.display_number} — ${invoice.total:.2f}'
-    body  = f'Due {invoice.due_date.strftime("%-d %b %Y")} · check your profile for details'
-    app_url = reverse('core:app_profile', kwargs={'club_slug': invoice.club.slug}) + '#outstanding'
+    is_receipt = invoice.status == 'paid'
+    if is_receipt:
+        title = f'Receipt {invoice.display_number} — ${invoice.total:.2f}'
+        body  = f'Payment confirmed · see your Account for details'
+    else:
+        title = f'Invoice {invoice.display_number} — ${invoice.total:.2f}'
+        body  = f'Due {invoice.due_date.strftime("%-d %b %Y")} · check your Account for details'
+    app_url = reverse('core:app_account', kwargs={'club_slug': invoice.club.slug})
     _push(invoice.member, title, body, url=app_url)

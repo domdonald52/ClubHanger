@@ -672,7 +672,11 @@
       if (checkinErr)  { checkinErr.hidden  = true; checkinErr.textContent  = ''; }
       if (checkinWarn) { checkinWarn.hidden = true; checkinWarn.textContent = ''; }
       ['m-hobbs-end','m-tacho-end','m-airswitch-end'].forEach(id => {
-        const el = document.getElementById(id); if (el) el.style.borderColor = '';
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.style.borderColor = ''; el.style.borderWidth = '';
+        const prev = el.previousElementSibling;
+        if (prev && prev.classList.contains('ci-field-err')) prev.remove();
       });
 
       // Pre-fill start values from last recorded end for this aircraft.
@@ -817,9 +821,29 @@
     const ae  = (document.getElementById("m-airswitch-end")   || {}).value?.trim() || "";
     const _ciErr = document.getElementById('m-checkin-error');
     const _ciErrs = [];
-    ['m-hobbs-end','m-tacho-end','m-airswitch-end'].forEach(id => { const el = document.getElementById(id); if (el) el.style.borderColor = ''; });
+    // Clear previous inline field errors
+    ['m-hobbs-end','m-tacho-end','m-airswitch-end'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.style.borderColor = '';
+      el.style.borderWidth = '';
+      const prev = el.previousElementSibling;
+      if (prev && prev.classList.contains('ci-field-err')) prev.remove();
+    });
     function _ciFail(msg, endId) {
-      if (endId) { const el = document.getElementById(endId); if (el) el.style.borderColor = '#e03131'; }
+      if (endId) {
+        const el = document.getElementById(endId);
+        if (el) {
+          el.style.borderColor = '#f59e0b';
+          el.style.borderWidth = '2px';
+          // Insert inline error just before the input (inside its label)
+          const span = document.createElement('span');
+          span.className = 'ci-field-err';
+          span.style.cssText = 'display:block;font-size:.74rem;color:#c76c00;font-weight:600;margin-bottom:.15rem;';
+          span.textContent = '⚠ ' + msg;
+          el.parentNode.insertBefore(span, el);
+        }
+      }
       _ciErrs.push(msg);
     }
     if (needsHobbs && !hs)  _ciFail('Hobbs start is required');
@@ -832,8 +856,9 @@
     if (needsTacho && ts && te && parseFloat(te) <= parseFloat(ts)) _ciFail('Tacho end must be greater than start', 'm-tacho-end');
     if (needsAirswitch && as_ && ae && parseFloat(ae) <= parseFloat(as_)) _ciFail('Air switch end must be greater than start', 'm-airswitch-end');
     if (_ciErrs.length) {
-      if (_ciErr) { _ciErr.textContent = _ciErrs.join(' · '); _ciErr.hidden = false; }
-      else showToast(_ciErrs[0], 'err');
+      // Errors shown inline next to each field — focus the first flagged one
+      const firstErr = document.querySelector('#m-checkin-fields .ci-field-err');
+      if (firstErr && firstErr.nextElementSibling) firstErr.nextElementSibling.focus();
       return;
     }
     if (_ciErr) _ciErr.hidden = true;

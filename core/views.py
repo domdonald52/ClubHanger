@@ -6651,6 +6651,11 @@ def generate_invoice(request, club_slug, booking_id):
             created.append(_oinv)
 
     if len(created) == 1:
+        # For paid receipts (generated from booking charges screen), go back to the booking
+        # rather than the invoice detail page — the receipt is emailed; user doesn't need
+        # to navigate 3 levels deep just to see a PDF they already received.
+        if created[0].status == 'paid':
+            return redirect(_booking_url + '?saved=1')
         return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _inv_qs(created[0].id))
 
     from django.contrib import messages as _msg
@@ -11150,9 +11155,14 @@ def app_notifications(request, club_slug):
          'enabled': getattr(notification_pref, f, default) if notification_pref else default}
         for f, l, default in _raw_toggles
     ]
+    from .models import Notification as _Notif
+    recent_notifications = list(_Notif.objects.filter(club_member=actor).order_by('-created_at')[:30])
+    # Mark all as read now that the member has opened this page
+    _Notif.objects.filter(club_member=actor, is_read=False).update(is_read=True)
     return render(request, 'core/app/notifications.html', {
         'club': club, 'club_member': actor,
         'notification_toggle_fields': notification_toggle_fields,
+        'recent_notifications': recent_notifications,
         'saved': request.GET.get('saved') == '1',
     })
 

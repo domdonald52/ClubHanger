@@ -1151,19 +1151,23 @@
               var row = document.createElement('div');
               row.className = 'contrib-row-added';
               row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;';
+              // Wrapper div forces the 1fr column to actually shrink on narrow screens
+              var memberWrap = document.createElement('div');
+              memberWrap.style.cssText = 'min-width:0;overflow:hidden;';
               var memberSel = document.createElement('select');
               memberSel.name = 'contributor_member_' + idx;
-              memberSel.className = 'finput'; memberSel.required = true;
-              memberSel.style.cssText = 'font-size:.82rem;padding:.3rem .5rem;width:100%;min-width:0;';
+              memberSel.required = true;
+              memberSel.style.cssText = 'display:block;width:100%;font-size:.82rem;padding:.3rem .5rem;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;';
               var blank = document.createElement('option'); blank.value = ''; blank.textContent = '— member —';
               memberSel.appendChild(blank);
               allMembers.forEach(function(m) {
                 var o = document.createElement('option'); o.value = m.id; o.textContent = m.name;
                 memberSel.appendChild(o);
               });
+              memberWrap.appendChild(memberSel);
               var methSel = document.createElement('select');
-              methSel.name = 'payment_method_' + idx; methSel.className = 'finput';
-              methSel.style.cssText = 'font-size:.82rem;padding:.3rem .5rem;width:auto;';
+              methSel.name = 'payment_method_' + idx;
+              methSel.style.cssText = 'font-size:.82rem;padding:.3rem .5rem;border:1px solid #ddd;border-radius:6px;';
               [['eftpos','EFTPOS'],['cash','Cash'],['credit','Account balance']].forEach(function(pair) {
                 var o = document.createElement('option'); o.value = pair[0]; o.textContent = pair[1];
                 methSel.appendChild(o);
@@ -1202,7 +1206,7 @@
                 }
                 recalcAllocation();
               });
-              row.appendChild(memberSel); row.appendChild(methSel);
+              row.appendChild(memberWrap); row.appendChild(methSel);
               row.appendChild(amtWrap); row.appendChild(rmBtn);
               contPanel.appendChild(row);
               if (splitNote) splitNote.style.display = '';
