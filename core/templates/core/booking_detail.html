@@ -673,6 +673,12 @@
               <tr><td colspan="4" style="color:#bbb;font-size:.8rem;padding:.25rem .8rem;">No charges for this segment.</td></tr>
               {% endfor %}
               {% endfor %}
+              {% if charge_items %}
+              <tr>
+                <td colspan="4" style="background:#f4f6f8;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;padding:.3rem .8rem;border-bottom:1px solid #e8eaed;border-top:1px solid #e8eaed;">
+                  Additional charges — shared pro-rata
+                </td>
+              </tr>
               {% for item in charge_items %}
               <tr>
                 <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
@@ -688,6 +694,7 @@
                 </td>
               </tr>
               {% endfor %}
+              {% endif %}
             {% else %}
             {% for item in charge_items %}
             <tr>
