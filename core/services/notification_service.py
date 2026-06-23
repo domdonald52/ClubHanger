@@ -170,16 +170,17 @@ def notify_flight_charged(flight_completion):
 
 
 def notify_invoice_issued(invoice):
-    """Push notification when an invoice is sent to a member."""
+    """In-app + push notification when an invoice or receipt is sent to a member."""
     if not invoice.member:
         return
     from django.urls import reverse
-    is_receipt = invoice.status == 'paid'
-    if is_receipt:
-        title = f'Receipt {invoice.display_number} — ${invoice.total:.2f}'
-        body  = f'Payment confirmed · see your Account for details'
-    else:
-        title = f'Invoice {invoice.display_number} — ${invoice.total:.2f}'
-        body  = f'Due {invoice.due_date.strftime("%-d %b %Y")} · check your Account for details'
+    is_receipt = invoice.status == 'paid' or invoice.total == 0
     app_url = reverse('core:app_account', kwargs={'club_slug': invoice.club.slug})
+    if is_receipt:
+        title = f'Receipt {invoice.display_number} — ${invoice.total:.2f} paid'
+        body  = 'Payment confirmed. Tap to view your Account.'
+    else:
+        title = f'Invoice {invoice.display_number} — ${invoice.total:.2f} due'
+        body  = f'Due {invoice.due_date.strftime("%-d %b %Y")}. Tap to view your Account.'
+    notify(invoice.member, 'invoice_sent', title, body=body, action_url=app_url)
     _push(invoice.member, title, body, url=app_url)
