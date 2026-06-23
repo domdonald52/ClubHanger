@@ -1237,7 +1237,7 @@ try:
 
     sub("15a. Member with no credentials — all checks block")
     result_no_cred = qualification_service.check_eligibility(b15)
-    has_creds = student_m.credentials.exists()
+    has_creds = student_m.user.credentials.exists()
     if has_creds:
         note_gap(
             f"Student '{student_m}' already has credentials in seed data. "
@@ -1255,19 +1255,23 @@ try:
                                           for i in result_no_cred.items))
 
     sub("15b. Inject valid PPL + Medical + BFR (+ type rating if aircraft type is set)")
+    ct_ppl,  _ = CredentialType.objects.get_or_create(region='NZ-CAA', code='ppl',     defaults={'name': 'PPL',           'category': 'licence',    'expires': False})
+    ct_med,  _ = CredentialType.objects.get_or_create(region='NZ-CAA', code='medical_c2', defaults={'name': 'Class 2 Medical', 'category': 'medical',    'expires': True, 'default_validity_months': 24})
+    ct_fr,   _ = CredentialType.objects.get_or_create(region='NZ-CAA', code='fr',       defaults={'name': 'Flight Review',  'category': 'endorsement', 'expires': True, 'default_validity_months': 24})
+    ct_tr,   _ = CredentialType.objects.get_or_create(region='NZ-CAA', code='type_rating', defaults={'name': 'Type Rating',  'category': 'type_rating', 'expires': True, 'requires_aircraft_type': True})
     ppl_cred = MemberCredential.objects.create(
-        club_member=student_m, credential_type=CredentialType.PPL,
+        member=student_m.user, credential_type=ct_ppl,
         issue_date=today_d - timedelta(days=365),
         created_by=admin_m.user,
     )
     med_cred = MemberCredential.objects.create(
-        club_member=student_m, credential_type=CredentialType.MEDICAL_C2,
+        member=student_m.user, credential_type=ct_med,
         issue_date=today_d - timedelta(days=90),
         expiry_date=today_d + timedelta(days=365),
         created_by=admin_m.user,
     )
     bfr_cred = MemberCredential.objects.create(
-        club_member=student_m, credential_type=CredentialType.FLIGHT_REVIEW,
+        member=student_m.user, credential_type=ct_fr,
         issue_date=today_d - timedelta(days=180),
         expiry_date=today_d + timedelta(days=365),
         created_by=admin_m.user,
@@ -1276,7 +1280,7 @@ try:
     tr_cred = None
     if ac1.aircraft_type:
         tr_cred = MemberCredential.objects.create(
-            club_member=student_m, credential_type=CredentialType.TYPE_RATING,
+            member=student_m.user, credential_type=ct_tr,
             aircraft_type=ac1.aircraft_type,
             issue_date=today_d - timedelta(days=180),
             expiry_date=today_d + timedelta(days=365),

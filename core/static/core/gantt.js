@@ -893,9 +893,12 @@
       });
       closeModal();
       showToast("Flight returned — charges ready");
-      // Offer to open charges overlay
+      // Open charges overlay (use base overlay which works everywhere)
       if (res.data && res.data.charges_url) {
-        setTimeout(() => openDetailOverlay(res.data.charges_url), 400);
+        setTimeout(() => {
+          if (window.openPageOverlay) window.openPageOverlay(res.data.charges_url);
+          else openDetailOverlay(res.data.charges_url);
+        }, 400);
       }
     });
   });
