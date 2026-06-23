@@ -104,7 +104,9 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
         )
 
     from ..models import Booking as _Booking
-    _active = _Booking.objects.filter(status='departed').exclude(id=booking.id)
+    from datetime import timedelta
+    _cutoff = timezone.now() - timedelta(hours=48)
+    _active = _Booking.objects.filter(status='departed', departed_at__gte=_cutoff).exclude(id=booking.id)
 
     _ac_clash = _active.filter(aircraft=booking.aircraft).select_related('member__user').first()
     if _ac_clash:

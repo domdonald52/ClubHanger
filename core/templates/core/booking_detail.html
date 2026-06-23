@@ -1077,17 +1077,18 @@
             </p>
             {% endif %}
 
-            {% if actor.is_admin %}
-            <button type="button" id="add-payee-btn" class="cbtn-sm" style="margin-bottom:.5rem;">+ Add payee</button>
-            {% endif %}
-
-            <p id="split-method-note" style="font-size:.75rem;color:#8a93a0;margin:0 0 .5rem;display:none;">
+            <p id="split-method-note" style="font-size:.75rem;color:#8a93a0;margin:0 0 .4rem;display:none;">
               Split payments accept EFTPOS, cash, or account balance only. A receipt invoice can be generated for each contributor once payment is recorded.
             </p>
             <p id="mp-alloc-status" style="font-size:.78rem;margin:0 0 .4rem;display:none;"></p>
 
             <input type="hidden" id="mp-received" name="amount_received" value="{{ balance_owing|add:other_total }}">
-            <button type="submit" id="mp-submit-btn" class="btn">Record payment</button>
+            <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+              {% if actor.is_admin %}
+              <button type="button" id="add-payee-btn" class="cbtn-sm">+ Add payee</button>
+              {% endif %}
+              <button type="submit" id="mp-submit-btn" class="btn" style="flex:1;">Record payment</button>
+            </div>
           </form>
 
           <script>
@@ -1455,8 +1456,8 @@
 
   /* Two-column grid layouts */
   .ci-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
-  .ch-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem;align-items:start;margin-top:.4rem;}
-  @media(max-width:700px){.ci-grid,.ch-grid{grid-template-columns:1fr;}}
+  .ch-grid{display:grid;grid-template-columns:1fr;gap:1.4rem;align-items:start;margin-top:.4rem;}
+  @media(max-width:700px){.ci-grid{grid-template-columns:1fr;}}
 
   .decl-overlay{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:150;}
   .decl-overlay[hidden]{display:none;}
