@@ -1,4 +1,5 @@
 {% extends base_template|default:"core/base.html" %}
+{% load currency_filters %}
 {% block title %}Booking · {{ booking.member.user.get_full_name }} · {{ club.name }}{% endblock %}
 {% block inline_title %}{{ inline_title }}{% endblock %}
 
@@ -1275,101 +1276,64 @@
 
         </div>
 
-        <!-- Invoice / receipts panel -->
-        {% if fc_invoices or not fc.is_paid or fc_payments_paid %}
+        <!-- Invoice / receipts panel — unified per-contributor view -->
+        {% if fc_payments_paid or not fc.is_paid %}
         <div style="margin-top:.7rem;padding:.7rem 1rem;border:1px solid #e3e6ea;border-radius:8px;background:#fafbfc;">
-          {% if fc_invoices %}
-          {% for inv in fc_invoices %}
-          <div style="margin-bottom:.5rem;">
-            <div style="font-size:.77rem;color:#5b6573;margin-bottom:.15rem;">{{ inv.member.user.get_full_name }}</div>
-            <div>
-              Invoice {{ inv.display_number }}
-              <span class="status-badge status-{{ inv.status }}" style="margin-left:.4rem;">{{ inv.get_status_display }}</span>
-              {% if inv.is_overdue %}<span style="color:#c0392b;font-size:.75rem;margin-left:.3rem;">⚠ {{ inv.days_overdue }}d overdue</span>{% endif %}
-            </div>
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem;">
-              <a href="{% url 'core:invoice_detail' club.slug inv.id %}?back={% url 'core:booking_detail' club.slug booking.id %}" class="btn" style="font-size:.8rem;padding:.3rem .65rem;">View</a>
-              <a href="{% url 'core:invoice_print' club.slug inv.id %}" target="_blank" class="cbtn" style="font-size:.8rem;">Print / PDF</a>
-            </div>
-          </div>
-          {% endfor %}
-          {% if fc_has_uninvoiced_payees %}
-          <div style="margin-top:.4rem;">
-            <form method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
-                  data-confirm="Issue invoices for all uninvoiced payees? Each will be notified and the flight will be marked Completed.">
-              {% csrf_token %}
-              <button type="submit" class="cbtn" style="font-size:.8rem;">Issue remaining invoices</button>
-            </form>
-          </div>
-          {% endif %}
-          {% elif fc.is_paid %}
-          {# Paid directly — per-contributor receipt generation #}
-          <p style="font-size:.78rem;font-weight:600;color:#5b6573;margin:0 0 .35rem;">Receipts</p>
+          {% if fc_payments_paid %}
+          {# Paid: per-contributor rows with Reverse + Receipt #}
+          <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;margin:0 0 .5rem;">Payments received</p>
           {% for fp in fc_payments_paid %}
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.3rem 0;{% if not forloop.last or member_copaid_fcs %}border-bottom:1px solid #f0f2f4;margin-bottom:.3rem;{% endif %}">
-            <div>
-              <div style="font-size:.82rem;font-weight:500;">{{ fp.member.user.get_short_name }}</div>
+          {% with fp_inv=fc_invoice_by_member|dict_get:fp.member_id %}
+          <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.45rem 0;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:.85rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
               <div style="font-size:.74rem;color:#8a93a0;">${{ fp.amount|floatformat:2 }} · {{ fp.get_method_display }}</div>
+              <div style="font-size:.74rem;color:#2a7a3b;font-weight:600;">✓ Paid {{ fp.paid_at|date:"j M H:i" }}</div>
             </div>
-            {% if fp.flight_invoice and fp.flight_invoice.status != 'void' %}
-            <a href="{% url 'core:invoice_detail' club.slug fp.flight_invoice.id %}?back={% url 'core:booking_detail' club.slug booking.id %}" class="cbtn" style="font-size:.78rem;white-space:nowrap;">View receipt</a>
+            {% if actor.is_admin and not fp_inv or actor.is_admin and fp_inv.status == 'void' %}
+            <form method="post" data-confirm="Reverse ${{ fp.amount|floatformat:2 }} payment from {{ fp.member.user.get_full_name }}?" style="margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="reverse_payment">
+              <input type="hidden" name="payment_id" value="{{ fp.id }}">
+              <button type="submit" class="cbtn" style="font-size:.75rem;color:#c0392b;border-color:#c0392b;">Reverse</button>
+            </form>
+            {% endif %}
+            {% if fp_inv and fp_inv.status != 'void' %}
+            <a href="{% url 'core:invoice_detail' club.slug fp_inv.id %}?back={% url 'core:booking_detail' club.slug booking.id %}&back_label=Charges" class="cbtn" style="font-size:.75rem;" data-overlay data-overlay-wide>Receipt →</a>
             {% else %}
-            <form method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
-                  data-confirm="Generate receipt for {{ fp.member.user.get_short_name }} (${{ fp.amount|floatformat:2 }}{% if fp.member.id == booking.member_id and member_copaid_fcs %} plus {{ member_copaid_fcs|length }} other flight{{ member_copaid_fcs|length|pluralize }}{% endif %})? They will be notified by email.">
+            <form method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}" style="margin:0;"
+                  data-confirm="Generate receipt for {{ fp.member.user.get_short_name }}? They will be notified by email.">
               {% csrf_token %}
               <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
               {% if fp.member.id == booking.member_id and member_copaid_fcs %}
-              {% for ofc in member_copaid_fcs %}
-              <input type="hidden" name="other_fc_ids" value="{{ ofc.id }}">
-              {% endfor %}
+              <details style="margin-bottom:.3rem;">
+                <summary style="font-size:.73rem;color:#8a93a0;cursor:pointer;">Also include other paid flights? ({{ member_copaid_fcs|length }})</summary>
+                <div style="margin:.3rem 0 0 .1rem;">
+                  {% for ofc in member_copaid_fcs %}
+                  <label style="display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:#374151;padding:.1rem 0;cursor:pointer;">
+                    <input type="checkbox" name="other_fc_ids" value="{{ ofc.id }}">
+                    {{ ofc.booking.aircraft.registration }} · {{ ofc.booking.scheduled_start|date:"j M" }} · ${{ ofc.total_charge|floatformat:2 }}
+                  </label>
+                  {% endfor %}
+                </div>
+              </details>
               {% endif %}
-              <button type="submit" class="cbtn" style="font-size:.78rem;white-space:nowrap;">Generate receipt</button>
+              <button type="submit" class="cbtn" style="font-size:.75rem;">Receipt</button>
             </form>
             {% endif %}
           </div>
+          {% endwith %}
           {% endfor %}
-          {% if member_copaid_fcs %}
-          <div style="background:#f8f9fb;border-radius:6px;padding:.4rem .6rem;margin-bottom:.3rem;">
-            <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.2rem;">
-              <div>
-                {% if not member_has_payment_on_fc %}
-                <div style="font-size:.82rem;font-weight:500;">{{ booking.member.user.get_short_name }}</div>
-                {% endif %}
-                <div style="font-size:.74rem;font-weight:600;color:#5b6573;">Also collected this session</div>
-              </div>
-              {% if not member_has_payment_on_fc %}
-              <form method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
-                    data-confirm="Generate receipt for {{ booking.member.user.get_short_name }} ({{ member_copaid_fcs|length }} flight{{ member_copaid_fcs|length|pluralize }})? They will be notified by email.">
-                {% csrf_token %}
-                <input type="hidden" name="for_member_id" value="{{ booking.member.id }}">
-                {% for ofc in member_copaid_fcs %}
-                <input type="hidden" name="other_fc_ids" value="{{ ofc.id }}">
-                {% endfor %}
-                <button type="submit" class="cbtn" style="font-size:.78rem;white-space:nowrap;">Generate receipt</button>
-              </form>
-              {% endif %}
-            </div>
-            {% for ofc in member_copaid_fcs %}
-            <div style="font-size:.78rem;color:#374151;display:flex;justify-content:space-between;">
-              <span>{{ ofc.booking.aircraft.registration }} · {{ ofc.booking.scheduled_start|date:"j M" }}</span>
-              <span style="font-weight:600;">${{ ofc.total_charge|floatformat:2 }}</span>
-            </div>
-            {% endfor %}
-            {% if member_has_payment_on_fc %}
-            <div style="font-size:.72rem;color:#8a93a0;margin-top:.2rem;">Receipt for {{ booking.member.user.get_short_name }} will cover all of the above.</div>
-            {% endif %}
-          </div>
-          {% endif %}
-          <p style="font-size:.73rem;color:#adb5bd;margin:.3rem 0 0;">A paid receipt will be emailed as confirmation of payment.</p>
           {% else %}
+          {# Not yet paid — invoice instead option #}
           <details id="invoice-instead-section">
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
             <div style="margin-top:.4rem;">
               {% if total %}
               <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
-                    data-confirm="Issue invoice{% if other_unpaid_list or other_outstanding_list %}s{% endif %} to {{ booking.member.user.get_full_name }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and any selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}? The member will be notified{% if not fc.is_paid %} and the flight will be marked Completed{% endif %}.">
+                    data-confirm="Issue invoice to {{ booking.member.user.get_full_name }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}? The member will be notified and the flight will be marked Completed.">
                 {% csrf_token %}
-                <button type="submit" class="cbtn" style="font-size:.8rem;">Issue invoice{% if other_unpaid_list or other_outstanding_list or fc_payments|length > 1 %}s{% endif %}</button>
+                <button type="submit" class="cbtn" style="font-size:.8rem;">Issue invoice</button>
               </form>
               {% else %}
               <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Issue invoice</span>
@@ -1378,7 +1342,7 @@
           </details>
           {% endif %}
         </div>
-        {% endif %}{# fc_invoices or not fc.is_paid or fc_payments_paid #}
+        {% endif %}
       </div><!-- /right -->
     </div><!-- /ch-grid -->
 

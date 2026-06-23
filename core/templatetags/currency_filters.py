@@ -13,6 +13,12 @@ def currency(value):
         return '0.00'
 
 
+@register.filter
+def dict_get(d, key):
+    """Lookup a dict with a variable key: {{ mydict|dict_get:variable }}"""
+    return d.get(key)
+
+
 @register.simple_tag
 def budget_val(entries, aircraft_id, fy_year, month):
     """Return budgeted hours from the dict keyed by (aircraft_id, fy_year, month), or '' if absent."""

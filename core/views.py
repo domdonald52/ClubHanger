@@ -2420,7 +2420,7 @@ def manage_bookings(request, club_slug):
             r.append(f'Overpaid ${_over:.2f} — review and credit account')
         return r
 
-    _STATUS_ORDER = {'completed': 0, 'departed': 1, 'confirmed': 2, 'pending': 3}
+    _STATUS_ORDER = {'departed': 0, 'completed': 1, 'confirmed': 2, 'pending': 3}
 
     # ── Booking-vs-booking aircraft clash detection ────────────────────────────
     from django.db.models import Q as _Q2, Exists as _Exists, OuterRef as _OuterRef
@@ -3708,6 +3708,7 @@ def booking_detail(request, club_slug, booking_id):
             .filter(booking__member=booking.member, booking__club=club, paid_at__isnull=False)
             .exclude(id=fc.id)
             .exclude(id__in=_receipted_fc_ids)
+            .exclude(invoice_issued=True)
             .select_related('booking__aircraft', 'booking')
             .order_by('-booking__scheduled_start')
         )
@@ -3767,6 +3768,7 @@ def booking_detail(request, club_slug, booking_id):
         'fc_payments_paid': fc_payments_paid,
         'fc_payments_paid_total': fc_payments_paid_total,
         'fc_invoices': fc_invoices,
+        'fc_invoice_by_member': _invoice_by_member,
         'fc_has_uninvoiced_payees': fc_has_uninvoiced_payees,
         'fc_any_invoice_paid': fc_any_invoice_paid,
         'club_members': club_members,
@@ -6608,82 +6610,72 @@ def generate_invoice(request, club_slug, booking_id):
         fc.invoice_issued = True
         fc.save(update_fields=['invoice_issued'])
 
-    # Generate invoices/receipts for other FCs the user selected (co-paid or still outstanding)
+    # Other FCs paid in the same session: append their line items to the first created invoice
+    # so the member gets ONE combined receipt, not N separate ones.
     if _other_fc_ids:
-        # Determine which member's receipts these are for
         _receipt_member = booking.member
-        for _ofc_id in _other_fc_ids:
-            try:
-                _ofc = FlightCompletion.objects.select_related(
-                    'booking__flight_type', 'booking'
-                ).get(id=_ofc_id, booking__member=_receipt_member, booking__club=club)
-            except FlightCompletion.DoesNotExist:
-                continue
-            if Invoice.objects.filter(flight_completion=_ofc).exclude(status='void').exists():
-                continue  # already invoiced
-            if not _ofc.charge_items.exists():
-                continue  # nothing to invoice
-            _ofc_balance = max(_D('0'), _D(str(_ofc.total_charge or 0)) - _D(str(_ofc.amount_paid or 0)))
+        if created:
+            # Append to existing combined invoice
+            _combined_inv = created[0]
+            _sort_offset = _combined_inv.line_items.count()
+        else:
+            # Booking member already had an invoice for current FC — create a new one for the rest
             with transaction.atomic():
                 _omax = Invoice.objects.filter(club=club).aggregate(m=_Max('invoice_number'))['m'] or 0
                 _onum = max(config.invoice_number_next, _omax + 1)
                 ClubConfig.objects.filter(pk=config.pk).update(invoice_number_next=_onum + 1)
                 config.invoice_number_next = _onum + 1
-                _oinv = Invoice.objects.create(
-                    club=club,
-                    member=_receipt_member,
-                    flight_completion=_ofc,
-                    invoice_number=_onum,
-                    issue_date=today,
-                    due_date=due,
-                    description=_ofc.booking.flight_type.name if _ofc.booking.flight_type else '',
-                    gst_rate=config.gst_rate,
-                    created_by=request.user,
-                    status='sent',
-                    sent_at=_now,
+                _combined_inv = Invoice.objects.create(
+                    club=club, member=_receipt_member,
+                    flight_completion=None,
+                    invoice_number=_onum, issue_date=today, due_date=due,
+                    description='Outstanding flights', gst_rate=config.gst_rate,
+                    created_by=request.user, status='sent', sent_at=_now,
                 )
+            created.append(_combined_inv)
+            _sort_offset = 0
+
+        for _ofc_id in _other_fc_ids:
+            try:
+                _ofc = FlightCompletion.objects.select_related('booking').get(
+                    id=_ofc_id, booking__member=_receipt_member, booking__club=club)
+            except FlightCompletion.DoesNotExist:
+                continue
+            if Invoice.objects.filter(flight_completion=_ofc).exclude(status='void').exists():
+                continue  # already invoiced separately
+            if not _ofc.charge_items.exists():
+                continue
+            _ofc_balance = max(_D('0'), _D(str(_ofc.total_charge or 0)) - _D(str(_ofc.amount_paid or 0)))
+            _prefix = f"{_ofc.booking.aircraft.registration} {_ofc.booking.scheduled_start.strftime('%-d %b')} — "
             for _oord, _oci in enumerate(_ofc.charge_items.all()):
                 InvoiceLineItem.objects.create(
-                    invoice=_oinv,
-                    description=_oci.description or _oci.get_item_type_display(),
+                    invoice=_combined_inv,
+                    description=_prefix + (_oci.description or _oci.get_item_type_display()),
                     quantity=1,
                     unit=UNIT_MAP.get(_oci.item_type, 'Ea'),
-                    rate=_oci.amount,
-                    amount=_oci.amount,
-                    sort_order=_oord,
+                    rate=_oci.amount, amount=_oci.amount,
+                    sort_order=_sort_offset + _oord,
                     charge_item=_oci,
                 )
-            # If member already paid this FC (co-paid scenario), auto-mark the invoice as paid
+            _sort_offset += _ofc.charge_items.count()
             _ofc_fp = _ofc.payments.filter(member=_receipt_member, paid_at__isnull=False).first()
-            if _ofc_fp and _D(str(_ofc.amount_paid or 0)) >= _ofc_balance > 0:
-                from .models import InvoicePayment as _IP2
-                _IP2.objects.create(
-                    invoice=_oinv,
-                    amount=_ofc_balance,
+            if _ofc_fp and _ofc_balance > 0:
+                _IP.objects.create(
+                    invoice=_combined_inv,
+                    amount=min(_ofc_balance, _ofc_fp.amount),
                     method=_FP_METHOD_MAP.get(_ofc_fp.method, 'bank_transfer'),
-                    paid_at=_ofc_fp.paid_at,
-                    recorded_by=request.user,
+                    paid_at=_ofc_fp.paid_at, recorded_by=request.user,
                 )
-                _oinv._sync_payment_cache()
             _ofc.invoice_issued = True
             _ofc.save(update_fields=['invoice_issued'])
-            from .services import notification_service as _ns
-            _ns.notify_invoice_issued(_oinv)
-            created.append(_oinv)
+        _combined_inv._sync_payment_cache()
+        from .services import notification_service as _ns
+        _ns.notify_invoice_issued(_combined_inv)
 
-    if len(created) == 1:
-        # For paid receipts (generated from booking charges screen), go back to the booking
-        # rather than the invoice detail page — the receipt is emailed; user doesn't need
-        # to navigate 3 levels deep just to see a PDF they already received.
-        if created[0].status == 'paid':
-            return redirect(_booking_url + '?saved=1')
+    # Always return to invoice_detail for paid receipts so admin can print/email from there.
+    if created:
         return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _inv_qs(created[0].id))
-
-    from django.contrib import messages as _msg
-    _inv_nums = ', '.join(str(i.invoice_number) for i in created)
-    _msg.success(request, f'{len(created)} invoice(s) issued: {_inv_nums}.')
-    _back = _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id})
-    return redirect(_back + '?saved=1')
+    return redirect(_booking_url + '?saved=1')
 
 
 @login_required

@@ -104,9 +104,8 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
         )
 
     from ..models import Booking as _Booking
-    from datetime import timedelta
-    _cutoff = timezone.now() - timedelta(hours=48)
-    _active = _Booking.objects.filter(status='departed', departed_at__gte=_cutoff).exclude(id=booking.id)
+    _active = _Booking.objects.filter(status='departed').exclude(id=booking.id)
+    _hint = ' Find it in Bookings → Active tab, then check it in or contact the club.'
 
     _ac_clash = _active.filter(aircraft=booking.aircraft).select_related('member__user').first()
     if _ac_clash:
@@ -114,7 +113,7 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
         _when = _ac_clash.departed_at.strftime('%-d %b, %H:%M') if _ac_clash.departed_at else 'unknown time'
         return ServiceResult(
             ok=False,
-            error=f'{booking.aircraft.registration} is already checked out — {_who} departed at {_when}. Check in that flight first.'
+            error=f'{booking.aircraft.registration} is already checked out — {_who} departed {_when}. Check in that flight first.{_hint}'
         )
     _mem_clash = _active.filter(member=booking.member).select_related('aircraft').first()
     if _mem_clash:
@@ -122,7 +121,7 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
         _when = _mem_clash.departed_at.strftime('%-d %b, %H:%M') if _mem_clash.departed_at else 'unknown time'
         return ServiceResult(
             ok=False,
-            error=f'{booking.member.user.get_full_name()} already has a flight checked out on {_reg} (departed {_when}). Check in that flight first.'
+            error=f'{booking.member.user.get_full_name()} is already checked out on {_reg} (departed {_when}). Check in that flight first.{_hint}'
         )
     if booking.instructor:
         _instr_clash = _active.filter(instructor=booking.instructor).select_related('aircraft', 'member__user').first()
@@ -132,7 +131,7 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
             _when = _instr_clash.departed_at.strftime('%-d %b, %H:%M') if _instr_clash.departed_at else 'unknown time'
             return ServiceResult(
                 ok=False,
-                error=f'{booking.instructor.get_full_name()} is already checked out with {_mbr} on {_reg} (departed {_when}). Check in that flight first.'
+                error=f'{booking.instructor.get_full_name()} is already checked out with {_mbr} on {_reg} (departed {_when}). Check in that flight first.{_hint}'
             )
 
     requires_decl = booking.flight_type.requires_declaration

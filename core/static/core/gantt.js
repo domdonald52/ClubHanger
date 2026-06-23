@@ -1618,9 +1618,7 @@
       if (e.button !== 0) return;
       mode = e.target.hasAttribute("data-resize") ? "resize" : "move";
       if (mode === "move" && pill.dataset.status === "departed") {
-        showToast("Can't move a departed flight");
-        pill.classList.add("shake");
-        pill.addEventListener("animationend", () => pill.classList.remove("shake"), { once: true });
+        mode = null; // pill became departed in-page without reload — let dblclick open check-in normally
         return;
       }
       if (mode === "move" && pill.dataset.status === "completed") {
