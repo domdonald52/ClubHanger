@@ -6597,19 +6597,27 @@ def generate_invoice(request, club_slug, booking_id):
             inv_number = max(config.invoice_number_next, _existing_max + 1)
             ClubConfig.objects.filter(pk=config.pk).update(invoice_number_next=inv_number + 1)
             config.invoice_number_next = inv_number + 1  # keep in-memory copy in sync for multi-payee loops
-            invoice = Invoice.objects.create(
-                club=club,
-                member=member,
-                flight_completion=fc,
-                invoice_number=inv_number,
-                issue_date=today,
-                due_date=due,
-                description=description,
-                gst_rate=config.gst_rate,
-                created_by=request.user,
-                status='sent',
-                sent_at=_now,
-            )
+            try:
+                invoice = Invoice.objects.create(
+                    club=club,
+                    member=member,
+                    flight_completion=fc,
+                    invoice_number=inv_number,
+                    issue_date=today,
+                    due_date=due,
+                    description=description,
+                    gst_rate=config.gst_rate,
+                    created_by=request.user,
+                    status='sent',
+                    sent_at=_now,
+                )
+            except _IErr:
+                # Race / double-submit — invoice already created; roll back the number and reuse existing
+                ClubConfig.objects.filter(pk=config.pk).update(invoice_number_next=inv_number)
+                config.invoice_number_next = inv_number
+                invoice = fc.invoices.get(member=member)
+                created.append(invoice)
+                continue
 
         # Line items: for split, one summary line per payee; for single, snapshot all charge items
         if is_split:
