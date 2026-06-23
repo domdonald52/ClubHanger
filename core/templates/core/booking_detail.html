@@ -1004,14 +1004,14 @@
               </div>
               {% for item in other_unpaid_list %}
               <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if not forloop.last or other_outstanding_list %}border-bottom:1px solid #f0f2f4;{% endif %}">
-                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" checked style="accent-color:var(--primary);width:15px;height:15px;">
+                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
                 <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }}</span>
                 <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.total_charge }}" style="width:80px;"></div>
               </div>
               {% endfor %}
               {% for item in other_outstanding_list %}
               <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
-                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" checked style="accent-color:var(--primary);width:15px;height:15px;">
+                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
                 <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }} <span style="color:#b06800;font-size:.74rem;">(partial)</span></span>
                 <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.balance_owing }}" style="width:80px;"></div>
               </div>
