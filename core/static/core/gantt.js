@@ -131,7 +131,6 @@
   const dvBack = document.getElementById("dv-back");
   const dvConfirm = document.getElementById("dv-confirm");
   const btnWatchLabel = document.getElementById("m-watch-label");
-  const btnSplitLink = document.getElementById("m-split-link");
   let _currentPill = null;
   let _departHasCredWarnings = false;
 
@@ -600,18 +599,6 @@
       const paid = pill.dataset.paid === "true";
       btnCharges.style.background = paid ? "var(--completed-paid,#7c3aed)" : "var(--returned,#2563eb)";
       btnCharges.style.borderColor = btnCharges.style.background;
-    }
-    // Split-flight link — visible for departed only, opens full detail overlay
-    if (btnSplitLink) {
-      btnSplitLink.hidden = !isDeparted;
-      if (isDeparted) {
-        const _splitUrl = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
-        btnSplitLink.onclick = () => {
-          closeModal();
-          if (window.openPageOverlay) window.openPageOverlay(_splitUrl);
-          else openDetailOverlay(_splitUrl);
-        };
-      }
     }
     // Check-in title for departed flights
     if (isDeparted) {
@@ -1516,7 +1503,7 @@
       if (pill._didDrag) { pill._didDrag = false; return; }
       e.stopPropagation();
       if (cfg.canManage) {
-        if (pill.dataset.status === "completed") {
+        if (pill.dataset.status === "completed" || pill.dataset.status === "departed") {
           const detailUrl = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
           if (window.openPageOverlay) window.openPageOverlay(detailUrl);
           else window.location.href = detailUrl;

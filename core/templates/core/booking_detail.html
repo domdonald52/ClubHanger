@@ -773,6 +773,14 @@
                   <input type="number" name="amount" step="0.01" min="0" class="finput money-input" placeholder="0.00" required onblur="fmtMoney(this)">
                 </div>
               </label>
+              {% if fc_segments %}
+              <label class="flabel" style="min-width:120px;">Charge to
+                <select name="segment_member_id" class="finput" style="font-size:.82rem;">
+                  <option value="">All (pro-rata)</option>
+                  {% for seg in fc_segments %}<option value="{{ seg.member.id }}">{{ seg.member.user.get_short_name }}</option>{% endfor %}
+                </select>
+              </label>
+              {% endif %}
               <button type="submit" class="btn lf-add-btn">Add</button>
             </div>
           </form>
@@ -787,6 +795,14 @@
               <label class="flabel">Type<select name="item_type" class="finput"><option value="hire">Hire adj.</option><option value="fuel">Fuel adj.</option><option value="instructor">Instructor adj.</option><option value="surcharge">Surcharge adj.</option></select></label>
               <label class="flabel" style="flex:2;min-width:160px;">Description<input type="text" name="description" class="finput" required placeholder="Describe the correction"></label>
               <label class="flabel" style="width:110px;">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" step="0.01" class="finput money-input" required placeholder="−5.00" onblur="fmtMoney(this)"></div></label>
+              {% if fc_segments %}
+              <label class="flabel" style="min-width:110px;">Charge to
+                <select name="segment_member_id" class="finput" style="font-size:.82rem;">
+                  <option value="">All (pro-rata)</option>
+                  {% for seg in fc_segments %}<option value="{{ seg.member.id }}">{{ seg.member.user.get_short_name }}</option>{% endfor %}
+                </select>
+              </label>
+              {% endif %}
               <button type="submit" class="btn secondary lf-add-btn">Add</button>
             </div>
           </form>
@@ -811,77 +827,120 @@
           </div>
 
           {% if fc_payments_pending or fc_segments_pending %}
-          <!-- Pending payee rows only — paid rows shown in Payments Received below -->
-          <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_paid_total }}">
-            {% for fp in fc_payments %}
-            {% if not fp.is_paid %}
-            <!-- Pending row — editable amount/method; Record payment updates then marks paid -->
-            <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:#fafbfc;">
-              <div style="font-size:.88rem;font-weight:500;margin-bottom:.35rem;">{{ fp.member.user.get_full_name }}</div>
-              {% if fp.flight_invoice and fp.flight_invoice.status != 'void' %}
-              <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fp.flight_invoice.display_number }}</span>
-              {% else %}
-              <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
-                <form method="post" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;flex:1;">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="record_payee">
-                  <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                  <select name="payment_method" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
-                    <option value="eftpos"{% if fp.method == "eftpos" %} selected{% endif %}>EFTPOS</option>
-                    <option value="cash"{% if fp.method == "cash" %} selected{% endif %}>Cash</option>
-                    <option value="credit"{% if fp.method == "credit" %} selected{% endif %}{% if fp.member.account.has_warning %} disabled{% endif %}>Account balance{% if fp.member.account.has_warning %} (over limit){% endif %}</option>
-                    <option value="invoice"{% if fp.method == "invoice" %} selected{% endif %}>Invoice / bank transfer</option>
-                  </select>
-                  <div class="money-wrap" style="margin-top:0;">
-                    <span class="money-sym">$</span>
-                    <input type="number" name="payment_amount" step="0.01" min="0.01"
-                           value="{% if fp.member_id == booking.member_id and fc_payments_pending|length == 1 %}{{ balance_owing }}{% else %}{{ fp.amount }}{% endif %}" class="finput money-input split-alloc-input" style="width:80px;" required>
-                  </div>
-                  <button type="submit" class="btn" style="font-size:.78rem;padding:.25rem .6rem;">Record payment</button>
-                </form>
-                {% if actor.is_admin %}
-                <form method="post" data-confirm="Remove this payee allocation?" style="margin:0;">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="remove_payee">
-                  <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                  <button type="submit" class="cbtn" style="font-size:.72rem;">✕</button>
-                </form>
-                {% endif %}
-              </div>
-              {% endif %}
-            </div>
-            {% endif %}
-            {% endfor %}
-            {% if fc_segments_pending %}
-            <!-- Payment forms for segments not yet recorded -->
-            {% for seg in fc_segments_pending %}
-            {% if seg.suggested_payment > 0 %}
-            <div style="padding:.55rem .75rem;border-top:1px solid #f0f2f4;">
-              <div style="font-size:.88rem;font-weight:500;margin-bottom:.35rem;">{{ seg.member.user.get_full_name }} — ${{ seg.charge_total|currency }} hire</div>
-              <form method="post" style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="record_new_payee">
-                <input type="hidden" name="member_id" value="{{ seg.member.id }}">
-                <select name="payment_method" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
+          {% if fc_segments_pending %}
+          <!-- Unified segment payment form: all at once with single button -->
+          <form method="post" id="multi-pay-form"
+                data-confirm="Record payments from all {{ fc_segments|length }} contributors? This cannot be undone.">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="record_segment_payments">
+            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.45rem;">
+              {% if fc_segments_primary %}
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;">
+                <div>
+                  <input type="hidden" name="segment_member_0" value="{{ fc_segments_primary.member.id }}">
+                  <div style="font-size:.85rem;font-weight:500;">{{ fc_segments_primary.member.user.get_full_name }}</div>
+                  <div style="font-size:.74rem;color:#8a93a0;">${{ fc_segments_primary.charge_total|currency }} hire</div>
+                </div>
+                <select name="segment_method_0" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
                   <option value="cash">Cash</option>
                   <option value="credit">Account balance</option>
-                  <option value="invoice">Invoice / bank transfer</option>
                 </select>
-                <div class="money-wrap" style="margin-top:0;">
-                  <span class="money-sym">$</span>
-                  <input type="number" name="payment_amount" step="0.01" min="0.01" value="{{ seg.suggested_payment }}" class="finput money-input split-alloc-input" style="width:80px;" required>
+                <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
+                  <input type="number" id="seg-primary-amt" name="segment_amount_0"
+                         step="0.01" min="0" class="finput money-input"
+                         style="width:80px;background:#f0f4ff;" tabindex="-1"
+                         value="{{ fc_segments_primary.suggested_payment }}" readonly>
                 </div>
-                <button type="submit" class="cbtn primary" style="font-size:.82rem;">Record payment</button>
-              </form>
+              </div>
+              {% endif %}
+              {% for seg in fc_segments_secondary %}
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;">
+                <div>
+                  <input type="hidden" name="segment_member_{{ forloop.counter }}" value="{{ seg.member.id }}">
+                  <div style="font-size:.85rem;font-weight:500;">{{ seg.member.user.get_full_name }}</div>
+                  <div style="font-size:.74rem;color:#8a93a0;">${{ seg.charge_total|currency }} hire</div>
+                </div>
+                <select name="segment_method_{{ forloop.counter }}" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
+                  <option value="eftpos">EFTPOS</option>
+                  <option value="cash">Cash</option>
+                  <option value="credit">Account balance</option>
+                </select>
+                <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
+                  <input type="number" name="segment_amount_{{ forloop.counter }}"
+                         step="0.01" min="0.01" class="finput money-input seg-secondary"
+                         style="width:80px;" value="{{ seg.suggested_payment }}" required>
+                </div>
+              </div>
+              {% endfor %}
             </div>
-            {% endif %}
+            <p id="mp-alloc-status" style="font-size:.78rem;color:#c0392b;margin:0 0 .4rem;display:none;"></p>
+            <button type="submit" id="mp-submit-btn" class="btn">Record all payments</button>
+          </form>
+          <script>
+          (function(){
+            var form = document.getElementById('multi-pay-form');
+            if (!form) return;
+            var primaryAmtEl = document.getElementById('seg-primary-amt');
+            var statusEl = document.getElementById('mp-alloc-status');
+            var submitBtn = document.getElementById('mp-submit-btn');
+            var grandTotal = {{ total }};
+            function recalc() {
+              var sec = 0;
+              form.querySelectorAll('.seg-secondary').forEach(function(el){ sec += parseFloat(el.value) || 0; });
+              if (primaryAmtEl) primaryAmtEl.value = Math.max(0, grandTotal - sec).toFixed(2);
+              if (sec > grandTotal + 0.005) {
+                statusEl.textContent = 'Amounts exceed total by $' + (sec - grandTotal).toFixed(2) + '. Reduce an amount.';
+                statusEl.style.display = ''; submitBtn.disabled = true;
+              } else {
+                statusEl.style.display = 'none'; submitBtn.disabled = false;
+              }
+            }
+            form.querySelectorAll('.seg-secondary').forEach(function(el){
+              el.addEventListener('input', recalc); el.addEventListener('change', recalc);
+            });
+            recalc();
+          })();
+          </script>
+          {% else %}
+          <!-- fc_payments_pending only — show all pending rows, record all at once -->
+          <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
+            {% for fp in fc_payments_pending %}
+            <div style="padding:.5rem .7rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+              <div style="flex:1;min-width:120px;">
+                <div style="font-size:.85rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
+                <div style="font-size:.74rem;color:#8a93a0;">${{ fp.amount|floatformat:2 }}</div>
+              </div>
+              {% if fp.flight_invoice and fp.flight_invoice.status != 'void' %}
+              <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fp.flight_invoice.display_number }}</span>
+              {% else %}
+              <select name="method_{{ fp.id }}" form="record-all-form" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
+                <option value="eftpos"{% if fp.method == "eftpos" %} selected{% endif %}>EFTPOS</option>
+                <option value="cash"{% if fp.method == "cash" %} selected{% endif %}>Cash</option>
+                <option value="credit"{% if fp.method == "credit" %} selected{% endif %}{% if fp.member.account.has_warning %} disabled{% endif %}>Account balance</option>
+                <option value="invoice"{% if fp.method == "invoice" %} selected{% endif %}>Invoice</option>
+              </select>
+              {% endif %}
+              {% if actor.is_admin %}
+              <form method="post" data-confirm="Remove {{ fp.member.user.get_short_name }} from this payment?" style="margin:0;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="remove_payee">
+                <input type="hidden" name="payment_id" value="{{ fp.id }}">
+                <button type="submit" class="cbtn" style="font-size:.72rem;">✕</button>
+              </form>
+              {% endif %}
+            </div>
             {% endfor %}
-            {% endif %}
           </div>
-          <p id="split-alloc-total" style="font-size:.77rem;margin:.2rem 0 .6rem;"></p>
+          <form method="post" id="record-all-form"
+                data-confirm="Record payment from all {{ fc_payments_pending|length }} contributor{{ fc_payments_pending|length|pluralize }}? This cannot be undone.">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="record_all_payees">
+            <button type="submit" class="btn">Record all payments</button>
+          </form>
+          {% endif %}
           {% if not fc.is_paid %}
-          <p style="font-size:.77rem;color:#8a93a0;margin:.2rem 0 .6rem;">${{ balance_owing|currency }} remaining on this flight</p>
+          <p style="font-size:.77rem;color:#8a93a0;margin:.5rem 0 .3rem;">${{ balance_owing|currency }} remaining on this flight</p>
           {% endif %}
 
           {% elif not fc.is_paid %}
@@ -1282,7 +1341,8 @@
               <a href="{% url 'core:invoice_detail' club.slug fp_inv.id %}?back={% url 'core:booking_detail' club.slug booking.id %}&back_label=Charges" class="cbtn" style="font-size:.75rem;" data-overlay data-overlay-wide>Receipt →</a>
               {% else %}
               <form id="receipt-form-{{ forloop.counter }}" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}" style="margin:0;"
-                    data-confirm="Generate receipt for {{ fp.member.user.get_short_name }}? They will be notified by email.">
+                    data-confirm="Generate receipt for {{ fp.member.user.get_short_name }}? They will be notified by email."
+                    data-push-stack>
                 {% csrf_token %}
                 <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
                 <button type="submit" class="cbtn" style="font-size:.75rem;">Receipt</button>

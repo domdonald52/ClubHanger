@@ -3079,6 +3079,8 @@ def booking_detail(request, club_slug, booking_id):
                     from .models import AerodromeFeeType
                     ae = Aerodrome.objects.filter(club=club, id=ae_id).first() if ae_id else None
                     fee_type = AerodromeFeeType.objects.filter(id=ft_id).first() if ft_id else None
+                    _seg_mid = request.POST.get('segment_member_id', '').strip()
+                    _charge_seg = fc.segments.filter(member_id=_seg_mid).first() if _seg_mid else None
                     result = charging_service.add_charge(
                         fc, item_type, description, amount,
                         aerodrome=ae, fee_type=fee_type,
@@ -3086,6 +3088,7 @@ def booking_detail(request, club_slug, booking_id):
                         custom_name=request.POST.get('custom_name', '').strip(),
                         quantity=int(request.POST.get('quantity', 1) or 1),
                         unit_amount=request.POST.get('unit_amount', amount) or amount,
+                        segment=_charge_seg,
                     )
                     if result.ok:
                         success = 'Charge added.' + (
@@ -3182,6 +3185,48 @@ def booking_detail(request, club_slug, booking_id):
                             success = result.data['message']
                         else:
                             error = result.error
+
+        elif action == 'record_all_payees' and booking.status == 'completed':
+            fc = getattr(booking, 'flight_completion', None)
+            if fc and not fc.is_paid:
+                from decimal import Decimal as _D, InvalidOperation as _IO
+                from django.db.models import Sum as _Sum
+                from .models import FlightPayment as _FP
+                _pending = list(fc.payments.filter(paid_at__isnull=True).order_by('created_at'))
+                if not _pending:
+                    error = 'No pending payments to record.'
+                else:
+                    # Allow updating methods from the form
+                    for _fp in _pending:
+                        _new_method = request.POST.get(f'method_{_fp.id}', '').strip()
+                        if _new_method and _new_method != _fp.method:
+                            _fp.method = _new_method
+                            _fp.save(update_fields=['method'])
+                    # Validate totals
+                    _all_alloc = fc.payments.aggregate(t=_Sum('amount'))['t'] or _D('0')
+                    _fc_total = _D(str(fc.total_charge or 0))
+                    if abs(_all_alloc - _fc_total) > _D('0.01'):
+                        _diff = _fc_total - _all_alloc
+                        error = (f'Allocations total ${_all_alloc:.2f} but flight total is ${_fc_total:.2f} '
+                                 f'(${abs(_diff):.2f} {"unallocated" if _diff > 0 else "over-allocated"}).')
+                    if not error:
+                        # Check credit headroom for credit payments
+                        from .models import Account as _Acct
+                        for _fp in _pending:
+                            if _fp.method == 'credit':
+                                _sacct, _ = _Acct.objects.get_or_create(club_member=_fp.member, defaults={'balance': 0})
+                                _cerr = charging_service._check_credit_headroom(_sacct, _fp.amount)
+                                if _cerr:
+                                    error = f'{_fp.member.user.get_full_name()}: {_cerr}'
+                                    break
+                    if not error:
+                        for _fp in _pending:
+                            result = charging_service.record_allocated_payment(fc, booking, request.user, str(_fp.id))
+                            if not result.ok:
+                                error = result.error
+                                break
+                        if not error:
+                            success = 'All payments recorded.'
 
         elif action == 'record_new_payee' and booking.status == 'completed':
             fc = getattr(booking, 'flight_completion', None)

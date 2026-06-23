@@ -1000,8 +1000,12 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
               !finalUrl.pathname.startsWith('/app/') &&
               !finalUrl.pathname.startsWith('/accounts/') &&
               finalUrl.pathname !== '/logout/' && finalUrl.pathname !== '/logout') {
+            if (f.hasAttribute('data-push-stack') && _currentUrl && _currentUrl !== finalUrl.href) {
+              _stack.push(_currentUrl);
+            }
             _currentUrl = finalUrl.href;
             await loadOverlay(_currentUrl);
+            _setBackBtn(_stack.length > 0);
             // Toast fired by the page's ?saved=1 script via runScripts
           } else {
             if (wasSaved && window.toast) window.toast('Saved', 'ok');

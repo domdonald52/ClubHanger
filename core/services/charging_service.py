@@ -26,6 +26,7 @@ def add_charge(
     custom_name: str = '',
     quantity: int = 1,
     unit_amount=None,
+    segment=None,
 ) -> ServiceResult:
     """
     Add a charge line item to a FlightCompletion.
@@ -55,6 +56,7 @@ def add_charge(
         item_type=item_type,
         description=description,
         amount=amount_d,
+        segment=segment,
     )
 
     if item_type == 'landing':
