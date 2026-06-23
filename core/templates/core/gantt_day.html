@@ -117,7 +117,7 @@
   .modal-actions{display:flex;align-items:center;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;justify-content:flex-end;}
   .modal-actions .cbtn{white-space:nowrap;padding:.38rem .65rem;}
   #m-watch{margin-right:auto;order:-1;}
-  .toast{position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;z-index:900;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .toast{position:fixed;top:1.2rem;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:.6rem 1rem;border-radius:8px;font-size:.85rem;z-index:900;box-shadow:0 6px 20px rgba(0,0,0,.25);min-width:260px;max-width:min(640px,90vw);white-space:normal;text-align:center;}
   /* Detail overlay */
   .detail-overlay-modal{width:min(1100px,96vw);max-height:92vh;overflow-y:auto;padding:0;border-radius:10px;}
   /* Weather pill */
@@ -322,7 +322,7 @@
       <h2 id="modal-title">New booking</h2>
       <button class="modal-x" id="m-cancel" type="button">✕ Close</button>
     </div>
-    <div id="m-conflict-notice" hidden style="margin-bottom:.8rem;border-radius:7px;overflow:hidden;border:1px solid #fca5a5;background:#fff5f5;font-size:.82rem;"></div>
+    <div id="m-conflict-notice" hidden style="margin-bottom:.5rem;"></div>
     <!-- Status notice (shown for completed bookings) -->
     <div id="m-status-notice" hidden style="background:#f3f4f6;border-radius:7px;padding:.5rem .8rem;font-size:.83rem;color:#6b7280;margin-bottom:.7rem;display:flex;align-items:center;gap:.5rem;">
       <span style="font-size:1rem;">✓</span>

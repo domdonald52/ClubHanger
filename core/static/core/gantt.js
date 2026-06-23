@@ -494,11 +494,13 @@
     const reason = pill.dataset.conflictReason || "";
 
     if (types.includes("blockout")) {
+      const boRaw = reason.split(";").find(r => r.includes("Overlaps") || r.includes("block-out")) || reason;
+      const boName = boRaw.replace(/^Overlaps\s+/i, "").trim() || boRaw;
       items.push({
         icon: "⊘",
-        title: "Block-out conflict",
-        detail: reason.split(";").find(r => r.includes("Overlaps") || r.includes("block-out")) || reason,
-        tip: "Move this booking outside the blocked period, or remove the block-out if it was added in error.",
+        title: "Block-out",
+        detail: boName,
+        tip: "",
       });
     }
     if (types.includes("member")) {
@@ -545,15 +547,12 @@
     }
 
     if (!items.length) return null;
-    return items.map(it => `
-      <div style="padding:.55rem .75rem;border-bottom:1px solid #fca5a5;display:flex;gap:.5rem;align-items:flex-start;">
-        <span style="font-size:1rem;line-height:1.3;flex-shrink:0;">${it.icon}</span>
-        <div>
-          <strong style="font-size:.82rem;color:#c0392b;">${it.title}</strong>
-          <div style="color:#7f1d1d;margin:.1rem 0 .2rem;">${it.detail}</div>
-          <div style="color:#9a3412;font-style:italic;">Tip: ${it.tip}</div>
-        </div>
-      </div>`).join("");
+    // Compact badge row — one pill per issue
+    const badges = items.map(it => {
+      const label = it.detail ? `${it.title}: ${it.detail}` : it.title;
+      return `<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.76rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;background:#fff0f0;color:#c0392b;border:1px solid #fca5a5;white-space:nowrap;">${it.icon} ${label}</span>`;
+    }).join('');
+    return `<div style="padding:.35rem .55rem;display:flex;flex-wrap:wrap;gap:.3rem;">${badges}</div>`;
   }
 
   function openEdit(pill) {
