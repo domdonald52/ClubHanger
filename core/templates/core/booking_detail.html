@@ -809,30 +809,11 @@
             <span style="font-size:.82rem;color:#8a93a0;">${{ total|currency }} this flight</span>
           </div>
 
-          {% if fc_payments %}
-          <!-- Existing payee rows -->
+          {% if fc_payments_pending or fc_segments_pending %}
+          <!-- Pending payee rows only — paid rows shown in Payments Received below -->
           <div id="split-alloc-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.7rem;" data-flight-total="{{ total }}" data-already-allocated="{{ fc_payments_paid_total }}">
             {% for fp in fc_payments %}
-            {% if fp.is_paid %}
-            <!-- Paid row — static -->
-            <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:#f6fdf7;">
-              <div>
-                <div style="font-size:.88rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
-                <div style="font-size:.77rem;color:#8a93a0;">${{ fp.amount|currency }} · {{ fp.get_method_display }}</div>
-              </div>
-              <div style="text-align:right;">
-                <div style="font-size:.78rem;color:#2a7a3b;font-weight:600;">✓ Paid {{ fp.paid_at|date:"j M H:i" }}</div>
-                {% if actor.is_admin %}
-                <form method="post" style="margin-top:.2rem;" data-confirm="Reverse ${{ fp.amount|currency }} payment from {{ fp.member.user.get_full_name }}?">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="reverse_payment">
-                  <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                  <button type="submit" class="cbtn" style="font-size:.72rem;">Reverse</button>
-                </form>
-                {% endif %}
-              </div>
-            </div>
-            {% else %}
+            {% if not fp.is_paid %}
             <!-- Pending row — editable amount/method; Record payment updates then marks paid -->
             <div style="padding:.55rem .75rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}background:#fafbfc;">
               <div style="font-size:.88rem;font-weight:500;margin-bottom:.35rem;">{{ fp.member.user.get_full_name }}</div>
@@ -1244,10 +1225,6 @@
           </script>
           {% endif %}{% endif %}
 
-          {% if fc.is_paid and actor.is_admin %}
-          <p style="font-size:.8rem;color:#5b6573;margin:.4rem 0 .5rem;">Need to add a missed charge? Use <strong>Reverse</strong> on a payment row below to reopen the flight, add the charge, then re-record payment.</p>
-          {% endif %}
-
           {% if overpayment and overpayment > 0 and actor.is_admin %}
           <div class="notice warn" style="margin-top:.4rem;">
             <strong>Overpayment ${{ overpayment|currency }}</strong> — ${{ fc.amount_paid|currency }} collected, ${{ total|currency }} charged.
@@ -1324,6 +1301,9 @@
           </div>
           {% endwith %}
           {% endfor %}
+          {% if fc.is_paid and actor.is_admin and not fc_invoice_by_member %}
+          <p style="font-size:.76rem;color:#8a93a0;margin:.5rem 0 0;">To add a missed charge: Reverse the payment, add the charge, then re-record payment.</p>
+          {% endif %}
           {% else %}
           {# Not yet paid — invoice instead option #}
           <details id="invoice-instead-section">
