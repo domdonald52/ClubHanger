@@ -852,7 +852,7 @@
                   <div class="money-wrap" style="margin-top:0;">
                     <span class="money-sym">$</span>
                     <input type="number" name="payment_amount" step="0.01" min="0.01"
-                           value="{{ fp.amount }}" class="finput money-input split-alloc-input" style="width:80px;" required>
+                           value="{% if fp.member_id == booking.member_id and fc_payments_pending|length == 1 %}{{ balance_owing }}{% else %}{{ fp.amount }}{% endif %}" class="finput money-input split-alloc-input" style="width:80px;" required>
                   </div>
                   <button type="submit" class="btn" style="font-size:.78rem;padding:.25rem .6rem;">Record payment</button>
                 </form>
@@ -1702,8 +1702,9 @@ function updateSplitHours() {
   preview.style.display = '';
 }
 
-// Landing fee form helpers
-function lfAerodromeChange(sel) {
+// Landing fee form helpers — assigned to window so inline onchange= can reach them
+// (scripts are re-executed via new Function() in the overlay, which creates a local scope)
+window.lfAerodromeChange = function lfAerodromeChange(sel) {
   const feeTypeSel = document.getElementById('lf-fee-type');
   const customDiv  = document.getElementById('lf-custom');
   const noFeesMsg  = document.getElementById('lf-nofees-msg');
@@ -1713,7 +1714,6 @@ function lfAerodromeChange(sel) {
 
   feeTypeSel.innerHTML = '<option value="">— select fee type —</option>';
   if (!sel.value) {
-    // Custom / unknown aerodrome — show manual fields
     if (customDiv) customDiv.style.display = 'flex';
     if (noFeesMsg) noFeesMsg.hidden = true;
     if (descInp) { descInp.name = ''; descInp.value = ''; }
@@ -1721,7 +1721,6 @@ function lfAerodromeChange(sel) {
     return;
   }
   if (customDiv) customDiv.style.display = 'none';
-  // Remove custom-desc from submission so it doesn't overwrite the hidden lf-desc value
   if (custDescInp) { custDescInp.name = ''; custDescInp.required = false; }
   if (descInp) descInp.name = 'description';
 
@@ -1738,13 +1737,13 @@ function lfAerodromeChange(sel) {
       if (noFeesMsg) noFeesMsg.hidden = true;
       if (fees.length === 1) {
         feeTypeSel.value = fees[0].id;
-        lfFeeTypeChange(feeTypeSel);
+        window.lfFeeTypeChange(feeTypeSel);
       }
     }
   } catch(e) {}
-}
+};
 
-function lfFeeTypeChange(sel) {
+window.lfFeeTypeChange = function lfFeeTypeChange(sel) {
   const opt = sel.options[sel.selectedIndex];
   const amountInp = document.getElementById('lf-amount');
   const unitInp   = document.getElementById('lf-unit');
@@ -1757,7 +1756,13 @@ function lfFeeTypeChange(sel) {
     if (amountInp) amountInp.value = '';
     if (unitInp)   unitInp.value   = '';
   }
-}
+};
+
+// Fire lfAerodromeChange immediately if the browser restored a selected aerodrome value
+(function() {
+  var lfa = document.getElementById('lf-aerodrome');
+  if (lfa && lfa.value) window.lfAerodromeChange(lfa);
+})();
 
 // On load, prevent the empty custom-desc from shadowing lf-desc
 (function() {

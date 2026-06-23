@@ -21,8 +21,9 @@
   .pi-body .back-link{display:none!important;}
 
   /* ── Shared component styles (mirrors base.html — keep in sync) ── */
-  :root{
-    --primary:#2f7dd1;--banner:#1f2933;
+  /* Scope to .pi-wrap so these don't bleed out to :root and override the page theme */
+  .pi-wrap{
+    --primary:{{ theme.primary|default:'#2f7dd1' }};--banner:#1f2933;
     --dual-accent:{{ theme.dual_accent|default:'#1D9E75' }};
   }
   .stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;flex-wrap:wrap;}
