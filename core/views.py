@@ -441,7 +441,9 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'acct_warning': acct_warning,
         })
     aircraft_data = [
-        {'id': a.id, 'reg': a.registration, 'type': a.aircraft_type.name if a.aircraft_type_id else ''} for a in aircraft_list
+        {'id': a.id, 'reg': a.registration, 'type': a.aircraft_type.name if a.aircraft_type_id else '',
+         'icon': 'twin' if (a.engine_count or 1) >= 2 else 'high_wing'}
+        for a in aircraft_list
     ]
     instructors_data = [
         {
