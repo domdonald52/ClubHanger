@@ -911,40 +911,74 @@
           </script>
           {% else %}
           <!-- fc_payments_pending only — show all pending rows, record all at once -->
-          <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
-            {% for fp in fc_payments_pending %}
-            <div style="padding:.5rem .7rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-              <div style="flex:1;min-width:120px;">
-                <div style="font-size:.85rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
-                <div style="font-size:.74rem;color:#8a93a0;">${{ fp.amount|floatformat:2 }}</div>
-              </div>
-              {% if fp.flight_invoice and fp.flight_invoice.status != 'void' %}
-              <span style="font-size:.77rem;color:#8a93a0;">Via invoice {{ fp.flight_invoice.display_number }}</span>
-              {% else %}
-              <select name="method_{{ fp.id }}" form="record-all-form" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
-                <option value="eftpos"{% if fp.method == "eftpos" %} selected{% endif %}>EFTPOS</option>
-                <option value="cash"{% if fp.method == "cash" %} selected{% endif %}>Cash</option>
-                <option value="credit"{% if fp.method == "credit" %} selected{% endif %}{% if fp.member.account.has_warning %} disabled{% endif %}>Account balance</option>
-                <option value="invoice"{% if fp.method == "invoice" %} selected{% endif %}>Invoice</option>
-              </select>
-              {% endif %}
-              {% if actor.is_admin %}
-              <form method="post" data-confirm="Remove {{ fp.member.user.get_short_name }} from this payment?" style="margin:0;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="remove_payee">
-                <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                <button type="submit" class="cbtn" style="font-size:.72rem;">✕</button>
-              </form>
-              {% endif %}
-            </div>
-            {% endfor %}
-          </div>
           <form method="post" id="record-all-form"
                 data-confirm="Record payment from all {{ fc_payments_pending|length }} contributor{{ fc_payments_pending|length|pluralize }}? This cannot be undone.">
             {% csrf_token %}
             <input type="hidden" name="action" value="record_all_payees">
-            <button type="submit" class="btn">Record all payments</button>
+            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
+              {% for fp in fc_payments_pending %}
+              <div style="padding:.5rem .7rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:.5rem;">
+                <div style="font-size:.85rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
+                {% if fp.flight_invoice and fp.flight_invoice.status != 'void' %}
+                <span style="font-size:.77rem;color:#8a93a0;grid-column:2/-1;">Via invoice {{ fp.flight_invoice.display_number }}</span>
+                {% else %}
+                <select name="method_{{ fp.id }}" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
+                  <option value="eftpos"{% if fp.method == "eftpos" %} selected{% endif %}>EFTPOS</option>
+                  <option value="cash"{% if fp.method == "cash" %} selected{% endif %}>Cash</option>
+                  <option value="credit"{% if fp.method == "credit" %} selected{% endif %}{% if fp.member.account.has_warning %} disabled{% endif %}>Account balance</option>
+                  <option value="invoice"{% if fp.method == "invoice" %} selected{% endif %}>Invoice</option>
+                </select>
+                <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
+                  <input type="number" name="amount_{{ fp.id }}" step="0.01" min="0.01"
+                         value="{{ fp.amount|floatformat:2 }}"
+                         class="finput money-input ra-amt" style="width:80px;" required>
+                </div>
+                {% if actor.is_admin %}
+                <button type="button" class="cbtn ra-remove" style="font-size:.72rem;"
+                        data-payment-id="{{ fp.id }}"
+                        data-confirm-msg="Remove {{ fp.member.user.get_short_name }} from this payment?">✕</button>
+                {% endif %}
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <p id="ra-status" style="font-size:.78rem;color:#c0392b;margin:0 0 .4rem;display:none;"></p>
+            <button type="submit" id="ra-submit-btn" class="btn">Record all payments</button>
           </form>
+          <script>
+          (function(){
+            var form = document.getElementById('record-all-form');
+            if (!form) return;
+            var statusEl = document.getElementById('ra-status');
+            var submitBtn = document.getElementById('ra-submit-btn');
+            var grandTotal = {{ total }};
+            function recalc() {
+              var s = 0;
+              form.querySelectorAll('.ra-amt').forEach(function(el){ s += parseFloat(el.value) || 0; });
+              var diff = Math.abs(s - grandTotal);
+              if (diff > 0.005) {
+                var over = s > grandTotal;
+                statusEl.textContent = (over ? 'Over by $' : 'Under by $') + Math.abs(s - grandTotal).toFixed(2) + ' — adjust amounts to equal $' + grandTotal.toFixed(2);
+                statusEl.style.display = ''; submitBtn.disabled = true;
+              } else {
+                statusEl.style.display = 'none'; submitBtn.disabled = false;
+              }
+            }
+            form.querySelectorAll('.ra-amt').forEach(function(el){
+              el.addEventListener('input', recalc); el.addEventListener('change', recalc);
+            });
+            form.querySelectorAll('.ra-remove').forEach(function(btn){
+              btn.addEventListener('click', function(){
+                if (!window.confirm(btn.dataset.confirmMsg || 'Remove?')) return;
+                var pf = document.createElement('form');
+                pf.method = 'post'; pf.style.display = 'none';
+                pf.innerHTML = '<input name="csrfmiddlewaretoken" value="' + document.querySelector('[name=csrfmiddlewaretoken]').value + '"><input name="action" value="remove_payee"><input name="payment_id" value="' + btn.dataset.paymentId + '">';
+                document.body.appendChild(pf); pf.submit();
+              });
+            });
+            recalc();
+          })();
+          </script>
           {% endif %}
           {% if not fc.is_paid %}
           <p style="font-size:.77rem;color:#8a93a0;margin:.5rem 0 .3rem;">${{ balance_owing|currency }} remaining on this flight</p>

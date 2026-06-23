@@ -3196,12 +3196,24 @@ def booking_detail(request, club_slug, booking_id):
                 if not _pending:
                     error = 'No pending payments to record.'
                 else:
-                    # Allow updating methods from the form
+                    # Allow updating amounts and methods from the form
                     for _fp in _pending:
                         _new_method = request.POST.get(f'method_{_fp.id}', '').strip()
+                        _new_amt_str = request.POST.get(f'amount_{_fp.id}', '').strip()
+                        _changed = []
                         if _new_method and _new_method != _fp.method:
                             _fp.method = _new_method
-                            _fp.save(update_fields=['method'])
+                            _changed.append('method')
+                        if _new_amt_str:
+                            try:
+                                _new_amt = round(_D(_new_amt_str), 2)
+                                if _new_amt > 0 and _new_amt != _fp.amount:
+                                    _fp.amount = _new_amt
+                                    _changed.append('amount')
+                            except _IO:
+                                pass
+                        if _changed:
+                            _fp.save(update_fields=_changed)
                     # Validate totals
                     _all_alloc = fc.payments.aggregate(t=_Sum('amount'))['t'] or _D('0')
                     _fc_total = _D(str(fc.total_charge or 0))
