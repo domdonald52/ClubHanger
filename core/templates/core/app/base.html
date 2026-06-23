@@ -186,7 +186,11 @@
   <span class="app-bar-title">{% block page_title %}ClubHangar{% endblock %}</span>
   {% endblock %}
   {% block app_bar_right %}
-  <button class="app-bar-action" onclick="appSignOutConfirm()" title="Sign out" style="padding:.3rem .2rem .3rem .5rem;">
+  <a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" style="position:relative;padding:.3rem .1rem .3rem .4rem;" title="Notifications">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    {% if unread_notifications_count %}<span style="position:absolute;top:5px;right:5px;width:7px;height:7px;background:#e03131;border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}
+  </a>
+  <button class="app-bar-action" onclick="appSignOutConfirm()" title="Sign out" style="padding:.3rem .2rem .3rem .4rem;">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
   </button>
   {% endblock %}

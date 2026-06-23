@@ -1224,6 +1224,8 @@
     btnCharges.hidden = true;
     btnSave.hidden = true;
     document.getElementById("m-status-notice").hidden = true;
+    // Blockout/member/aircraft conflicts don't block checkout — pilot is aware.
+    conflictNotice.hidden = true;
 
     if (dvView) dvView.hidden = false;
     if (dvBack) dvBack.hidden = false;
@@ -1247,47 +1249,41 @@
       .then(data => {
         _departHasCredWarnings = !!(data.has_warnings || data.has_maint_warnings);
 
-        const STATUS_ICON  = { ok: "✓", warn: "⚠", info: "ℹ" };
-        const STATUS_COLOR = { ok: "#2a7a3b", warn: "#c76c00", info: "#2563eb" };
-        const URGENCY_BAR  = { green: "#4caf50", amber: "#ff9800", red: "#e03131" };
+        // Compact pill helper — one badge per credential/maintenance item
+        function _dvPill(label, type) {
+          const cfg = {
+            ok:    { bg:'#f0fdf4', color:'#166534', border:'#bbf7d0', icon:'✓' },
+            warn:  { bg:'#fff7ed', color:'#c76c00', border:'#fdba74', icon:'⚠' },
+            amber: { bg:'#fff7ed', color:'#c76c00', border:'#fdba74', icon:'⚠' },
+            red:   { bg:'#fee2e2', color:'#b91c1c', border:'#fca5a5', icon:'⚠' },
+          }[type] || { bg:'#f3f4f6', color:'#6b7280', border:'#d1d5db', icon:'·' };
+          return `<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.75rem;font-weight:600;padding:.18rem .48rem;border-radius:10px;background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.border};white-space:nowrap;">${cfg.icon} ${label}</span>`;
+        }
+        const _dvHdr = (t) => `<div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;padding:.3rem 0 .15rem;">${t}</div>`;
+        const _dvPillRow = (pills, fallback) => `<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;">${pills || fallback}</div>`;
 
-        const memberRows = (data.checks || []).map(c =>
-          `<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.25rem 0;border-bottom:1px solid #f0f2f4;">
-             <span style="font-size:.9rem;color:${STATUS_COLOR[c.status] || '#5b6573'};flex-shrink:0;width:18px;">${STATUS_ICON[c.status] || '?'}</span>
-             <div>
-               <div style="font-size:.83rem;font-weight:600;color:#1f2933;">${c.label}</div>
-               <div style="font-size:.79rem;color:#5b6573;">${c.detail}</div>
-             </div>
-           </div>`
+        const memberPills = (data.checks || []).map(c =>
+          _dvPill(c.label, c.status === 'ok' ? 'ok' : 'warn')
         ).join('');
 
         const allMaint = data.maintenance || [];
         const warnMaint = allMaint.filter(m => m.urgency === 'amber' || m.urgency === 'red');
-        const maintRows = warnMaint.map(m => {
-          const barColor = URGENCY_BAR[m.urgency] || '#4caf50';
-          const pct = m.progress_pct !== null ? m.progress_pct : null;
-          const bar = pct !== null
-            ? `<div style="height:5px;background:#eef1f4;border-radius:3px;margin-top:.25rem;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;"></div></div>`
-            : '';
-          return `<div style="padding:.25rem 0;border-bottom:1px solid #f0f2f4;">
-                    <div style="display:flex;justify-content:space-between;align-items:baseline;">
-                      <span style="font-size:.83rem;font-weight:600;color:#1f2933;">${m.name}</span>
-                      <span style="font-size:.75rem;color:${barColor};font-weight:600;">${m.detail}</span>
-                    </div>${bar}
-                  </div>`;
-        }).join('');
+        const maintPills = warnMaint.map(m =>
+          _dvPill(`${m.name}${m.detail ? ' · ' + m.detail : ''}`, m.urgency)
+        ).join('');
 
-        const maintAllClear = allMaint.length > 0 && warnMaint.length === 0
-          ? `<div style="font-size:.83rem;color:#2a7a3b;padding:.25rem 0;">✓ No maintenance concerns</div>`
-          : '';
         const hobbsNote = data.current_hobbs !== null && data.current_hobbs !== undefined
-          ? `<div style="font-size:.77rem;color:#8a93a0;margin-top:.4rem;">Last recorded Hobbs: <strong>${data.current_hobbs}</strong></div>`
+          ? `<div style="font-size:.73rem;color:#9ca3af;margin-top:.1rem;">Last Hobbs: <strong>${data.current_hobbs}</strong></div>`
           : '';
 
         let html = '';
-        if (memberRows) html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.35rem 0 .15rem;">Pilot — ${data.member}</div>${memberRows}`;
-        if (allMaint.length > 0) html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.5rem 0 .15rem;">Aircraft — ${data.aircraft_reg || ''}</div>${maintRows}${maintAllClear}${hobbsNote}`;
-        if (!html) html = '<p style="color:#2a7a3b;font-size:.84rem;padding:.3rem 0;">✓ All checks passed.</p>';
+        if ((data.checks || []).length > 0) {
+          html += _dvHdr(`Pilot — ${data.member}`) + _dvPillRow(memberPills, _dvPill('All current', 'ok'));
+        }
+        if (allMaint.length > 0) {
+          html += _dvHdr(`Aircraft — ${data.aircraft_reg || ''}`) + _dvPillRow(maintPills, _dvPill('No maintenance concerns', 'ok')) + hobbsNote;
+        }
+        if (!html) html = `<div style="font-size:.82rem;color:#2a7a3b;">✓ All checks passed.</div>`;
         if (dvCredSection) dvCredSection.innerHTML = html;
 
         if (dvOverrideSec) dvOverrideSec.hidden = !_departHasCredWarnings;

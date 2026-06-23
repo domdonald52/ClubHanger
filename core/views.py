@@ -170,12 +170,8 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         return True, '; '.join(r for _, r in issues), [t for t, _ in issues]
 
     def booking_geometry(b):
-        # Completed bookings that returned early: display ends at arrived_at, not scheduled_end
-        _arrived = getattr(b, 'arrived_at', None)
-        effective_end = (
-            _arrived if (b.status == 'completed' and _arrived and _arrived < b.scheduled_end)
-            else b.scheduled_end
-        )
+        # Always use the scheduled end — actual flight time may differ but the booked slot stays fixed.
+        effective_end = b.scheduled_end
         start_min = max(0, int((b.scheduled_start - day_start).total_seconds() // 60))
         end_min = min(total_minutes, int((effective_end - day_start).total_seconds() // 60))
         dur_min = max(slot_minutes, end_min - start_min)
@@ -2405,7 +2401,7 @@ def manage_bookings(request, club_slug):
                 .exclude(pk=b.pk).exists())
             if _ac_clash: r.append('Aircraft double-booked')
             if _in_clash: r.append('Instructor double-booked')
-        if b.blockout_conflict:
+        if b.blockout_conflict and b.status not in ('departed', 'completed'):
             r.append(b.blockout_conflict_reason or 'Block-out conflict')
         if b.member:
             if b.member.standing in ('suspended', 'lapsed', 'resigned'):
@@ -2648,6 +2644,7 @@ def booking_detail(request, club_slug, booking_id):
                 )
                 audit_notes = f'Compliance override: {elig_override_reason}' if elig_override_reason else None
                 _audit(booking, request.user, 'departed', notes=audit_notes)
+                SlotWatch.objects.filter(booking=booking).delete()
                 success = 'Checked out.'
 
         elif action == 'undo_depart' and booking.status == 'departed' and actor.is_admin:
@@ -3692,6 +3689,24 @@ def booking_detail(request, club_slug, booking_id):
         _acct and _acct.balance < 0 and _acct.has_warning
     )
 
+    # Other FCs for the booking member that were paid (in the same session) but not yet receipted.
+    # We surface these so the admin can generate a receipt for each in one click.
+    member_copaid_fcs = []
+    if fc and fc.is_paid:
+        _receipted_fc_ids = set(
+            Invoice.objects.filter(member=booking.member, club=club)
+            .exclude(status='void')
+            .values_list('flight_completion_id', flat=True)
+        )
+        member_copaid_fcs = list(
+            FlightCompletion.objects
+            .filter(booking__member=booking.member, booking__club=club, paid_at__isnull=False)
+            .exclude(id=fc.id)
+            .exclude(id__in=_receipted_fc_ids)
+            .select_related('booking__aircraft', 'booking')
+            .order_by('-booking__scheduled_start')
+        )
+
     # Instructor availability at this booking's time slot (two queries, not N+1)
     _active_statuses = ['confirmed', 'departed']
     _confirmed_conflict_ids = set(
@@ -3756,6 +3771,7 @@ def booking_detail(request, club_slug, booking_id):
         'other_outstanding_total': other_outstanding_total,
         'other_total': other_total,
         'other_total_count': other_total_count,
+        'member_copaid_fcs': member_copaid_fcs,
         'aerodromes': aerodromes,
         'flight_types': flight_types,
         'requires_decl': requires_decl,
@@ -6488,6 +6504,7 @@ def generate_invoice(request, club_slug, booking_id):
     _FP_METHOD_MAP = {'cash': 'cash', 'eftpos': 'eftpos', 'credit': 'account_credit'}
     fp_list = list(fc.payments.all())
     existing_member_ids = set(fc.invoices.values_list('member_id', flat=True))
+    _for_member_id = request.POST.get('for_member_id', '').strip()
 
     from decimal import Decimal as _D
     if fp_list:
@@ -6496,6 +6513,7 @@ def generate_invoice(request, club_slug, booking_id):
              _FP_METHOD_MAP.get(fp.method, 'bank_transfer'))
             for fp in fp_list
             if fp.member_id not in existing_member_ids
+            and (not _for_member_id or str(fp.member_id) == _for_member_id)
         ]
         is_split = len(fp_list) > 1
     else:
@@ -11187,6 +11205,13 @@ def app_account(request, club_slug):
     for _inv in unpaid_invoices:
         _inv.needs_attention = _inv.is_overdue or _inv.issue_date <= _thirty_days_ago
 
+    paid_receipts = list(
+        _Inv.objects
+        .filter(member=actor, club=club, status='paid')
+        .select_related('flight_completion__booking')
+        .order_by('-paid_at')[:10]
+    )
+
     from decimal import Decimal as _D
     unpaid_flights_total = sum((fc.balance_owing or _D(0)) for fc in unpaid_flights)
     unpaid_invoices_total = sum((inv.balance_due or _D(0)) for inv in unpaid_invoices)
@@ -11199,6 +11224,7 @@ def app_account(request, club_slug):
         'unpaid_invoices': unpaid_invoices,
         'unpaid_flights_total': unpaid_flights_total,
         'unpaid_invoices_total': unpaid_invoices_total,
+        'paid_receipts': paid_receipts,
     })
 
 

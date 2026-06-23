@@ -846,7 +846,7 @@
                   <select name="payment_method" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                     <option value="eftpos"{% if fp.method == "eftpos" %} selected{% endif %}>EFTPOS</option>
                     <option value="cash"{% if fp.method == "cash" %} selected{% endif %}>Cash</option>
-                    <option value="credit"{% if fp.method == "credit" %} selected{% endif %}>Account balance</option>
+                    <option value="credit"{% if fp.method == "credit" %} selected{% endif %}{% if fp.member.account.has_warning %} disabled{% endif %}>Account balance{% if fp.member.account.has_warning %} (over limit){% endif %}</option>
                     <option value="invoice"{% if fp.method == "invoice" %} selected{% endif %}>Invoice / bank transfer</option>
                   </select>
                   <div class="money-wrap" style="margin-top:0;">
@@ -1105,7 +1105,7 @@
             var primaryAmtEl = document.getElementById('contrib-amount-0');
             var payeeIdx = 0;
             var currentFlightBalance = {{ balance_owing }};
-            var allMembers = [{% for m in club_members %}{id:{{ m.id }},name:"{{ m.user.get_full_name|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}];
+            var allMembers = [{% for m in club_members %}{id:{{ m.id }},name:"{{ m.user.get_full_name|escapejs }}",overLimit:{{ m.account.has_warning|yesno:'true,false' }}}{% if not forloop.last %},{% endif %}{% endfor %}];
 
             function recalcTotal() {
               var t = 0;
@@ -1150,11 +1150,11 @@
               var idx = payeeIdx;
               var row = document.createElement('div');
               row.className = 'contrib-row-added';
-              row.style.cssText = 'display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;';
+              row.style.cssText = 'display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;';
               var memberSel = document.createElement('select');
               memberSel.name = 'contributor_member_' + idx;
               memberSel.className = 'finput'; memberSel.required = true;
-              memberSel.style.cssText = 'font-size:.82rem;padding:.3rem .5rem;';
+              memberSel.style.cssText = 'font-size:.82rem;padding:.3rem .5rem;width:100%;min-width:0;';
               var blank = document.createElement('option'); blank.value = ''; blank.textContent = '— member —';
               memberSel.appendChild(blank);
               allMembers.forEach(function(m) {
@@ -1167,6 +1167,16 @@
               [['eftpos','EFTPOS'],['cash','Cash'],['credit','Account balance']].forEach(function(pair) {
                 var o = document.createElement('option'); o.value = pair[0]; o.textContent = pair[1];
                 methSel.appendChild(o);
+              });
+              memberSel.addEventListener('change', function() {
+                var m = allMembers.find(function(x) { return x.id === parseInt(memberSel.value); });
+                var creditOpt = methSel.querySelector('option[value="credit"]');
+                if (creditOpt) {
+                  var overLimit = !!(m && m.overLimit);
+                  creditOpt.disabled = overLimit;
+                  creditOpt.textContent = overLimit ? 'Account balance (over limit)' : 'Account balance';
+                  if (overLimit && methSel.value === 'credit') methSel.value = 'eftpos';
+                }
               });
               var amtWrap = document.createElement('div');
               amtWrap.className = 'money-wrap'; amtWrap.style.marginTop = '0';
@@ -1185,14 +1195,19 @@
               rmBtn.textContent = '✕'; rmBtn.title = 'Remove payee';
               rmBtn.addEventListener('click', function() {
                 contPanel.removeChild(row);
-                if (!contPanel.querySelector('.contrib-row-added') && splitNote)
-                  splitNote.style.display = 'none';
+                if (!contPanel.querySelector('.contrib-row-added')) {
+                  if (splitNote) splitNote.style.display = 'none';
+                  var invSec = document.getElementById('invoice-instead-section');
+                  if (invSec) invSec.style.display = '';
+                }
                 recalcAllocation();
               });
               row.appendChild(memberSel); row.appendChild(methSel);
               row.appendChild(amtWrap); row.appendChild(rmBtn);
               contPanel.appendChild(row);
               if (splitNote) splitNote.style.display = '';
+              var invSec = document.getElementById('invoice-instead-section');
+              if (invSec) invSec.style.display = 'none';
               recalcAllocation();
             }
 
@@ -1269,7 +1284,7 @@
               {% if inv.is_overdue %}<span style="color:#c0392b;font-size:.75rem;margin-left:.3rem;">⚠ {{ inv.days_overdue }}d overdue</span>{% endif %}
             </div>
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.3rem;">
-              <a href="{% url 'core:invoice_detail' club.slug inv.id %}" class="btn" style="font-size:.8rem;padding:.3rem .65rem;">View</a>
+              <a href="{% url 'core:invoice_detail' club.slug inv.id %}?back={% url 'core:booking_detail' club.slug booking.id %}" class="btn" style="font-size:.8rem;padding:.3rem .65rem;">View</a>
               <a href="{% url 'core:invoice_print' club.slug inv.id %}" target="_blank" class="cbtn" style="font-size:.8rem;">Print / PDF</a>
             </div>
           </div>
@@ -1284,16 +1299,46 @@
           </div>
           {% endif %}
           {% elif fc.is_paid %}
-          {# Paid directly — offer receipt generation per contributor #}
+          {# Paid directly — per-contributor receipt generation #}
           <p style="font-size:.78rem;font-weight:600;color:#5b6573;margin:0 0 .35rem;">Receipts</p>
-          <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
-                data-confirm="Generate receipt invoice{{ fc_payments_paid|length|pluralize }} for {{ fc_payments_paid|length }} contributor{{ fc_payments_paid|length|pluralize }}? Each will be notified by email.">
-            {% csrf_token %}
-            <button type="submit" class="cbtn" style="font-size:.8rem;">Generate receipt{{ fc_payments_paid|length|pluralize }}</button>
-          </form>
-          <p style="font-size:.73rem;color:#adb5bd;margin:.3rem 0 0;">A paid receipt invoice will be emailed to each contributor as confirmation of payment.</p>
+          {% for fp in fc_payments_paid %}
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;padding:.3rem 0;{% if not forloop.last or member_copaid_fcs %}border-bottom:1px solid #f0f2f4;margin-bottom:.3rem;{% endif %}">
+            <div>
+              <div style="font-size:.82rem;font-weight:500;">{{ fp.member.user.get_short_name }}</div>
+              <div style="font-size:.74rem;color:#8a93a0;">${{ fp.amount|floatformat:2 }} · {{ fp.get_method_display }}</div>
+            </div>
+            {% if fp.flight_invoice and fp.flight_invoice.status != 'void' %}
+            <a href="{% url 'core:invoice_detail' club.slug fp.flight_invoice.id %}?back={% url 'core:booking_detail' club.slug booking.id %}" class="cbtn" style="font-size:.78rem;white-space:nowrap;">View receipt</a>
+            {% else %}
+            <form method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
+                  data-confirm="Generate receipt for {{ fp.member.user.get_short_name }} (${{ fp.amount|floatformat:2 }}{% if fp.member.id == booking.member_id and member_copaid_fcs %} plus {{ member_copaid_fcs|length }} other flight{{ member_copaid_fcs|length|pluralize }}{% endif %})? They will be notified by email.">
+              {% csrf_token %}
+              <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
+              {% if fp.member.id == booking.member_id and member_copaid_fcs %}
+              {% for ofc in member_copaid_fcs %}
+              <input type="hidden" name="other_fc_ids" value="{{ ofc.id }}">
+              {% endfor %}
+              {% endif %}
+              <button type="submit" class="cbtn" style="font-size:.78rem;white-space:nowrap;">Generate receipt</button>
+            </form>
+            {% endif %}
+          </div>
+          {% endfor %}
+          {% if member_copaid_fcs %}
+          <div style="background:#f8f9fb;border-radius:6px;padding:.4rem .6rem;margin-bottom:.3rem;">
+            <div style="font-size:.74rem;font-weight:600;color:#5b6573;margin-bottom:.2rem;">Also collected this session</div>
+            {% for ofc in member_copaid_fcs %}
+            <div style="font-size:.78rem;color:#374151;display:flex;justify-content:space-between;">
+              <span>{{ ofc.booking.aircraft.registration }} · {{ ofc.booking.scheduled_start|date:"j M" }}</span>
+              <span style="font-weight:600;">${{ ofc.total_charge|floatformat:2 }}</span>
+            </div>
+            {% endfor %}
+            <div style="font-size:.72rem;color:#8a93a0;margin-top:.2rem;">Receipt for {{ booking.member.user.get_short_name }} will cover all of the above.</div>
+          </div>
+          {% endif %}
+          <p style="font-size:.73rem;color:#adb5bd;margin:.3rem 0 0;">A paid receipt will be emailed as confirmation of payment.</p>
           {% else %}
-          <details>
+          <details id="invoice-instead-section">
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
             <div style="margin-top:.4rem;">
               {% if total %}
