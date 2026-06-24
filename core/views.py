@@ -2721,7 +2721,7 @@ def booking_detail(request, club_slug, booking_id):
             _email_unconfirmed(booking)
             success = 'Confirmation undone — flight is back to pending.'
 
-        elif action == 'return_aircraft' and booking.status == 'departed' and (actor.is_admin or actor.is_instructor):
+        elif action == 'return_aircraft' and booking.status in ('departed', 'returned') and (actor.is_admin or actor.is_instructor) and not fc:
             _ret_hobbs     = request.POST.get('return_hobbs', '').strip() or None
             _ret_tacho     = request.POST.get('return_tacho', '').strip() or None
             _ret_airswitch = request.POST.get('return_airswitch', '').strip() or None

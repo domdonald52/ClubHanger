@@ -920,6 +920,17 @@ class Command(BaseCommand):
                     charge_item=ci, sort_order=i,
                 )
 
+            # Sync invoice state back onto the FC so display_status_key is correct.
+            _fc_upd = ['invoice_issued']
+            fc.invoice_issued = True
+            if status == "paid":
+                fc.amount_paid = fc.total_charge
+                fc.paid_at = paid_at
+                _fc_upd += ['amount_paid', 'paid_at']
+                # Also advance the booking to completed
+                Booking.objects.filter(pk=b.pk).update(status='completed')
+            fc.save(update_fields=_fc_upd)
+
         # Add one subscription invoice for a member renewal (for UI demo)
         renewal_member = next(
             (m for m in members if m.user.username == "sarah"), None)
@@ -951,6 +962,12 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(f"  Invoices: {invoices_created} created")
+
+        # Ensure all invoice-method FCs are marked invoice_issued so they don't
+        # appear as "Charges outstanding" in the bookings list.
+        FlightCompletion.objects.filter(
+            booking__club=club, payment_method="invoice", invoice_issued=False
+        ).update(invoice_issued=True)
 
     # ── Maintenance items ─────────────────────────────────────────────────────
 

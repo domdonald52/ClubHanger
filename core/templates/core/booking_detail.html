@@ -267,9 +267,9 @@
   {% endif %}
 
   <!-- ── DEPARTED: Return aircraft ── -->
-  {% if booking.status == 'departed' %}
+  {% if booking.status == 'departed' or booking.status == 'returned' and not fc %}
   <div class="section">
-    <h2 class="sh2">Return aircraft</h2>
+    <h2 class="sh2">Return aircraft{% if booking.status == 'returned' %} <span style="font-size:.75rem;font-weight:400;color:#c0392b;">(incomplete — please re-log this flight)</span>{% endif %}</h2>
     <form method="post" id="checkin-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="return_aircraft">
