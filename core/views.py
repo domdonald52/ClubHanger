@@ -878,48 +878,6 @@ def depart_booking(request, booking_id):
 
 @login_required
 @require_POST
-@transaction.atomic
-def checkin_booking(request, booking_id):
-    booking = get_object_or_404(Booking, id=booking_id)
-    club = booking.club
-    try:
-        actor = ClubMember.objects.get(user=request.user, club=club)
-    except ClubMember.DoesNotExist:
-        return JsonResponse({'error': 'Not authorized'}, status=403)
-    if not (actor.is_admin or actor.is_instructor):
-        return JsonResponse({'error': 'Instructors only'}, status=403)
-
-    # This API endpoint now performs the "return aircraft" step (marks booking returned).
-    # Full flight logging is done via the booking_detail overlay.
-    if booking.status != 'departed':
-        return JsonResponse({'error': 'Booking is not departed.'}, status=400)
-    ac = booking.aircraft
-    ret_hobbs     = request.POST.get('return_hobbs', '').strip() or None
-    ret_tacho     = request.POST.get('return_tacho', '').strip() or None
-    ret_airswitch = request.POST.get('return_airswitch', '').strip() or None
-    if ac.records_hobbs and not ret_hobbs:
-        return JsonResponse({'error': 'Hobbs reading at return is required.'}, status=400)
-    Booking.objects.filter(pk=booking.pk).update(
-        return_hobbs=ret_hobbs,
-        return_tacho=ret_tacho,
-        return_airswitch=ret_airswitch,
-        return_condition=request.POST.get('return_condition', 'serviceable'),
-        return_notes=request.POST.get('return_notes', '').strip(),
-        returned_at=timezone.now(),
-        arrived_at=timezone.now(),
-        departed_aircraft_id=booking.aircraft_id,
-        status='returned',
-    )
-    booking.refresh_from_db()
-    from django.urls import reverse as _r
-    charges_url = _r('core:booking_detail', kwargs={
-        'club_slug': club.slug, 'booking_id': booking.id
-    })
-    return JsonResponse({'success': True, 'status': 'returned', 'charges_url': charges_url})
-
-
-@login_required
-@require_POST
 def toggle_watch(request, booking_id):
     booking = get_object_or_404(Booking, id=booking_id)
     try:

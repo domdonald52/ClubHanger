@@ -361,13 +361,9 @@
       <input type="hidden" name="pilot_id_0" value="{{ booking.member.id }}">
       <input type="hidden" name="hours_0" id="split-h0-hidden" value="">
 
-      <!-- Split flight — always shows row 0 with booking member -->
-      <div style="display:flex;align-items:center;gap:.5rem;margin-top:.85rem;">
-        <span style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#c8cdd4;white-space:nowrap;">Optional</span>
-        <div style="flex:1;border-top:1px solid #e8eaed;"></div>
-      </div>
       {% if error %}<div class="notice err" style="margin:.6rem 0 .4rem;">{{ error }}</div>{% endif %}
-      <div id="split-section" style="margin-top:.5rem;">
+      <!-- Split section — hidden until + Split flight is clicked -->
+      <div id="split-section" style="display:none;margin-top:.85rem;">
         <!-- Row 0: booking member, auto-calculated hours -->
         <div style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.35rem;">
           <div class="flabel" style="flex:1;margin-bottom:0;">Pilot
@@ -381,6 +377,8 @@
         <!-- Extra rows added dynamically -->
         <div id="split-extra-rows"></div>
         <div id="split-match-msg" style="font-size:.82rem;font-weight:600;min-height:1.3rem;margin-bottom:.3rem;"></div>
+      </div>
+      <div style="margin-top:.85rem;">
         <button type="button" class="cbtn-add" id="split-add-btn" onclick="addSplitRow()">+ Split flight</button>
       </div>
     </form>
@@ -506,6 +504,12 @@
       update();
 
       window.addSplitRow = function() {
+        var section = document.getElementById('split-section');
+        var btn = document.getElementById('split-add-btn');
+        if (section.style.display === 'none') {
+          section.style.display = '';
+          btn.textContent = '+ Add pilot';
+        }
         extraCount++;
         var idx = extraCount;
         var div = document.createElement('div');
@@ -534,6 +538,10 @@
           r.querySelector('select').name = 'pilot_id_' + n;
           r.querySelector('.split-extra-hrs').name = 'hours_' + n;
         });
+        if (extraCount === 0) {
+          document.getElementById('split-section').style.display = 'none';
+          document.getElementById('split-add-btn').textContent = '+ Split flight';
+        }
         update();
       };
 

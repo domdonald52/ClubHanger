@@ -116,17 +116,7 @@
   const fMemberDisplay = document.getElementById("m-member-display");
   const fFindMemberBtn = document.getElementById("m-find-member");
   const btnDelete = document.getElementById("m-delete");
-  const btnConfirm = document.getElementById("m-confirm");
-  const btnDepart = document.getElementById("m-depart");
-  const btnCheckin = document.getElementById("m-checkin-btn");
-  const btnCharges = document.getElementById("m-charges-link");
-  const btnDeclLink = document.getElementById("m-decl-btn");
-  const mDeclNotice = document.getElementById("m-decl-notice");
-  const mDeclNoticeBtn = document.getElementById("m-decl-notice-btn");
-  const btnWatch = document.getElementById("m-watch");
   const editFields = document.getElementById("m-edit-fields");
-  const checkinFields = document.getElementById("m-checkin-fields");
-  const btnWatchLabel = document.getElementById("m-watch-label");
   let _currentPill = null;
 
   // Mutable set — updated on watch toggles without page reload
@@ -290,7 +280,7 @@
       const name = qcName.value.trim();
       if (!name) { qcError.textContent = "Name is required."; qcError.hidden = false; return; }
       qcError.hidden = true;
-      post("/api/contact/quick-create/", {
+      post(cfg.contactCreateUrl, {
         name,
         contact_type: qcType.value,
         email: qcEmail.value.trim(),
@@ -454,7 +444,6 @@
     document.getElementById("modal-title").textContent = "New booking";
     fId.value = "";
     btnDelete.hidden = true;
-    btnConfirm.hidden = true;
     if (aircraftId) fAircraft.value = aircraftId;
     fInstructor.value = instructorId || "";
     fStart.value = fmtLocalInput(start);
@@ -556,170 +545,7 @@
     document.getElementById("modal-title").textContent = "Edit booking";
     fId.value = pill.dataset.id;
     btnDelete.hidden = false;
-    const st = pill.dataset.status;
-    const statusNotice = document.getElementById("m-status-notice");
-    const statusText = document.getElementById("m-status-text");
-    btnConfirm.hidden = !(cfg.canManage && st === "pending");
-    btnDepart.hidden = !(cfg.canManage && st === "confirmed");
-    const declPendingOnOpen = pill.dataset.declPending === "true";
-    if (btnDeclLink) {
-      btnDeclLink.hidden = true;  // always hidden in footer; "Open declaration →" is inside the inline panel
-      btnDeclLink.dataset.declUrl = pill.dataset.declUrl || "";
-    }
-    if (mDeclNoticeBtn) mDeclNoticeBtn.dataset.declUrl = pill.dataset.declUrl || "";
-    // departed: hide edit fields, show check-in panel
-    const isDeparted = (st === "departed");
-    const isCompleted = (st === "completed");
-    if (mDeclNotice) mDeclNotice.hidden = !(declPendingOnOpen && !isDeparted && !isCompleted);
-    editFields.style.display = (isDeparted || isCompleted) ? "none" : "";
-    checkinFields.hidden = !isDeparted;
-    btnCheckin.hidden = !isDeparted;
-    btnSave.hidden = isDeparted || isCompleted;
-    btnDelete.hidden = isDeparted || isCompleted;
-    // completed: show status notice + view details link
-    statusNotice.hidden = !isCompleted;
-    if (isCompleted) {
-      const isPaid = pill.dataset.paid === "true";
-      statusText.textContent = isPaid
-        ? "This flight is completed and paid."
-        : "Aircraft returned — charges and payment pending.";
-    }
-    btnCharges.hidden = !isCompleted;
-    if (isCompleted) {
-      btnCharges.href = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
-      btnCharges.textContent = "View details →";
-      const paid = pill.dataset.paid === "true";
-      btnCharges.style.background = paid ? "var(--completed-paid,#7c3aed)" : "var(--returned,#2563eb)";
-      btnCharges.style.borderColor = btnCharges.style.background;
-    }
-    // Check-in title for departed flights
-    if (isDeparted) {
-      document.getElementById("modal-title").textContent = `Check in — ${pill.dataset.member} · ${pill.dataset.registration}`;
-    }
-    // reset check-in fields and mark required based on aircraft config
-    if (isDeparted) {
-      document.getElementById("m-outcome").value = "completed";
-      document.getElementById("m-outcome-notes-wrap").hidden = true;
-      ["m-hobbs-start","m-hobbs-end","m-tacho-start","m-tacho-end","m-airswitch-start","m-airswitch-end"].forEach(id => {
-        const el = document.getElementById(id); if (el) el.value = "";
-      });
-      const billingMethod = pill.dataset.totalTimeMethod || '';
-      const maintMethod   = pill.dataset.maintTimeSource  || '';
-      const needHobbs     = pill.dataset.recordsHobbs === "true" || billingMethod === 'hobbs' || maintMethod === 'hobbs';
-      const needTacho     = pill.dataset.recordsTacho === "true" || billingMethod === 'tacho' || maintMethod === 'tacho';
-      const needAirswitch = pill.dataset.recordsAirswitch === "true" || billingMethod === 'airswitch' || maintMethod === 'airswitch';
-      // When multiple instruments are needed, label each with its purpose so instructors know why
-      const multiInstrument = (needHobbs ? 1 : 0) + (needTacho ? 1 : 0) + (needAirswitch ? 1 : 0) > 1;
-      function instrNote(key) {
-        if (!multiInstrument) return "";
-        if (billingMethod === key && maintMethod === key) return " (billing/maint)";
-        if (billingMethod === key) return " (billing)";
-        if (maintMethod   === key) return " (maintenance)";
-        return "";
-      }
-      [["m-hobbs-start","Hobbs start"],["m-hobbs-end","Hobbs end"]].forEach(([id, lbl]) => {
-        const el = document.getElementById(id); if (!el) return;
-        el.required = needHobbs; el.disabled = !needHobbs; el.value = needHobbs ? el.value : "";
-        el.style.borderColor = "";
-        el.closest("label").style.opacity = needHobbs ? "1" : ".35";
-        el.closest("label").firstChild.textContent = needHobbs ? lbl + " *" + instrNote('hobbs') : lbl;
-      });
-      [["m-tacho-start","Tacho start"],["m-tacho-end","Tacho end"]].forEach(([id, lbl]) => {
-        const el = document.getElementById(id); if (!el) return;
-        el.required = needTacho; el.disabled = !needTacho; el.value = needTacho ? el.value : "";
-        el.style.borderColor = "";
-        el.closest("label").style.opacity = needTacho ? "1" : ".35";
-        el.closest("label").firstChild.textContent = needTacho ? lbl + " *" + instrNote('tacho') : lbl;
-      });
-      [["m-airswitch-start","Air switch start"],["m-airswitch-end","Air switch end"]].forEach(([id, lbl]) => {
-        const el = document.getElementById(id); if (!el) return;
-        el.required = needAirswitch; el.disabled = !needAirswitch; el.value = needAirswitch ? el.value : "";
-        el.style.borderColor = "";
-        el.closest("label").style.opacity = needAirswitch ? "1" : ".35";
-        el.closest("label").firstChild.textContent = needAirswitch ? lbl + " *" + instrNote('airswitch') : lbl;
-      });
-      // Store for validation
-      btnCheckin.dataset.needsHobbs      = needHobbs;
-      btnCheckin.dataset.needsTacho      = needTacho;
-      btnCheckin.dataset.needsAirswitch  = needAirswitch;
-      btnCheckin.dataset.scheduledHours  = (parseFloat(pill.dataset.duration || '0') / 60).toFixed(2);
-
-      // Lock start fields (protected current readings) and show/hide their amend links
-      [['m-hobbs-start', needHobbs], ['m-tacho-start', needTacho], ['m-airswitch-start', needAirswitch]].forEach(([id, needed]) => {
-        const inp = document.getElementById(id);
-        const lnk = document.getElementById(id + '-amend');
-        if (!inp) return;
-        if (needed && !inp.disabled) {
-          inp.readOnly = true;
-          inp.style.background = '#f3f5f7';
-          inp.style.cursor = 'default';
-          if (lnk) lnk.style.display = '';
-        } else {
-          if (lnk) lnk.style.display = 'none';
-        }
-      });
-      // Reset error notice and end-field borders
-      const checkinErr  = document.getElementById('m-checkin-error');
-      const checkinWarn = document.getElementById('m-checkin-warn');
-      if (checkinErr)  { checkinErr.hidden  = true; checkinErr.textContent  = ''; }
-      if (checkinWarn) { checkinWarn.hidden = true; checkinWarn.textContent = ''; }
-      ['m-hobbs-end','m-tacho-end','m-airswitch-end'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.style.borderColor = ''; el.style.borderWidth = '';
-        const prev = el.previousElementSibling;
-        if (prev && prev.classList.contains('ci-field-err')) prev.remove();
-      });
-
-      // Pre-fill start values from last recorded end for this aircraft.
-      // If no previous reading exists for a field, unlock it so the user can type directly
-      // rather than leaving it locked-empty (which blocks submission).
-      fetch(`/api/booking/${pill.dataset.id}/prev-readings/`, { credentials: "same-origin" })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          function unlockIfEmpty(fieldId) {
-            const inp = document.getElementById(fieldId);
-            const lnk = document.getElementById(fieldId + '-amend');
-            if (inp && inp.readOnly && !inp.value) {
-              inp.readOnly = false; inp.style.background = ''; inp.style.cursor = '';
-              if (lnk) lnk.style.display = 'none';
-            }
-          }
-          if (!data) {
-            unlockIfEmpty('m-hobbs-start'); unlockIfEmpty('m-tacho-start'); unlockIfEmpty('m-airswitch-start');
-            return;
-          }
-          if (data.hobbs_end)     { const el = document.getElementById("m-hobbs-start");     if (el) el.value = data.hobbs_end; }
-          else unlockIfEmpty('m-hobbs-start');
-          if (data.tacho_end)     { const el = document.getElementById("m-tacho-start");     if (el) el.value = data.tacho_end; }
-          else unlockIfEmpty('m-tacho-start');
-          if (data.airswitch_end) { const el = document.getElementById("m-airswitch-start"); if (el) el.value = data.airswitch_end; }
-          else unlockIfEmpty('m-airswitch-start');
-        })
-        .catch(() => {
-          // Network error — unlock all start fields so check-in is still possible
-          ['m-hobbs-start', 'm-tacho-start', 'm-airswitch-start'].forEach(id => {
-            const inp = document.getElementById(id);
-            const lnk = document.getElementById(id + '-amend');
-            if (inp && inp.readOnly) { inp.readOnly = false; inp.style.background = ''; inp.style.cursor = ''; }
-            if (lnk) lnk.style.display = 'none';
-          });
-        });
-    }
-
-    // Watch button: show for staff viewing someone else's active (not yet departed) booking
-    const isOwn = pill.dataset.memberUserId === String(cfg.currentUserId);
-    const isActive = pill.dataset.status !== "cancelled" && pill.dataset.status !== "completed" && pill.dataset.status !== "departed";
-    if (!isOwn && isActive) {
-      const watching = watchedIds.has(pill.dataset.id);
-      btnWatchLabel.textContent = watching ? "Watching ✓" : "Watch slot";
-      btnWatch.style.background = watching ? "var(--confirmed)" : "";
-      btnWatch.style.color = watching ? "#fff" : "";
-      btnWatch.style.borderColor = watching ? "var(--confirmed)" : "";
-      btnWatch.hidden = false;
-    } else {
-      btnWatch.hidden = true;
-    }
+    btnSave.hidden = false;
     fAircraft.value = pill.dataset.aircraftId || "";
     fInstructor.value = pill.dataset.instructorId || "";
     // If the booking's instructor is off-roster today, they won't be in the list — add them
@@ -779,177 +605,13 @@
     if (fBilledTo) fBilledTo.value = "";
     if (fBilledToLabel) fBilledToLabel.style.display = "none";
     updateClientState();
-    btnConfirm.hidden = true;
-    btnDepart.hidden = true;
-    if (btnDeclLink) btnDeclLink.hidden = true;
-    if (mDeclNotice) mDeclNotice.hidden = true;
-    btnCheckin.hidden = true;
-    btnCharges.hidden = true;
-    document.getElementById("m-status-notice").hidden = true;
     editFields.style.display = "";
-    checkinFields.hidden = true;
     btnSave.hidden = false;
     btnDelete.hidden = false;
   }
   document.getElementById("m-cancel").addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
-  // Check-in button — AJAX
-  btnCheckin.addEventListener("click", function() {
-    const id = document.getElementById("m-booking-id").value;
-    if (!id) return;
-    // Validate required meter readings
-    const needsHobbs     = this.dataset.needsHobbs     === "true";
-    const needsTacho     = this.dataset.needsTacho     === "true";
-    const needsAirswitch = this.dataset.needsAirswitch === "true";
-    const hs = document.getElementById("m-hobbs-start").value.trim();
-    const he = document.getElementById("m-hobbs-end").value.trim();
-    const ts = document.getElementById("m-tacho-start").value.trim();
-    const te = document.getElementById("m-tacho-end").value.trim();
-    const as_ = (document.getElementById("m-airswitch-start") || {}).value?.trim() || "";
-    const ae  = (document.getElementById("m-airswitch-end")   || {}).value?.trim() || "";
-    const _ciErr = document.getElementById('m-checkin-error');
-    const _ciErrs = [];
-    // Clear previous inline field errors
-    ['m-hobbs-end','m-tacho-end','m-airswitch-end'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.style.borderColor = '';
-      el.style.borderWidth = '';
-      const prev = el.previousElementSibling;
-      if (prev && prev.classList.contains('ci-field-err')) prev.remove();
-    });
-    function _ciFail(msg, endId) {
-      if (endId) {
-        const el = document.getElementById(endId);
-        if (el) {
-          el.style.borderColor = '#f59e0b';
-          el.style.borderWidth = '2px';
-          // Insert inline error just before the input (inside its label)
-          const span = document.createElement('span');
-          span.className = 'ci-field-err';
-          span.style.cssText = 'display:block;font-size:.74rem;color:#c76c00;font-weight:600;margin-bottom:.15rem;';
-          span.textContent = '⚠ ' + msg;
-          el.parentNode.insertBefore(span, el);
-        }
-      }
-      _ciErrs.push(msg);
-    }
-    if (needsHobbs && !hs)  _ciFail('Hobbs start is required');
-    if (needsHobbs && !he)  _ciFail('Hobbs end is required', 'm-hobbs-end');
-    if (needsTacho && !ts)  _ciFail('Tacho start is required');
-    if (needsTacho && !te)  _ciFail('Tacho end is required', 'm-tacho-end');
-    if (needsAirswitch && !as_) _ciFail('Air switch start is required');
-    if (needsAirswitch && !ae)  _ciFail('Air switch end is required', 'm-airswitch-end');
-    if (needsHobbs && hs && he && parseFloat(he) <= parseFloat(hs)) _ciFail('Hobbs end must be greater than start', 'm-hobbs-end');
-    if (needsTacho && ts && te && parseFloat(te) <= parseFloat(ts)) _ciFail('Tacho end must be greater than start', 'm-tacho-end');
-    if (needsAirswitch && as_ && ae && parseFloat(ae) <= parseFloat(as_)) _ciFail('Air switch end must be greater than start', 'm-airswitch-end');
-    if (_ciErrs.length) {
-      // Errors shown inline next to each field — focus the first flagged one
-      const firstErr = document.querySelector('#m-checkin-fields .ci-field-err');
-      if (firstErr && firstErr.nextElementSibling) firstErr.nextElementSibling.focus();
-      return;
-    }
-    if (_ciErr) _ciErr.hidden = true;
-    const _ciWarn = document.getElementById('m-checkin-warn');
-    if (_ciWarn) _ciWarn.hidden = true;
-    const body = {
-      outcome:          document.getElementById("m-outcome").value,
-      outcome_notes:    document.getElementById("m-outcome-notes").value,
-      hobbs_start:      hs,
-      hobbs_end:        he,
-      tacho_start:      ts,
-      tacho_end:        te,
-      airswitch_start:  as_,
-      airswitch_end:    ae,
-    };
-    post(`/api/booking/${id}/checkin/`, body).then(res => {
-      if (!res.ok) { showToast(res.data && res.data.error ? res.data.error : "Could not check in"); return; }
-      document.querySelectorAll(`.pill[data-id="${id}"]`).forEach(pill => {
-        pill.classList.remove("departed","confirmed","pending","paid");
-        pill.classList.add("completed");
-        pill.dataset.status = "completed";
-        pill.dataset.paid = "false";
-        const nm = pill.querySelector(".nm");
-        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱⚠] /, "");
-        const sub = pill.querySelector(".sub");
-        if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · returned"; }
-        pill.querySelectorAll(".pill-wedge").forEach(w => w.remove());
-        const wedge = document.createElement("div");
-        wedge.className = "pill-wedge ret";
-        wedge.innerHTML = '<i class="ti ti-plane-arrival" aria-hidden="true"></i>';
-        pill.appendChild(wedge);
-      });
-      closeModal();
-      const _cUrl = res.data && res.data.charges_url;
-      const _linkHtml = _cUrl
-        ? ' <a href="' + _cUrl + '" onclick="event.preventDefault();(window.openPageOverlay||(u=>{location.href=u;}))(this.href);" style="color:inherit;font-weight:700;text-decoration:underline;">Process payment →</a>'
-        : '';
-      (window.toast || showToast)('Flight checked in' + _linkHtml, 'info');
-    });
-  });
-
-  function toggleOutcomeNotes() {
-    const v = document.getElementById("m-outcome").value;
-    document.getElementById("m-outcome-notes-wrap").hidden = (v === "completed");
-  }
-  // Amend links — unlock locked start fields
-  ['hobbs','tacho','airswitch'].forEach(key => {
-    const lnk = document.getElementById(`m-${key}-start-amend`);
-    const inp = document.getElementById(`m-${key}-start`);
-    if (!lnk || !inp) return;
-    lnk.addEventListener('click', e => {
-      e.preventDefault();
-      inp.readOnly = false;
-      inp.style.background = '';
-      inp.style.cursor = '';
-      lnk.style.display = 'none';
-      inp.focus();
-    });
-  });
-
-  // Instrument reading blur: round to 1dp; validate end > start; warn if delta > 1.3× scheduled
-  const _endStartMap = {'m-hobbs-end':'m-hobbs-start','m-tacho-end':'m-tacho-start','m-airswitch-end':'m-airswitch-start'};
-  const _instrLabels = {'m-hobbs-end':'Hobbs','m-tacho-end':'Tacho','m-airswitch-end':'Air switch'};
-  function _refreshCheckinWarnings() {
-    const warnEl = document.getElementById('m-checkin-warn');
-    if (!warnEl) return;
-    const scheduledHours = parseFloat(btnCheckin.dataset.scheduledHours || '0');
-    const warns = [];
-    Object.entries(_endStartMap).forEach(([endId, startId]) => {
-      const endEl = document.getElementById(endId);
-      const startEl = document.getElementById(startId);
-      if (!endEl || !startEl || !endEl.value || !startEl.value) return;
-      const delta = parseFloat(endEl.value) - parseFloat(startEl.value);
-      if (scheduledHours > 0 && delta > 0 && delta > scheduledHours * 1.3) {
-        endEl.style.borderColor = '#f59e0b';
-        warns.push(`${_instrLabels[endId]} reading (${delta.toFixed(1)}h) is more than 1.3× the scheduled duration`);
-      } else if (endEl.style.borderColor === '#f59e0b') {
-        endEl.style.borderColor = '';
-      }
-    });
-    warnEl.textContent = warns.join(' · ');
-    warnEl.hidden = warns.length === 0;
-  }
-
-  ["m-hobbs-start","m-hobbs-end","m-tacho-start","m-tacho-end","m-airswitch-start","m-airswitch-end"].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener("blur", () => {
-      if (el.value !== "") el.value = parseFloat(el.value).toFixed(1);
-      const startId = _endStartMap[id];
-      if (startId) {
-        const startEl = document.getElementById(startId);
-        if (el.value && startEl && startEl.value) {
-          const isLow = parseFloat(el.value) <= parseFloat(startEl.value);
-          el.style.borderColor = isLow ? '#e03131' : '';
-        } else {
-          el.style.borderColor = '';
-        }
-      }
-      _refreshCheckinWarnings();
-    });
-  });
   fStart.addEventListener("input", updatePreview);
   fDuration.addEventListener("input", updatePreview);
   fAircraft.addEventListener("change", updatePreview);
@@ -1001,7 +663,7 @@
       billed_to: fBilledTo ? (fBilledTo.value || "") : "",
       club_slug: cfg.clubSlug,
     };
-    const url = id ? `/api/booking/${id}/edit/` : cfgCreateUrl();
+    const url = id ? `/api/booking/${id}/edit/` : cfg.createUrl;
     const doSave = () => {
       const submit = (withOverride) => {
         const p = withOverride ? Object.assign({}, payload, { override: "1" }) : payload;
@@ -1026,7 +688,6 @@
       doSave();
     }
   });
-  function cfgCreateUrl() { return "/api/booking/create/"; }
 
   const cancelChoiceModal = document.getElementById("cancel-choice");
   const cancelReleaseCheck = document.getElementById("cancel-release-check");
@@ -1066,131 +727,6 @@
       else toast(res.data.error || "Could not cancel", 'err');
     });
   });
-
-  // Credential check modal — shared by Confirm booking and Check out actions
-  const credCheckModal = document.getElementById("cred-check-modal");
-  const credCheckBody  = document.getElementById("cred-check-body");
-  const credCheckTitle = document.getElementById("cred-check-title");
-  const credCheckConfirm = document.getElementById("cred-check-confirm");
-  const credCheckCancel  = document.getElementById("cred-check-cancel");
-  let _pendingCredId = null;
-
-  function doConfirm(id) {
-    post(`/api/booking/${id}/confirm/`, {}).then((res) => {
-      if (credCheckModal) credCheckModal.hidden = true;
-      if (res.ok && res.data.success) location.reload();
-      else toast(res.data.error || "Could not confirm booking", 'err');
-    });
-  }
-
-  function showCredCheckModal(id) {
-    if (!credCheckModal) {
-      doConfirm(id);
-      return;
-    }
-    _pendingCredId = id;
-
-    const actionLabel = 'Confirm booking';
-    credCheckBody.innerHTML = '<p style="color:#8a93a0;font-size:.85rem;padding:.5rem 0;">Checking…</p>';
-    credCheckConfirm.textContent = actionLabel;
-    credCheckConfirm.style.background = '';
-    credCheckConfirm.style.borderColor = '';
-    credCheckModal.hidden = false;
-
-    fetch(`/api/booking/${id}/credential-check/`, { credentials: "same-origin" })
-      .then(r => r.json())
-      .then(data => {
-        const STATUS_ICON  = { ok: "✓", warn: "⚠", info: "ℹ" };
-        const STATUS_COLOR = { ok: "#2a7a3b", warn: "#c76c00", info: "#2563eb" };
-        const URGENCY_BAR  = { green: "#4caf50", amber: "#ff9800", red: "#e03131" };
-
-        credCheckTitle.textContent = `Confirm booking — ${data.member}`;
-
-        // Member credential checks
-        const memberRows = (data.checks || []).map(c =>
-          `<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.3rem 0;border-bottom:1px solid #f0f2f4;">
-             <span style="font-size:.95rem;color:${STATUS_COLOR[c.status] || '#5b6573'};flex-shrink:0;width:18px;">${STATUS_ICON[c.status] || '?'}</span>
-             <div>
-               <div style="font-size:.84rem;font-weight:600;color:#1f2933;">${c.label}</div>
-               <div style="font-size:.8rem;color:#5b6573;">${c.detail}</div>
-             </div>
-           </div>`
-        ).join('');
-
-        // Aircraft maintenance — only AMBER/RED items shown; all-green gets a summary tick
-        const allMaint = data.maintenance || [];
-        const warnMaint = allMaint.filter(m => m.urgency === 'amber' || m.urgency === 'red');
-        const maintRows = warnMaint.map(m => {
-          const barColor = URGENCY_BAR[m.urgency] || '#4caf50';
-          const pct = m.progress_pct !== null ? m.progress_pct : null;
-          const bar = pct !== null
-            ? `<div style="height:5px;background:#eef1f4;border-radius:3px;margin-top:.3rem;overflow:hidden;">
-                 <div style="width:${pct}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s;"></div>
-               </div>`
-            : '';
-          return `<div style="padding:.3rem 0;border-bottom:1px solid #f0f2f4;">
-                    <div style="display:flex;justify-content:space-between;align-items:baseline;">
-                      <span style="font-size:.84rem;font-weight:600;color:#1f2933;">${m.name}</span>
-                      <span style="font-size:.76rem;color:${barColor};font-weight:600;">${m.detail}</span>
-                    </div>
-                    ${bar}
-                  </div>`;
-        }).join('');
-        const maintAllClear = allMaint.length > 0 && warnMaint.length === 0
-          ? `<div style="font-size:.84rem;color:#2a7a3b;padding:.3rem 0;">✓ No maintenance concerns</div>`
-          : '';
-
-        const hobbsNote = data.current_hobbs !== null && data.current_hobbs !== undefined
-          ? `<div style="font-size:.78rem;color:#8a93a0;margin-top:.5rem;">Last recorded Hobbs: <strong>${data.current_hobbs}</strong></div>`
-          : '';
-
-        let html = '';
-        if (memberRows) {
-          html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.4rem 0 .2rem;">Pilot — ${data.member}</div>${memberRows}`;
-        }
-        if (allMaint.length > 0) {
-          html += `<div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;padding:.6rem 0 .2rem;">Aircraft — ${data.aircraft_reg || ''}</div>${maintRows}${maintAllClear}${hobbsNote}`;
-        }
-        const hasWarnings = data.has_warnings || data.has_maint_warnings;
-
-        credCheckBody.innerHTML = html || '<p style="color:#8a93a0;font-size:.85rem;">No checks found.</p>';
-
-        credCheckConfirm.textContent = hasWarnings ? 'Confirm anyway (staff override)' : actionLabel;
-        credCheckConfirm.style.background = hasWarnings ? "#c76c00" : "";
-        credCheckConfirm.style.borderColor = hasWarnings ? "#c76c00" : "";
-      })
-      .catch(() => {
-        doConfirm(id);
-      });
-  }
-
-  function openDeclOverlay(url) {
-    if (!url) url = btnDeclLink ? btnDeclLink.dataset.declUrl : "";
-    if (!url) return;
-    openDetailOverlay(url);
-  }
-  if (btnDeclLink) btnDeclLink.addEventListener("click", () => openDeclOverlay());
-  if (mDeclNoticeBtn) mDeclNoticeBtn.addEventListener("click", () => openDeclOverlay(mDeclNoticeBtn.dataset.declUrl));
-
-  btnConfirm.addEventListener("click", () => {
-    const id = fId.value;
-    if (!id) return;
-    showCredCheckModal(id);
-  });
-
-  btnDepart.addEventListener("click", () => {
-    if (!_currentPill) return;
-    const id = _currentPill.dataset.id;
-    closeModal();
-    window.openPageOverlay(`/manage/${cfg.clubSlug}/bookings/${id}/?inline=1`, false);
-  });
-
-  if (credCheckConfirm) credCheckConfirm.addEventListener("click", () => {
-    if (!_pendingCredId) return;
-    doConfirm(_pendingCredId);
-  });
-  if (credCheckCancel)  credCheckCancel.addEventListener("click",  () => { if (credCheckModal) credCheckModal.hidden = true; });
-  if (credCheckModal) credCheckModal.addEventListener("click", e => { if (e.target === credCheckModal) credCheckModal.hidden = true; });
 
   // ---- resource-change confirm ----------------------------------------
   const confirmBox = document.getElementById("confirm");
@@ -1291,22 +827,6 @@
       wmWatchLabel.textContent = watching ? "Unwatch" : "Watch slot";
       wmWatch.style.background = watching ? "#e53e3e" : "";
       wmWatch.style.borderColor = watching ? "#e53e3e" : "";
-      toast(watching ? "Watching this slot" : "No longer watching");
-    });
-  });
-
-  // Watch button inside the staff edit modal
-  btnWatch.addEventListener("click", () => {
-    const id = fId.value;
-    if (!id) return;
-    post(`/api/booking/${id}/watch/`, {}).then((res) => {
-      if (!res.ok) { toast(res.data.error || "Could not update watch"); return; }
-      const watching = res.data.watching;
-      if (watching) watchedIds.add(id); else watchedIds.delete(id);
-      btnWatchLabel.textContent = watching ? "Watching ✓" : "Watch slot";
-      btnWatch.style.background = watching ? "var(--confirmed)" : "";
-      btnWatch.style.color = watching ? "#fff" : "";
-      btnWatch.style.borderColor = watching ? "var(--confirmed)" : "";
       toast(watching ? "Watching this slot" : "No longer watching");
     });
   });
@@ -1713,7 +1233,7 @@
         else body.set(k, v);
       });
 
-      fetch("/api/blockout/create/", {
+      fetch(cfg.blockoutCreateUrl, {
         method: "POST",
         headers: { "X-CSRFToken": cfg.csrf, "Content-Type": "application/x-www-form-urlencoded" },
         body,
@@ -1812,14 +1332,5 @@
 
   detailOverlay.addEventListener("click", e => {
     if (e.target === detailOverlay) closeDetailOverlay();
-  });
-
-  // Intercept "View details →" link on completed bookings
-  btnCharges.addEventListener("click", e => {
-    if (!btnCharges.hidden) {
-      e.preventDefault();
-      const bookingId = fId.value;
-      if (bookingId) openDetailOverlay(bookingId);
-    }
   });
 })();

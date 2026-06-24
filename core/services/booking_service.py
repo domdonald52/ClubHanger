@@ -9,7 +9,7 @@ Rules:
 - No Django request/response objects. Accept model instances and plain values only.
 - Every function returns a ServiceResult.
 - All DB writes happen inside the function; callers should wrap in @transaction.atomic
-  where needed (checkin_booking already is).
+  where needed.
 - Audit every state change.
 """
 

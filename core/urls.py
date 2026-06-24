@@ -16,7 +16,6 @@ urlpatterns = [
     path('api/booking/<int:booking_id>/update/', views.update_booking, name='update_booking'),
     path('api/booking/<int:booking_id>/confirm/', views.confirm_booking, name='confirm_booking'),
     path('api/booking/<int:booking_id>/depart/', views.depart_booking, name='depart_booking'),
-    path('api/booking/<int:booking_id>/checkin/', views.checkin_booking, name='checkin_booking'),
     path('api/booking/<int:booking_id>/reject/', views.reject_booking, name='reject_booking'),
     path('api/booking/<int:booking_id>/watch/', views.toggle_watch, name='toggle_watch'),
     path('api/booking/<int:booking_id>/credential-check/', views.credential_check_api, name='credential_check'),
