@@ -20,16 +20,16 @@ body {
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: .6rem;
-  padding: .85rem 1.5rem;
+  padding: .65rem 1.2rem;
   background: #f3f4f6;
   border-bottom: 1px solid #d1d5db;
   position: sticky;
   top: 0;
   z-index: 10;
 }
-.toolbar a, .toolbar button {
+.toolbar button, .action-bar button, .action-bar .btn-email {
   display: inline-flex;
   align-items: center;
   gap: .35rem;
@@ -53,10 +53,28 @@ body {
   border-color: #d1d5db;
 }
 .btn-back:hover { background: #f9fafb; }
+.btn-email {
+  background: #fff;
+  color: #374151;
+  border-color: #d1d5db;
+}
+.btn-email:hover { background: #f9fafb; }
+.action-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  padding: .75rem 1.5rem;
+  background: #f3f4f6;
+  border-top: 1px solid #d1d5db;
+  z-index: 10;
+}
 
 /* ── A4 paper ───────────────────────────────────────────── */
 .paper-wrap {
-  padding: 1.5rem 1rem 3rem;
+  padding: 1.5rem 1rem 6rem;
 }
 .paper {
   background: #fff;
@@ -309,6 +327,7 @@ table.items tbody tr:last-child td { border-bottom: none; }
 @media print {
   body { background: #fff; }
   .toolbar { display: none !important; }
+  .action-bar { display: none !important; }
   .paper-wrap { padding: 0; }
   .paper {
     width: 100%;
@@ -328,16 +347,13 @@ table.items tbody tr:last-child td { border-bottom: none; }
 </head>
 <body>
 
-<!-- ── Toolbar (hidden in print) ── -->
+<!-- ── Top toolbar: Close only (hidden in print) ── -->
 <div class="toolbar">
-  <button class="btn-back" onclick="window.close()">
+  <button class="btn-back" onclick="window.close();">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     Close
   </button>
-  <button class="btn-print" onclick="window.print()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-    Print / Save as PDF
-  </button>
+  <span style="font-size:.8rem;color:#6b7280;font-weight:600;">{{ invoice.display_number }}</span>
 </div>
 
 <!-- ── A4 paper ── -->
@@ -408,7 +424,7 @@ table.items tbody tr:last-child td { border-bottom: none; }
     </div>
     {% endif %}
 
-    <!-- Line items -->
+    <!-- Line items — this flight -->
     <table class="items">
       <thead>
         <tr>
@@ -429,6 +445,18 @@ table.items tbody tr:last-child td { border-bottom: none; }
           <td class="r">${{ item.amount|currency }}</td>
         </tr>
         {% endfor %}
+        {% if session_payments %}
+        <tr><td colspan="5" style="padding:4pt 8pt 2pt;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;border-top:1px solid #e5e7eb;">Also settled in this payment session</td></tr>
+        {% for sp in session_payments %}
+        <tr>
+          <td>{{ sp.completion.booking.aircraft.registration }} — {{ sp.completion.booking.scheduled_start|date:"j M Y" }}{% if sp.completion.booking.flight_type %} · {{ sp.completion.booking.flight_type.name }}{% endif %}</td>
+          <td class="r">1.00</td>
+          <td class="c">Ea</td>
+          <td class="r">${{ sp.amount|currency }}</td>
+          <td class="r">${{ sp.amount|currency }}</td>
+        </tr>
+        {% endfor %}
+        {% endif %}
       </tbody>
     </table>
 
@@ -441,58 +469,24 @@ table.items tbody tr:last-child td { border-bottom: none; }
             <td class="amt" style="color:#9ca3af;">${{ invoice.gst_amount|currency }}</td>
           </tr>
           <tr class="total-row">
-            <td class="lbl">Invoice Total</td>
-            <td class="amt">${{ invoice.total|currency }}</td>
+            <td class="lbl">Total</td>
+            <td class="amt">${{ grand_total|currency }}</td>
           </tr>
-          {% if invoice.amount_paid %}
-          <tr class="payments-row">
-            <td class="lbl">Payments received</td>
-            <td class="amt">${{ invoice.amount_paid|currency }}</td>
-          </tr>
-          {% endif %}
           <tr class="balance-row">
-            <td class="lbl">Total Due</td>
-            <td class="amt">${{ invoice.balance_due|currency }}</td>
+            <td class="lbl">Balance due</td>
+            <td class="amt">${{ grand_balance|currency }}</td>
           </tr>
-          {% if invoice.paid_at %}
+          {% if grand_balance == 0 %}
           {% with last_pay=invoice.payments.last %}
           <tr>
             <td class="lbl" style="color:#216c2a;">Paid</td>
-            <td class="amt" style="color:#216c2a;">{{ invoice.paid_at|date:"j M Y" }} {{ invoice.paid_at|time:"H:i" }}{% if last_pay %} · {{ last_pay.get_method_display }}{% endif %}</td>
+            <td class="amt" style="color:#216c2a;">{{ invoice.paid_at|date:"j M Y" }}{% if last_pay %} · {{ last_pay.get_method_display }}{% endif %}</td>
           </tr>
           {% endwith %}
           {% endif %}
         </tbody>
       </table>
     </div>
-
-    <!-- Payment history (if any recorded instalments) -->
-    {% with inv_payments=invoice.payments.all %}
-    {% if inv_payments %}
-    <div style="margin-top:6mm;">
-      <table style="width:100%;border-collapse:collapse;font-size:8.5pt;">
-        <thead>
-          <tr style="border-top:1px solid #d1d5db;border-bottom:1px solid #d1d5db;">
-            <th style="padding:3pt 6pt;text-align:left;color:#6b7280;font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;">Payment date</th>
-            <th style="padding:3pt 6pt;text-align:left;color:#6b7280;font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;">Method</th>
-            <th style="padding:3pt 6pt;text-align:left;color:#6b7280;font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;">Reference</th>
-            <th style="padding:3pt 6pt;text-align:right;color:#6b7280;font-size:7.5pt;text-transform:uppercase;letter-spacing:.05em;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in inv_payments %}
-          <tr style="border-bottom:1px solid #f3f4f6;">
-            <td style="padding:3pt 6pt;">{{ p.paid_at|date:"j M Y" }}</td>
-            <td style="padding:3pt 6pt;">{{ p.get_method_display }}</td>
-            <td style="padding:3pt 6pt;color:#6b7280;">{{ p.reference|default:"" }}</td>
-            <td style="padding:3pt 6pt;text-align:right;">${{ p.amount|currency }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-    {% endwith %}
 
     <!-- Footer / payment terms -->
     {% if config.payment_terms_text %}
@@ -510,6 +504,35 @@ table.items tbody tr:last-child td { border-bottom: none; }
   </div><!-- /inner -->
 </div><!-- /paper -->
 </div><!-- /paper-wrap -->
+
+<!-- ── Bottom action bar: Email + Print (hidden in print) ── -->
+<div class="action-bar">
+  {% if invoice.status == 'draft' %}
+  <form method="post" action="{% url 'core:invoice_detail' club.slug invoice.id %}" style="margin:0;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="mark_sent">
+    <input type="hidden" name="next_url" value="{% url 'core:invoice_print' club.slug invoice.id %}">
+    <button type="submit" class="btn-email">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+      Email to {{ invoice.member.user.get_short_name }}
+    </button>
+  </form>
+  {% elif invoice.status == 'sent' or invoice.status == 'paid' %}
+  <form method="post" action="{% url 'core:invoice_detail' club.slug invoice.id %}" style="margin:0;">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="send_copy">
+    <input type="hidden" name="next_url" value="{% url 'core:invoice_print' club.slug invoice.id %}">
+    <button type="submit" class="btn-email">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+      Email to {{ invoice.member.user.get_short_name }}{% if invoice.sent_at %} (sent {{ invoice.sent_at|date:"j M" }}){% endif %}
+    </button>
+  </form>
+  {% endif %}
+  <button class="btn-print" onclick="window.print()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    Print
+  </button>
+</div>
 
 </body>
 </html>

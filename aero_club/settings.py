@@ -218,6 +218,7 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 # ── Brute-force protection (django-axes) ──────────────────────────────────────
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
+    'core.backends.EmailBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 AXES_FAILURE_LIMIT      = 5       # lock after 5 failed attempts

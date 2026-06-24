@@ -87,6 +87,7 @@ urlpatterns = [
     path('app/<slug:club_slug>/notification-settings/',                    views.app_notification_settings, name='app_notification_settings'),
     path('app/<slug:club_slug>/training/',                                 views.app_training,          name='app_training'),
     path('app/<slug:club_slug>/flight-log/',                               views.app_flight_log,         name='app_flight_log'),
+    path('app/<slug:club_slug>/flight-log/<int:fc_id>/special-hours/',    views.app_save_special_hours, name='app_save_special_hours'),
     path('app/<slug:club_slug>/guide/',                                    views.app_guide,             name='app_guide'),
     path('app/<slug:club_slug>/profile/edit/',                             views.app_profile_edit,      name='app_profile_edit'),
     path('app/<slug:club_slug>/profile/credentials/',                        views.app_credentials,       name='app_credentials'),

@@ -565,6 +565,11 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 .modal-notice.err{display:block;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
 .modal-notice.ok{display:block;background:#eaf6ec;color:#216c2a;border:1px solid #a3d9a5;}
 .modal-submitted input:invalid,.modal-submitted select:invalid,.modal-submitted textarea:invalid{border-color:#e53e3e!important;outline:none;}
+/* ── Field-level inline validation (global) ── */
+.field-error{border-color:#e67e22!important;outline:none;}
+.field-msg{display:none;align-items:center;gap:.3rem;font-size:.75rem;color:#92400e;margin-top:.25rem;line-height:1.3;}
+.field-msg.show{display:flex;}
+.field-msg-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;min-width:14px;background:#e67e22;color:#fff;border-radius:50%;font-size:.6rem;font-weight:800;line-height:1;}
 /* ── Standard data table — used across manage pages ── */
 .ct{width:100%;border-collapse:collapse;font-size:.86rem;}
 .ct th{padding:.4rem .7rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
@@ -840,8 +845,8 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
      (which made the tab bar jump). Body scrolls; the sticky header stays put.
      Width/height scale with the viewport (clamps tuned so a laptop ≈ the old
      size, while a big/4K screen gets a proportionally larger modal). */
-  .page-overlay-modal{background:#fff;border-radius:10px;width:clamp(700px,60vw,1200px);max-width:96vw;box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;height:clamp(460px,88vh,1300px);max-height:96vh;display:flex;flex-direction:column;overflow:hidden;}
-  .page-overlay-modal.wide{width:clamp(900px,78vw,1600px);max-width:97vw;}
+  .page-overlay-modal{background:#fff;border-radius:10px;width:clamp(520px,52vw,860px);max-width:96vw;box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
+  .page-overlay-modal.wide{width:clamp(700px,70vw,1200px);max-width:97vw;}
   #page-overlay-body{flex:1;min-height:0;overflow-y:auto;}
   .page-overlay-modal .pi-body{flex:1;}
   [hidden]{display:none!important;}
@@ -951,15 +956,22 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
   }
 
   function attachHandlers(baseUrl) {
-    // ✕ Close always closes the entire overlay; anchor variant also navigates to its href
+    // ✕ Close: if there's overlay history (e.g. receipt pushed from charges), go back one step.
+    // Anchor variant always navigates to its href. If no history, close entirely.
     body.querySelectorAll('[data-close-overlay]').forEach(el => {
       el.addEventListener('click', e => {
         e.preventDefault();
         const href = (el.tagName === 'A') ? el.getAttribute('href') : null;
-        _stack = []; _currentUrl = null;
-        overlay.hidden = true;
-        document.body.style.overflow = '';
-        if (href) { location.href = href; } else if (didChange) { location.reload(); }
+        if (href && _stack.length === 0) {
+          // No overlay history — navigate to the href fallback (e.g. breadcrumb on a directly-opened page)
+          _stack = []; _currentUrl = null;
+          overlay.hidden = true;
+          document.body.style.overflow = '';
+          location.href = href;
+        } else {
+          // Stack has history (go back one step), or no href (just close/back)
+          popOrClose();
+        }
       });
     });
 
@@ -1076,6 +1088,28 @@ document.addEventListener('DOMContentLoaded', function(){
   }, 0);
 });
 {% endif %}
+
+// ── Field-level inline validation ────────────────────────────────────────────
+// window.setFieldError(input, msg) — call with a message to show the orange
+// border + exclamation indicator under the field; call with '' to clear it.
+window.setFieldError = function(input, msg) {
+  input.classList.toggle('field-error', !!msg);
+  input.setCustomValidity(msg || '');
+  var existing = input.nextElementSibling;
+  var msgEl = (existing && existing.classList.contains('field-msg')) ? existing : null;
+  if (msg) {
+    if (!msgEl) {
+      msgEl = document.createElement('span');
+      msgEl.className = 'field-msg';
+      msgEl.innerHTML = '<span class="field-msg-icon">!</span><span class="field-msg-text"></span>';
+      input.parentNode.insertBefore(msgEl, input.nextSibling);
+    }
+    msgEl.querySelector('.field-msg-text').textContent = msg;
+    msgEl.classList.add('show');
+  } else if (msgEl) {
+    msgEl.classList.remove('show');
+  }
+};
 
 // ── Global modal form validation ─────────────────────────────────────────────
 // Automatically applied to every .modal-back form and <dialog> form —

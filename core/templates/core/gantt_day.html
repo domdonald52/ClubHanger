@@ -374,31 +374,6 @@
       <label>Description<input type="text" id="m-desc" placeholder="optional"></label>
     </div>
 
-    <!-- Unified check-out view (replaces edit fields; opened by Check out button) -->
-    <div id="m-depart-view" hidden>
-      <div id="dv-decl-section" hidden style="background:#fff8e6;border:1px solid #fcd34d;border-radius:7px;padding:.55rem .75rem;margin-bottom:.65rem;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;">
-          <span style="font-size:.83rem;color:#92400e;font-weight:600;">⚑ Declaration not yet submitted</span>
-          <button id="dv-decl-open" type="button" class="cbtn-sm" style="color:var(--banner);border-color:var(--banner);white-space:nowrap;">Open declaration →</button>
-        </div>
-        <label style="display:block;margin-top:.5rem;font-size:.8rem;font-weight:600;color:#92400e;">Override reason
-          <input type="text" id="dv-decl-reason"
-                 style="display:block;width:100%;margin-top:.25rem;padding:.35rem .45rem;border:2px solid #f59e0b;border-radius:5px;font-size:.85rem;box-sizing:border-box;background:#fffbeb;"
-                 placeholder="e.g. Short local circuit, verbally briefed">
-        </label>
-      </div>
-      <div id="dv-cred-section" style="margin-bottom:.5rem;">
-        <p style="color:#8a93a0;font-size:.84rem;padding:.3rem 0;">Checking credentials…</p>
-      </div>
-      <div id="dv-override-section" hidden style="padding:.55rem .7rem;background:#fff8e6;border:1px solid #fcd34d;border-radius:7px;">
-        <label style="display:block;font-size:.8rem;font-weight:600;color:#92400e;">Credential override reason <span style="color:#c0392b;">*</span>
-          <input type="text" id="dv-override-reason"
-                 style="display:block;width:100%;margin-top:.25rem;padding:.35rem .45rem;border:2px solid #f59e0b;border-radius:5px;font-size:.85rem;box-sizing:border-box;background:#fffbeb;"
-                 placeholder="e.g. Flying with instructor, emergency crew duty…">
-        </label>
-      </div>
-    </div>
-
     <!-- Return fields (shown when booking is departed) -->
     <div id="m-checkin-fields" hidden>
       <div style="font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;">Return details</div>
@@ -444,8 +419,6 @@
       <button class="cbtn" id="m-depart" type="button" hidden style="background:var(--primary);color:#fff;border-color:color-mix(in srgb,var(--primary) 80%,#000);">Check out</button>
       <button class="cbtn" id="m-checkin-btn" type="button" hidden style="background:var(--primary);color:#fff;border-color:var(--primary);">Record return</button>
       <a class="cbtn" id="m-charges-link" href="#" hidden style="background:#6b7280;color:#fff;border-color:#6b7280;text-decoration:none;">View details →</a>
-      <button class="cbtn" id="dv-back" type="button" hidden style="margin-right:auto;">← Back</button>
-      <button class="cbtn" id="dv-confirm" type="button" hidden style="background:var(--primary);color:#fff;border-color:color-mix(in srgb,var(--primary) 80%,#000);">Confirm check out</button>
       <button class="cbtn primary" id="m-save" type="button">Save</button>
     </div>
   </div>

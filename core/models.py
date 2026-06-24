@@ -1377,7 +1377,8 @@ class BookingStatus(models.TextChoices):
     PENDING = 'pending', 'Pending'
     CONFIRMED = 'confirmed', 'Confirmed'
     DEPARTED = 'departed', 'Departed'
-    COMPLETED = 'completed', 'Returned'
+    RETURNED = 'returned', 'Returned'
+    COMPLETED = 'completed', 'Completed'
     CANCELLED = 'cancelled', 'Cancelled'
 
 
@@ -1453,6 +1454,33 @@ class Booking(models.Model):
     departed_at = models.DateTimeField(null=True, blank=True)
     arrived_at = models.DateTimeField(null=True, blank=True)
 
+    # Departure snapshots — captured when aircraft departs so they survive mid-flight changes
+    departed_aircraft = models.ForeignKey(
+        'Aircraft', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='departed_bookings',
+    )
+    departed_instructor = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='departed_bookings_instructor',
+    )
+    fuel_rate_snapshot = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Fuel surcharge rate ($/hr) locked at departure",
+    )
+
+    # Physical return — aircraft back, available again (status='returned')
+    returned_at = models.DateTimeField(null=True, blank=True)
+    return_hobbs     = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    return_tacho     = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    return_airswitch = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    RETURN_CONDITION_CHOICES = [
+        ('serviceable',   'Serviceable'),
+        ('unserviceable', 'Unserviceable'),
+        ('damaged',       'Damaged'),
+    ]
+    return_condition = models.CharField(max_length=20, choices=RETURN_CONDITION_CHOICES, blank=True, default='serviceable')
+    return_notes     = models.TextField(blank=True)
+
     # Set when pilot checks out without a submitted declaration
     departed_without_declaration = models.BooleanField(default=False)
     departed_without_declaration_reason = models.CharField(max_length=500, blank=True)
@@ -1493,28 +1521,33 @@ class Booking(models.Model):
 
     @property
     def display_status(self):
-        """Human label: Completed once paid or invoiced; Returned if charges outstanding with no invoice."""
-        if self.status == 'completed':
-            try:
-                fc = self.flight_completion
-                if fc.is_paid or fc.invoice_issued:
-                    return 'Completed'
-            except Exception:
-                pass
+        if self.status == 'returned':
             return 'Returned'
+        if self.status == 'completed':
+            fc = self.flight_completion
+            if fc and (fc.is_paid or fc.invoice_issued):
+                return 'Completed'
+            return 'Charges outstanding'
         return self.get_status_display()
 
     @property
     def display_status_key(self):
+        if self.status == 'returned':
+            return 'returned'
         if self.status == 'completed':
-            try:
-                fc = self.flight_completion
-                if fc.is_paid or fc.invoice_issued:
-                    return 'completed'
-            except Exception:
-                pass
+            fc = self.flight_completion
+            if fc and (fc.is_paid or fc.invoice_issued):
+                return 'completed'
             return 'returned'
         return self.status
+
+    @property
+    def flight_completion(self):
+        """Backward-compat: returns the first (primary) FlightCompletion or None."""
+        if hasattr(self, '_prefetched_objects_cache') and 'flight_completions' in self._prefetched_objects_cache:
+            cache = self._prefetched_objects_cache['flight_completions']
+            return cache[0] if cache else None
+        return self.flight_completions.order_by('sequence').first()
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -1579,7 +1612,13 @@ class FlightCompletion(models.Model):
         ('invoice', 'Invoice (bank transfer)'),
     ]
 
-    booking = models.OneToOneField(Booking, on_delete=models.CASCADE, related_name='flight_completion')
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='flight_completions')
+    pilot = models.ForeignKey(
+        'ClubMember', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='flight_completions',
+        help_text="Pilot who flew this flight (defaults to booking.member if null)",
+    )
+    sequence = models.PositiveIntegerField(default=1, help_text="Order within the booking (1-based)")
 
     # Flight outcome
     outcome = models.CharField(max_length=30, choices=OUTCOME_CHOICES, default='completed')
@@ -1734,6 +1773,13 @@ class FlightSegment(models.Model):
 
     hours = models.DecimalField(max_digits=6, decimal_places=2, default=0)
 
+    # Special hours recorded by the pilot after the flight (their portion only)
+    time_if_simulated      = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    time_if_actual         = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    time_night             = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    time_low_flying        = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    time_terrain_awareness = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
     class Meta:
         ordering = ['sequence']
         unique_together = [('flight_completion', 'sequence')]
@@ -1761,6 +1807,7 @@ class FlightPayment(models.Model):
     paid_at     = models.DateTimeField(null=True, blank=True)
     recorded_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='+')
     created_at  = models.DateTimeField(auto_now_add=True)
+    batch_id    = models.UUIDField(null=True, blank=True, db_index=True)
 
     @property
     def is_paid(self):

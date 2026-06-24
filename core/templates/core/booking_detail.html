@@ -8,7 +8,7 @@
 
   <a href="{{ request.GET.back|default:'' }}{% if not request.GET.back %}{% url 'core:manage_bookings' club.slug %}{% endif %}" class="back-link">← Back</a>
 
-  {% if error %}<div class="notice err">{{ error }}</div>{% endif %}
+  {% if error and booking.status != 'departed' %}<div class="notice err">{{ error }}</div>{% endif %}
   {% if success %}<div class="notice ok">{{ success }}</div>{% endif %}
 
   <!-- Booking summary card -->
@@ -60,7 +60,7 @@
   </div>
   {% endif %}
 
-  {% if actor.can_access_manage and booking.status not in 'completed' %}
+  {% if actor.can_access_manage and booking.status == 'pending' %}
   <details style="margin-bottom:.8rem;">
     <summary class="cbtn-sm" style="cursor:pointer;list-style:none;display:inline-block;">{% if booking.client %}Change client{% else %}+ Assign non-member client{% endif %}</summary>
     <div style="margin-top:.5rem;padding:.75rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;max-width:480px;">
@@ -102,7 +102,7 @@
       <form method="post" style="display:inline;" data-confirm="Cancel this booking?">
         {% csrf_token %}
         <input type="hidden" name="action" value="cancel_booking">
-        <button type="submit" class="cbtn" style="color:#c0392b;border-color:#fca5a5;">Cancel booking</button>
+        <button type="submit" class="cbtn cbtn-danger">Cancel booking</button>
       </form>
     </div>
   </div>
@@ -205,10 +205,7 @@
       </label>
       {% endif %}
       {% if eligibility and eligibility.has_blocks %}
-      <div class="notice warn" style="margin-bottom:.8rem;">
-        One or more compliance checks failed. Provide an override reason to proceed.
-      </div>
-      <label class="flabel" style="max-width:480px;">Override reason <span class="req">*</span>
+      <label class="flabel" style="max-width:480px;">Compliance override reason <span class="req">*</span>
         <input type="text" name="eligibility_override_reason" class="finput" required
                placeholder="e.g. Flying with instructor, emergency crew duty…">
       </label>
@@ -229,7 +226,7 @@
       <form method="post" style="display:inline;" data-confirm="Cancel this confirmed booking?">
         {% csrf_token %}
         <input type="hidden" name="action" value="cancel_booking">
-        <button type="submit" class="cbtn" style="font-size:.78rem;color:#c0392b;border-color:#fca5a5;">Cancel booking</button>
+        <button type="submit" class="cbtn cbtn-danger" style="font-size:.78rem;">Cancel booking</button>
       </form>
     </div>
     <div id="edit-details-panel" hidden style="margin-top:.8rem;padding:.9rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
@@ -269,299 +266,253 @@
   </div>
   {% endif %}
 
-  <!-- ── CHECKED OUT: Check in ── -->
+  <!-- ── DEPARTED: Return aircraft ── -->
   {% if booking.status == 'departed' %}
-  <script>var _ciRates = {{ checkin_rates_json|safe }};</script>
   <div class="section">
-    <h2 class="sh2">Check in</h2>
+    <h2 class="sh2">Return aircraft</h2>
     <form method="post" id="checkin-form">
       {% csrf_token %}
-      <input type="hidden" name="action" value="checkin">
-
-      <div class="ci-grid">
-        <!-- LEFT: form fields -->
-        <div>
-          <label class="flabel" style="max-width:300px;">Outcome
-            <select name="outcome" class="finput" onchange="toggleOutcomeNotes(this)">
-              <option value="completed">Completed normally</option>
-              <option value="aborted_ground">Aborted on ground</option>
-              <option value="early_return_tech">Early return — technical</option>
-              <option value="early_return_wx">Early return — weather</option>
-              <option value="diverted">Diverted / landed away</option>
-            </select>
+      <input type="hidden" name="action" value="return_aircraft">
+      <div style="display:flex;gap:1.2rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:.5rem;">
+        {% if booking.aircraft.records_hobbs %}
+        <div style="display:flex;gap:.5rem;align-items:flex-start;">
+          <label class="flabel">Hobbs at departure
+            {% if not prev_hobbs_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
+            <input type="number" id="dep-hobbs" step="0.1" class="finput" style="width:110px;"
+                   value="{{ prev_hobbs_end|default:'' }}"
+                   {% if prev_hobbs_end %}readonly style="width:110px;background:#f0f4ff;"{% endif %}>
           </label>
-          <div id="outcome-notes-wrap" style="display:none;">
-            <label class="flabel">Outcome notes (required)
-              <textarea name="outcome_notes" class="finput" rows="2" placeholder="Describe what happened"></textarea>
-            </label>
-          </div>
-
-          <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.7rem;">
-            {% if booking.aircraft.records_hobbs %}
-            <label class="flabel">Hobbs start <span class="req">*</span>
-              <input type="number" name="hobbs_start" id="ci-hobbs-start" step="0.1" required class="finput" style="width:105px;"
-                     data-prev-end="{{ prev_hobbs_end|default:'' }}" data-meter="hobbs"
-                     value="{% if fc and fc.hobbs_start %}{{ fc.hobbs_start }}{% elif prev_hobbs_end %}{{ prev_hobbs_end }}{% endif %}"
-                     oninput="checkMeterGap(this);updateCheckinPreview();checkEndGtStart();">
-            </label>
-            <label class="flabel">Hobbs end <span class="req">*</span>
-              <input type="number" name="hobbs_end" id="ci-hobbs-end" step="0.1" required class="finput" style="width:105px;"
-                     oninput="updateCheckinPreview();checkEndGtStart();">
-            </label>
-            {% endif %}
-            {% if booking.aircraft.records_tacho %}
-            <label class="flabel">Tacho start <span class="req">*</span>
-              <input type="number" name="tacho_start" id="ci-tacho-start" step="0.01" required class="finput" style="width:105px;"
-                     data-prev-end="{{ prev_tacho_end|default:'' }}" data-meter="tacho"
-                     value="{% if fc and fc.tacho_start %}{{ fc.tacho_start }}{% elif prev_tacho_end %}{{ prev_tacho_end }}{% endif %}"
-                     oninput="checkMeterGap(this);updateCheckinPreview();checkEndGtStart();">
-            </label>
-            <label class="flabel">Tacho end <span class="req">*</span>
-              <input type="number" name="tacho_end" id="ci-tacho-end" step="0.01" required class="finput" style="width:105px;"
-                     oninput="updateCheckinPreview();checkEndGtStart();">
-            </label>
-            {% endif %}
-            {% if booking.aircraft.records_airswitch %}
-            <label class="flabel">Air switch start <span class="req">*</span>
-              <input type="number" name="airswitch_start" id="ci-airswitch-start" step="0.1" required class="finput" style="width:105px;"
-                     data-prev-end="{{ prev_airswitch_end|default:'' }}" data-meter="airswitch"
-                     value="{% if fc and fc.airswitch_start %}{{ fc.airswitch_start }}{% elif prev_airswitch_end %}{{ prev_airswitch_end }}{% endif %}"
-                     oninput="checkMeterGap(this);updateCheckinPreview();checkEndGtStart();">
-            </label>
-            <label class="flabel">Air switch end <span class="req">*</span>
-              <input type="number" name="airswitch_end" id="ci-airswitch-end" step="0.1" required class="finput" style="width:105px;"
-                     oninput="updateCheckinPreview();checkEndGtStart();">
-            </label>
-            {% endif %}
-            {% if not booking.aircraft.records_hobbs and not booking.aircraft.records_tacho and not booking.aircraft.records_airswitch %}
-            <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0;">No meter readings configured for this aircraft.</p>
-            {% endif %}
-          </div>
-
-          <!-- Meter gap warning -->
-          <div id="meter-gap-wrap" style="display:none;margin-top:.7rem;">
-            <div class="notice warn" id="meter-gap-msg" style="margin-bottom:.5rem;"></div>
-            <label class="flabel">Explanation for meter gap <span class="req">*</span>
-              <textarea name="gap_explanation" id="gap-explanation" class="finput" rows="2"
-                        placeholder="e.g. Ground run by engineer, meter replaced, tow flight not booked in system…"></textarea>
-            </label>
-          </div>
-          {% if error and 'gap' in error|lower %}
-          <script>
-            document.addEventListener('DOMContentLoaded', function() {
-              var w = document.getElementById('meter-gap-wrap');
-              var m = document.getElementById('meter-gap-msg');
-              if (w && m) { w.style.display = 'block'; m.textContent = '{{ error|escapejs }}'; }
-            });
-          </script>
-          {% endif %}
-
-          <!-- ── Optional extras toolbar ── -->
-          <div style="display:flex;align-items:center;gap:.5rem;margin-top:.85rem;">
-            <span style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#c8cdd4;white-space:nowrap;">Optional</span>
-            <div style="flex:1;border-top:1px solid #e8eaed;"></div>
-          </div>
-          <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-top:.45rem;">
-            <button type="button" class="cbtn-sm" id="ft-toggle-btn" onclick="toggleFtPanel()">✏ Change type</button>
-            <button type="button" class="cbtn-sm" id="split-toggle-btn" onclick="toggleSplit()">↔ Split flight</button>
-            <button type="button" class="cbtn-sm" id="special-toggle-btn" onclick="toggleSpecial()">⏱ Special time</button>
-          </div>
-
-          <!-- Flight type panel -->
-          <div id="ft-panel" hidden style="margin-top:.55rem;padding:.65rem .8rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
-            <label class="flabel" style="max-width:280px;">Flight type
-              <select name="flight_type_id" class="finput">
-                <option value="">— keep {{ booking.flight_type.name }} —</option>
-                {% for ft in flight_types %}{% if ft != booking.flight_type %}<option value="{{ ft.id }}">{{ ft.name }}</option>{% endif %}{% endfor %}
-              </select>
-            </label>
-          </div>
-
-          <!-- ── Split flight (hidden by default) ── -->
-          <div id="split-section" hidden style="margin-top:.6rem;padding:.75rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
-            <input type="hidden" name="has_split" value="1">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;">
-              <span style="font-size:.82rem;font-weight:600;color:#1f2933;">Split flight between members</span>
-              <button type="button" class="cbtn-sm cbtn-danger" onclick="toggleSplit()">✕ Cancel</button>
-            </div>
-            <p style="font-size:.76rem;color:#8a93a0;margin:0 0 .65rem;">Enter the instrument reading at each handover. Up to 4 members.</p>
-
-            <!-- Seg 1: always the booking member -->
-            <div style="font-size:.79rem;font-weight:600;color:#5b6573;padding:.25rem 0 .2rem;">1. {{ booking.member.user.get_full_name }}</div>
-
-            <!-- Handover 1 (always shown when split is open) -->
-            <div id="handover-1">
-              <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:700;margin:.35rem 0 .2rem;">↓ Handover</div>
-              <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
-                {% if booking.aircraft.records_hobbs %}
-                <label class="flabel">Hobbs
-                  <input type="number" name="seg_hobbs_h1" id="seg-hobbs-h1" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-                {% if booking.aircraft.records_tacho %}
-                <label class="flabel">Tacho
-                  <input type="number" name="seg_tacho_h1" id="seg-tacho-h1" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-                {% if booking.aircraft.records_airswitch %}
-                <label class="flabel">Air switch
-                  <input type="number" name="seg_airswitch_h1" id="seg-airswitch-h1" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-              </div>
-            </div>
-
-            <!-- Seg 2: always shown -->
-            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
-              <span style="font-size:.79rem;font-weight:600;color:#5b6573;min-width:1.3rem;">2.</span>
-              <select name="seg_member_2" class="finput" style="max-width:240px;flex:1;" oninput="updateSplitHours()">
-                <option value="">— select member —</option>
-                {% for m in club_members %}{% if m.id != booking.member_id %}
-                <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
-                {% endif %}{% endfor %}
-              </select>
-            </div>
-
-            <!-- Handover 2 (shown when 3rd member added) -->
-            <div id="handover-2" hidden>
-              <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:700;margin:.35rem 0 .2rem;">↓ Handover</div>
-              <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
-                {% if booking.aircraft.records_hobbs %}
-                <label class="flabel">Hobbs
-                  <input type="number" name="seg_hobbs_h2" id="seg-hobbs-h2" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-                {% if booking.aircraft.records_tacho %}
-                <label class="flabel">Tacho
-                  <input type="number" name="seg_tacho_h2" id="seg-tacho-h2" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-                {% if booking.aircraft.records_airswitch %}
-                <label class="flabel">Air switch
-                  <input type="number" name="seg_airswitch_h2" id="seg-airswitch-h2" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-              </div>
-            </div>
-
-            <!-- Seg 3 (shown when 3rd member added) -->
-            <div id="seg-3" hidden style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
-              <span style="font-size:.79rem;font-weight:600;color:#5b6573;min-width:1.3rem;">3.</span>
-              <select name="seg_member_3" class="finput" style="max-width:200px;flex:1;" oninput="updateSplitHours()">
-                <option value="">— select member —</option>
-                {% for m in club_members %}{% if m.id != booking.member_id %}
-                <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
-                {% endif %}{% endfor %}
-              </select>
-              <button type="button" onclick="removeSplitSeg(3)" class="cbtn-sm cbtn-danger">✕</button>
-            </div>
-
-            <!-- Handover 3 (shown when 4th member added) -->
-            <div id="handover-3" hidden>
-              <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:700;margin:.35rem 0 .2rem;">↓ Handover</div>
-              <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.5rem;">
-                {% if booking.aircraft.records_hobbs %}
-                <label class="flabel">Hobbs
-                  <input type="number" name="seg_hobbs_h3" id="seg-hobbs-h3" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-                {% if booking.aircraft.records_tacho %}
-                <label class="flabel">Tacho
-                  <input type="number" name="seg_tacho_h3" id="seg-tacho-h3" step="0.01" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-                {% if booking.aircraft.records_airswitch %}
-                <label class="flabel">Air switch
-                  <input type="number" name="seg_airswitch_h3" id="seg-airswitch-h3" step="0.1" class="finput" style="width:90px;" oninput="updateSplitHours();checkHandoverRange(this);">
-                </label>
-                {% endif %}
-              </div>
-            </div>
-
-            <!-- Seg 4 (shown when 4th member added) -->
-            <div id="seg-4" hidden style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;">
-              <span style="font-size:.79rem;font-weight:600;color:#5b6573;min-width:1.3rem;">4.</span>
-              <select name="seg_member_4" class="finput" style="max-width:200px;flex:1;" oninput="updateSplitHours()">
-                <option value="">— select member —</option>
-                {% for m in club_members %}{% if m.id != booking.member_id %}
-                <option value="{{ m.id }}">{{ m.user.get_full_name }}</option>
-                {% endif %}{% endfor %}
-              </select>
-              <button type="button" onclick="removeSplitSeg(4)" class="cbtn-sm cbtn-danger">✕</button>
-            </div>
-
-            <div id="split-hours-preview" style="font-size:.78rem;color:#2a7a3b;font-weight:600;margin:.4rem 0;display:none;"></div>
-
-            <button type="button" id="split-add-btn" class="cbtn-sm" onclick="addSplitSeg()" style="margin-top:.3rem;">+ Add another person</button>
-          </div>
-
-          <!-- Special time logging -->
-          <div id="special-time-panel" hidden style="margin-top:.55rem;padding:.7rem .85rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
-            <p style="font-size:.76rem;color:#8a93a0;margin:0 0 .6rem;">Each value must not exceed total flight time. Values may overlap (e.g. a flight can have both I/F and night time).</p>
-            <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-              <label class="flabel">I/F simulated
-                <input type="number" name="time_if_simulated" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
-                       value="{{ fc.time_if_simulated|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
-              </label>
-              <label class="flabel">I/F actual
-                <input type="number" name="time_if_actual" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
-                       value="{{ fc.time_if_actual|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
-              </label>
-              <label class="flabel">Night
-                <input type="number" name="time_night" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
-                       value="{{ fc.time_night|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
-              </label>
-              <label class="flabel">Low flying
-                <input type="number" name="time_low_flying" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
-                       value="{{ fc.time_low_flying|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
-              </label>
-              <label class="flabel">Terrain awareness
-                <input type="number" name="time_terrain_awareness" step="0.1" min="0" class="finput special-time-input" style="width:90px;"
-                       value="{{ fc.time_terrain_awareness|default:'' }}" placeholder="0.0" oninput="validateSpecialTime(this)">
-              </label>
-            </div>
-            <div id="special-time-warn" style="display:none;margin-top:.4rem;font-size:.78rem;color:#c0392b;font-weight:600;"></div>
-          </div>
+          <label class="flabel">Hobbs at return <span class="req">*</span>
+            <input type="number" name="return_hobbs" step="0.1" required class="finput" style="width:110px;"
+                   data-start-id="dep-hobbs" data-meter="Hobbs" id="ret-hobbs">
+          </label>
         </div>
-
-        <!-- RIGHT: charge preview only — payment recorded on the charges screen after check-in -->
-        <div>
-          <div id="ci-preview-wrap" style="padding:.7rem 1rem;background:#f0f4ff;border:1px solid #c7d4f5;border-radius:8px;display:none;margin-bottom:.8rem;">
-            <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5b6573;margin-bottom:.4rem;">Estimated charges</div>
-            <div id="ci-preview-rows" style="font-size:.88rem;"></div>
-            <div style="display:flex;justify-content:space-between;border-top:1px solid #c7d4f5;margin-top:.4rem;padding-top:.4rem;">
-              <span style="font-weight:600;">Total</span>
-              <span id="ci-preview-total" style="font-weight:700;font-size:1.05rem;"></span>
-            </div>
-            <p style="font-size:.74rem;color:#8a93a0;margin:.35rem 0 0;">Landing fees &amp; one-off charges can be added after check-in.</p>
-          </div>
-          <div id="ci-no-rates" style="padding:.6rem .8rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;display:none;font-size:.82rem;color:#8a93a0;">
-            No charge rates configured — charges can be added manually after check-in.
-          </div>
-          <div style="padding:.7rem 1rem;background:#f8f9fb;border:1px dashed #d0d5dd;border-radius:8px;font-size:.82rem;color:#8a93a0;margin-top:.6rem;">
-            Payment is recorded on the charges screen after check-in.
-          </div>
+        {% endif %}
+        {% if booking.aircraft.records_tacho %}
+        <div style="display:flex;gap:.5rem;align-items:flex-start;">
+          <label class="flabel">Tacho at departure
+            {% if not prev_tacho_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
+            <input type="number" id="dep-tacho" step="0.01" class="finput" style="width:110px;"
+                   value="{{ prev_tacho_end|default:'' }}"
+                   {% if prev_tacho_end %}readonly style="width:110px;background:#f0f4ff;"{% endif %}>
+          </label>
+          <label class="flabel">Tacho at return <span class="req">*</span>
+            <input type="number" name="return_tacho" step="0.01" required class="finput" style="width:110px;"
+                   data-start-id="dep-tacho" data-meter="Tacho" id="ret-tacho">
+          </label>
         </div>
-      </div><!-- /ci-grid -->
+        {% endif %}
+        {% if booking.aircraft.records_airswitch %}
+        <div style="display:flex;gap:.5rem;align-items:flex-start;">
+          <label class="flabel">Air switch at departure
+            {% if not prev_airswitch_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
+            <input type="number" id="dep-airswitch" step="0.1" class="finput" style="width:110px;"
+                   value="{{ prev_airswitch_end|default:'' }}"
+                   {% if prev_airswitch_end %}readonly style="width:110px;background:#f0f4ff;"{% endif %}>
+          </label>
+          <label class="flabel">Air switch at return <span class="req">*</span>
+            <input type="number" name="return_airswitch" step="0.1" required class="finput" style="width:110px;"
+                   data-start-id="dep-airswitch" data-meter="Air switch" id="ret-airswitch">
+          </label>
+        </div>
+        {% endif %}
+        {% if not booking.aircraft.records_hobbs and not booking.aircraft.records_tacho and not booking.aircraft.records_airswitch %}
+        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0;">No meter readings configured for this aircraft.</p>
+        {% endif %}
+      </div>
+      <div id="ret-duration" style="display:none;font-size:.9rem;font-weight:700;color:#2a7a3b;margin-bottom:.5rem;"></div>
+      <label class="flabel" style="max-width:420px;margin-bottom:.7rem;">Notes (optional)
+        <input type="text" name="return_notes" class="finput" placeholder="Any observations on return…">
+      </label>
 
-      <div style="display:flex;align-items:center;gap:.8rem;margin-top:1rem;flex-wrap:wrap;">
-        <button type="submit" class="btn">Check in</button>
+      <input type="hidden" name="flight_count" id="ret-flight-count" value="0">
+      <input type="hidden" name="pilot_id_0" value="{{ booking.member.id }}">
+      <input type="hidden" name="hours_0" id="split-h0-hidden" value="">
+
+      <!-- Split flight — always shows row 0 with booking member -->
+      <div style="display:flex;align-items:center;gap:.5rem;margin-top:.85rem;">
+        <span style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#c8cdd4;white-space:nowrap;">Optional</span>
+        <div style="flex:1;border-top:1px solid #e8eaed;"></div>
+      </div>
+      {% if error %}<div class="notice err" style="margin:.6rem 0 .4rem;">{{ error }}</div>{% endif %}
+      <div id="split-section" style="margin-top:.5rem;">
+        <!-- Row 0: booking member, auto-calculated hours -->
+        <div style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.35rem;">
+          <div class="flabel" style="flex:1;margin-bottom:0;">Pilot
+            <input type="text" class="finput" value="{{ booking.member.user.get_full_name }}" readonly style="background:#f0f4ff;cursor:default;">
+          </div>
+          <label class="flabel" style="width:100px;margin-bottom:0;">Hours
+            <input type="number" id="split-h0-disp" class="finput" step="0.01" readonly tabindex="-1" style="background:#f0f4ff;cursor:default;">
+          </label>
+          <div style="width:38px;"></div>
+        </div>
+        <!-- Extra rows added dynamically -->
+        <div id="split-extra-rows"></div>
+        <div id="split-match-msg" style="font-size:.82rem;font-weight:600;min-height:1.3rem;margin-bottom:.3rem;"></div>
+        <button type="button" class="cbtn-add" id="split-add-btn" onclick="addSplitRow()">+ Split flight</button>
       </div>
     </form>
-    {% if club_member.is_admin %}
-    <div style="margin-top:.6rem;padding-top:.5rem;border-top:1px solid #f0f2f4;">
-      <form method="post" style="display:inline;" data-confirm="Undo departure? The flight completion stub will be deleted and the flight will return to confirmed.">
+    <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin-top:1.4rem;">
+      {% if club_member.is_admin %}
+      <form method="post" style="display:contents;" data-confirm="Undo departure? All flight data will be cleared and the booking will return to confirmed.">
         {% csrf_token %}
         <input type="hidden" name="action" value="undo_depart">
-        <button type="submit" style="background:none;border:none;padding:0;cursor:pointer;font-size:.78rem;color:#8a93a0;text-decoration:underline;font-family:inherit;">↩ Undo departure</button>
+        <button type="submit" class="cbtn cbtn-warn">↩ Undo departure</button>
       </form>
+      {% endif %}
+      <button type="submit" form="checkin-form" class="btn" id="ret-submit">Confirm return</button>
     </div>
-    {% endif %}
+    <script>
+    (function(){
+      var endInputs = document.querySelectorAll('#checkin-form input[data-start-id]');
+      var durEl  = document.getElementById('ret-duration');
+      var submit = document.getElementById('ret-submit');
+      function update() {
+        var parts = [], hasErr = false;
+        endInputs.forEach(function(inp) {
+          var startEl = document.getElementById(inp.dataset.startId);
+          var start = startEl ? parseFloat(startEl.value) : NaN;
+          var end   = parseFloat(inp.value);
+          if (!inp.value || isNaN(end)) { window.setFieldError(inp, ''); return; }
+          if (!isNaN(start) && end <= start) {
+            window.setFieldError(inp, inp.dataset.meter + ' return must be greater than departure (' + start + ')');
+            hasErr = true;
+          } else {
+            window.setFieldError(inp, '');
+            if (!isNaN(start)) parts.push(inp.dataset.meter + ' ' + (Math.round((end - start) * 100) / 100).toFixed(2) + 'h');
+          }
+        });
+        durEl.textContent = parts.length ? parts.join(' · ') : '';
+        durEl.style.display = parts.length ? '' : 'none';
+        submit.disabled = hasErr;
+      }
+      endInputs.forEach(function(inp){ inp.addEventListener('input', update); });
+      // Also re-run when editable departure inputs change
+      document.querySelectorAll('#checkin-form input[id^="dep-"]:not([readonly])').forEach(function(inp){
+        inp.addEventListener('input', update);
+      });
+    })();
+    </script>
+    <script>
+    (function() {
+      var depHobbs     = {{ prev_hobbs_end|default:'null' }};
+      var depTacho     = {{ prev_tacho_end|default:'null' }};
+      var depAirswitch = {{ prev_airswitch_end|default:'null' }};
+      var acHobbs      = {{ booking.aircraft.records_hobbs|yesno:'true,false' }};
+      var acTacho      = {{ booking.aircraft.records_tacho|yesno:'true,false' }};
+      var acAirswitch  = {{ booking.aircraft.records_airswitch|yesno:'true,false' }};
+
+      var h0Disp    = document.getElementById('split-h0-disp');
+      var h0Hidden  = document.getElementById('split-h0-hidden');
+      var extraRows = document.getElementById('split-extra-rows');
+      var matchMsg  = document.getElementById('split-match-msg');
+      var fcInput   = document.getElementById('ret-flight-count');
+      var extraCount = 0;
+
+      var memberOptions = [
+        {% for m in club_members %}{% if m.id != booking.member_id %}
+        '<option value="{{ m.id }}">{{ m.user.get_full_name|escapejs }}</option>',
+        {% endif %}{% endfor %}
+      ].join('');
+
+      function getTotalHours() {
+        var meterId = acHobbs ? 'ret-hobbs' : acTacho ? 'ret-tacho' : acAirswitch ? 'ret-airswitch' : null;
+        var dep     = acHobbs ? depHobbs : acTacho ? depTacho : acAirswitch ? depAirswitch : null;
+        if (!meterId || dep === null) return null;
+        var el = document.getElementById(meterId);
+        var val = el ? parseFloat(el.value) : NaN;
+        return isNaN(val) ? null : Math.round((val - dep) * 100) / 100;
+      }
+
+      function getSumExtra() {
+        var sum = 0;
+        extraRows.querySelectorAll('.split-extra-hrs').forEach(function(inp) {
+          sum += parseFloat(inp.value) || 0;
+        });
+        return Math.round(sum * 100) / 100;
+      }
+
+      function update() {
+        var total = getTotalHours();
+        var sumE  = getSumExtra();
+        var rem   = total !== null ? Math.round((total - sumE) * 100) / 100 : null;
+
+        if (rem !== null) {
+          var v = Math.max(0, rem).toFixed(2);
+          h0Disp.value   = v;
+          h0Hidden.value = v;
+        } else if (total !== null) {
+          h0Disp.value   = total.toFixed(2);
+          h0Hidden.value = total.toFixed(2);
+        }
+
+        fcInput.value = extraCount > 0 ? 1 + extraCount : 0;
+
+        if (extraCount === 0) {
+          matchMsg.innerHTML = '';
+        } else if (rem !== null && rem < -0.005) {
+          matchMsg.innerHTML = '<span style="color:#c0392b;">⚠ Split hours exceed booking duration by ' + Math.abs(rem).toFixed(2) + 'h</span>';
+        } else {
+          var allFilled = true;
+          extraRows.querySelectorAll('.split-extra-hrs').forEach(function(inp) {
+            if (!inp.value || parseFloat(inp.value) <= 0) allFilled = false;
+          });
+          matchMsg.innerHTML = (allFilled && rem !== null && rem >= -0.005)
+            ? '<span style="color:#2a7a3b;">✓ Hours match booking duration</span>'
+            : '<span style="color:#8a93a0;">Enter hours for each split pilot</span>';
+        }
+      }
+
+      ['ret-hobbs','ret-tacho','ret-airswitch'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', update);
+      });
+      document.querySelectorAll('#checkin-form input[id^="dep-"]:not([readonly])').forEach(function(inp) {
+        inp.addEventListener('input', update);
+      });
+
+      update();
+
+      window.addSplitRow = function() {
+        extraCount++;
+        var idx = extraCount;
+        var div = document.createElement('div');
+        div.className = 'split-extra-row';
+        div.style.cssText = 'display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.35rem;';
+        var optStr = '<option value="">— select pilot —</option>' + memberOptions;
+        div.innerHTML =
+          '<label class="flabel" style="flex:1;margin-bottom:0;">Pilot' +
+          '<select name="pilot_id_' + idx + '" class="finput" style="margin-top:.25rem;">' + optStr + '</select></label>' +
+          '<label class="flabel" style="width:100px;margin-bottom:0;">Hours<span class="req"> *</span>' +
+          '<input type="number" name="hours_' + idx + '" class="finput split-extra-hrs" step="0.01" min="0.01"' +
+          ' style="margin-top:.25rem;" oninput="splitUpdate()"></label>' +
+          '<div style="align-self:flex-end;">' +
+          '<button type="button" onclick="removeSplitRow(this)" class="cbtn cbtn-danger"' +
+          ' style="font-size:.78rem;padding:.3rem .5rem;" title="Remove">✕</button>' +
+          '</div>';
+        extraRows.appendChild(div);
+        update();
+      };
+
+      window.removeSplitRow = function(btn) {
+        btn.closest('.split-extra-row').remove();
+        extraCount--;
+        extraRows.querySelectorAll('.split-extra-row').forEach(function(r, i) {
+          var n = i + 1;
+          r.querySelector('select').name = 'pilot_id_' + n;
+          r.querySelector('.split-extra-hrs').name = 'hours_' + n;
+        });
+        update();
+      };
+
+      window.splitUpdate = update;
+    })();
+    </script>
   </div>
   {% endif %}
 
-  <!-- ── COMPLETED: Charges ── -->
-  {% if booking.status == 'completed' and fc %}
+  <!-- ── RETURNED / COMPLETED: Charges ── -->
+  {% if fc and booking.status == 'completed' or fc and booking.status == 'returned' %}
   <div class="section">
     <div class="ch-grid">
       <!-- LEFT: charges + add-charge forms -->
@@ -598,119 +549,58 @@
         {% endif %}
 
         {% if club_member.is_admin %}
-        <details style="margin-bottom:.8rem;">
-          <summary class="cbtn-sm" style="cursor:pointer;display:inline-block;list-style:none;">Edit check-in details</summary>
-          <div style="margin-top:.6rem;padding:.7rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
-          <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="edit_checkin">
-            <p style="font-size:.8rem;color:#8a93a0;margin:0 0 .6rem;">Correcting meter readings will delete and regenerate hire/fuel/instructor/surcharge items. Manual and landing-fee charges are kept.</p>
-            <label class="flabel" style="max-width:300px;margin-bottom:.6rem;">Outcome
-              <select name="outcome" class="finput">
-                <option value="completed" {% if fc.outcome == 'completed' %}selected{% endif %}>Completed normally</option>
-                <option value="aborted_ground" {% if fc.outcome == 'aborted_ground' %}selected{% endif %}>Aborted on ground</option>
-                <option value="early_return_tech" {% if fc.outcome == 'early_return_tech' %}selected{% endif %}>Early return — technical</option>
-                <option value="early_return_wx" {% if fc.outcome == 'early_return_wx' %}selected{% endif %}>Early return — weather</option>
-                <option value="diverted" {% if fc.outcome == 'diverted' %}selected{% endif %}>Diverted / landed away</option>
-              </select>
-            </label>
-            <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.6rem;">
-              {% if booking.aircraft.records_hobbs %}
-              <label class="flabel">Hobbs start<input type="number" name="hobbs_start" step="0.1" class="finput" style="width:110px;" value="{{ fc.hobbs_start|default:'' }}"></label>
-              <label class="flabel">Hobbs end<input type="number" name="hobbs_end" step="0.1" class="finput" style="width:110px;" value="{{ fc.hobbs_end|default:'' }}"></label>
-              {% endif %}
-              {% if booking.aircraft.records_tacho %}
-              <label class="flabel">Tacho start<input type="number" name="tacho_start" step="0.01" class="finput" style="width:110px;" value="{{ fc.tacho_start|default:'' }}"></label>
-              <label class="flabel">Tacho end<input type="number" name="tacho_end" step="0.01" class="finput" style="width:110px;" value="{{ fc.tacho_end|default:'' }}"></label>
-              {% endif %}
-              {% if booking.aircraft.records_airswitch %}
-              <label class="flabel">Air switch start<input type="number" name="airswitch_start" step="0.1" class="finput" style="width:110px;" value="{{ fc.airswitch_start|default:'' }}"></label>
-              <label class="flabel">Air switch end<input type="number" name="airswitch_end" step="0.1" class="finput" style="width:110px;" value="{{ fc.airswitch_end|default:'' }}"></label>
-              {% endif %}
-            </div>
-            <button type="submit" class="btn secondary" style="font-size:.85rem;">Save &amp; recalculate charges</button>
-          </form>
+        <div style="margin-bottom:.75rem;">
           {% if not fc.amount_paid or fc.amount_paid == 0 and not fc_any_invoice_paid %}
-          <form method="post" style="margin-top:.5rem;" data-confirm="{% if fc_invoices %}Void this check-in? All charge items will be deleted, any invoices issued against this flight will be voided, and the flight will return to departed. The invoice(s) will need to be re-issued after re-check-in.{% else %}Void this check-in? All charge items will be deleted and the flight will return to departed.{% endif %}">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="void_checkin">
-            <button type="submit" class="cbtn" style="font-size:.8rem;color:#c0392b;border-color:#c0392b;">Void check-in (return to departed)</button>
+          <form method="post" style="display:inline;" data-confirm="{% if fc_invoices %}Void flights? All charge items will be deleted, any invoices voided, and the booking will return to departed.{% else %}Void flights? All charge items will be deleted and the booking will return to departed.{% endif %}">
+            {% csrf_token %}<input type="hidden" name="action" value="void_checkin">
+            <button type="submit" class="cbtn cbtn-danger" style="font-size:.8rem;">Void flights &amp; undo return</button>
           </form>
           {% else %}
-          <p style="font-size:.78rem;color:#c0392b;margin:.4rem 0 0;">
-            {% if fc_any_invoice_paid %}Void is blocked — a payment has been recorded against an invoice for this flight. Reverse the invoice payment first.
-            {% else %}Void is blocked — ${{ fc.amount_paid|currency }} payment recorded. Reverse the payment first.{% endif %}
-          </p>
+          <button type="button" class="cbtn cbtn-danger" style="font-size:.8rem;opacity:.4;cursor:not-allowed;"
+            title="{% if fc_any_invoice_paid %}Reverse the invoice payment first to enable void.{% else %}Reverse the ${{ fc.amount_paid|currency }} payment first to enable void.{% endif %}"
+            disabled>Void flights &amp; undo return</button>
           {% endif %}
-          </div>
-        </details>
+        </div>
         {% endif %}
         <table class="ch-table">
-          <thead><tr><th>Type</th><th>Description</th><th style="text-align:right;">Amount</th><th></th></tr></thead>
           <tbody>
             {% if fc_segments %}
               {% for seg in fc_segments %}
-              <tr>
-                <td colspan="4" style="background:#f4f6f8;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;padding:.3rem .8rem;border-bottom:1px solid #e8eaed;">
-                  {{ seg.member.user.get_full_name }} — {{ seg.hours }}h
-                </td>
+              <tr style="background:#f4f6f8;">
+                <td style="font-size:.83rem;font-weight:600;color:#2b333d;padding:.35rem .5rem;">{{ seg.member.user.get_full_name }}</td>
+                <td style="font-size:.78rem;color:#8a93a0;padding:.35rem .5rem;white-space:nowrap;">{{ seg.hours }}h</td>
+                <td style="text-align:right;font-weight:700;padding:.35rem .5rem;">${{ seg.charge_total|currency }}</td>
+                <td style="width:28px;"></td>
               </tr>
               {% for item in seg.segment_charges %}
               <tr>
-                <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
-                <td>{{ item.description }}</td>
-                <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
-                <td style="width:32px;">
-                  {% if not fc.is_paid %}
-                  <form method="post" style="display:inline;" data-confirm="Remove this charge?">
-                    {% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}">
-                    <button type="submit" class="del-btn">×</button>
-                  </form>
-                  {% endif %}
-                </td>
+                <td style="color:#8a93a0;font-size:.78rem;padding-left:.9rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
+                <td style="font-size:.82rem;">{{ item.description }}</td>
+                <td style="text-align:right;">${{ item.amount|currency }}</td>
+                <td style="width:28px;">{% if not fc.is_paid and item.item_type != 'hire' and item.item_type != 'fuel' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
               </tr>
-              {% empty %}
-              <tr><td colspan="4" style="color:#bbb;font-size:.8rem;padding:.25rem .8rem;">No charges for this segment.</td></tr>
               {% endfor %}
               {% endfor %}
               {% if charge_items %}
               <tr>
-                <td colspan="4" style="background:#f4f6f8;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;padding:.3rem .8rem;border-bottom:1px solid #e8eaed;border-top:1px solid #e8eaed;">
-                  Additional charges — shared pro-rata
-                </td>
+                <td colspan="4" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5b6573;background:#f4f6f8;padding:.35rem .5rem;border-bottom:none;">Pro-rated charges</td>
               </tr>
+              {% endif %}
               {% for item in charge_items %}
               <tr>
-                <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
-                <td>{{ item.description }}</td>
-                <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
-                <td style="width:32px;">
-                  {% if not fc.is_paid %}
-                  <form method="post" style="display:inline;" data-confirm="Remove this charge?">
-                    {% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}">
-                    <button type="submit" class="del-btn">×</button>
-                  </form>
-                  {% endif %}
-                </td>
+                <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
+                <td style="font-size:.82rem;">{{ item.description }}</td>
+                <td style="text-align:right;">${{ item.amount|currency }}</td>
+                <td style="width:28px;">{% if not fc.is_paid %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
               </tr>
               {% endfor %}
-              {% endif %}
             {% else %}
             {% for item in charge_items %}
             <tr>
-              <td style="color:#8a93a0;font-size:.8rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
-              <td>{{ item.description }}</td>
-              <td style="text-align:right;font-weight:600;">${{ item.amount|currency }}</td>
-              <td style="width:32px;">
-                {% if not fc.is_paid %}
-                <form method="post" style="display:inline;" data-confirm="Remove this charge?">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="delete_charge">
-                  <input type="hidden" name="item_id" value="{{ item.id }}">
-                  <button type="submit" class="del-btn">×</button>
-                </form>
-                {% endif %}
-              </td>
+              <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
+              <td style="font-size:.82rem;">{{ item.description }}</td>
+              <td style="text-align:right;">${{ item.amount|currency }}</td>
+              <td style="width:28px;">{% if not fc.is_paid %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
             </tr>
             {% empty %}
             <tr><td colspan="4" style="color:#8a93a0;font-size:.85rem;padding:.6rem;">No charges added yet.</td></tr>
@@ -720,7 +610,8 @@
         </table>
 
         {% if not fc.is_paid %}
-        <details class="add-wrap" style="margin-bottom:.4rem;">
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:.5rem;">
+        <details class="add-wrap">
           <summary class="add-toggle">+ Add landing fee</summary>
           <form method="post" class="lf-form" style="padding:.2rem .7rem .8rem;">
             {% csrf_token %}
@@ -751,6 +642,14 @@
                   <input type="number" name="amount" id="lf-amount" step="0.01" min="0" class="finput money-input" placeholder="0.00" required onblur="fmtMoney(this)">
                 </div>
               </label>
+              {% if fc_segments %}
+              <label class="flabel" style="min-width:110px;">Charge to
+                <select name="segment_member_id" class="finput" style="font-size:.82rem;">
+                  <option value="">All (pro-rata)</option>
+                  {% for seg in fc_segments %}<option value="{{ seg.member.id }}">{{ seg.member.user.get_short_name }}</option>{% endfor %}
+                </select>
+              </label>
+              {% endif %}
               <button type="submit" class="btn lf-add-btn">Add</button>
             </div>
             <div id="lf-nofees-msg" class="lf-hint" hidden>No fee types configured — enter amount manually.</div>
@@ -764,9 +663,8 @@
             {% endif %}
           </form>
         </details>
-
-        <details class="add-wrap" style="margin-bottom:.4rem;">
-          <summary class="add-toggle">+ Add sundry / one-off charge</summary>
+        <details class="add-wrap">
+          <summary class="add-toggle">+ Add sundry charge</summary>
           <form method="post" style="padding:.2rem .7rem .8rem;">
             {% csrf_token %}
             <input type="hidden" name="action" value="add_charge">
@@ -781,7 +679,7 @@
                 </div>
               </label>
               {% if fc_segments %}
-              <label class="flabel" style="min-width:120px;">Charge to
+              <label class="flabel" style="min-width:110px;">Charge to
                 <select name="segment_member_id" class="finput" style="font-size:.82rem;">
                   <option value="">All (pro-rata)</option>
                   {% for seg in fc_segments %}<option value="{{ seg.member.id }}">{{ seg.member.user.get_short_name }}</option>{% endfor %}
@@ -792,28 +690,7 @@
             </div>
           </form>
         </details>
-
-        <details class="add-wrap" style="margin-bottom:.6rem;">
-          <summary class="add-toggle" style="color:#8a93a0;font-size:.8rem;">± Adjust auto-calculated charge</summary>
-          <form method="post" style="margin-top:.4rem;padding:0 .7rem .7rem;">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="add_charge">
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;">
-              <label class="flabel">Type<select name="item_type" class="finput"><option value="hire">Hire adj.</option><option value="fuel">Fuel adj.</option><option value="instructor">Instructor adj.</option><option value="surcharge">Surcharge adj.</option></select></label>
-              <label class="flabel" style="flex:2;min-width:160px;">Description<input type="text" name="description" class="finput" required placeholder="Describe the correction"></label>
-              <label class="flabel" style="width:110px;">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" step="0.01" class="finput money-input" required placeholder="−5.00" onblur="fmtMoney(this)"></div></label>
-              {% if fc_segments %}
-              <label class="flabel" style="min-width:110px;">Charge to
-                <select name="segment_member_id" class="finput" style="font-size:.82rem;">
-                  <option value="">All (pro-rata)</option>
-                  {% for seg in fc_segments %}<option value="{{ seg.member.id }}">{{ seg.member.user.get_short_name }}</option>{% endfor %}
-                </select>
-              </label>
-              {% endif %}
-              <button type="submit" class="btn secondary lf-add-btn">Add</button>
-            </div>
-          </form>
-        </details>
+        </div>
         {% endif %}
 
         <div class="ch-total-row">
@@ -1170,7 +1047,7 @@
               {% if actor.is_admin %}
               <button type="button" id="add-payee-btn" class="cbtn-sm">+ Add payee</button>
               {% endif %}
-              <button type="submit" id="mp-submit-btn" class="btn" style="flex:1;">Record payment</button>
+              <button type="submit" id="mp-submit-btn" class="btn">Record payment</button>
             </div>
           </form>
 
@@ -1277,8 +1154,8 @@
               amtEl.addEventListener('change', function() { recalcAllocation(); });
               amtWrap.appendChild(sym); amtWrap.appendChild(amtEl);
               var rmBtn = document.createElement('button');
-              rmBtn.type = 'button'; rmBtn.className = 'cbtn';
-              rmBtn.style.cssText = 'font-size:.78rem;padding:.15rem .4rem;color:#c0392b;border-color:#c0392b;';
+              rmBtn.type = 'button'; rmBtn.className = 'cbtn cbtn-danger';
+              rmBtn.style.cssText = 'font-size:.78rem;padding:.15rem .4rem;';
               rmBtn.textContent = '✕'; rmBtn.title = 'Remove payee';
               rmBtn.addEventListener('click', function() {
                 contPanel.removeChild(row);
@@ -1363,55 +1240,48 @@
           <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;margin:0 0 .5rem;">Payments received</p>
           {% for fp in fc_payments_paid %}
           {% with fp_inv=fc_invoice_by_member|dict_get:fp.member_id %}
-          <div style="padding:.45rem 0;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
-            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:.85rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
-                <div style="font-size:.74rem;color:#8a93a0;">${{ fp.amount|floatformat:2 }} · {{ fp.get_method_display }}</div>
-                <div style="font-size:.74rem;color:#2a7a3b;font-weight:600;">✓ Paid {{ fp.paid_at|date:"j M H:i" }}</div>
-              </div>
-              {% if actor.is_admin and not fp_inv or actor.is_admin and fp_inv.status == 'void' %}
-              <form method="post" data-confirm="Reverse ${{ fp.amount|floatformat:2 }} payment from {{ fp.member.user.get_full_name }}?" style="margin:0;">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="reverse_payment">
-                <input type="hidden" name="payment_id" value="{{ fp.id }}">
-                <button type="submit" class="cbtn" style="font-size:.75rem;color:#c0392b;border-color:#c0392b;">Reverse</button>
-              </form>
-              {% endif %}
-              {% if fp_inv and fp_inv.status != 'void' %}
-              <a href="{% url 'core:invoice_detail' club.slug fp_inv.id %}?back={% url 'core:booking_detail' club.slug booking.id %}&back_label=Charges" class="cbtn" style="font-size:.75rem;" data-overlay data-overlay-wide>Receipt →</a>
-              {% else %}
-              <form id="receipt-form-{{ forloop.counter }}" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}" style="margin:0;"
-                    data-confirm="Generate receipt for {{ fp.member.user.get_short_name }}? They will be notified by email."
-                    data-push-stack>
-                {% csrf_token %}
-                <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
-                <button type="submit" class="cbtn" style="font-size:.75rem;">Receipt</button>
-              </form>
-              {% endif %}
-            </div>
-            {% if not fp_inv or fp_inv.status == 'void' %}
-            {% if fp.member.id == booking.member_id and member_copaid_fcs %}
-            <details style="margin-top:.35rem;font-size:.73rem;color:#8a93a0;">
-              <summary style="cursor:pointer;">Also include other paid flights? ({{ member_copaid_fcs|length }})</summary>
-              <div style="margin:.3rem 0 0 .1rem;">
-                {% for ofc in member_copaid_fcs %}
-                <label style="display:flex;align-items:center;gap:.4rem;font-size:.74rem;color:#374151;padding:.1rem 0;cursor:pointer;">
-                  <input type="checkbox" name="other_fc_ids" value="{{ ofc.id }}" form="receipt-form-{{ forloop.parentloop.counter }}">
-                  {{ ofc.booking.aircraft.registration }} · {{ ofc.booking.scheduled_start|date:"j M" }} · ${{ ofc.total_charge|floatformat:2 }}
-                </label>
-                {% endfor %}
-              </div>
-            </details>
+          <div style="display:flex;align-items:center;gap:.4rem;padding:.28rem 0;font-size:.8rem;{% if not forloop.last or batch_session_payments %}border-bottom:1px solid #f0f2f4;{% endif %}">
+            <span style="flex:1;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ fp.member.user.get_full_name }}</span>
+            <span style="color:#8a93a0;white-space:nowrap;">${{ fp.amount|floatformat:2 }} · {{ fp.get_method_display }}</span>
+            <span style="color:#2a7a3b;font-weight:600;white-space:nowrap;">✓ {{ fp.paid_at|date:"j M H:i" }}</span>
+            {% if actor.is_admin and not fp_inv or actor.is_admin and fp_inv.status == 'void' %}
+            <form method="post" data-confirm="Reverse ${{ fp.amount|floatformat:2 }} payment from {{ fp.member.user.get_full_name }}?" style="margin:0;flex-shrink:0;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="reverse_payment">
+              <input type="hidden" name="payment_id" value="{{ fp.id }}">
+              <button type="submit" class="cbtn cbtn-danger" style="font-size:.72rem;padding:.15rem .45rem;">Reverse</button>
+            </form>
             {% endif %}
+            {% if fp_inv and fp_inv.status != 'void' %}
+            <a href="{% url 'core:invoice_print' club.slug fp_inv.id %}" target="_blank" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;flex-shrink:0;"
+               onclick="window.open(this.href,'_blank');return false;">Receipt</a>
+            {% else %}
+            <form id="receipt-form-{{ forloop.counter }}" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}" style="margin:0;flex-shrink:0;">
+              {% csrf_token %}
+              <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
+              <button type="button" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;"
+                onclick="if(!confirm('Generate receipt for {{ fp.member.user.get_short_name|escapejs }}? They will be notified by email.'))return;var n='rc_{{ forloop.counter }}_'+Date.now();var w=window.open('',n);document.getElementById('receipt-form-{{ forloop.counter }}').target=n;document.getElementById('receipt-form-{{ forloop.counter }}').submit();">Receipt</button>
+            </form>
             {% endif %}
           </div>
           {% endwith %}
           {% endfor %}
-          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e3e6ea;padding-top:.45rem;margin-top:.3rem;">
-            <span style="font-size:.78rem;font-weight:700;color:#5b6573;">Total received</span>
-            <span style="font-size:.9rem;font-weight:700;color:{% if fc.is_paid %}#2a7a3b{% else %}#b06800{% endif %};">
-              ${{ fc.amount_paid|currency }}{% if fc.is_paid %} <span style="font-size:.73rem;font-weight:500;">✓ Paid in full</span>{% endif %}
+          {% if batch_session_payments %}
+          <div style="padding-top:.3rem;">
+            <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#adb5bd;margin:.1rem 0 .2rem;">Also settled in this session</p>
+            {% for sp in batch_session_payments %}
+            <div style="display:flex;align-items:center;gap:.4rem;padding:.28rem 0;font-size:.8rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
+              <span style="flex:1;font-weight:500;white-space:nowrap;">{{ sp.completion.booking.aircraft.registration }} · {{ sp.completion.booking.scheduled_start|date:"j M Y" }}</span>
+              <span style="color:#8a93a0;white-space:nowrap;">${{ sp.amount|floatformat:2 }} · {{ sp.get_method_display }}</span>
+              <span style="color:#2a7a3b;font-weight:600;white-space:nowrap;">✓ {{ sp.paid_at|date:"j M H:i" }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          <div class="ch-total-row">
+            <span class="ch-total-label">Total received</span>
+            <span class="ch-total-amount" style="color:{% if fc.is_paid %}#2a7a3b{% else %}#b06800{% endif %};">
+              ${{ batch_session_total|currency }}{% if fc.is_paid %} <span style="font-size:.78rem;font-weight:500;">✓ Paid in full</span>{% endif %}
             </span>
           </div>
           {% if not fc.is_paid and balance_owing %}
@@ -1426,10 +1296,10 @@
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
             <div style="margin-top:.4rem;">
               {% if total %}
-              <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}"
-                    data-confirm="Issue invoice to {{ booking.member.user.get_full_name }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}? The member will be notified and the flight will be marked Completed.">
+              <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}">
                 {% csrf_token %}
-                <button type="submit" class="cbtn" style="font-size:.8rem;">Issue invoice</button>
+                <button type="button" class="cbtn" style="font-size:.8rem;"
+                  onclick="if(!confirm('Issue invoice to {{ booking.member.user.get_full_name|escapejs }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}? The member will be notified and the flight will be marked Completed.'))return;var n='inv_'+Date.now();var w=window.open('',n);document.getElementById('issue-invoice-form').target=n;document.getElementById('issue-invoice-form').submit();">Issue invoice</button>
               </form>
               {% else %}
               <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Issue invoice</span>
@@ -1492,19 +1362,18 @@
 
   .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
 
-  .ch-table{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1rem;}
-  .ch-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .ch-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ch-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:.7rem;}
+  .ch-table td{padding:.38rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .ch-table tfoot td{border-top:2px solid #e3e6ea;border-bottom:none;}
   .del-btn{background:none;border:none;color:#c0392b;cursor:pointer;font-size:1rem;line-height:1;padding:0 .3rem;}
 
   .paid-badge{font-size:.75rem;font-weight:500;color:#2a7a3b;background:#e6f4ea;padding:.2rem .6rem;border-radius:10px;margin-left:.6rem;}
 
-  .add-wrap{border:1px solid #e3e6ea;border-radius:7px;margin-bottom:.4rem;}
-  .add-wrap[open]{background:#fafbfc;}
-  .add-toggle{cursor:pointer;font-size:.82rem;color:var(--primary);font-weight:600;list-style:none;padding:.4rem .7rem;}
+  .add-wrap{flex-shrink:0;}
+  .add-wrap[open]{flex-basis:100%;border:1px solid #e3e6ea;border-radius:7px;background:#fafbfc;}
+  .add-toggle{cursor:pointer;font-size:.78rem;color:var(--primary);font-weight:600;list-style:none;padding:.2rem .55rem;border:1px solid var(--primary);border-radius:5px;display:inline-flex;align-items:center;}
   .add-toggle::-webkit-details-marker{display:none;}
-  .add-wrap[open] .add-toggle{border-bottom:1px solid #e3e6ea;margin-bottom:.2rem;}
+  .add-wrap[open] .add-toggle{display:block;border:none;border-bottom:1px solid #e3e6ea;border-radius:0;padding:.35rem .7rem;margin-bottom:.2rem;}
   .lf-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;}
   .lf-add-btn{flex-shrink:0;padding:.42rem .75rem;margin-bottom:.6rem;}
   .lf-hint{font-size:.8rem;color:#8a93a0;margin:.3rem .7rem .1rem;font-style:italic;}
@@ -1543,293 +1412,6 @@ function ciPayMethodChange(sel) {
   amtWrap.style.display = sel.value ? '' : 'none';
 }
 
-function updateCheckinPreview() {
-  const rates = (typeof _ciRates !== 'undefined') ? _ciRates : null;
-  const previewWrap = document.getElementById('ci-preview-wrap');
-  const previewRows = document.getElementById('ci-preview-rows');
-  const previewTotal = document.getElementById('ci-preview-total');
-  const payAmount = document.getElementById('ci-pay-amount');
-  if (!rates || !previewWrap || !previewRows) return;
-
-  // Calculate hours from the billing meter
-  var hours = 0;
-  var startEl, endEl;
-  if (rates.time_method === 'hobbs') {
-    startEl = document.getElementById('ci-hobbs-start');
-    endEl   = document.getElementById('ci-hobbs-end');
-  } else if (rates.time_method === 'tacho') {
-    startEl = document.getElementById('ci-tacho-start');
-    endEl   = document.getElementById('ci-tacho-end');
-  } else if (rates.time_method === 'airswitch') {
-    startEl = document.getElementById('ci-airswitch-start');
-    endEl   = document.getElementById('ci-airswitch-end');
-  }
-  if (startEl && endEl) {
-    var s = parseFloat(startEl.value), e = parseFloat(endEl.value);
-    if (!isNaN(s) && !isNaN(e) && e > s) hours = Math.round((e - s) * 1000) / 1000;
-  }
-
-  var noRatesEl = document.getElementById('ci-no-rates');
-  if (hours <= 0) { previewWrap.style.display = 'none'; if(noRatesEl) noRatesEl.style.display='none'; return; }
-  if (!rates.hire_rate && !rates.fuel_rate && !rates.instructor_rate && !(rates.surcharges||[]).length) {
-    previewWrap.style.display = 'none';
-    if (noRatesEl) noRatesEl.style.display = '';
-    return;
-  }
-  if (noRatesEl) noRatesEl.style.display = 'none';
-  previewWrap.style.display = '';
-
-  var rows = [], total = 0;
-  if (rates.hire_rate) {
-    var hire = Math.round(rates.hire_rate * hours * 100) / 100;
-    rows.push(['Aircraft hire', hire]);
-    total += hire;
-  }
-  if (rates.fuel_rate && !rates.includes_fuel) {
-    var fuel = Math.round(rates.fuel_rate * hours * 100) / 100;
-    rows.push(['Fuel levy', fuel]);
-    total += fuel;
-  }
-  if (rates.instructor_rate) {
-    var instr = Math.round(rates.instructor_rate * hours * 100) / 100;
-    rows.push(['Instructor fee', instr]);
-    total += instr;
-  }
-  (rates.surcharges || []).forEach(function(sc) {
-    rows.push([sc.name, sc.amount]);
-    total += sc.amount;
-  });
-
-  previewRows.innerHTML = rows.map(function(r) {
-    return '<div style="display:flex;justify-content:space-between;padding:.15rem 0;">' +
-      '<span style="color:#5b6573;">' + r[0] + '</span>' +
-      '<span style="font-weight:500;">$' + r[1].toFixed(2) + '</span></div>';
-  }).join('');
-  total = Math.round(total * 100) / 100;
-  previewTotal.textContent = '$' + total.toFixed(2);
-  if (payAmount) payAmount.value = total.toFixed(2);
-}
-
-function checkMeterGap(inp) {
-  var prevEnd = parseFloat(inp.dataset.prevEnd);
-  if (isNaN(prevEnd)) return;
-  var val = parseFloat(inp.value);
-  if (isNaN(val)) return;
-  var meter = inp.dataset.meter;
-  var labels = { hobbs: 'Hobbs', tacho: 'Tacho', airswitch: 'Air switch' };
-  var meterLabel = labels[meter] || meter;
-  var tolerance = meter === 'tacho' ? 0.005 : 0.05;
-  var decimals  = meter === 'tacho' ? 2 : 1;
-  var gap = val - prevEnd;
-  var wrap = document.getElementById('meter-gap-wrap');
-  var msg  = document.getElementById('meter-gap-msg');
-  var expl = document.getElementById('gap-explanation');
-  if (gap > tolerance) {
-    msg.textContent = meterLabel + ' gap detected: start ' + val + ' is ' + gap.toFixed(decimals) +
-      'h ahead of last recorded end (' + prevEnd + '). An explanation is required before you can save.';
-    wrap.style.display = 'block';
-    expl.required = true;
-  } else {
-    wrap.style.display = 'none';
-    expl.required = false;
-  }
-}
-
-function validateSpecialTime(inp) {
-  var total = 0;
-  var endEl = document.getElementById('ci-hobbs-end');
-  var startEl = document.getElementById('ci-hobbs-start');
-  if (endEl && startEl && endEl.value && startEl.value) {
-    total = parseFloat(endEl.value) - parseFloat(startEl.value);
-  }
-  var warnEl = document.getElementById('special-time-warn');
-  var val = parseFloat(inp.value);
-  if (!isNaN(val) && total > 0 && val > total) {
-    inp.style.borderColor = '#c0392b';
-    if (warnEl) { warnEl.style.display = ''; warnEl.textContent = 'Value exceeds total flight time (' + total.toFixed(1) + ' hrs)'; }
-  } else {
-    inp.style.borderColor = '';
-    var anyOver = Array.from(document.querySelectorAll('.special-time-input')).some(function(el) {
-      var v = parseFloat(el.value);
-      return !isNaN(v) && total > 0 && v > total;
-    });
-    if (warnEl) { warnEl.style.display = anyOver ? '' : 'none'; }
-  }
-}
-
-function checkEndGtStart() {
-  var pairs = [
-    {s:'ci-hobbs-start',     e:'ci-hobbs-end',     label:'Hobbs'},
-    {s:'ci-tacho-start',     e:'ci-tacho-end',     label:'Tacho'},
-    {s:'ci-airswitch-start', e:'ci-airswitch-end', label:'Air switch'},
-  ];
-  pairs.forEach(function(p) {
-    var sEl = document.getElementById(p.s);
-    var eEl = document.getElementById(p.e);
-    if (!sEl || !eEl) return;
-    var sv = parseFloat(sEl.value);
-    var ev = parseFloat(eEl.value);
-    var msg = (!isNaN(sv) && !isNaN(ev) && ev <= sv)
-      ? p.label + ' end must be greater than start (' + sv + ')' : '';
-    eEl.setCustomValidity(msg);
-    eEl.style.borderColor = msg ? '#c0392b' : '';
-  });
-}
-
-function checkHandoverRange(inp) {
-  var m = inp.id.match(/^seg-(hobbs|tacho|airswitch)-h(\d)$/);
-  if (!m) return;
-  var meter = m[1], n = parseInt(m[2]);
-  var labels = {hobbs:'Hobbs',tacho:'Tacho',airswitch:'Air switch'};
-  var sEl  = document.getElementById('ci-' + meter + '-start');
-  var eEl  = document.getElementById('ci-' + meter + '-end');
-  var prevEl = n > 1 ? document.getElementById('seg-' + meter + '-h' + (n - 1)) : null;
-  var hv = parseFloat(inp.value);
-  if (isNaN(hv)) { inp.setCustomValidity(''); inp.style.borderColor = ''; return; }
-  var prevVal = prevEl && prevEl.value ? parseFloat(prevEl.value) : NaN;
-  var lo = !isNaN(prevVal) ? prevVal : (sEl ? parseFloat(sEl.value) : NaN);
-  var loLabel = !isNaN(prevVal) ? 'previous handover (' + lo + ')' : 'flight start (' + lo + ')';
-  var ev = eEl ? parseFloat(eEl.value) : NaN;
-  var msg = '';
-  if (!isNaN(lo) && hv <= lo)
-    msg = labels[meter] + ' handover must be greater than ' + loLabel;
-  else if (!isNaN(ev) && hv >= ev)
-    msg = labels[meter] + ' handover must be less than flight end (' + ev + ')';
-  inp.setCustomValidity(msg);
-  inp.style.borderColor = msg ? '#c0392b' : '';
-  // Re-validate the next handover — its lower bound is now this value
-  var nextEl = document.getElementById('seg-' + meter + '-h' + (n + 1));
-  if (nextEl && nextEl.value) checkHandoverRange(nextEl);
-}
-
-// Split flight
-var splitSegCount = 2;
-
-window.toggleSplit = function toggleSplit() {
-  var sec = document.getElementById('split-section');
-  var btn = document.getElementById('split-toggle-btn');
-  if (!sec) return;
-  if (sec.hidden) {
-    sec.hidden = false;
-    if (btn) btn.classList.add('active');
-    splitSegCount = 2;
-  } else {
-    sec.hidden = true;
-    if (btn) btn.classList.remove('active');
-    _resetSplitFields();
-  }
-};
-
-window.toggleFtPanel = function toggleFtPanel() {
-  var panel = document.getElementById('ft-panel');
-  var btn = document.getElementById('ft-toggle-btn');
-  if (!panel) return;
-  panel.hidden = !panel.hidden;
-  btn.classList.toggle('active', !panel.hidden);
-};
-
-window.toggleSpecial = function toggleSpecial() {
-  var panel = document.getElementById('special-time-panel');
-  var btn = document.getElementById('special-toggle-btn');
-  if (!panel) return;
-  panel.hidden = !panel.hidden;
-  btn.classList.toggle('active', !panel.hidden);
-};
-
-function _resetSplitFields() {
-  [2, 3].forEach(function(n) {
-    var h = document.getElementById('handover-' + n);
-    var s = document.getElementById('seg-' + (n + 1));
-    if (h) h.hidden = true;
-    if (s) s.hidden = true;
-  });
-  ['hobbs','tacho','airswitch'].forEach(function(k) {
-    [1,2,3].forEach(function(n) {
-      var el = document.getElementById('seg-' + k + '-h' + n);
-      if (el) { el.value = ''; el.setCustomValidity(''); el.style.borderColor = ''; }
-    });
-  });
-  [2,3,4].forEach(function(n) {
-    var sel = document.querySelector('[name="seg_member_' + n + '"]');
-    if (sel) sel.value = '';
-  });
-  splitSegCount = 2;
-  var addBtn = document.getElementById('split-add-btn');
-  if (addBtn) { addBtn.hidden = false; }
-  document.getElementById('split-hours-preview').style.display = 'none';
-}
-
-function addSplitSeg() {
-  splitSegCount++;
-  var h = document.getElementById('handover-' + (splitSegCount - 1));
-  var s = document.getElementById('seg-' + splitSegCount);
-  if (h) h.hidden = false;
-  if (s) s.hidden = false;
-  if (splitSegCount >= 4) {
-    var addBtn = document.getElementById('split-add-btn');
-    if (addBtn) addBtn.hidden = true;
-  }
-  updateSplitHours();
-}
-
-function removeSplitSeg(n) {
-  var s = document.getElementById('seg-' + n);
-  var h = document.getElementById('handover-' + (n - 1));
-  if (s) s.hidden = true;
-  if (h) h.hidden = true;
-  // Clear fields for the removed segment and its preceding handover
-  var sel = document.querySelector('[name="seg_member_' + n + '"]');
-  if (sel) sel.value = '';
-  ['hobbs','tacho','airswitch'].forEach(function(k) {
-    var el = document.getElementById('seg-' + k + '-h' + (n - 1));
-    if (el) el.value = '';
-  });
-  splitSegCount--;
-  var addBtn = document.getElementById('split-add-btn');
-  if (addBtn) addBtn.hidden = false;
-  updateSplitHours();
-}
-
-function updateSplitHours() {
-  var method = '{{ booking.aircraft.total_time_method|default:"hobbs" }}';
-  var prefix = method === 'tacho' ? 'tacho' : (method === 'airswitch' ? 'airswitch' : 'hobbs');
-  var startEl = document.getElementById('ci-' + prefix + '-start');
-  var endEl   = document.getElementById('ci-' + prefix + '-end');
-  var preview = document.getElementById('split-hours-preview');
-  if (!startEl || !endEl) { preview.style.display = 'none'; return; }
-  var s = parseFloat(startEl.value);
-  var e = parseFloat(endEl.value);
-  if (isNaN(s) || isNaN(e)) { preview.style.display = 'none'; return; }
-
-  // Collect handover points
-  var points = [s];
-  for (var i = 1; i < splitSegCount; i++) {
-    var hEl = document.getElementById('seg-' + prefix + '-h' + i);
-    points.push(hEl ? parseFloat(hEl.value) : NaN);
-  }
-  points.push(e);
-
-  // Validate all points are strictly ascending
-  var valid = true;
-  for (var j = 1; j < points.length; j++) {
-    if (isNaN(points[j]) || points[j] <= points[j-1]) { valid = false; break; }
-  }
-  if (!valid) { preview.style.display = 'none'; return; }
-
-  // Build member names
-  var names = ['{{ booking.member.user.get_full_name|escapejs }}'];
-  for (var k = 2; k <= splitSegCount; k++) {
-    var sel = document.querySelector('[name="seg_member_' + k + '"]');
-    names.push(sel && sel.selectedIndex > 0 ? sel.options[sel.selectedIndex].text : 'Member ' + k);
-  }
-
-  var parts = [];
-  for (var m = 0; m < splitSegCount; m++) {
-    parts.push(names[m] + ': ' + (points[m+1] - points[m]).toFixed(1) + 'h');
-  }
-  preview.textContent = parts.join('  ·  ');
-  preview.style.display = '';
-}
 
 // Landing fee form helpers — assigned to window so inline onchange= can reach them
 // (scripts are re-executed via new Function() in the overlay, which creates a local scope)

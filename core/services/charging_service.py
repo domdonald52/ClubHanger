@@ -293,10 +293,44 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
 
     fc._sync_payment_cache()
     total_reversed = sum(fp.amount for fp in rows)
-    return ServiceResult(
-        ok=True,
-        data={'message': f'Payment of ${total_reversed:.2f} reversed. Flight is now unpaid.'}
-    )
+
+    # Also reverse payments from the same batch on other FCs
+    batch_ids = {fp.batch_id for fp in rows if fp.batch_id}
+    extra_count = 0
+    if batch_ids:
+        sibling_fps = list(
+            FlightPayment.objects.filter(batch_id__in=batch_ids, paid_at__isnull=False)
+            .exclude(completion=fc)
+            .select_related('completion__booking__aircraft', 'member')
+        )
+        for _sfp in sibling_fps:
+            if _sfp.method == 'credit':
+                _sacct, _ = Account.objects.get_or_create(club_member=_sfp.member, defaults={'balance': 0})
+                _sbk = _sfp.completion.booking
+                AccountTransaction.objects.create(
+                    account=_sacct,
+                    transaction_type='adjustment',
+                    direction='credit',
+                    amount=_sfp.amount,
+                    description=(
+                        f'Payment reversal — {_sbk.aircraft.registration} '
+                        f'{_sbk.scheduled_start.strftime("%-d %b %Y")}'
+                    ),
+                    flight_completion=_sfp.completion,
+                    payment_method=_sfp.method,
+                    created_by=user,
+                )
+                _sacct.apply_transaction(_sfp.amount, 'credit')
+            _sfp.paid_at = None
+            _sfp.save(update_fields=['paid_at'])
+            _sfp.completion._sync_payment_cache()
+            total_reversed += _sfp.amount
+            extra_count += 1
+
+    msg = f'Payment of ${total_reversed:.2f} reversed. Flight is now unpaid.'
+    if extra_count:
+        msg += f' {extra_count} co-session payment(s) on other flights also reversed.'
+    return ServiceResult(ok=True, data={'message': msg})
 
 
 def record_multi_payment(primary_fc, primary_booking, user, method: str,
@@ -327,6 +361,9 @@ def record_multi_payment(primary_fc, primary_booking, user, method: str,
     remaining = received
     messages = []
 
+    import uuid as _uuid
+    batch = _uuid.uuid4() if len(fc_amounts) > 1 else None
+
     for fc, bk, requested in fc_amounts:
         if remaining <= 0:
             break
@@ -341,6 +378,7 @@ def record_multi_payment(primary_fc, primary_booking, user, method: str,
             method=method,
             paid_at=timezone.now(),
             recorded_by=user,
+            batch_id=batch,
         )
 
         if method == 'credit':

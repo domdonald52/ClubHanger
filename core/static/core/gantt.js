@@ -126,13 +126,8 @@
   const btnWatch = document.getElementById("m-watch");
   const editFields = document.getElementById("m-edit-fields");
   const checkinFields = document.getElementById("m-checkin-fields");
-  const dvView = document.getElementById("m-depart-view");
-  const dvCredSection = document.getElementById("dv-cred-section");
-  const dvBack = document.getElementById("dv-back");
-  const dvConfirm = document.getElementById("dv-confirm");
   const btnWatchLabel = document.getElementById("m-watch-label");
   let _currentPill = null;
-  let _departHasCredWarnings = false;
 
   // Mutable set — updated on watch toggles without page reload
   const watchedIds = new Set((cfg.watchedIds || []).map(String));
@@ -558,9 +553,6 @@
   function openEdit(pill) {
     removePreview();
     _currentPill = pill;
-    if (dvView) dvView.hidden = true;
-    if (dvBack) dvBack.hidden = true;
-    if (dvConfirm) dvConfirm.hidden = true;
     document.getElementById("modal-title").textContent = "Edit booking";
     fId.value = pill.dataset.id;
     btnDelete.hidden = false;
@@ -798,9 +790,6 @@
     checkinFields.hidden = true;
     btnSave.hidden = false;
     btnDelete.hidden = false;
-    if (dvView) dvView.hidden = true;
-    if (dvBack) dvBack.hidden = true;
-    if (dvConfirm) dvConfirm.hidden = true;
   }
   document.getElementById("m-cancel").addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
@@ -1085,7 +1074,6 @@
   const credCheckConfirm = document.getElementById("cred-check-confirm");
   const credCheckCancel  = document.getElementById("cred-check-cancel");
   let _pendingCredId = null;
-  let _pendingCredAction = null;  // 'confirm' | 'depart'
 
   function doConfirm(id) {
     post(`/api/booking/${id}/confirm/`, {}).then((res) => {
@@ -1095,41 +1083,14 @@
     });
   }
 
-  function doDepart(id, body) {
-    post(`/api/booking/${id}/depart/`, body || {}).then(res => {
-      if (!res.ok) {
-        if (dvConfirm) { dvConfirm.disabled = false; dvConfirm.textContent = "Confirm check out"; }
-        showToast(res.data && res.data.error ? res.data.error : "Could not depart", 'err');
-        return;
-      }
-      document.querySelectorAll(`.pill[data-id="${id}"]`).forEach(pill => {
-        pill.classList.remove("confirmed", "pending");
-        pill.classList.add("departed");
-        pill.dataset.status = "departed";
-        const nm = pill.querySelector(".nm");
-        if (nm) nm.textContent = nm.textContent.replace(/^[✈✓⏱⚠] /, "");
-        const sub = pill.querySelector(".sub");
-        if (sub) { const t = sub.textContent.replace(/ · .*$/, ""); sub.textContent = t + " · airborne"; }
-        pill.querySelectorAll(".pill-dot-decl,.pill-wedge").forEach(el => el.remove());
-        const wedge = document.createElement("div");
-        wedge.className = "pill-wedge dep";
-        wedge.innerHTML = '<i class="ti ti-plane-departure" aria-hidden="true"></i>';
-        pill.appendChild(wedge);
-      });
-      closeModal();
-      showToast("Booking marked as departed");
-    });
-  }
-
-  function showCredCheckModal(id, action) {
+  function showCredCheckModal(id) {
     if (!credCheckModal) {
-      if (action === 'confirm') doConfirm(id);
+      doConfirm(id);
       return;
     }
     _pendingCredId = id;
-    _pendingCredAction = action;
 
-    const actionLabel = action === 'depart' ? 'Check out' : 'Confirm booking';
+    const actionLabel = 'Confirm booking';
     credCheckBody.innerHTML = '<p style="color:#8a93a0;font-size:.85rem;padding:.5rem 0;">Checking…</p>';
     credCheckConfirm.textContent = actionLabel;
     credCheckConfirm.style.background = '';
@@ -1143,7 +1104,7 @@
         const STATUS_COLOR = { ok: "#2a7a3b", warn: "#c76c00", info: "#2563eb" };
         const URGENCY_BAR  = { green: "#4caf50", amber: "#ff9800", red: "#e03131" };
 
-        credCheckTitle.textContent = `${action === 'depart' ? 'Check out' : 'Confirm booking'} — ${data.member}`;
+        credCheckTitle.textContent = `Confirm booking — ${data.member}`;
 
         // Member credential checks
         const memberRows = (data.checks || []).map(c =>
@@ -1192,26 +1153,14 @@
         }
         const hasWarnings = data.has_warnings || data.has_maint_warnings;
 
-        let overrideInputHtml = '';
-        if (action === 'depart' && hasWarnings) {
-          overrideInputHtml = `<div style="margin-top:.8rem;padding:.65rem .75rem;background:#fff8e6;border:1px solid #fcd34d;border-radius:7px;">
-            <label style="display:block;font-size:.8rem;font-weight:600;color:#92400e;margin-bottom:.35rem;">Override reason <span style="color:#c0392b;">*</span></label>
-            <input type="text" id="cred-check-override-reason"
-                   style="display:block;width:100%;padding:.38rem .5rem;border:2px solid #f59e0b;border-radius:5px;font-size:.88rem;box-sizing:border-box;background:#fffbeb;"
-                   placeholder="e.g. Flying with instructor, emergency crew duty…">
-          </div>`;
-        }
+        credCheckBody.innerHTML = html || '<p style="color:#8a93a0;font-size:.85rem;">No checks found.</p>';
 
-        credCheckBody.innerHTML = (html ||
-          '<p style="color:#8a93a0;font-size:.85rem;">No checks found.</p>') + overrideInputHtml;
-
-        const overrideLabel = action === 'depart' ? 'Check out anyway (staff override)' : 'Confirm anyway (staff override)';
-        credCheckConfirm.textContent = hasWarnings ? overrideLabel : actionLabel;
+        credCheckConfirm.textContent = hasWarnings ? 'Confirm anyway (staff override)' : actionLabel;
         credCheckConfirm.style.background = hasWarnings ? "#c76c00" : "";
         credCheckConfirm.style.borderColor = hasWarnings ? "#c76c00" : "";
       })
       .catch(() => {
-        if (action === 'confirm') doConfirm(id);
+        doConfirm(id);
       });
   }
 
@@ -1223,149 +1172,17 @@
   if (btnDeclLink) btnDeclLink.addEventListener("click", () => openDeclOverlay());
   if (mDeclNoticeBtn) mDeclNoticeBtn.addEventListener("click", () => openDeclOverlay(mDeclNoticeBtn.dataset.declUrl));
 
-  const dvDeclOpenBtn = document.getElementById("dv-decl-open");
-  if (dvDeclOpenBtn) dvDeclOpenBtn.addEventListener("click", () => openDeclOverlay(dvDeclOpenBtn.dataset.declUrl));
-
-  function openDepartView(pill) {
-    const id = pill.dataset.id;
-    const reg = pill.dataset.registration;
-    const declPending = pill.dataset.declPending === "true";
-    const declUrl = pill.dataset.declUrl || "";
-
-    // Use currently-selected member (may have been changed in the edit dialog)
-    const selMember = MEMBERS.find(m => String(m.id) === String(fMember.value));
-    const memberName = selMember ? selMember.name : pill.dataset.member;
-    document.getElementById("modal-title").textContent = `Check out — ${memberName} · ${reg}`;
-
-    editFields.style.display = "none";
-    btnWatch.hidden = true;
-    btnDelete.hidden = true;
-    btnConfirm.hidden = true;
-    if (btnDeclLink) btnDeclLink.hidden = true;
-    btnDepart.hidden = true;
-    btnCheckin.hidden = true;
-    btnCharges.hidden = true;
-    btnSave.hidden = true;
-    document.getElementById("m-status-notice").hidden = true;
-    // Blockout/member/aircraft conflicts don't block checkout — pilot is aware.
-    conflictNotice.hidden = true;
-
-    if (dvView) dvView.hidden = false;
-    if (dvBack) dvBack.hidden = false;
-    if (dvConfirm) { dvConfirm.hidden = false; dvConfirm.disabled = false; dvConfirm.textContent = "Confirm check out"; }
-
-    const dvDeclSection = document.getElementById("dv-decl-section");
-    const dvDeclReason  = document.getElementById("dv-decl-reason");
-    const dvOverrideSec = document.getElementById("dv-override-section");
-    const dvOverrideReason = document.getElementById("dv-override-reason");
-    if (dvDeclSection) dvDeclSection.hidden = !declPending;
-    if (dvDeclReason)  dvDeclReason.value = "";
-    if (dvDeclOpenBtn) dvDeclOpenBtn.dataset.declUrl = declUrl;
-    if (dvOverrideSec) dvOverrideSec.hidden = true;
-    if (dvOverrideReason) dvOverrideReason.value = "";
-    _departHasCredWarnings = false;
-
-    if (dvCredSection) dvCredSection.innerHTML = '<p style="color:#8a93a0;font-size:.84rem;padding:.3rem 0;">Checking credentials and maintenance…</p>';
-
-    fetch(`/api/booking/${id}/credential-check/`, { credentials: "same-origin" })
-      .then(r => r.json())
-      .then(data => {
-        _departHasCredWarnings = !!(data.has_warnings || data.has_maint_warnings);
-
-        // Compact pill helper — one badge per credential/maintenance item
-        function _dvPill(label, type) {
-          const cfg = {
-            ok:    { bg:'#f0fdf4', color:'#166534', border:'#bbf7d0', icon:'✓' },
-            warn:  { bg:'#fff7ed', color:'#c76c00', border:'#fdba74', icon:'⚠' },
-            amber: { bg:'#fff7ed', color:'#c76c00', border:'#fdba74', icon:'⚠' },
-            red:   { bg:'#fee2e2', color:'#b91c1c', border:'#fca5a5', icon:'⚠' },
-          }[type] || { bg:'#f3f4f6', color:'#6b7280', border:'#d1d5db', icon:'·' };
-          return `<span style="display:inline-flex;align-items:center;gap:.25rem;font-size:.75rem;font-weight:600;padding:.18rem .48rem;border-radius:10px;background:${cfg.bg};color:${cfg.color};border:1px solid ${cfg.border};white-space:nowrap;">${cfg.icon} ${label}</span>`;
-        }
-        const _dvHdr = (t) => `<div style="font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;padding:.3rem 0 .15rem;">${t}</div>`;
-        const _dvPillRow = (pills, fallback) => `<div style="display:flex;flex-wrap:wrap;gap:.3rem;margin-bottom:.35rem;">${pills || fallback}</div>`;
-
-        const memberPills = (data.checks || []).map(c =>
-          _dvPill(c.label, c.status === 'ok' ? 'ok' : 'warn')
-        ).join('');
-
-        const allMaint = data.maintenance || [];
-        const warnMaint = allMaint.filter(m => m.urgency === 'amber' || m.urgency === 'red');
-        const maintPills = warnMaint.map(m =>
-          _dvPill(`${m.name}${m.detail ? ' · ' + m.detail : ''}`, m.urgency)
-        ).join('');
-
-        const hobbsNote = data.current_hobbs !== null && data.current_hobbs !== undefined
-          ? `<div style="font-size:.73rem;color:#9ca3af;margin-top:.1rem;">Last Hobbs: <strong>${data.current_hobbs}</strong></div>`
-          : '';
-
-        let html = '';
-        if ((data.checks || []).length > 0) {
-          html += _dvHdr(`Pilot — ${data.member}`) + _dvPillRow(memberPills, _dvPill('All current', 'ok'));
-        }
-        if (allMaint.length > 0) {
-          html += _dvHdr(`Aircraft — ${data.aircraft_reg || ''}`) + _dvPillRow(maintPills, _dvPill('No maintenance concerns', 'ok')) + hobbsNote;
-        }
-        if (!html) html = `<div style="font-size:.82rem;color:#2a7a3b;">✓ All checks passed.</div>`;
-        if (dvCredSection) dvCredSection.innerHTML = html;
-
-        if (dvOverrideSec) dvOverrideSec.hidden = !_departHasCredWarnings;
-      })
-      .catch(() => {
-        if (dvCredSection) dvCredSection.innerHTML = '<p style="color:#8a93a0;font-size:.84rem;">Could not load checks — you may proceed.</p>';
-      });
-  }
-
-  if (dvBack) dvBack.addEventListener("click", () => {
-    if (_currentPill) openEdit(_currentPill);
-  });
-
-  if (dvConfirm) dvConfirm.addEventListener("click", () => {
-    if (!_currentPill) { showToast("Error: no booking selected"); return; }
-    const id = _currentPill.dataset.id;
-    const body = {};
-
-    const dvDeclSection = document.getElementById("dv-decl-section");
-    const dvDeclReason  = document.getElementById("dv-decl-reason");
-    if (dvDeclSection && !dvDeclSection.hidden) {
-      const reason = dvDeclReason ? dvDeclReason.value.trim() : "";
-      if (!reason) {
-        if (dvDeclReason) { dvDeclReason.style.borderColor = "#e03131"; dvDeclReason.focus(); }
-        showToast("Enter a declaration override reason before checking out");
-        return;
-      }
-      body.no_declaration_reason = reason;
-      if (dvDeclReason) dvDeclReason.style.borderColor = "";
-    }
-
-    if (_departHasCredWarnings) {
-      const dvOverrideReason = document.getElementById("dv-override-reason");
-      const reason = dvOverrideReason ? dvOverrideReason.value.trim() : "";
-      if (!reason) {
-        if (dvOverrideReason) { dvOverrideReason.style.borderColor = "#e03131"; dvOverrideReason.focus(); }
-        showToast("Enter a credential override reason before checking out");
-        return;
-      }
-      body.eligibility_override_reason = reason;
-      if (dvOverrideReason) dvOverrideReason.style.borderColor = "";
-    }
-
-    dvConfirm.disabled = true;
-    dvConfirm.textContent = "Checking out…";
-    // Include current member selection so checkout always uses the displayed member
-    body.member_user_id = fMember.value;
-    doDepart(id, body);
-  });
-
   btnConfirm.addEventListener("click", () => {
     const id = fId.value;
     if (!id) return;
-    showCredCheckModal(id, 'confirm');
+    showCredCheckModal(id);
   });
 
   btnDepart.addEventListener("click", () => {
     if (!_currentPill) return;
-    openDepartView(_currentPill);
+    const id = _currentPill.dataset.id;
+    closeModal();
+    window.openPageOverlay(`/manage/${cfg.clubSlug}/bookings/${id}/?inline=1`, false);
   });
 
   if (credCheckConfirm) credCheckConfirm.addEventListener("click", () => {

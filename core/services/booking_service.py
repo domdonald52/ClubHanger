@@ -70,10 +70,13 @@ def confirm(booking, user) -> ServiceResult:
     Confirm a pending booking.
     Caller must verify the actor has permission before calling.
     """
-    booking.status = 'confirmed'
-    booking.confirmed_by = user
-    booking.confirmed_at = timezone.now()
-    booking.save()
+    from ..models import Booking as _Booking
+    _Booking.objects.filter(pk=booking.pk).update(
+        status='confirmed',
+        confirmed_by=user,
+        confirmed_at=timezone.now(),
+    )
+    booking.refresh_from_db()
     return ServiceResult(ok=True)
 
 
@@ -103,8 +106,8 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
             error=f'Membership subscription expired {_bm.subscription_expires.strftime("%-d %b %Y")} — departure blocked.',
         )
 
-    from ..models import Booking as _Booking
-    _active = _Booking.objects.filter(status='departed').exclude(id=booking.id)
+    from ..models import Booking as _Booking, Booking
+    _active = _Booking.objects.filter(status='departed', club=booking.club).exclude(id=booking.id)
     _hint = ' Find it in Bookings → Active tab, then check it in or contact the club.'
 
     _ac_clash = _active.filter(aircraft=booking.aircraft).select_related('member__user').first()
@@ -140,24 +143,18 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
         return ServiceResult(ok=False, error='Declaration required',
                              data={'needs_reason': True})
 
-    booking.status = 'departed'
-    booking.departed_at = timezone.now()
+    fuel_rate = FuelSurchargeRate.current_rate(booking.club, booking.aircraft)
+    _vals = {
+        'status': 'departed',
+        'departed_at': timezone.now(),
+        'fuel_rate_snapshot': fuel_rate.rate if fuel_rate else None,
+        'departed_aircraft_id': booking.aircraft_id,
+    }
     if requires_decl and not has_decl:
-        booking.departed_without_declaration = True
-        booking.departed_without_declaration_reason = no_declaration_reason
-    booking.save()
-
-    club = booking.club
-    fuel_rate = FuelSurchargeRate.current_rate(club, booking.aircraft)
-    FlightCompletion.objects.get_or_create(
-        booking=booking,
-        defaults={
-            'logged_by': user,
-            'fuel_surcharge_rate_snapshot': fuel_rate.rate if fuel_rate else None,
-            'departed_with_aircraft':   booking.aircraft,
-            'departed_with_instructor': booking.instructor,
-        }
-    )
+        _vals['departed_without_declaration'] = True
+        _vals['departed_without_declaration_reason'] = no_declaration_reason
+    Booking.objects.filter(pk=booking.pk).update(**_vals)
+    booking.refresh_from_db()
     audit(booking, user, 'departed')
     return ServiceResult(ok=True)
 
@@ -289,14 +286,18 @@ def cancel(booking, user, release_slot: bool = False,
             ok=False,
             error='Cannot cancel a flight that has departed. Use "Undo departure" to return it to confirmed, then cancel.'
         )
-    booking.status = 'cancelled'
-    booking.cancellation_reason = reason
-    booking.cancellation_reason_other = reason_other if reason == 'other' else ''
+    from ..models import Booking as _Booking
+    _cancel_vals = {
+        'status': 'cancelled',
+        'cancellation_reason': reason,
+        'cancellation_reason_other': reason_other if reason == 'other' else '',
+    }
     if release_slot:
-        booking.slot_released = True
-        booking.slot_released_at = timezone.now()
-        booking.slot_released_by = user
-    booking.save()
+        _cancel_vals['slot_released'] = True
+        _cancel_vals['slot_released_at'] = timezone.now()
+        _cancel_vals['slot_released_by'] = user
+    _Booking.objects.filter(pk=booking.pk).update(**_cancel_vals)
+    booking.refresh_from_db()
     from .notification_service import notify_booking_cancelled, notify_slot_released
     notify_booking_cancelled(booking)
     if release_slot:
@@ -504,13 +505,17 @@ def edit(booking, actor, aircraft, start_dt, end_dt, flight_type=None,
     if booking.flight_type and booking.flight_type.is_solo:
         instructor = None
 
-    booking.aircraft = aircraft
-    booking.instructor = instructor
-    booking.scheduled_start = start_dt
-    booking.scheduled_end = end_dt
-    booking.description = description
-    booking.blockout_override = bool(hits and override)
-    booking.save()
+    Booking.objects.filter(pk=booking.pk).update(
+        member=booking.member,
+        flight_type=booking.flight_type,
+        aircraft=aircraft,
+        instructor=instructor,
+        scheduled_start=start_dt,
+        scheduled_end=end_dt,
+        description=description,
+        blockout_override=bool(hits and override),
+    )
+    booking.refresh_from_db()
 
     recompute_blockout_conflict(booking)
     audit(booking, actor.user, 'field_changed', notes='Booking edited')
@@ -571,14 +576,18 @@ def reschedule(booking, actor, new_start_dt, duration_minutes,
         return ServiceResult(ok=False, error=msg,
                              data={'blockout': True, 'can_override': can_override, 'soft': is_soft})
 
-    booking.scheduled_start = new_start_dt
-    booking.scheduled_end   = new_end_dt
+    _reschedule_vals = {
+        'scheduled_start': new_start_dt,
+        'scheduled_end': new_end_dt,
+        'blockout_override': bool(hits and override),
+    }
     if aircraft:
-        booking.aircraft = aircraft
+        _reschedule_vals['aircraft'] = aircraft
     if instructor is not None:
-        booking.instructor = target_instructor
-    booking.blockout_override = bool(hits and override)
-    booking.save()
+        _reschedule_vals['instructor'] = target_instructor
+    from ..models import Booking as _Booking
+    _Booking.objects.filter(pk=booking.pk).update(**_reschedule_vals)
+    booking.refresh_from_db()
 
     recompute_blockout_conflict(booking)
     audit(booking, actor.user, 'field_changed', notes='Rescheduled')

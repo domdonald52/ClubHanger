@@ -11,7 +11,7 @@ logger = logging.getLogger('clubhangar.audit')
 from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem,
-                     FlightCompletion, AircraftMaintenanceItem, ChargeRate, FlightChargeItem,
+                     FlightCompletion, FlightSegment, AircraftMaintenanceItem, ChargeRate, FlightChargeItem,
                      FlightLandingEntry, AccountTransaction, ClubConfig,
                      OccurrenceReport, OccurrenceType, OccurrenceAction, OccurrenceAuditEntry,
                      ContactType, MembershipHistoryEntry, VoucherType,
@@ -97,7 +97,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         club=club,
         scheduled_start__gte=day_start,
         scheduled_start__lt=day_end
-    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'flight_completion', 'client')
+    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'client').prefetch_related('flight_completions')
     from django.db.models import Count as _GCount
     bookings = bookings.annotate(watcher_count=_GCount('watchers'))
 
@@ -224,7 +224,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'client_id':   b.client_id or '',
             'client_name': b.client.name if b.client else '',
             'billed_to':   b.billed_to or '',
-            'paid': (getattr(getattr(b, 'flight_completion', None), 'paid_at', None) is not None),
+            'paid': (getattr(b.flight_completion, 'paid_at', None) is not None),
             'decl_pending': _decl_pending,
             'decl_url': (
                 f'/manage/{club_slug}/bookings/{b.id}/declaration/'
@@ -861,8 +861,8 @@ def depart_booking(request, booking_id):
     if member_user_id and (actor.is_admin or actor.is_instructor):
         new_member = ClubMember.objects.filter(club=club, user_id=member_user_id).first()
         if new_member and new_member != booking.member:
-            booking.member = new_member
-            booking.save(update_fields=['member'])
+            Booking.objects.filter(pk=booking.pk).update(member=new_member)
+            booking.refresh_from_db()
     result = booking_service.depart(booking, request.user, no_decl_reason)
     if not result.ok:
         return JsonResponse({'error': result.error, **result.data}, status=400)
@@ -889,36 +889,33 @@ def checkin_booking(request, booking_id):
     if not (actor.is_admin or actor.is_instructor):
         return JsonResponse({'error': 'Instructors only'}, status=403)
 
-    result = booking_service.check_in(
-        booking, request.user,
-        outcome=request.POST.get('outcome', 'completed'),
-        outcome_notes=request.POST.get('outcome_notes', '').strip(),
-        hobbs_start=request.POST.get('hobbs_start', '').strip() or None,
-        hobbs_end=request.POST.get('hobbs_end', '').strip() or None,
-        tacho_start=request.POST.get('tacho_start', '').strip() or None,
-        tacho_end=request.POST.get('tacho_end', '').strip() or None,
-        airswitch_start=request.POST.get('airswitch_start', '').strip() or None,
-        airswitch_end=request.POST.get('airswitch_end', '').strip() or None,
+    # This API endpoint now performs the "return aircraft" step (marks booking returned).
+    # Full flight logging is done via the booking_detail overlay.
+    if booking.status != 'departed':
+        return JsonResponse({'error': 'Booking is not departed.'}, status=400)
+    ac = booking.aircraft
+    ret_hobbs     = request.POST.get('return_hobbs', '').strip() or None
+    ret_tacho     = request.POST.get('return_tacho', '').strip() or None
+    ret_airswitch = request.POST.get('return_airswitch', '').strip() or None
+    if ac.records_hobbs and not ret_hobbs:
+        return JsonResponse({'error': 'Hobbs reading at return is required.'}, status=400)
+    Booking.objects.filter(pk=booking.pk).update(
+        return_hobbs=ret_hobbs,
+        return_tacho=ret_tacho,
+        return_airswitch=ret_airswitch,
+        return_condition=request.POST.get('return_condition', 'serviceable'),
+        return_notes=request.POST.get('return_notes', '').strip(),
+        returned_at=timezone.now(),
+        arrived_at=timezone.now(),
+        departed_aircraft_id=booking.aircraft_id,
+        status='returned',
     )
-    if not result.ok:
-        return JsonResponse({'error': result.error}, status=400)
-    _special_fields = ['time_if_simulated', 'time_if_actual', 'time_night', 'time_low_flying', 'time_terrain_awareness']
-    if any(request.POST.get(f, '').strip() for f in _special_fields):
-        try:
-            _fc = FlightCompletion.objects.get(booking=booking)
-            _total = float(_fc.actual_flight_hours or 0)
-            for _sf in _special_fields:
-                _sv = request.POST.get(_sf, '').strip()
-                if _sv:
-                    _fval = float(_sv)
-                    setattr(_fc, _sf, _fval if _fval <= _total else _total)
-                else:
-                    setattr(_fc, _sf, None)
-            _fc.save(update_fields=_special_fields)
-        except (FlightCompletion.DoesNotExist, ValueError):
-            pass
-    return JsonResponse({'success': True, 'status': 'completed',
-                         'charges_url': result.data.get('charges_url', '')})
+    booking.refresh_from_db()
+    from django.urls import reverse as _r
+    charges_url = _r('core:booking_detail', kwargs={
+        'club_slug': club.slug, 'booking_id': booking.id
+    })
+    return JsonResponse({'success': True, 'status': 'returned', 'charges_url': charges_url})
 
 
 @login_required
@@ -1054,9 +1051,9 @@ def create_booking(request):
                 client_obj = _Contact.objects.filter(id=client_id, club=club).first()
                 if client_obj:
                     created_booking = Booking.objects.get(id=result.data['booking_id'])
-                    created_booking.client = client_obj
-                    created_booking.billed_to = billed_to
-                    created_booking.save(update_fields=['client', 'billed_to'])
+                    Booking.objects.filter(pk=created_booking.pk).update(
+                        client=client_obj, billed_to=billed_to
+                    )
 
         return JsonResponse({'success': True, 'booking_id': result.data['booking_id']})
 
@@ -1167,12 +1164,11 @@ def edit_booking(request, booking_id):
             from .models import Contact as _Contact
             if client_id:
                 client_obj = _Contact.objects.filter(id=client_id, club=club).first()
-                booking.client = client_obj
-                booking.billed_to = billed_to if client_obj else ''
+                Booking.objects.filter(pk=booking.pk).update(
+                    client=client_obj, billed_to=billed_to if client_obj else ''
+                )
             else:
-                booking.client = None
-                booking.billed_to = ''
-            booking.save(update_fields=['client', 'billed_to'])
+                Booking.objects.filter(pk=booking.pk).update(client=None, billed_to='')
 
         return JsonResponse({'success': True})
 
@@ -1519,16 +1515,18 @@ def update_booking(request, booking_id):
     instructor_id = request.POST.get('instructor_id')
     aircraft_id = request.POST.get('aircraft_id')
     
+    _quick_vals = {}
     if instructor_id:
         from .models import User
-        booking.instructor = User.objects.filter(id=instructor_id).first()
-    
+        _instr = User.objects.filter(id=instructor_id).first()
+        if _instr:
+            _quick_vals['instructor'] = _instr
     if aircraft_id:
         new_aircraft = Aircraft.objects.filter(id=aircraft_id, club=club).first()
         if new_aircraft:
-            booking.aircraft = new_aircraft
-    
-    booking.save()
+            _quick_vals['aircraft'] = new_aircraft
+    if _quick_vals:
+        Booking.objects.filter(pk=booking.pk).update(**_quick_vals)
     return JsonResponse({'success': True})
 
 
@@ -2377,7 +2375,7 @@ def manage_bookings(request, club_slug):
     _base_qs = (Booking.objects
                 .filter(club=club)
                 .select_related('member__user', 'aircraft', 'instructor',
-                                'flight_type', 'flight_completion'))
+                                'flight_type'))
 
     # Aircraft + instructor filters apply to both sections
     if f_aircraft:
@@ -2414,7 +2412,7 @@ def manage_bookings(request, club_slug):
             r.append('Aircraft retired')
         if _instructor_off_roster(b):
             r.append('Instructor off roster')
-        _fc = getattr(b, 'flight_completion', None)
+        _fc = b.flight_completion
         if _fc and _fc.amount_paid and _fc.total_charge and _fc.amount_paid > _fc.total_charge:
             _over = _fc.amount_paid - _fc.total_charge
             r.append(f'Overpaid ${_over:.2f} — review and credit account')
@@ -2462,10 +2460,11 @@ def manage_bookings(request, club_slug):
     _near_cutoff = today + timedelta(days=7)
     _attn_qs = _base_qs.filter(
         _Q2(status='departed') |
-        _Q2(status='completed', flight_completion__paid_at__isnull=True) |
+        _Q2(status='returned') |
+        _Q2(status='completed', flight_completions__paid_at__isnull=True) |
         _Q2(status__in=['pending', 'confirmed'], scheduled_start__date__lte=_near_cutoff) |
         _Q2(id__in=_clashing_ids) |
-        _Q2(status='completed', flight_completion__amount_paid__gt=_F('flight_completion__total_charge'))
+        _Q2(status='completed', flight_completions__amount_paid__gt=_F('flight_completions__total_charge'))
     )
     if f_status:
         _attn_qs = _attn_qs.filter(status=f_status)
@@ -2584,10 +2583,12 @@ def booking_detail(request, club_slug, booking_id):
         action = request.POST.get('action', '')
 
         if action == 'confirm' and booking.status == 'pending' and (actor.is_admin or actor.is_instructor):
-            booking.status = 'confirmed'
-            booking.confirmed_by = request.user
-            booking.confirmed_at = timezone.now()
-            booking.save()
+            Booking.objects.filter(pk=booking.pk).update(
+                status='confirmed',
+                confirmed_by=request.user,
+                confirmed_at=timezone.now(),
+            )
+            booking.refresh_from_db()
             _audit(booking, request.user, 'confirmed')
             from .services import notification_service
             notification_service.notify_booking_confirmed(booking)
@@ -2626,46 +2627,45 @@ def booking_detail(request, club_slug, booking_id):
             elif has_elig_blocks and not elig_override_reason:
                 error = 'One or more compliance checks failed. Provide an override reason to proceed.'
             else:
-                booking.status = 'departed'
-                booking.departed_at = timezone.now()
-                if requires_decl and not has_decl:
-                    booking.departed_without_declaration = True
-                    booking.departed_without_declaration_reason = no_decl_reason
-                # Snapshot fuel rate at departure
                 fuel_rate = FuelSurchargeRate.current_rate(club, booking.aircraft)
-                booking.save()
-                # Store snapshot on a pending FlightCompletion stub
-                FlightCompletion.objects.get_or_create(
-                    booking=booking,
-                    defaults={
-                        'logged_by': request.user,
-                        'fuel_surcharge_rate_snapshot': fuel_rate.rate if fuel_rate else None,
-                        'departed_with_aircraft': booking.aircraft,
-                        'departed_with_instructor': booking.instructor,
-                    }
-                )
+                _depart_vals = {
+                    'status': 'departed',
+                    'departed_at': timezone.now(),
+                    'fuel_rate_snapshot': fuel_rate.rate if fuel_rate else None,
+                    'departed_aircraft_id': booking.aircraft_id,
+                }
+                if requires_decl and not has_decl:
+                    _depart_vals['departed_without_declaration'] = True
+                    _depart_vals['departed_without_declaration_reason'] = no_decl_reason
+                Booking.objects.filter(pk=booking.pk).update(**_depart_vals)
+                booking.refresh_from_db()
                 audit_notes = f'Compliance override: {elig_override_reason}' if elig_override_reason else None
                 _audit(booking, request.user, 'departed', notes=audit_notes)
                 SlotWatch.objects.filter(booking=booking).delete()
                 success = 'Checked out.'
 
         elif action == 'undo_depart' and booking.status == 'departed' and actor.is_admin:
-            fc = getattr(booking, 'flight_completion', None)
-            # Delete the FC shell created at departure (fuel rate snapshot only, no charges yet)
-            if fc and (fc.amount_paid or 0) > 0:
+            # Check for any stub FCs (old pattern) or logged FCs (new pattern)
+            _existing_fcs = list(booking.flight_completions.all())
+            _has_payment = any((fc.amount_paid or 0) > 0 for fc in _existing_fcs)
+            _has_charges = any(fc.charge_items.exists() for fc in _existing_fcs)
+            if _has_payment:
                 error = 'Cannot undo departure — a payment is recorded against this flight.'
-            elif fc and fc.charge_items.exists():
+            elif _has_charges:
                 error = 'Cannot undo departure — charge items exist. Use void check-in instead.'
             else:
-                if fc:
+                for fc in _existing_fcs:
                     fc.delete()
-                booking.status = 'confirmed'
-                booking.departed_at = None
-                booking.departed_without_declaration = False
-                booking.departed_without_declaration_reason = ''
-                booking.save(update_fields=['status', 'departed_at',
-                                            'departed_without_declaration',
-                                            'departed_without_declaration_reason'])
+                Booking.objects.filter(pk=booking.pk).update(
+                    status='confirmed',
+                    departed_at=None,
+                    departed_aircraft_id=None,
+                    departed_instructor_id=None,
+                    fuel_rate_snapshot=None,
+                    departed_without_declaration=False,
+                    departed_without_declaration_reason='',
+                )
+                booking.refresh_from_db()
                 _audit(booking, request.user, 'undo_depart')
                 success = 'Departure undone — flight is back to confirmed.'
 
@@ -2693,7 +2693,12 @@ def booking_detail(request, club_slug, booking_id):
                 booking.description = new_desc
                 changed.append('description')
             if changed:
-                booking.save(update_fields=['instructor', 'aircraft', 'description'])
+                Booking.objects.filter(pk=booking.pk).update(
+                    instructor=booking.instructor,
+                    aircraft=booking.aircraft,
+                    description=booking.description,
+                )
+                booking.refresh_from_db()
                 _audit(booking, request.user, 'edited', notes=', '.join(changed) + ' updated')
                 notif_changes = ', '.join(changed)
                 from .services import notification_service as _ns
@@ -2703,10 +2708,12 @@ def booking_detail(request, club_slug, booking_id):
                 success = 'Booking updated.'
 
         elif action == 'undo_confirm' and booking.status == 'confirmed' and actor.is_admin:
-            booking.status = 'pending'
-            booking.confirmed_by = None
-            booking.confirmed_at = None
-            booking.save(update_fields=['status', 'confirmed_by', 'confirmed_at'])
+            Booking.objects.filter(pk=booking.pk).update(
+                status='pending',
+                confirmed_by=None,
+                confirmed_at=None,
+            )
+            booking.refresh_from_db()
             _audit(booking, request.user, 'undo_confirm')
             from .services import notification_service as _ns
             _ns.notify_booking_unconfirmed(booking)
@@ -2714,251 +2721,261 @@ def booking_detail(request, club_slug, booking_id):
             _email_unconfirmed(booking)
             success = 'Confirmation undone — flight is back to pending.'
 
-        elif action == 'checkin' and booking.status == 'departed' and (actor.is_admin or actor.is_instructor):
-            outcome = request.POST.get('outcome', 'completed')
-            outcome_notes = request.POST.get('outcome_notes', '').strip()
-            hobbs_start      = request.POST.get('hobbs_start', '').strip() or None
-            hobbs_end        = request.POST.get('hobbs_end', '').strip() or None
-            tacho_start      = request.POST.get('tacho_start', '').strip() or None
-            tacho_end        = request.POST.get('tacho_end', '').strip() or None
-            airswitch_start  = request.POST.get('airswitch_start', '').strip() or None
-            airswitch_end    = request.POST.get('airswitch_end', '').strip() or None
-            new_ft_id = request.POST.get('flight_type_id', '').strip()
-            gap_explanation = request.POST.get('gap_explanation', '').strip()
-
+        elif action == 'return_aircraft' and booking.status == 'departed' and (actor.is_admin or actor.is_instructor):
+            _ret_hobbs     = request.POST.get('return_hobbs', '').strip() or None
+            _ret_tacho     = request.POST.get('return_tacho', '').strip() or None
+            _ret_airswitch = request.POST.get('return_airswitch', '').strip() or None
+            _ret_condition = request.POST.get('return_condition', 'serviceable')
+            _ret_notes     = request.POST.get('return_notes', '').strip()
             ac = booking.aircraft
-            if ac.records_hobbs and (not hobbs_start or not hobbs_end):
-                error = 'Hobbs start and end are required for this aircraft.'
-            elif ac.records_tacho and (not tacho_start or not tacho_end):
-                error = 'Tacho start and end are required for this aircraft.'
-            elif ac.records_airswitch and (not airswitch_start or not airswitch_end):
-                error = 'Air switch start and end are required for this aircraft.'
-            elif hobbs_start and hobbs_end:
-                try:
-                    if float(hobbs_end) <= float(hobbs_start):
-                        error = 'Hobbs end must be greater than start.'
-                except ValueError:
-                    error = 'Invalid Hobbs reading.'
-            elif tacho_start and tacho_end:
-                try:
-                    if float(tacho_end) <= float(tacho_start):
-                        error = 'Tacho end must be greater than start.'
-                except ValueError:
-                    error = 'Invalid Tacho reading.'
-            elif airswitch_start and airswitch_end:
-                try:
-                    if float(airswitch_end) <= float(airswitch_start):
-                        error = 'Air switch end must be greater than start.'
-                except ValueError:
-                    error = 'Invalid air switch reading.'
+            if ac.records_hobbs and not _ret_hobbs:
+                error = 'Hobbs reading at return is required for this aircraft.'
+            elif ac.records_tacho and not _ret_tacho:
+                error = 'Tacho reading at return is required for this aircraft.'
+            elif ac.records_airswitch and not _ret_airswitch:
+                error = 'Air switch reading at return is required for this aircraft.'
 
-            # Gap detection: compare submitted start against the last recorded end for this aircraft
-            if not error:
-                from django.db.models import Q as _Q
-                prev_fc = (FlightCompletion.objects
+            # Parse split rows
+            flight_count = int(request.POST.get('flight_count', '0') or 0)
+            use_splits = flight_count >= 2
+            splits = []  # list of (ClubMember, float hours)
+            if use_splits:
+                for _si in range(flight_count):
+                    _pid = request.POST.get(f'pilot_id_{_si}', '').strip()
+                    _hrs = request.POST.get(f'hours_{_si}', '').strip()
+                    _pilot_obj = ClubMember.objects.filter(club=club, id=_pid).first() if _pid else None
+                    _pilot_obj = _pilot_obj or booking.member
+                    try:
+                        _hrs_val = float(_hrs) if _hrs else 0.0
+                    except ValueError:
+                        _hrs_val = 0.0
+                    splits.append((_pilot_obj, _hrs_val))
+
+            # Get departure meter readings from previous FC for this aircraft
+            from django.db.models import Q as _Qprev
+            _prev_ac_fc = (FlightCompletion.objects
                            .filter(booking__aircraft=ac, booking__club=club)
                            .exclude(booking=booking)
-                           .filter(_Q(hobbs_end__isnull=False) | _Q(tacho_end__isnull=False) | _Q(airswitch_end__isnull=False))
+                           .filter(_Qprev(hobbs_end__isnull=False) | _Qprev(tacho_end__isnull=False) | _Qprev(airswitch_end__isnull=False))
                            .order_by('-booking__arrived_at', '-created_at')
                            .first())
-                _gap_detected = False
-                _gap_label = ''
-                if prev_fc:
-                    try:
-                        if hobbs_start and prev_fc.hobbs_end is not None:
-                            gap_h = float(hobbs_start) - float(prev_fc.hobbs_end)
-                            if gap_h > 0.05:
-                                _gap_detected = True
-                                _gap_label = (f'Hobbs start {hobbs_start} is {gap_h:.1f}h ahead of '
-                                              f'last recorded end ({prev_fc.hobbs_end})')
-                        if not _gap_detected and tacho_start and prev_fc.tacho_end is not None:
-                            gap_t = float(tacho_start) - float(prev_fc.tacho_end)
-                            if gap_t > 0.005:
-                                _gap_detected = True
-                                _gap_label = (f'Tacho start {tacho_start} is {gap_t:.2f} ahead of '
-                                              f'last recorded end ({prev_fc.tacho_end})')
-                        if not _gap_detected and airswitch_start and prev_fc.airswitch_end is not None:
-                            gap_a = float(airswitch_start) - float(prev_fc.airswitch_end)
-                            if gap_a > 0.05:
-                                _gap_detected = True
-                                _gap_label = (f'Air switch start {airswitch_start} is {gap_a:.1f}h ahead of '
-                                              f'last recorded end ({prev_fc.airswitch_end})')
-                    except (TypeError, ValueError):
-                        pass
-                if _gap_detected and not gap_explanation:
-                    error = f'Meter gap detected — {_gap_label}. An explanation is required (see warning below).'
+            _dep_hobbs     = float(_prev_ac_fc.hobbs_end)     if _prev_ac_fc and _prev_ac_fc.hobbs_end     is not None else None
+            _dep_tacho     = float(_prev_ac_fc.tacho_end)     if _prev_ac_fc and _prev_ac_fc.tacho_end     is not None else None
+            _dep_airswitch = float(_prev_ac_fc.airswitch_end) if _prev_ac_fc and _prev_ac_fc.airswitch_end is not None else None
 
-            # Validate split handover readings are between flight start and end
-            if not error and request.POST.get('has_split') == '1':
-                _sv_meth = ac.total_time_method
-                _sv_start_str = {'tacho': tacho_start, 'hobbs': hobbs_start, 'airswitch': airswitch_start}.get(_sv_meth)
-                _sv_end_str   = {'tacho': tacho_end,   'hobbs': hobbs_end,   'airswitch': airswitch_end}.get(_sv_meth)
-                if _sv_start_str and _sv_end_str:
-                    try:
-                        _sv_s    = float(_sv_start_str)
-                        _sv_e    = float(_sv_end_str)
-                        _sv_prev = _sv_s
-                        for _hn in range(1, 4):
-                            _hv_str = request.POST.get(f'seg_{_sv_meth}_h{_hn}', '').strip()
-                            if not _hv_str:
-                                break
-                            _hv = float(_hv_str)
-                            if _hv <= _sv_prev:
-                                error = f'Handover {_hn} reading ({_hv_str}) must be greater than the previous value ({_sv_prev}).'
-                                break
-                            if _hv >= _sv_e:
-                                error = f'Handover {_hn} reading ({_hv_str}) must be less than the flight end ({_sv_end_str}).'
-                                break
-                            _sv_prev = _hv
-                    except (ValueError, TypeError):
-                        error = 'Invalid split handover reading.'
+            # Calculate total duration
+            _total_hobbs     = round(float(_ret_hobbs)     - _dep_hobbs,     2) if _ret_hobbs     and _dep_hobbs     is not None else None
+            _total_tacho     = round(float(_ret_tacho)     - _dep_tacho,     2) if _ret_tacho     and _dep_tacho     is not None else None
+            _total_airswitch = round(float(_ret_airswitch) - _dep_airswitch, 2) if _ret_airswitch and _dep_airswitch is not None else None
+
+            # Validate splits
+            if not error and use_splits:
+                _primary_total = _total_hobbs if ac.records_hobbs else (_total_tacho if ac.records_tacho else _total_airswitch)
+                if _primary_total is not None:
+                    _sum_hrs = sum(h for _, h in splits)
+                    if abs(_sum_hrs - _primary_total) > 0.011:
+                        error = f'Split hours ({_sum_hrs:.2f}h) do not match booking duration ({_primary_total:.2f}h). Adjust the hours to match.'
 
             if not error:
-                fc, _ = FlightCompletion.objects.get_or_create(
-                    booking=booking, defaults={'logged_by': request.user}
+                Booking.objects.filter(pk=booking.pk).update(
+                    return_hobbs=_ret_hobbs or None,
+                    return_tacho=_ret_tacho or None,
+                    return_airswitch=_ret_airswitch or None,
+                    return_condition=_ret_condition,
+                    return_notes=_ret_notes,
+                    returned_at=timezone.now(),
+                    arrived_at=timezone.now(),
+                    status='returned',
                 )
-                fc.outcome = outcome
-                fc.outcome_notes = outcome_notes
-                fc.hobbs_start     = hobbs_start
-                fc.hobbs_end       = hobbs_end
-                fc.tacho_start     = tacho_start
-                fc.tacho_end       = tacho_end
-                fc.airswitch_start = airswitch_start
-                fc.airswitch_end   = airswitch_end
-                fc.logged_by = request.user
-
-                method = booking.aircraft.total_time_method
-                try:
-                    if method == 'hobbs' and hobbs_start and hobbs_end:
-                        fc.actual_flight_hours = float(hobbs_end) - float(hobbs_start)
-                    elif method == 'tacho' and tacho_start and tacho_end:
-                        fc.actual_flight_hours = round(float(tacho_end) - float(tacho_start), 2)
-                    elif method == 'airswitch' and airswitch_start and airswitch_end:
-                        fc.actual_flight_hours = float(airswitch_end) - float(airswitch_start)
-                except (ValueError, TypeError):
-                    pass
-
-                if booking.instructor:
-                    instr_member = ClubMember.objects.filter(user=booking.instructor, club=club).first()
-                    if instr_member and instr_member.instructor_grade:
-                        fc.instructor_rate_snapshot = instr_member.instructor_grade.hourly_rate
-
-                if new_ft_id:
-                    new_ft = FlightType.objects.filter(club=club, id=new_ft_id).first()
-                    if new_ft and new_ft != booking.flight_type:
-                        fc.original_flight_type = booking.flight_type
-                        booking.flight_type = new_ft
-                        booking.save(update_fields=['flight_type'])
-
-                if gap_explanation:
-                    fc.meter_gap_note = gap_explanation
-                fc.save()
-                create_maint_log_entry(fc)
+                booking.refresh_from_db()
                 for _mi in booking.aircraft.maintenance_items.all():
                     _mi.recalc_urgency()
                     _mi.save(update_fields=['urgency'])
-                booking.status = 'completed'
-                booking.arrived_at = timezone.now()
-                booking.save(update_fields=['status', 'arrived_at'])
+                _audit(booking, request.user, 'returned')
 
-                # Split flight segments (up to 4 members)
-                from .models import FlightSegment as _FS
-                _segments = []
-                if request.POST.get('has_split') == '1':
-                    _meth = booking.aircraft.total_time_method
+                # Determine billing hours for the whole booking
+                _method = ac.total_time_method
+                _fc_hours = None
+                if _method == 'hobbs' and _total_hobbs is not None:
+                    _fc_hours = _total_hobbs
+                elif _method == 'tacho' and _total_tacho is not None:
+                    _fc_hours = _total_tacho
+                elif _method == 'airswitch' and _total_airswitch is not None:
+                    _fc_hours = _total_airswitch
 
-                    def _hpvals(n):
-                        return (
-                            request.POST.get(f'seg_hobbs_h{n}',     '').strip() or None,
-                            request.POST.get(f'seg_tacho_h{n}',     '').strip() or None,
-                            request.POST.get(f'seg_airswitch_h{n}', '').strip() or None,
-                        )
+                # Create FlightCompletion (one per booking)
+                _new_fc = FlightCompletion(
+                    booking=booking,
+                    pilot=booking.member,
+                    sequence=1,
+                    outcome='completed',
+                    hobbs_start=_dep_hobbs,
+                    hobbs_end=float(_ret_hobbs) if _ret_hobbs else None,
+                    tacho_start=_dep_tacho,
+                    tacho_end=float(_ret_tacho) if _ret_tacho else None,
+                    airswitch_start=_dep_airswitch,
+                    airswitch_end=float(_ret_airswitch) if _ret_airswitch else None,
+                    actual_flight_hours=_fc_hours,
+                    departed_with_aircraft=booking.departed_aircraft or booking.aircraft,
+                    departed_with_instructor=booking.departed_instructor or booking.instructor,
+                    fuel_surcharge_rate_snapshot=booking.fuel_rate_snapshot,
+                    logged_by=request.user,
+                )
+                if booking.instructor:
+                    _instr_mem = ClubMember.objects.filter(user=booking.instructor, club=club).first()
+                    if _instr_mem and _instr_mem.instructor_grade:
+                        _new_fc.instructor_rate_snapshot = _instr_mem.instructor_grade.hourly_rate
+                _new_fc.save()
+                create_maint_log_entry(_new_fc)
 
-                    _hp = [_hpvals(n) for n in range(1, 4)]   # (hobbs, tacho, air) for H1 H2 H3
-                    _extra_ids = [request.POST.get(f'seg_member_{i}', '').strip() for i in range(2, 5)]
-                    _extra = [ClubMember.objects.filter(club=club, id=mid).first() if mid else None
-                              for mid in _extra_ids]
+                _hire_rate = ChargeRate.objects.filter(
+                    aircraft=ac, flight_type=booking.flight_type,
+                    time_method=ac.total_time_method,
+                ).first()
 
-                    # Build member list and handover list, stopping at first incomplete pair
-                    _seg_members   = [booking.member]
-                    _seg_handovers = []   # list of (hobbs, tacho, air) tuples
-                    _split_error   = None
-                    for _hvtuple, _em in zip(_hp, _extra):
-                        if any(_hvtuple) and _em:
-                            _seg_handovers.append(_hvtuple)
-                            _seg_members.append(_em)
-                        elif any(_hvtuple) and not _em:
-                            _split_error = 'A handover reading was provided but no member was selected for that segment.'
-                            break
+                if use_splits:
+                    # Create one FlightSegment per pilot with proportional meter readings
+                    _cur_hobbs     = _dep_hobbs     or 0.0
+                    _cur_tacho     = _dep_tacho     or 0.0
+                    _cur_airswitch = _dep_airswitch or 0.0
+                    _n_splits = len(splits)
+                    for _si, (_seg_pilot, _seg_hrs) in enumerate(splits):
+                        _is_last = (_si == _n_splits - 1)
+                        # Hobbs end: exact return value for last segment, else cumulative
+                        if _ret_hobbs:
+                            _seg_hobbs_end = (float(_ret_hobbs) if _is_last
+                                              else round(_cur_hobbs + _seg_hrs, 2))
                         else:
-                            break
-                    if not _split_error and len(_seg_members) >= 2:
-                        _seen_ids = set()
-                        for _m in _seg_members:
-                            if _m.id in _seen_ids:
-                                _split_error = f'{_m.user.get_full_name()} appears more than once in the split — each pilot must be unique.'
-                                break
-                            _seen_ids.add(_m.id)
-                    if _split_error:
-                        error = _split_error
+                            _seg_hobbs_end = None
+                        # Tacho: proportional
+                        if _ret_tacho and _total_tacho and _total_hobbs:
+                            _tacho_hrs = (_total_tacho * _seg_hrs / _total_hobbs)
+                            _seg_tacho_end = (float(_ret_tacho) if _is_last
+                                             else round(_cur_tacho + _tacho_hrs, 2))
+                        else:
+                            _seg_tacho_end = None
+                        # Airswitch: proportional
+                        if _ret_airswitch and _total_airswitch and _total_hobbs:
+                            _as_hrs = (_total_airswitch * _seg_hrs / _total_hobbs)
+                            _seg_as_end = (float(_ret_airswitch) if _is_last
+                                          else round(_cur_airswitch + _as_hrs, 2))
+                        else:
+                            _seg_as_end = None
 
-                    if not error and len(_seg_members) >= 2:
-                        _fc_start = (fc.hobbs_start, fc.tacho_start, fc.airswitch_start)
-                        _fc_end   = (fc.hobbs_end,   fc.tacho_end,   fc.airswitch_end)
-                        for _i, _m in enumerate(_seg_members):
-                            _seg_s = _seg_handovers[_i - 1] if _i > 0         else _fc_start
-                            _seg_e = _seg_handovers[_i]     if _i < len(_seg_handovers) else _fc_end
-                            hs, ts, as_ = _seg_s
-                            he, te, ae  = _seg_e
-                            _seg = _FS.objects.create(
-                                flight_completion=fc, member=_m, sequence=_i + 1,
-                                hobbs_start=hs, hobbs_end=he,
-                                tacho_start=ts, tacho_end=te,
-                                airswitch_start=as_, airswitch_end=ae,
-                                hours=_calc_segment_hours(_meth, hs, he, ts, te, as_, ae),
+                        _seg = FlightSegment(
+                            flight_completion=_new_fc,
+                            member=_seg_pilot,
+                            sequence=_si + 1,
+                            hours=round(_seg_hrs, 2),
+                            hobbs_start=round(_cur_hobbs, 2) if _dep_hobbs is not None else None,
+                            hobbs_end=_seg_hobbs_end,
+                            tacho_start=round(_cur_tacho, 2) if _dep_tacho is not None else None,
+                            tacho_end=_seg_tacho_end,
+                            airswitch_start=round(_cur_airswitch, 2) if _dep_airswitch is not None else None,
+                            airswitch_end=_seg_as_end,
+                        )
+                        _seg.save()
+
+                        # Billing hours for this segment
+                        _seg_bill_hrs = _seg_hrs  # hobbs-based; tacho case handled below
+                        if _method == 'tacho' and _total_tacho and _total_hobbs:
+                            _seg_bill_hrs = float(_total_tacho) * _seg_hrs / _total_hobbs
+
+                        # Hire charge (per segment)
+                        if _hire_rate and _seg_bill_hrs:
+                            FlightChargeItem.objects.create(
+                                flight_completion=_new_fc, segment=_seg,
+                                item_type='hire',
+                                description=f'Aircraft hire — {ac.registration}',
+                                amount=round(float(_hire_rate.amount) * _seg_bill_hrs, 2),
                             )
-                            _segments.append(_seg)
+                        # Fuel surcharge (per segment)
+                        if (_new_fc.fuel_surcharge_rate_snapshot and _seg_bill_hrs
+                                and not (_hire_rate and _hire_rate.includes_fuel)
+                                and _new_fc.fuel_surcharge_rate_snapshot > 0):
+                            FlightChargeItem.objects.create(
+                                flight_completion=_new_fc, segment=_seg,
+                                item_type='fuel', description='Fuel charge',
+                                amount=round(float(_new_fc.fuel_surcharge_rate_snapshot) * _seg_bill_hrs, 2),
+                            )
 
-                hours = fc.actual_flight_hours
-                if _segments:
-                    _generate_segment_charges(fc, _segments, booking)
+                        # Advance cursors
+                        _cur_hobbs     = _seg_hobbs_end     or _cur_hobbs
+                        _cur_tacho     = _seg_tacho_end     or _cur_tacho
+                        _cur_airswitch = _seg_as_end        or _cur_airswitch
+
+                    # Instructor fee and surcharges at FC level (shown as "shared pro-rata")
+                    if _new_fc.instructor_rate_snapshot and _fc_hours and booking.instructor:
+                        FlightChargeItem.objects.create(
+                            flight_completion=_new_fc, segment=None,
+                            item_type='instructor',
+                            description=f'Instructor fee — {booking.instructor.get_full_name()}',
+                            amount=round(float(_new_fc.instructor_rate_snapshot) * float(_fc_hours), 2),
+                        )
+                    for _sc in ac.surcharges.all():
+                        FlightChargeItem.objects.create(
+                            flight_completion=_new_fc, segment=None,
+                            item_type='surcharge', description=_sc.name, amount=_sc.amount,
+                        )
                 else:
-                    hire_rate = ChargeRate.objects.filter(
-                        aircraft=booking.aircraft, flight_type=booking.flight_type,
-                        time_method=booking.aircraft.total_time_method
-                    ).first()
-                    if hire_rate and hours:
-                        FlightChargeItem.objects.get_or_create(
-                            flight_completion=fc, item_type='hire',
-                            defaults={'description': f'Aircraft hire — {booking.aircraft.registration}',
-                                      'amount': round(float(hire_rate.amount) * float(hours), 2)}
+                    # Single pilot — charge items directly on FC (no segments)
+                    if _hire_rate and _fc_hours:
+                        FlightChargeItem.objects.create(
+                            flight_completion=_new_fc, item_type='hire',
+                            description=f'Aircraft hire — {ac.registration}',
+                            amount=round(float(_hire_rate.amount) * float(_fc_hours), 2),
                         )
-                    if fc.fuel_surcharge_rate_snapshot and hours and not (hire_rate and hire_rate.includes_fuel) and fc.fuel_surcharge_rate_snapshot > 0:
-                        FlightChargeItem.objects.get_or_create(
-                            flight_completion=fc, item_type='fuel',
-                            defaults={'description': 'Fuel charge',
-                                      'amount': round(float(fc.fuel_surcharge_rate_snapshot) * float(hours), 2)}
+                    if (_new_fc.fuel_surcharge_rate_snapshot and _fc_hours
+                            and not (_hire_rate and _hire_rate.includes_fuel)
+                            and _new_fc.fuel_surcharge_rate_snapshot > 0):
+                        FlightChargeItem.objects.create(
+                            flight_completion=_new_fc, item_type='fuel',
+                            description='Fuel charge',
+                            amount=round(float(_new_fc.fuel_surcharge_rate_snapshot) * float(_fc_hours), 2),
                         )
-                    if fc.instructor_rate_snapshot and hours and booking.instructor:
-                        FlightChargeItem.objects.get_or_create(
-                            flight_completion=fc, item_type='instructor',
-                            defaults={'description': f'Instructor fee — {booking.instructor.get_full_name()}',
-                                      'amount': round(float(fc.instructor_rate_snapshot) * float(hours), 2)}
+                    if _new_fc.instructor_rate_snapshot and _fc_hours and booking.instructor:
+                        FlightChargeItem.objects.create(
+                            flight_completion=_new_fc, item_type='instructor',
+                            description=f'Instructor fee — {booking.instructor.get_full_name()}',
+                            amount=round(float(_new_fc.instructor_rate_snapshot) * float(_fc_hours), 2),
                         )
-                    for sc in booking.aircraft.surcharges.all():
-                        FlightChargeItem.objects.get_or_create(
-                            flight_completion=fc, item_type='surcharge',
-                            defaults={'description': sc.name, 'amount': sc.amount}
+                    for _sc in ac.surcharges.all():
+                        FlightChargeItem.objects.create(
+                            flight_completion=_new_fc, item_type='surcharge',
+                            description=_sc.name, amount=_sc.amount,
                         )
 
-                _update_total(fc)
-                _audit(booking, request.user, 'completed')
+                _update_total(_new_fc)
                 from .services import notification_service as _ns
-                _ns.notify_flight_charged(fc)
-                success = 'Flight checked in.'
+                _ns.notify_flight_charged(_new_fc)
+                success = 'Aircraft returned — charges ready.'
 
-        elif action == 'edit_checkin' and booking.status == 'completed' and actor.is_admin:
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'undo_return' and booking.status == 'returned' and actor.is_admin:
+            _existing_fcs = list(booking.flight_completions.all())
+            _has_payment = any((fc.amount_paid or 0) > 0 for fc in _existing_fcs)
+            if _has_payment:
+                error = 'Cannot undo return — a payment is recorded. Reverse payments first.'
+            else:
+                for fc in _existing_fcs:
+                    fc.segments.all().delete()
+                    fc.charge_items.all().delete()
+                    fc.delete()
+                Booking.objects.filter(pk=booking.pk).update(
+                    return_hobbs=None,
+                    return_tacho=None,
+                    return_airswitch=None,
+                    return_condition='serviceable',
+                    return_notes='',
+                    returned_at=None,
+                    arrived_at=None,
+                    status='departed',
+                )
+                booking.refresh_from_db()
+                _audit(booking, request.user, 'undo_return')
+                success = 'Return undone — flight is back to departed.'
+
+        elif action == 'edit_checkin' and booking.status in ('returned', 'completed') and actor.is_admin:
+            fc = booking.flight_completion
             if fc:
                 hobbs_start      = request.POST.get('hobbs_start', '').strip() or None
                 hobbs_end        = request.POST.get('hobbs_end', '').strip() or None
@@ -3053,13 +3070,14 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'set_client' and actor.can_access_manage:
             from .models import Contact as _Cont
             cid = request.POST.get('client_id', '').strip()
-            booking.client = _Cont.objects.filter(id=cid, club=club).first() if cid else None
-            booking.billed_to = request.POST.get('billed_to', '')
-            booking.save(update_fields=['client', 'billed_to'])
+            Booking.objects.filter(pk=booking.pk).update(
+                client=_Cont.objects.filter(id=cid, club=club).first() if cid else None,
+                billed_to=request.POST.get('billed_to', ''),
+            )
             return redirect(request.path + ('?inline=1&saved=1' if is_inline else '?saved=1'))
 
-        elif action == 'add_charge' and booking.status == 'completed' and (actor.is_admin or actor.is_instructor):
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'add_charge' and booking.status in ('returned', 'completed') and (actor.is_admin or actor.is_instructor):
+            fc = booking.flight_completion
             if fc:
                 _active_inv = fc.invoices.exclude(status='void')
                 if _active_inv.filter(amount_paid__gt=0).exists():
@@ -3098,8 +3116,8 @@ def booking_detail(request, club_slug, booking_id):
                     else:
                         error = result.error
 
-        elif action == 'delete_charge' and booking.status == 'completed':
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'delete_charge' and booking.status in ('returned', 'completed'):
+            fc = booking.flight_completion
             if fc:
                 _active_inv = fc.invoices.exclude(status='void')
                 if _active_inv.filter(amount_paid__gt=0).exists():
@@ -3118,9 +3136,9 @@ def booking_detail(request, club_slug, booking_id):
                             if _voided_inv else ''
                         )
 
-        elif action == 'confirm_payment' and booking.status == 'completed':
+        elif action == 'confirm_payment' and booking.status in ('returned', 'completed'):
             # Quick single-payment record (default to booking member)
-            fc = getattr(booking, 'flight_completion', None)
+            fc = booking.flight_completion
             if fc and not fc.is_paid:
                 amount_str = request.POST.get('payment_amount', '').strip()
                 pay_amount = amount_str if amount_str else str(fc.balance_owing)
@@ -3133,8 +3151,8 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
-        elif action == 'record_payee' and booking.status == 'completed':
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'record_payee' and booking.status in ('returned', 'completed'):
+            fc = booking.flight_completion
             if fc:
                 _pid_for_check = request.POST.get('payment_id', '').strip()
                 _fp_for_check = fc.payments.filter(id=_pid_for_check).first()
@@ -3186,8 +3204,8 @@ def booking_detail(request, club_slug, booking_id):
                         else:
                             error = result.error
 
-        elif action == 'record_all_payees' and booking.status == 'completed':
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'record_all_payees' and booking.status in ('returned', 'completed'):
+            fc = booking.flight_completion
             if fc and not fc.is_paid:
                 from decimal import Decimal as _D, InvalidOperation as _IO
                 from django.db.models import Sum as _Sum
@@ -3240,8 +3258,8 @@ def booking_detail(request, club_slug, booking_id):
                         if not error:
                             success = 'All payments recorded.'
 
-        elif action == 'record_new_payee' and booking.status == 'completed':
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'record_new_payee' and booking.status in ('returned', 'completed'):
+            fc = booking.flight_completion
             if fc:
                 _mid_for_check = request.POST.get('member_id', '').strip()
                 _fc_inv = fc.invoices.filter(member_id=_mid_for_check, status__in=['draft', 'sent']).first()
@@ -3265,8 +3283,8 @@ def booking_detail(request, club_slug, booking_id):
                         else:
                             error = result.error
 
-        elif action == 'record_segment_payments' and booking.status == 'completed':
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'record_segment_payments' and booking.status in ('returned', 'completed'):
+            fc = booking.flight_completion
             if fc and actor.is_admin:
                 from decimal import Decimal as _D, InvalidOperation
                 from .models import ClubMember as _CM, FlightPayment as _FP
@@ -3335,8 +3353,8 @@ def booking_detail(request, club_slug, booking_id):
                             fc._sync_payment_cache()
                         success = 'Segment payments recorded.'
 
-        elif action == 'remove_payee' and booking.status == 'completed':
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'remove_payee' and booking.status in ('returned', 'completed'):
+            fc = booking.flight_completion
             if fc and actor.is_admin:
                 payment_id = request.POST.get('payment_id', '').strip()
                 result = charging_service.remove_payment_allocation(fc, payment_id)
@@ -3345,8 +3363,8 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
-        elif action == 'record_multi_payment' and booking.status == 'completed':
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'record_multi_payment' and booking.status in ('returned', 'completed'):
+            fc = booking.flight_completion
             if fc:
                 _fc_inv = fc.invoices.filter(member=booking.member, status__in=['draft', 'sent']).first()
                 if _fc_inv:
@@ -3499,8 +3517,8 @@ def booking_detail(request, club_slug, booking_id):
                                 fc._sync_payment_cache()
                                 success = 'Split payment recorded.'
 
-        elif action == 'void_checkin' and booking.status == 'completed' and actor.is_admin:
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'void_checkin' and booking.status in ('returned', 'completed') and actor.is_admin:
+            fc = booking.flight_completion
             if fc:
                 _active_invoices = fc.invoices.exclude(status='void')
                 _inv_paid = _active_invoices.filter(amount_paid__gt=0).exists()
@@ -3511,31 +3529,27 @@ def booking_detail(request, club_slug, booking_id):
                     # Void any outstanding invoices first
                     _voided_count = _active_invoices.count()
                     _active_invoices.update(status='void')
-                    # Clear all charge items, segments, and meter data, reset status to departed
-                    fc.charge_items.all().delete()
-                    fc.segments.all().delete()
-                    fc.hobbs_start = fc.hobbs_end = None
-                    fc.tacho_start = fc.tacho_end = None
-                    fc.airswitch_start = fc.airswitch_end = None
-                    fc.actual_flight_hours = 0
-                    fc.outcome = 'completed'
-                    fc.outcome_notes = ''
-                    fc.total_charge = 0
-                    fc.meter_gap_note = ''
-                    fc.invoice_issued = False
-                    fc.save()
-                    booking.status = 'departed'
-                    booking.arrived_at = None
-                    booking.save(update_fields=['status', 'arrived_at'])
+                    # Delete all flight completions (aircraft is returned but flights need re-logging)
+                    for _vfc in list(booking.flight_completions.all()):
+                        _vfc.charge_items.all().delete()
+                        _vfc.segments.all().delete()
+                        _vfc.delete()
+                    Booking.objects.filter(pk=booking.pk).update(
+                        status='departed',
+                        return_hobbs=None, return_tacho=None, return_airswitch=None,
+                        return_condition='serviceable', return_notes='',
+                        returned_at=None, arrived_at=None,
+                    )
+                    booking.refresh_from_db()
                     _audit(booking, request.user, 'void_checkin')
                     if _voided_count:
-                        success = (f'Check-in voided — flight is back to departed. '
-                                   f'{_voided_count} invoice(s) voided and will need to be re-issued after re-check-in.')
+                        success = (f'Flights voided — booking is back to departed. '
+                                   f'{_voided_count} invoice(s) voided. Re-enter return details to re-log.')
                     else:
-                        success = 'Check-in voided — flight is back to departed.'
+                        success = 'Flights voided — booking is back to departed. Re-enter return details to re-log.'
 
-        elif action == 'reverse_payment' and booking.status == 'completed' and actor.is_admin:
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'reverse_payment' and booking.status in ('returned', 'completed') and actor.is_admin:
+            fc = booking.flight_completion
             if fc:
                 payment_id = request.POST.get('payment_id') or None
                 result = charging_service.reverse_payment(fc, booking, request.user, payment_id=payment_id)
@@ -3544,8 +3558,8 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
-        elif action == 'record_refund' and booking.status == 'completed' and actor.is_admin:
-            fc = getattr(booking, 'flight_completion', None)
+        elif action == 'record_refund' and booking.status in ('returned', 'completed') and actor.is_admin:
+            fc = booking.flight_completion
             if fc:
                 result = charging_service.record_refund(
                     fc, booking, request.user,
@@ -3564,6 +3578,16 @@ def booking_detail(request, club_slug, booking_id):
                 return redirect(f'{request.path}?inline=1&err={_q(error)}')
             # else fall through to re-render with error
         elif success and not error:
+            # Transition returned → completed when payment fully recorded
+            if booking.status == 'returned' and action in (
+                'record_segment_payments', 'record_all_payees', 'record_multi_payment',
+                'record_payee', 'record_new_payee',
+            ):
+                _chk_fc = booking.flight_completion
+                if _chk_fc:
+                    _chk_fc.refresh_from_db(fields=['amount_paid', 'paid_at', 'invoice_issued'])
+                    if _chk_fc.is_paid or _chk_fc.invoice_issued:
+                        Booking.objects.filter(pk=booking.pk).update(status='completed')
             if is_inline:
                 if action == 'depart':
                     # Close the overlay after checkout — no need to show the check-in screen
@@ -3576,7 +3600,9 @@ def booking_detail(request, club_slug, booking_id):
     error = request.GET.get('err', '') or None
 
     # GET — build context
-    fc = getattr(booking, 'flight_completion', None)
+    # All logged flights for this booking (ordered), plus the primary/first for backward compat
+    all_fcs = list(booking.flight_completions.order_by('sequence').select_related('pilot__user'))
+    fc = all_fcs[0] if all_fcs else None
     charge_items = fc.charge_items.select_related('segment').all() if fc else []
 
     # Split-flight segments with charge items pre-grouped
@@ -3596,12 +3622,13 @@ def booking_detail(request, club_slug, booking_id):
             fc_segments = _segs
             charge_items = [_ci for _ci in charge_items if not _ci.segment_id]
             # Compute suggested payment per segment: segment charges + proportional share
-            # of any non-segment charges (landing fees, one-offs, etc.).
+            # of any non-segment charges (landing fees, one-offs, etc.), distributed by hours.
             _total_seg = sum(_s.charge_total for _s in fc_segments)
             _non_seg = _D(str(fc.total_charge or 0)) - _total_seg
             _n = len(fc_segments)
+            _total_hours = sum(_D(str(_s.hours or 0)) for _s in fc_segments)
             for _s in fc_segments:
-                _ratio = (_s.charge_total / _total_seg) if _total_seg else (_D('1') / _n)
+                _ratio = (_D(str(_s.hours or 0)) / _total_hours) if _total_hours else (_D('1') / _n)
                 _s.suggested_payment = (_s.charge_total + (_non_seg * _ratio)).quantize(_D('0.01'))
             # Last segment absorbs any rounding remainder
             if fc_segments:
@@ -3704,22 +3731,30 @@ def booking_detail(request, club_slug, booking_id):
                 _detail = f'{_dl}d remaining' if _dl >= 0 else f'{abs(_dl)}d overdue'
             departure_maint_items.append({'name': _mi.name, 'urgency': _mi.urgency, 'detail': _detail})
 
-    # Previous meter readings for this aircraft — used by the gap-detection JS in the check-in form
+    # Previous meter readings for this aircraft — used by gap-detection JS when logging flights
     from django.db.models import Q as _Q
-    _prev_fc = (FlightCompletion.objects
-                .filter(booking__aircraft=booking.aircraft, booking__club=club)
-                .exclude(booking=booking)
-                .filter(_Q(hobbs_end__isnull=False) | _Q(tacho_end__isnull=False) | _Q(airswitch_end__isnull=False))
-                .order_by('-booking__arrived_at', '-created_at')
-                .first()) if booking.status == 'departed' else None
+    _prev_fc_status_check = booking.status in ('departed', 'returned')
+    # For returned bookings: if flights already logged, use last logged flight's end as prev
+    _last_logged_fc = all_fcs[-1] if all_fcs else None
+    if _last_logged_fc and booking.status == 'returned':
+        _prev_fc = _last_logged_fc
+    elif _prev_fc_status_check:
+        _prev_fc = (FlightCompletion.objects
+                    .filter(booking__aircraft=booking.aircraft, booking__club=club)
+                    .exclude(booking=booking)
+                    .filter(_Q(hobbs_end__isnull=False) | _Q(tacho_end__isnull=False) | _Q(airswitch_end__isnull=False))
+                    .order_by('-booking__arrived_at', '-created_at')
+                    .first())
+    else:
+        _prev_fc = None
     prev_hobbs_end     = float(_prev_fc.hobbs_end)     if _prev_fc and _prev_fc.hobbs_end     is not None else None
     prev_tacho_end     = float(_prev_fc.tacho_end)     if _prev_fc and _prev_fc.tacho_end     is not None else None
     prev_airswitch_end = float(_prev_fc.airswitch_end) if _prev_fc and _prev_fc.airswitch_end is not None else None
 
-    # Rate data for the check-in JS charge preview
+    # Rate data for the log-flight JS charge preview
     import json as _json
     checkin_rates_json = 'null'
-    if booking.status == 'departed':
+    if booking.status in ('departed', 'returned'):
         _hire = ChargeRate.objects.filter(
             aircraft=booking.aircraft, flight_type=booking.flight_type,
             time_method=booking.aircraft.total_time_method
@@ -3729,7 +3764,7 @@ def booking_detail(request, club_slug, booking_id):
             _im = ClubMember.objects.filter(user=booking.instructor, club=club).first()
             if _im and _im.instructor_grade:
                 _instr_rate = float(_im.instructor_grade.hourly_rate)
-        _fuel_snap = float(fc.fuel_surcharge_rate_snapshot) if fc and fc.fuel_surcharge_rate_snapshot else None
+        _fuel_snap = float(booking.fuel_rate_snapshot) if booking.fuel_rate_snapshot else None
         _surcharge_list = [
             {'name': sc.name, 'amount': float(sc.amount)}
             for sc in booking.aircraft.surcharges.all()
@@ -3750,6 +3785,26 @@ def booking_detail(request, club_slug, booking_id):
     _arrears_clearable = (
         _acct and _acct.balance < 0 and _acct.has_warning
     )
+
+    # FlightPayments from the same batch on other FCs — for display in payments section.
+    batch_session_payments = []
+    if fc and fc.is_paid:
+        _batch_ids = set(
+            fc.payments.filter(batch_id__isnull=False)
+            .values_list('batch_id', flat=True)
+        )
+        if _batch_ids:
+            from .models import FlightPayment as _FP2
+            batch_session_payments = list(
+                _FP2.objects.filter(batch_id__in=_batch_ids, paid_at__isnull=False)
+                .exclude(completion=fc)
+                .select_related('completion__booking__aircraft', 'completion__booking')
+                .order_by('completion__booking__scheduled_start')
+            )
+    batch_session_fcs = [sp.completion for sp in batch_session_payments]
+    from decimal import Decimal as _D
+    _fc_paid = _D(str(fc.amount_paid or 0)) if fc else _D('0')
+    batch_session_total = _fc_paid + sum(_D(str(sp.amount)) for sp in batch_session_payments)
 
     # Other FCs for the booking member that were paid (in the same session) but not yet receipted.
     # We surface these so the admin can generate a receipt for each in one click.
@@ -3811,6 +3866,7 @@ def booking_detail(request, club_slug, booking_id):
         'member_account': _acct,
         'arrears_clearable': _arrears_clearable,
         'fc': fc,
+        'all_fcs': all_fcs,
         'fc_segments': fc_segments,
         'fc_segments_pending': fc_segments_pending,
         'fc_segments_primary': fc_segments_primary,
@@ -3836,6 +3892,9 @@ def booking_detail(request, club_slug, booking_id):
         'other_total': other_total,
         'other_total_count': other_total_count,
         'member_copaid_fcs': member_copaid_fcs,
+        'batch_session_fcs': batch_session_fcs,
+        'batch_session_payments': batch_session_payments,
+        'batch_session_total': batch_session_total,
         'member_has_payment_on_fc': member_has_payment_on_fc,
         'aerodromes': aerodromes,
         'flight_types': flight_types,
@@ -3856,7 +3915,7 @@ def booking_detail(request, club_slug, booking_id):
             f'{booking.member.user.get_full_name()} · {booking.aircraft.registration}'
             + (' — Check out' if booking.status == 'confirmed' else
                ' — Check in' if booking.status == 'departed' else
-               ' — Charges' if booking.status == 'completed' else '')
+               ' — Charges' if booking.status in ('returned', 'completed') else '')
         ),
         'watchers': list(SlotWatch.objects.filter(booking=booking).select_related('club_member__user')) if actor.can_access_manage else [],
     }
@@ -4300,13 +4359,13 @@ def manage_member_detail(request, club_slug, member_id):
     upcoming_bookings = (Booking.objects
                          .filter(club=club, member=member, status__in=_ACTIVE_STATUSES,
                                  scheduled_start__gte=_now)
-                         .select_related('aircraft', 'instructor', 'flight_type', 'flight_completion')
+                         .select_related('aircraft', 'instructor', 'flight_type').prefetch_related('flight_completions')
                          .order_by('scheduled_start')[:10])
     past_bookings = (Booking.objects
                      .filter(club=club, member=member)
                      .filter(_Q(status__in=_PAST_STATUSES) | _Q(scheduled_start__lt=_now))
                      .exclude(status='cancelled')
-                     .select_related('aircraft', 'instructor', 'flight_type', 'flight_completion')
+                     .select_related('aircraft', 'instructor', 'flight_type').prefetch_related('flight_completions')
                      .order_by('-scheduled_start')[:20])
     credentials = (MemberCredential.objects
                    .filter(member=member.user)
@@ -4408,7 +4467,7 @@ def lesson_note_print(request, club_slug, note_id):
         return redirect('login')
     if err := require_staff(actor, club, request): return err
     config = get_config(club)
-    fc = getattr(note.booking, 'flight_completion', None)
+    fc = note.booking.flight_completion
     return render(request, 'core/lesson_note_print.html', {
         'club': club, 'note': note, 'config': config, 'fc': fc,
     })
@@ -4422,7 +4481,7 @@ def app_training(request, club_slug):
         return redirect('login')
     notes = (LessonNote.objects
              .filter(booking__member=actor, booking__club=club)
-             .select_related('booking__aircraft', 'booking__flight_completion', 'author')
+             .select_related('booking__aircraft', 'author')
              .order_by('-booking__scheduled_start'))
     return render(request, 'core/app/training.html', {
         'club': club, 'club_member': actor, 'notes': notes,
@@ -4447,40 +4506,90 @@ def app_credentials(request, club_slug):
 
 @login_required
 def app_flight_log(request, club_slug):
-    from django.db.models import Sum, Q as _Q
     from django.core.paginator import Paginator
+    from .models import FlightSegment as _FS
     club, actor = _app_actor(request, club_slug)
     if not actor:
         return redirect('login')
-    base_qs = (FlightCompletion.objects
-               .filter(booking__member=actor, booking__club=club, booking__status='completed')
-               .select_related('booking__aircraft', 'booking__instructor', 'booking__flight_type')
-               .order_by('-booking__scheduled_start'))
+
+    # 1. Flights where this member was the booking pilot
+    fc_qs = (FlightCompletion.objects
+             .filter(booking__member=actor, booking__club=club, booking__status='completed')
+             .select_related('booking__aircraft', 'booking__instructor', 'booking__flight_type')
+             .prefetch_related('segments')
+             .order_by('-booking__scheduled_start'))
+
+    # 2. Segments where this member flew but was not the booker (split flights only)
+    seg_qs = (_FS.objects
+              .filter(member=actor, flight_completion__booking__club=club,
+                      flight_completion__booking__status='completed')
+              .exclude(flight_completion__booking__member=actor)
+              .select_related('flight_completion__booking__aircraft',
+                              'flight_completion__booking__instructor',
+                              'flight_completion__booking__flight_type')
+              .order_by('-flight_completion__booking__scheduled_start'))
+
+    # Build unified entry list
+    entries = []
+    for fc in fc_qs:
+        # If this FC was a split, use this member's segment hours; otherwise use total
+        my_seg = next((s for s in fc.segments.all() if s.member_id == actor.id), None)
+        hours = float(my_seg.hours or 0) if my_seg else float(fc.actual_flight_hours or 0)
+        # For split flights, special hours are per-segment; for solo flights, on the FC
+        _src = my_seg if my_seg else fc
+        entries.append({
+            'date':             fc.booking.scheduled_start,
+            'aircraft':         fc.booking.aircraft.registration,
+            'flight_type':      fc.booking.flight_type.name if fc.booking.flight_type else '',
+            'instructor':       fc.booking.instructor.get_full_name() if fc.booking.instructor else '',
+            'hours':            hours,
+            'is_split':         bool(my_seg),
+            'dual':             bool(fc.booking.instructor),
+            'if_sim':  float(_src.time_if_simulated) if _src.time_if_simulated else None,
+            'if_act':  float(_src.time_if_actual)   if _src.time_if_actual   else None,
+            'night':   float(_src.time_night)        if _src.time_night       else None,
+            'low':     float(_src.time_low_flying)   if _src.time_low_flying  else None,
+            'ta':      float(_src.time_terrain_awareness) if _src.time_terrain_awareness else None,
+            'fc_id':            fc.id,
+            'seg_id':           my_seg.id if my_seg else None,
+            'can_edit_special': True,
+        })
+
+    for seg in seg_qs:
+        fc = seg.flight_completion
+        entries.append({
+            'date':             fc.booking.scheduled_start,
+            'aircraft':         fc.booking.aircraft.registration,
+            'flight_type':      fc.booking.flight_type.name if fc.booking.flight_type else '',
+            'instructor':       fc.booking.instructor.get_full_name() if fc.booking.instructor else '',
+            'hours':            float(seg.hours or 0),
+            'is_split':         True,
+            'dual':             bool(fc.booking.instructor),
+            'if_sim':  float(seg.time_if_simulated) if seg.time_if_simulated else None,
+            'if_act':  float(seg.time_if_actual)   if seg.time_if_actual   else None,
+            'night':   float(seg.time_night)        if seg.time_night       else None,
+            'low':     float(seg.time_low_flying)   if seg.time_low_flying  else None,
+            'ta':      float(seg.time_terrain_awareness) if seg.time_terrain_awareness else None,
+            'fc_id':            fc.id,
+            'seg_id':           seg.id,
+            'can_edit_special': True,
+        })
+
+    entries.sort(key=lambda e: e['date'], reverse=True)
 
     # Year filter
     year_param = request.GET.get('year', '')
-    years = (base_qs.dates('booking__scheduled_start', 'year')
-             .values_list('booking__scheduled_start__year', flat=True).distinct().order_by('-booking__scheduled_start__year'))
-    years = sorted(set(base_qs.values_list('booking__scheduled_start__year', flat=True).distinct()), reverse=True)
-    filtered_qs = base_qs.filter(booking__scheduled_start__year=year_param) if year_param else base_qs
+    years = sorted({e['date'].year for e in entries}, reverse=True)
+    filtered = [e for e in entries if str(e['date'].year) == year_param] if year_param else entries
 
-    # Totals over the filtered set
-    agg = filtered_qs.aggregate(
-        total=Sum('actual_flight_hours'),
-        dual=Sum('actual_flight_hours', filter=_Q(booking__instructor__isnull=False)),
-        solo=Sum('actual_flight_hours', filter=_Q(booking__instructor__isnull=True)),
-        if_sim=Sum('time_if_simulated'),
-        if_act=Sum('time_if_actual'),
-        night=Sum('time_night'),
-    )
-    total_hrs = agg['total'] or 0
-    dual_hrs  = agg['dual']  or 0
-    solo_hrs  = agg['solo']  or 0
-    if_hrs    = (agg['if_sim'] or 0) + (agg['if_act'] or 0)
-    night_hrs = agg['night'] or 0
+    # Totals (computed from correct per-member hours, not raw FC totals)
+    total_hrs = sum(e['hours'] for e in filtered)
+    dual_hrs  = sum(e['hours'] for e in filtered if e['dual'])
+    solo_hrs  = sum(e['hours'] for e in filtered if not e['dual'])
+    if_hrs    = sum(e['if_sim'] + e['if_act'] for e in filtered)
+    night_hrs = sum(e['night'] for e in filtered)
 
-    # Pagination
-    paginator = Paginator(filtered_qs, 30)
+    paginator = Paginator(filtered, 30)
     page_obj  = paginator.get_page(request.GET.get('page', 1))
 
     return render(request, 'core/app/flight_log.html', {
@@ -4493,7 +4602,50 @@ def app_flight_log(request, club_slug):
         'night_hrs': night_hrs,
         'years': years,
         'year_param': year_param,
+        'saved': request.GET.get('saved') == '1',
     })
+
+
+@login_required
+@require_POST
+def app_save_special_hours(request, club_slug, fc_id):
+    """Pilot self-records special hours (IF, night, etc.) against a completed flight in their log.
+
+    For solo (non-split) flights: saves to FlightCompletion.
+    For split flights: saves to the pilot's FlightSegment so each pilot's hours are independent.
+    """
+    from .models import FlightSegment as _FS
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+
+    fc = get_object_or_404(FlightCompletion, id=fc_id, booking__club=club, booking__status='completed')
+
+    seg_id = request.POST.get('seg_id', '').strip()
+    if seg_id:
+        # Split flight — save to this pilot's segment (ownership verified by member=actor)
+        target = get_object_or_404(_FS, id=seg_id, flight_completion=fc, member=actor)
+        total = float(target.hours or 0)
+    else:
+        # Solo flight — booking member edits the FlightCompletion directly
+        if fc.booking.member_id != actor.id:
+            return redirect(reverse('core:app_flight_log', kwargs={'club_slug': club_slug}))
+        target = fc
+        total = float(fc.actual_flight_hours or 0)
+
+    _fields = ['time_if_simulated', 'time_if_actual', 'time_night', 'time_low_flying', 'time_terrain_awareness']
+    for sf in _fields:
+        sv = request.POST.get(sf, '').strip()
+        if sv:
+            try:
+                fval = max(0.0, float(sv))
+                setattr(target, sf, min(fval, total) if total else fval)
+            except ValueError:
+                pass
+        else:
+            setattr(target, sf, None)
+    target.save(update_fields=_fields)
+    return redirect(reverse('core:app_flight_log', kwargs={'club_slug': club_slug}) + '?saved=1')
 
 
 @login_required
@@ -4567,7 +4719,7 @@ def my_profile(request, club_slug):
     upcoming = (Booking.objects
                 .filter(club=club, member=member, status__in=_ACTIVE_STATUSES,
                         scheduled_start__gte=_now)
-                .select_related('aircraft', 'instructor', 'flight_type', 'flight_completion')
+                .select_related('aircraft', 'instructor', 'flight_type')
                 .order_by('scheduled_start')[:10])
     past = (Booking.objects
             .filter(club=club, member=member)
@@ -4661,7 +4813,7 @@ def _recompute_conflicts_for_club(club):
     from .models import recompute_blockout_conflict as _rbc
     qs = (Booking.objects
           .filter(club=club, status__in=['pending', 'confirmed', 'departed'])
-          .select_related('aircraft', 'instructor', 'flight_completion'))
+          .select_related('aircraft', 'instructor'))
     for b in qs:
         _rbc(b)
 
@@ -5556,7 +5708,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
     _fh_qs = (Booking.objects
               .filter(club=club, aircraft=ac)
               .exclude(status='cancelled')
-              .select_related('member__user', 'instructor', 'flight_type', 'flight_completion')
+              .select_related('member__user', 'instructor', 'flight_type')
               .order_by('-scheduled_start'))
     flight_history = _FHPag(_fh_qs, 25).get_page(request.GET.get('fh_page'))
 
@@ -6530,7 +6682,7 @@ def generate_invoice(request, club_slug, booking_id):
     if request.method != 'POST':
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
-    fc = getattr(booking, 'flight_completion', None)
+    fc = booking.flight_completion
     if not fc:
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
@@ -6739,9 +6891,14 @@ def generate_invoice(request, club_slug, booking_id):
         from .services import notification_service as _ns
         _ns.notify_invoice_issued(_combined_inv)
 
-    # Always return to invoice_detail for paid receipts so admin can print/email from there.
+    # Mark booking completed on invoice generation
+    if created and booking.status == 'returned':
+        Booking.objects.filter(pk=booking.pk).update(status='completed')
+
     if created:
-        return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _inv_qs(created[0].id))
+        import urllib.parse as _up2
+        _print_qs = '?' + _up2.urlencode({'back': _booking_url})
+        return redirect(_rev('core:invoice_print', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _print_qs)
     return redirect(_booking_url + '?saved=1')
 
 
@@ -6789,7 +6946,16 @@ def invoice_detail(request, club_slug, invoice_id):
             _ns.notify_invoice_issued(invoice)
             from .email_notifications import invoice_sent as _email_invoice
             _email_invoice(invoice)
-            return redirect(_stay_url)
+            _next = request.POST.get('next_url', '').strip()
+            return redirect(_next if _next else _stay_url)
+
+        elif action == 'send_copy' and invoice.status in ('sent', 'paid'):
+            from .services import notification_service as _ns
+            _ns.notify_invoice_issued(invoice)
+            from .email_notifications import invoice_sent as _email_invoice2
+            _email_invoice2(invoice)
+            _next = request.POST.get('next_url', '').strip()
+            return redirect(_next if _next else _stay_url)
 
         elif action == 'mark_paid' and invoice.status == 'sent':
             from decimal import Decimal as _D
@@ -6860,6 +7026,10 @@ def invoice_detail(request, club_slug, invoice_id):
                                 amount=_fc_pay,
                                 method='invoice',
                             )
+                        _bk_linked = _fc_linked.booking
+                        _bk_linked.refresh_from_db(fields=['status'])
+                        if _bk_linked.status == 'returned':
+                            Booking.objects.filter(pk=_bk_linked.pk).update(status='completed')
                     if invoice.subscription_expiry_date and invoice.member:
                         _sub_member = invoice.member
                         _old_exp = _sub_member.subscription_expires
@@ -6926,9 +7096,41 @@ def invoice_print(request, club_slug, invoice_id):
         return redirect('login')
     if err := require_staff(actor, club, request): return err
     config  = get_config(club)
+    back_url = request.GET.get('back', '')
+
+    # Co-session payments: other FCs paid in the same batch as this invoice's FC
+    session_payments = []
+    if invoice.flight_completion_id:
+        from .models import FlightPayment as _FP
+        _batch_ids = set(
+            _FP.objects.filter(
+                completion_id=invoice.flight_completion_id,
+                batch_id__isnull=False,
+            ).values_list('batch_id', flat=True)
+        )
+        if _batch_ids:
+            session_payments = list(
+                _FP.objects.filter(batch_id__in=_batch_ids, paid_at__isnull=False)
+                .exclude(completion_id=invoice.flight_completion_id)
+                .select_related('completion__booking__aircraft', 'completion__booking')
+                .order_by('paid_at')
+            )
+
+    from decimal import Decimal as _D
+    session_total = sum(_D(str(sp.amount)) for sp in session_payments)
+    grand_total   = _D(str(invoice.total or 0)) + session_total
+    grand_paid    = _D(str(invoice.amount_paid or 0)) + session_total
+    grand_balance = grand_total - grand_paid
+
     return render(request, 'core/invoice_print.html', {
         'club': club, 'invoice': invoice,
         'line_items': invoice.line_items.all(), 'config': config,
+        'back_url': back_url,
+        'session_payments': session_payments,
+        'session_total': session_total,
+        'grand_total': grand_total,
+        'grand_paid': grand_paid,
+        'grand_balance': grand_balance,
     })
 
 
@@ -8178,7 +8380,7 @@ def manage_exceptions(request, club_slug):
                 flight_completion__paid_at__isnull=True,
                 flight_completion__total_charge__gt=0,
                 flight_completion__invoices__isnull=True)
-        .select_related('member__user', 'aircraft', 'flight_type', 'flight_completion')
+        .select_related('member__user', 'aircraft', 'flight_type')
         .order_by('arrived_at')
     )
 
@@ -10810,7 +11012,7 @@ def app_home(request, club_slug):
     # Last completed flight
     last_flight = (Booking.objects
                    .filter(member=actor, club=club, status='completed')
-                   .select_related('aircraft', 'flight_completion')
+                   .select_related('aircraft')
                    .order_by('-scheduled_start')
                    .first())
 

@@ -254,7 +254,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_credential">
                 <input type="hidden" name="cred_id" value="{{ c.id }}">
-                <button type="submit" class="cbtn-xs" style="color:#c0392b;border-color:#f5c6cb;">Delete</button>
+                <button type="submit" class="cbtn-xs cbtn-danger">Delete</button>
               </form>
             </div>
           </td>
