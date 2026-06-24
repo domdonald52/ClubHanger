@@ -18,7 +18,7 @@
 
   {% if contact.converted_to_member %}
   <div class="notice ok" style="margin-bottom:1rem;">
-    Converted to member: <a href="{% url 'core:manage_member_detail' club.slug contact.converted_to_member_id %}" data-overlay>{{ contact.converted_to_member.user.get_full_name }}</a>
+    Converted to member: <a href="{% url 'core:manage_member_detail' club.slug contact.converted_to_member_id %}" data-overlay data-overlay-wide>{{ contact.converted_to_member.user.get_full_name }}</a>
   </div>
   {% endif %}
 

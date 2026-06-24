@@ -2581,6 +2581,7 @@ def booking_detail(request, club_slug, booking_id):
 
     if request.method == 'POST':
         action = request.POST.get('action', '')
+        fc = booking.flight_completion
 
         if action == 'confirm' and booking.status == 'pending' and (actor.is_admin or actor.is_instructor):
             Booking.objects.filter(pk=booking.pk).update(
@@ -3504,6 +3505,7 @@ def booking_detail(request, club_slug, booking_id):
                                                 amount=arrears_clear_amt,
                                                 payment_method=_pmeth,
                                                 description='Arrears clearance — collected with flight payment',
+                                                flight_completion=fc,
                                                 created_by=request.user,
                                             )
                                             _acct2.apply_transaction(arrears_clear_amt, 'credit')
@@ -3552,6 +3554,14 @@ def booking_detail(request, club_slug, booking_id):
             fc = booking.flight_completion
             if fc:
                 payment_id = request.POST.get('payment_id') or None
+                # Void associated receipt(s) before reversing so they don't block re-reversal
+                from .models import Invoice as _Inv, FlightPayment as _FP2
+                if payment_id:
+                    _rfp = _FP2.objects.filter(id=payment_id, completion=fc).first()
+                    if _rfp:
+                        _Inv.objects.filter(flight_completion=fc).exclude(status='void').update(status='void')
+                else:
+                    _Inv.objects.filter(flight_completion=fc).exclude(status='void').update(status='void')
                 result = charging_service.reverse_payment(fc, booking, request.user, payment_id=payment_id)
                 if result.ok:
                     success = result.data['message']
@@ -3589,8 +3599,8 @@ def booking_detail(request, club_slug, booking_id):
                     if _chk_fc.is_paid or _chk_fc.invoice_issued:
                         Booking.objects.filter(pk=booking.pk).update(status='completed')
             if is_inline:
-                if action == 'depart':
-                    # Close the overlay after checkout — no need to show the check-in screen
+                if action in ('depart', 'confirm'):
+                    # Close the overlay after checkout or confirmation
                     return redirect(f'{request.path}?close_overlay=1&saved=1')
                 return redirect(f'{request.path}?inline=1&saved=1')
             from django.urls import reverse as _rev
@@ -3806,6 +3816,35 @@ def booking_detail(request, club_slug, booking_id):
     _fc_paid = _D(str(fc.amount_paid or 0)) if fc else _D('0')
     batch_session_total = _fc_paid + sum(_D(str(sp.amount)) for sp in batch_session_payments)
 
+    # Arrears clearance collected alongside this flight payment
+    arrears_clearance_at = None
+    if fc and fc.is_paid:
+        from .models import AccountTransaction as _AT3
+        arrears_clearance_at = _AT3.objects.filter(
+            flight_completion=fc,
+            transaction_type='deposit',
+            direction='credit',
+            description__startswith='Arrears clearance',
+        ).first()
+    arrears_flights = []
+    if arrears_clearance_at:
+        batch_session_total += _D(str(arrears_clearance_at.amount))
+        _remaining = _D(str(arrears_clearance_at.amount))
+        _flight_ats = list(
+            _AT3.objects.filter(
+                account=arrears_clearance_at.account,
+                transaction_type='flight',
+                direction='debit',
+                created_at__lt=arrears_clearance_at.created_at,
+            ).select_related('flight_completion__booking__aircraft', 'flight_completion__booking')
+            .order_by('-created_at')
+        )
+        for _at in _flight_ats:
+            if _remaining <= 0:
+                break
+            arrears_flights.append(_at)
+            _remaining -= _D(str(_at.amount))
+
     # Other FCs for the booking member that were paid (in the same session) but not yet receipted.
     # We surface these so the admin can generate a receipt for each in one click.
     member_copaid_fcs = []
@@ -3895,6 +3934,8 @@ def booking_detail(request, club_slug, booking_id):
         'batch_session_fcs': batch_session_fcs,
         'batch_session_payments': batch_session_payments,
         'batch_session_total': batch_session_total,
+        'arrears_clearance_at': arrears_clearance_at,
+        'arrears_flights': arrears_flights,
         'member_has_payment_on_fc': member_has_payment_on_fc,
         'aerodromes': aerodromes,
         'flight_types': flight_types,
@@ -5706,17 +5747,27 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
 
     from django.core.paginator import Paginator as _FHPag
     _fh_qs = (Booking.objects
-              .filter(club=club, aircraft=ac)
-              .exclude(status='cancelled')
+              .filter(club=club, aircraft=ac, status='completed')
               .select_related('member__user', 'instructor', 'flight_type')
               .order_by('-scheduled_start'))
     flight_history = _FHPag(_fh_qs, 25).get_page(request.GET.get('fh_page'))
 
     from .models import MaintenanceLogEntry
+    from django.db.models import Max as _MMax
     maint_log = (MaintenanceLogEntry.objects
                  .filter(aircraft=ac)
                  .select_related('flight_completion__booking__member__user')
                  .order_by('-date', '-id')[:100])
+    _maint_peak = MaintenanceLogEntry.objects.filter(aircraft=ac).aggregate(
+        max_maint=_MMax('maint_hours_total'),
+        max_hobbs=_MMax('hobbs_reading'),
+        max_tacho=_MMax('tacho_reading'),
+        max_airswitch=_MMax('airswitch_reading'),
+    )
+    # Highest reading for whichever instrument is the maint source
+    _src_map = {'hobbs': _maint_peak['max_hobbs'], 'tacho': _maint_peak['max_tacho'], 'airswitch': _maint_peak['max_airswitch']}
+    maint_peak_instrument = _src_map.get(ac.maint_time_source)
+    maint_peak_total = _maint_peak['max_maint']
 
     _at = ac.aircraft_type
     _designator = (_at.icao_designator or '').upper() if _at else ''
@@ -5739,6 +5790,8 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'assigned_surcharge_ids': assigned_surcharge_ids,
         'maintenance_items': maintenance_items,
         'maint_log': maint_log,
+        'maint_peak_instrument': maint_peak_instrument,
+        'maint_peak_total': maint_peak_total,
         'flight_types': flight_types,
         'aircraft_blockout_types': aircraft_blockout_types,
         'ac_blockouts': ac_blockouts,
@@ -6724,6 +6777,13 @@ def generate_invoice(request, club_slug, booking_id):
     _for_member_id = request.POST.get('for_member_id', '').strip()
     # Read other_fc_ids early so we can skip the early-exit when they're present
     _other_fc_ids = request.POST.getlist('other_fc_ids')
+    # Arrears: include outstanding account balance in the invoice
+    _include_arrears = request.POST.get('include_arrears') == '1'
+    try:
+        _arrears_clear_amt = _D(request.POST.get('arrears_amount', '0') or '0')
+    except Exception:
+        _arrears_clear_amt = _D('0')
+    _include_arrears = _include_arrears and _arrears_clear_amt > 0
 
     from decimal import Decimal as _D
     if fp_list:
@@ -6734,7 +6794,10 @@ def generate_invoice(request, club_slug, booking_id):
             if fp.member_id not in existing_member_ids
             and (not _for_member_id or str(fp.member_id) == _for_member_id)
         ]
-        is_split = len(fp_list) > 1
+        _is_multi_payer = len(fp_list) > 1
+        _is_segmented = booking.flight_completions.count() > 1
+        is_split = _is_multi_payer  # True for both segment splits and cost shares
+        is_segment_split = _is_multi_payer and _is_segmented  # True only for actual flight splits
     else:
         if booking.member.id not in existing_member_ids:
             _fp0 = fc.payments.filter(paid_at__isnull=False).first()
@@ -6746,10 +6809,12 @@ def generate_invoice(request, club_slug, booking_id):
         is_split = False
 
     if not payees and not _other_fc_ids:
-        # All payees already invoiced — redirect to first invoice
-        first = fc.invoices.order_by('invoice_number').first()
+        # All payees already invoiced — open the existing receipt/invoice print view
+        first = fc.invoices.filter(member_id=_for_member_id).first() if _for_member_id else fc.invoices.order_by('invoice_number').first()
         if first:
-            return redirect(_rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': first.id}) + _inv_qs(first.id))
+            import urllib.parse as _up0
+            _print_qs0 = '?' + _up0.urlencode({'back': _booking_url})
+            return redirect(_rev('core:invoice_print', kwargs={'club_slug': club_slug, 'invoice_id': first.id}) + _print_qs0)
         return redirect('core:booking_detail', club_slug=club_slug, booking_id=booking_id)
 
     from .models import InvoicePayment as _IP
@@ -6789,7 +6854,7 @@ def generate_invoice(request, club_slug, booking_id):
         if is_split:
             InvoiceLineItem.objects.create(
                 invoice=invoice,
-                description=f'Flight hire share — {booking.aircraft.registration} {today.strftime("%-d %b %Y")}',
+                description=f'Flight hire — {member.user.get_full_name()} {"segment" if is_segment_split else "cost share"}, {booking.aircraft.registration} {today.strftime("%-d %b %Y")}',
                 quantity=1,
                 unit='Ea',
                 rate=amount,
@@ -6808,6 +6873,37 @@ def generate_invoice(request, club_slug, booking_id):
                     sort_order=order,
                     charge_item=ci,
                 )
+
+        # Arrears line item — only for the booking member's invoice, not split payees
+        if _include_arrears and member.id == booking.member.id:
+            _sort_base = invoice.line_items.count()
+            InvoiceLineItem.objects.create(
+                invoice=invoice,
+                description='Outstanding account balance — arrears clearance',
+                quantity=1,
+                unit='Ea',
+                rate=_arrears_clear_amt,
+                amount=_arrears_clear_amt,
+                sort_order=_sort_base,
+            )
+            # Clear the arrears immediately (same timing as direct payment recording)
+            try:
+                from .models import AccountTransaction as _AT2, Account as _Acct2
+                _acct2, _ = _Acct2.objects.get_or_create(club_member=booking.member, defaults={'balance': 0})
+                _AT2.objects.create(
+                    account=_acct2,
+                    transaction_type='deposit',
+                    direction='credit',
+                    amount=_arrears_clear_amt,
+                    payment_method='bank_transfer',
+                    description='Arrears clearance — invoice issued',
+                    flight_completion=fc,
+                    created_by=request.user,
+                )
+                _acct2.apply_transaction(_arrears_clear_amt, 'credit')
+            except Exception:
+                pass
+            # total is a computed property from line_items — no stored field to update
 
         # Auto-mark as paid if payment was already recorded — this is a receipt.
         # Create an InvoicePayment row so the ledger is complete, then sync the cache.
@@ -7117,9 +7213,38 @@ def invoice_print(request, club_slug, invoice_id):
             )
 
     from decimal import Decimal as _D
+    # Arrears clearance settled alongside this flight
+    arrears_clearance_at = None
+    arrears_flights = []
+    if invoice.flight_completion_id:
+        from .models import AccountTransaction as _AT4
+        arrears_clearance_at = _AT4.objects.filter(
+            flight_completion_id=invoice.flight_completion_id,
+            transaction_type='deposit',
+            direction='credit',
+            description__startswith='Arrears clearance',
+        ).first()
+        if arrears_clearance_at:
+            _remaining = _D(str(arrears_clearance_at.amount))
+            _flight_ats = list(
+                _AT4.objects.filter(
+                    account=arrears_clearance_at.account,
+                    transaction_type='flight',
+                    direction='debit',
+                    created_at__lt=arrears_clearance_at.created_at,
+                ).select_related('flight_completion__booking__aircraft', 'flight_completion__booking')
+                .order_by('-created_at')
+            )
+            for _at in _flight_ats:
+                if _remaining <= 0:
+                    break
+                arrears_flights.append(_at)
+                _remaining -= _D(str(_at.amount))
+
     session_total = sum(_D(str(sp.amount)) for sp in session_payments)
-    grand_total   = _D(str(invoice.total or 0)) + session_total
-    grand_paid    = _D(str(invoice.amount_paid or 0)) + session_total
+    arrears_total = _D(str(arrears_clearance_at.amount)) if arrears_clearance_at else _D('0')
+    grand_total   = _D(str(invoice.total or 0)) + session_total + arrears_total
+    grand_paid    = _D(str(invoice.amount_paid or 0)) + session_total + arrears_total
     grand_balance = grand_total - grand_paid
 
     return render(request, 'core/invoice_print.html', {
@@ -7128,6 +7253,9 @@ def invoice_print(request, club_slug, invoice_id):
         'back_url': back_url,
         'session_payments': session_payments,
         'session_total': session_total,
+        'arrears_clearance_at': arrears_clearance_at,
+        'arrears_flights': arrears_flights,
+        'arrears_total': arrears_total,
         'grand_total': grand_total,
         'grand_paid': grand_paid,
         'grand_balance': grand_balance,
@@ -8377,10 +8505,11 @@ def manage_exceptions(request, club_slug):
     unpaid_flights = (
         Booking.objects
         .filter(club=club, status='completed',
-                flight_completion__paid_at__isnull=True,
-                flight_completion__total_charge__gt=0,
-                flight_completion__invoices__isnull=True)
+                flight_completions__paid_at__isnull=True,
+                flight_completions__total_charge__gt=0,
+                flight_completions__invoices__isnull=True)
         .select_related('member__user', 'aircraft', 'flight_type')
+        .distinct()
         .order_by('arrived_at')
     )
 

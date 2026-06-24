@@ -1673,7 +1673,7 @@ class FlightCompletion(models.Model):
 
     # Payment cache — denormalised from FlightPayment rows via _sync_payment_cache()
     payment_method = models.CharField(
-        max_length=20, choices=PAYMENT_METHOD_CHOICES + [('split', 'Split'), ('cash', 'Cash')],
+        max_length=20, choices=PAYMENT_METHOD_CHOICES + [('split', 'Shared'), ('cash', 'Cash')],
         blank=True, default=''
     )
     amount_paid = models.DecimalField(max_digits=8, decimal_places=2, default=0)

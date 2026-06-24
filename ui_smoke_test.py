@@ -477,6 +477,23 @@ def cat_maintenance(r, slug):
             'Maintenance log section not found in page HTML'
     r.check('Aircraft detail — maintenance log section in page', _maint_log)
 
+    def _sc_toggle():
+        r.goto(f'/manage/{slug}/aircraft/{ac_id}/')
+        r.page.wait_for_selector('.back-link', timeout=5000)
+        html = r.page.content()
+        assert 'sc-toggle' in html, \
+            'No .sc-toggle element — iOS surcharge toggle not rendered on aircraft detail'
+    r.check('Aircraft detail — iOS surcharge toggle rendered', _sc_toggle)
+
+    def _peak_meters():
+        r.goto(f'/manage/{slug}/aircraft/{ac_id}/')
+        r.page.wait_for_selector('.back-link', timeout=5000)
+        html = r.page.content()
+        assert 'Current meters' in html or 'maint_peak' in html or \
+               'Total maint' in html.lower(), \
+            'Peak meters strip not found on aircraft detail maintenance section'
+    r.check('Aircraft detail — peak meters strip in page', _peak_meters)
+
     r.skip('Maintenance urgency thresholds', 'not yet implemented — backlog #5, #7')
     r.skip('Urgency recalc after check-in', 'fixed in booking_service — no UI-level test possible without a real check-in')
 

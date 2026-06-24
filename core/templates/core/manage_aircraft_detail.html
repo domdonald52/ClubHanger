@@ -298,9 +298,8 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="toggle_fuel_rate">
         <input type="hidden" name="rate_id" value="{{ current.id }}">
-        <button type="submit" class="sc-toggle {% if current.is_active %}sc-on{% else %}sc-off{% endif %}" title="Toggle fuel charging on/off">
-          {% if current.is_active %}Active{% else %}Paused{% endif %}
-        </button>
+        <button type="submit" class="sc-toggle {% if current.is_active %}sc-on{% else %}sc-off{% endif %}"
+                title="Fuel charging {% if current.is_active %}active — click to pause{% else %}paused — click to activate{% endif %}"></button>
       </form>
       {% endif %}
     </div>
@@ -354,7 +353,7 @@
   <div id="tab-surcharges" class="stab-panel">
     <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">
       Active surcharges are automatically added to every flight on this aircraft.
-      Surcharge types and amounts are configured in <a href="{% url 'core:club_settings' club.slug %}">Settings → Charge types</a>.
+      Surcharge types and amounts are configured in <a href="{% url 'core:club_settings' club.slug %}" data-overlay-wide>Settings → Charge types</a>.
     </p>
 
     {% if all_surcharge_types %}
@@ -368,17 +367,18 @@
           <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
           <td>
             {% if club_member.is_admin %}
-            <form method="post" style="display:inline;">
+            <form method="post" style="display:inline-flex;align-items:center;gap:.4rem;">
               {% csrf_token %}
               <input type="hidden" name="action" value="toggle_surcharge">
               <input type="hidden" name="sc_id" value="{{ st.id }}">
-              <button type="submit" class="sc-toggle {% if st.id in assigned_surcharge_ids %}sc-on{% else %}sc-off{% endif %}">
-                {% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}
-              </button>
+              <button type="submit" class="sc-toggle {% if st.id in assigned_surcharge_ids %}sc-on{% else %}sc-off{% endif %}"
+                      title="{% if st.id in assigned_surcharge_ids %}Active on this aircraft — click to deactivate{% else %}Inactive — click to activate for this aircraft{% endif %}"></button>
+              <span style="font-size:.78rem;color:{% if st.id in assigned_surcharge_ids %}#2a7a3b{% else %}#8a93a0{% endif %};">{% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}</span>
             </form>
             {% else %}
-            <span class="sc-toggle {% if st.id in assigned_surcharge_ids %}sc-on{% else %}sc-off{% endif %}" style="cursor:default;">
-              {% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}
+            <span style="display:inline-flex;align-items:center;gap:.4rem;">
+              <span class="sc-toggle {% if st.id in assigned_surcharge_ids %}sc-on{% else %}sc-off{% endif %}"></span>
+              <span style="font-size:.78rem;color:{% if st.id in assigned_surcharge_ids %}#2a7a3b{% else %}#8a93a0{% endif %};">{% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}</span>
             </span>
             {% endif %}
           </td>
@@ -395,6 +395,58 @@
   <!-- ── MAINTENANCE tab ── -->
   <div id="tab-maintenance" class="stab-panel">
 
+    <!-- Block-outs (short list — keep at top) -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
+      <h2 class="sh2" style="margin:0;">Block-outs</h2>
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-ac-bo-modal').hidden=false">+ Add block-out</button>
+    </div>
+    {% if ac_blockouts %}
+    <table class="ft-table" style="margin-bottom:1.5rem;">
+      <thead><tr><th>Type</th><th>When</th><th>Hours</th><th>Label</th><th></th></tr></thead>
+      <tbody>
+        {% for bo in ac_blockouts %}
+        <tr>
+          <td>{% if bo.blockout_type %}<span class="bo-dot" style="background:{{ bo.blockout_type.color }};"></span>{{ bo.blockout_type.name }}{% else %}—{% endif %}</td>
+          <td>
+            {% if bo.recurrence == 'one_off' %}{{ bo.date }}
+            {% elif bo.recurrence == 'weekly' %}{{ bo.get_weekday_display }}s
+            {% else %}Daily{% endif %}
+          </td>
+          <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
+          <td style="color:#8a93a0;">{{ bo.label }}</td>
+          <td style="text-align:right;">
+            <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete this block-out?')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete_blockout">
+              <input type="hidden" name="bo_id" value="{{ bo.id }}">
+              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 1rem;">No block-outs scheduled for this aircraft.</p>
+    {% endif %}
+
+    <hr style="border:none;border-top:1px solid #eef1f4;margin:0 0 1.4rem;">
+
+    <!-- Peak meter summary strip -->
+    {% if maint_peak_total or maint_peak_instrument %}
+    <div style="display:flex;gap:1.5rem;align-items:center;background:#f8f9fa;border:1px solid #e3e6ea;border-radius:8px;padding:.5rem .9rem;margin-bottom:1.2rem;flex-wrap:wrap;">
+      <span style="font-size:.78rem;font-weight:600;color:#8a93a0;text-transform:uppercase;letter-spacing:.04em;">Current meters</span>
+      {% if maint_peak_instrument %}
+      <span style="font-size:.85rem;color:#2b333d;">{{ ac.get_maint_time_source_display }}: <strong>{{ maint_peak_instrument }}</strong></span>
+      {% endif %}
+      {% if maint_peak_total %}
+      <span style="font-size:.85rem;color:#2b333d;">Total maint hrs: <strong>{{ maint_peak_total }}</strong></span>
+      {% endif %}
+      <span style="font-size:.74rem;color:#8a93a0;margin-left:auto;">Verify against aircraft — check highest recorded value</span>
+    </div>
+    {% endif %}
+
+    <!-- Maintenance items -->
     <div class="tab-section-header">
       <h2 class="sh2" style="margin:0;">Maintenance items</h2>
       {% if club_member.is_admin %}
@@ -403,8 +455,8 @@
     </div>
 
     {% if maintenance_items %}
-    <table class="ft-table">
-      <thead><tr><th>Item</th><th style="white-space:nowrap;">Due date</th><th style="white-space:nowrap;">Due hrs</th><th style="white-space:nowrap;">Last done</th><th style="min-width:120px;">Status</th><th></th></tr></thead>
+    <table class="ft-table" style="margin-bottom:1.5rem;">
+      <thead><tr><th>Item</th><th style="white-space:nowrap;">Due date</th><th style="white-space:nowrap;">Due hrs</th><th style="white-space:nowrap;">Last done</th><th style="min-width:160px;">Status</th><th></th></tr></thead>
       <tbody>
         {% for m in maintenance_items %}
         <tr>
@@ -413,14 +465,14 @@
           <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_hours|default:"—" }}</td>
           <td style="font-size:.82rem;color:#8a93a0;white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
           <td>
-            {% if m.progress_pct is not None %}
-            <div class="maint-bar-wrap">
-              <div class="maint-bar maint-bar-{{ m.urgency }}" style="width:{{ m.progress_pct }}%;"></div>
+            <div style="display:flex;align-items:center;gap:.4rem;">
+              <span class="urg-badge urg-{{ m.urgency }}" style="flex-shrink:0;">{{ m.get_urgency_display }}</span>
+              {% if m.progress_pct is not None %}
+              <div class="maint-bar-wrap" style="flex:1;min-width:50px;" title="{{ m.progress_pct }}% through interval">
+                <div class="maint-bar maint-bar-{{ m.urgency }}" style="width:{{ m.progress_pct }}%;"></div>
+              </div>
+              {% endif %}
             </div>
-            <span class="urg-badge urg-{{ m.urgency }}" style="margin-top:.25rem;display:inline-block;">{{ m.get_urgency_display }}</span>
-            {% else %}
-            <span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span>
-            {% endif %}
           </td>
           <td style="text-align:right;">
             {% if club_member.is_admin %}
@@ -447,13 +499,14 @@
       </tbody>
     </table>
     {% else %}
-    <div class="tab-empty">
+    <div class="tab-empty" style="margin-bottom:1.5rem;">
       <p>No maintenance items.</p>
     </div>
     {% endif %}
 
-    <hr style="border:none;border-top:1px solid #eef1f4;margin:2rem 0 1.4rem;">
+    <hr style="border:none;border-top:1px solid #eef1f4;margin:0 0 1.4rem;">
 
+    <!-- Maintenance log (long — at bottom) -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
       <h2 class="sh2" style="margin:0;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100 entries)</span></h2>
       <div style="display:flex;gap:.4rem;align-items:center;">
@@ -465,7 +518,10 @@
     {% if maint_log %}
     <table class="ft-table" style="margin-bottom:1.5rem;">
       <thead><tr>
-        <th>Date</th><th>Flight</th><th>Hobbs</th><th>Tacho</th><th>Air sw.</th>
+        <th>Date</th><th>Flight</th>
+        <th{% if ac.maint_time_source == 'hobbs' %} title="Maintenance hours source"{% endif %}>Hobbs{% if ac.maint_time_source == 'hobbs' %} <span style="color:var(--primary);font-size:.7em;">▲</span>{% endif %}</th>
+        <th{% if ac.maint_time_source == 'tacho' %} title="Maintenance hours source"{% endif %}>Tacho{% if ac.maint_time_source == 'tacho' %} <span style="color:var(--primary);font-size:.7em;">▲</span>{% endif %}</th>
+        <th{% if ac.maint_time_source == 'airswitch' %} title="Maintenance hours source"{% endif %}>Air sw.{% if ac.maint_time_source == 'airswitch' %} <span style="color:var(--primary);font-size:.7em;">▲</span>{% endif %}</th>
         <th style="text-align:right;">This flight</th><th style="text-align:right;">Total maint hrs</th>
       </tr></thead>
       <tbody>
@@ -490,41 +546,6 @@
     <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 1.5rem;">No log entries yet — entries are created automatically at each check-in.</p>
     {% endif %}
 
-    <hr style="border:none;border-top:1px solid #eef1f4;margin:0 0 1.4rem;">
-
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
-      <h2 class="sh2" style="margin:0;">Block-outs</h2>
-      <button type="button" class="cbtn-add" onclick="document.getElementById('add-ac-bo-modal').hidden=false">+ Add block-out</button>
-    </div>
-    {% if ac_blockouts %}
-    <table class="ft-table">
-      <thead><tr><th>Type</th><th>When</th><th>Hours</th><th>Label</th><th></th></tr></thead>
-      <tbody>
-        {% for bo in ac_blockouts %}
-        <tr>
-          <td>{% if bo.blockout_type %}<span class="bo-dot" style="background:{{ bo.blockout_type.color }};"></span>{{ bo.blockout_type.name }}{% else %}—{% endif %}</td>
-          <td>
-            {% if bo.recurrence == 'one_off' %}{{ bo.date }}
-            {% elif bo.recurrence == 'weekly' %}{{ bo.get_weekday_display }}s
-            {% else %}Daily{% endif %}
-          </td>
-          <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
-          <td style="color:#8a93a0;">{{ bo.label }}</td>
-          <td style="text-align:right;">
-            <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete this block-out?')">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="delete_blockout">
-              <input type="hidden" name="bo_id" value="{{ bo.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 .8rem;">No block-outs scheduled for this aircraft.</p>
-    {% endif %}
   </div><!-- /tab-maintenance -->
 
   <!-- Add hire rate modal -->
@@ -986,14 +1007,17 @@
   .current-rate-since{font-size:.82rem;color:#5b6573;}
   .current-rate-notes{font-size:.8rem;color:#8a93a0;font-style:italic;}
 
-  .sc-toggle{font-size:.75rem;font-weight:600;padding:.22rem .55rem;border-radius:10px;border:none;cursor:pointer;line-height:1.4;}
-  .sc-toggle.sc-on{background:#e6f4ea;color:#2a7a3b;}
-  .sc-toggle.sc-on:hover{background:#d1f0da;}
-  .sc-toggle.sc-off{background:#f3f5f7;color:#8a93a0;}
-  .sc-toggle.sc-off:hover{background:#eef1f4;}
+  .sc-toggle{position:relative;display:inline-block;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;padding:0;flex-shrink:0;vertical-align:middle;transition:background .18s;}
+  .sc-toggle::after{content:'';position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:left .18s;}
+  .sc-toggle.sc-on{background:#34c759;}
+  .sc-toggle.sc-on::after{left:calc(100% - 21px);}
+  .sc-toggle.sc-off{background:#d1d5db;}
+  .sc-toggle.sc-off::after{left:3px;}
+  .sc-toggle:hover.sc-on{background:#28a745;}
+  .sc-toggle:hover.sc-off{background:#b8bcc4;}
+  span.sc-toggle{cursor:default;}
 .cbtn-sm
-.cbtn-sm
-.notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:.6rem;}
+  .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:.6rem;}
   .notice.warn{background:#fff8e6;color:#7a5800;border-left:3px solid #f59e0b;}
   @keyframes adsb-spin{to{transform:rotate(360deg)}}
   .adsb-spinner{display:inline-block;width:11px;height:11px;border:2px solid #d0d6de;border-top-color:#6b7785;border-radius:50%;animation:adsb-spin .7s linear infinite;vertical-align:middle;margin-right:.35rem;flex-shrink:0;}
@@ -1032,6 +1056,7 @@
   let init = new URLSearchParams(location.search).get('tab');
   if (!init) { try { init = localStorage.getItem('acDetailTab'); } catch(e){} }
   activate(init || 'details');
+  if (window.lockStabHeight) window.lockStabHeight(TABS);
 })();
 
 // Close all modals on backdrop click or Escape

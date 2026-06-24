@@ -15,6 +15,7 @@
     {% if theme.logo %}<link rel="apple-touch-icon" href="{{ theme.logo.url }}">{% endif %}
     {% if club %}<link rel="manifest" href="{% url 'core:pwa_manifest_manage' club.slug %}">{% endif %}
     {% if theme.font_url %}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="{{ theme.font_url }}" rel="stylesheet">{% endif %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
     {% block extra_head %}{% endblock %}
     <style>
         @view-transition { navigation: auto; }
@@ -554,12 +555,13 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 /* ── Booking status chips — canonical colours used everywhere ── */
 .status-chip{display:inline-block;font-size:.75rem;font-weight:600;padding:.18rem .55rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
 /* Both conventions: .status-chip.pending and .status-chip.status-pending */
-.status-chip.pending,.status-chip.status-pending{background:color-mix(in srgb,var(--primary) 15%,#fff);color:color-mix(in srgb,var(--primary) 70%,#000);}
-.status-chip.confirmed,.status-chip.status-confirmed{background:color-mix(in srgb,var(--primary) 25%,#fff);color:color-mix(in srgb,var(--primary) 80%,#000);}
-.status-chip.departed,.status-chip.status-departed{background:var(--primary);color:#fff;}
-.status-chip.returned,.status-chip.status-returned{background:color-mix(in srgb,var(--primary) 75%,#fff);color:#fff;}
-.status-chip.completed,.status-chip.status-completed{background:#f1efe8;color:#444441;}
-.status-chip.cancelled,.status-chip.status-cancelled{background:#f3f5f7;color:#8a93a0;}
+.status-chip.pending,.status-chip.status-pending{background:#fffbeb;color:#92400e;}
+.status-chip.confirmed,.status-chip.status-confirmed{background:#ecfdf5;color:#166534;}
+.status-chip.departed,.status-chip.status-departed{background:#eff6ff;color:#1e40af;}
+.status-chip.returned,.status-chip.status-returned{background:#fff1f2;color:#be123c;}
+.status-chip.completed,.status-chip.status-completed{background:#f3f5f7;color:#5b6573;}
+.status-chip.cancelled,.status-chip.status-cancelled{background:#f3f5f7;color:#9ca3af;}
+.status-chip .ti{font-size:.72rem;vertical-align:-.05em;}
 /* ── Modal validation ── */
 .modal-notice{padding:.5rem .8rem;border-radius:6px;font-size:.84rem;font-weight:500;margin-bottom:.85rem;display:none;}
 .modal-notice.err{display:block;background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
@@ -845,11 +847,13 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
      (which made the tab bar jump). Body scrolls; the sticky header stays put.
      Width/height scale with the viewport (clamps tuned so a laptop ≈ the old
      size, while a big/4K screen gets a proportionally larger modal). */
-  .page-overlay-modal{background:#fff;border-radius:10px;width:clamp(520px,52vw,860px);max-width:96vw;box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
-  .page-overlay-modal.wide{width:clamp(700px,70vw,1200px);max-width:97vw;}
+  .page-overlay-modal{background:#fff;border-radius:10px;width:clamp(500px,46vw,780px);max-width:96vw;box-shadow:0 12px 40px rgba(16,24,40,.25);margin:auto;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
+  .page-overlay-modal.wide{width:clamp(640px,60vw,980px);max-width:97vw;}
   #page-overlay-body{flex:1;min-height:0;overflow-y:auto;}
   .page-overlay-modal .pi-body{flex:1;}
   [hidden]{display:none!important;}
+  /* Off-screen render used to measure tab panel heights before locking min-height */
+  .stab-measuring{display:block!important;visibility:hidden!important;position:absolute!important;width:100%;pointer-events:none!important;}
 </style>
 <script>
 (function(){
@@ -906,7 +910,26 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
     _currentUrl = null;
     overlay.hidden = true;
     document.body.style.overflow = '';
-    if (didChange) location.reload();
+    body.style.minHeight = '';
+    if (didChange) _softReload();
+  }
+
+  // Swap <main> content without a full page reload to avoid the white flash.
+  async function _softReload() {
+    try {
+      const html = await fetch(location.href, {credentials: 'same-origin'}).then(r => r.text());
+      const doc = new DOMParser().parseFromString(html, 'text/html');
+      const newMain = doc.querySelector('main');
+      const curMain = document.querySelector('main');
+      if (newMain && curMain) {
+        curMain.replaceWith(newMain);
+        runScripts(newMain);
+      } else {
+        location.reload();
+      }
+    } catch(e) {
+      location.reload();
+    }
   }
 
   function runScripts(container) {
@@ -937,6 +960,13 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
       attachHandlers(urlWithoutHash);
       _setBackBtn(_stack.length > 0);
       if (window._setupModalForms) window._setupModalForms(body);
+      // Lock overlay body height to the tallest tab so switching never resizes the modal
+      if (window.lockStabHeight) {
+        body.querySelectorAll('.stab-bar').forEach(function(bar) {
+          var ids = Array.from(bar.querySelectorAll('.stab-btn[data-tab]')).map(function(b){ return b.dataset.tab; });
+          if (ids.length > 1) window.lockStabHeight(ids);
+        });
+      }
     } catch(e) {
       body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load page.</p>';
     }
@@ -1057,6 +1087,8 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
   window.openPageOverlay = openOverlay;
   window.closePageOverlay = _doCloseOverlay;
   window.overlayGoBack = popOrClose;
+  window.markOverlayChanged = function() { didChange = true; };
+  window.reloadPageOverlay = function() { if (_currentUrl) loadOverlay(_currentUrl); };
 })();
 </script>
 <script>
@@ -1237,6 +1269,24 @@ window.setFieldError = function(input, msg) {
 })();
 </script>
 <script>
+// ── Overlay tab height lock ───────────────────────────────────────────────────
+// Call after activating the first tab. Renders every panel briefly off-screen,
+// measures its scrollHeight, then pins #page-overlay-body to the tallest value
+// so switching tabs never resizes (and jumps) the overlay.
+window.lockStabHeight = function(tabIds) {
+  var ob = document.getElementById('page-overlay-body');
+  if (!ob) return;
+  var maxH = 0;
+  tabIds.forEach(function(t) {
+    var panel = document.getElementById('tab-' + t);
+    if (!panel) return;
+    panel.classList.add('stab-measuring');
+    maxH = Math.max(maxH, panel.scrollHeight);
+    panel.classList.remove('stab-measuring');
+  });
+  if (maxH > 0) ob.style.minHeight = Math.min(maxH, Math.round(window.innerHeight * 0.82)) + 'px';
+};
+
 // ── Global stab-bar tab init ─────────────────────────────────────────────────
 // Applies to any .stab-bar whose buttons haven't been wired by per-page JS.
 // Per-page JS can opt out by setting data-managed="1" on the .stab-bar element.
@@ -1260,6 +1310,7 @@ window.setFieldError = function(input, msg) {
       // Open first tab with a red pill, otherwise first tab
       var first = btns.find(function(b){ return b.querySelector('.attn-pill.attn-red'); });
       showTab(first ? first.dataset.tab : tabs[0]);
+      if (window.lockStabHeight) window.lockStabHeight(tabs);
     });
   });
 })();

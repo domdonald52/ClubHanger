@@ -445,7 +445,7 @@ table.items tbody tr:last-child td { border-bottom: none; }
           <td class="r">${{ item.amount|currency }}</td>
         </tr>
         {% endfor %}
-        {% if session_payments %}
+        {% if session_payments or arrears_clearance_at %}
         <tr><td colspan="5" style="padding:4pt 8pt 2pt;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;border-top:1px solid #e5e7eb;">Also settled in this payment session</td></tr>
         {% for sp in session_payments %}
         <tr>
@@ -456,6 +456,23 @@ table.items tbody tr:last-child td { border-bottom: none; }
           <td class="r">${{ sp.amount|currency }}</td>
         </tr>
         {% endfor %}
+        {% if arrears_clearance_at %}
+        <tr>
+          <td>
+            Arrears clearance — account balance restored
+            {% if arrears_flights %}
+            <br><span style="font-size:7pt;color:#9ca3af;">
+              Covers:
+              {% for af in arrears_flights %}{{ af.flight_completion.booking.aircraft.registration }} {{ af.flight_completion.booking.scheduled_start|date:"j M Y" }} ${{ af.amount|currency }}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </span>
+            {% endif %}
+          </td>
+          <td class="r">1.00</td>
+          <td class="c">Ea</td>
+          <td class="r">${{ arrears_clearance_at.amount|currency }}</td>
+          <td class="r">${{ arrears_clearance_at.amount|currency }}</td>
+        </tr>
+        {% endif %}
         {% endif %}
       </tbody>
     </table>

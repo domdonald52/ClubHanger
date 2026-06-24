@@ -21,7 +21,7 @@
         <span class="sep">·</span>{{ booking.flight_type.name }}
         {% if booking.instructor %}<span class="sep">·</span>{{ booking.instructor.get_full_name }}{% endif %}
       </div>
-      <span class="status-chip status-{{ booking.display_status_key }}">{{ booking.display_status }}</span>
+      <span class="status-chip status-{{ booking.display_status_key }}">{% if booking.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif booking.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif booking.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif booking.display_status_key == 'returned' %}<i class="ti ti-alert-triangle"></i> {% elif booking.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif booking.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ booking.display_status }}</span>
     </div>
     <div class="bcard-body">
       <div class="bcard-row">
@@ -39,7 +39,7 @@
       {% if booking.client %}
       <div class="bcard-row">
         <span class="bl">Client</span>
-        <a href="{% url 'core:contact_detail' club.slug booking.client_id %}" data-overlay style="color:var(--primary);font-weight:500;text-decoration:none;">{{ booking.client.name }}</a>
+        <a href="{% url 'core:contact_detail' club.slug booking.client_id %}" data-overlay data-overlay-wide style="color:var(--primary);font-weight:500;text-decoration:none;">{{ booking.client.name }}</a>
         <span style="color:#8a93a0;font-size:.82rem;">· {{ booking.client.contact_type.name }}{% if booking.billed_to %} · billed to {{ booking.get_billed_to_display }}{% endif %}</span>
       </div>
       {% endif %}
@@ -60,7 +60,7 @@
   </div>
   {% endif %}
 
-  {% if actor.can_access_manage and booking.status == 'pending' %}
+  {% if actor.can_access_manage and booking.status == 'pending' and not booking.member or actor.can_access_manage and booking.status == 'pending' and booking.client %}
   <details style="margin-bottom:.8rem;">
     <summary class="cbtn-sm" style="cursor:pointer;list-style:none;display:inline-block;">{% if booking.client %}Change client{% else %}+ Assign non-member client{% endif %}</summary>
     <div style="margin-top:.5rem;padding:.75rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;max-width:480px;">
@@ -278,9 +278,12 @@
         <div style="display:flex;gap:.5rem;align-items:flex-start;">
           <label class="flabel">Hobbs at departure
             {% if not prev_hobbs_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
-            <input type="number" id="dep-hobbs" step="0.1" class="finput" style="width:110px;"
-                   value="{{ prev_hobbs_end|default:'' }}"
-                   {% if prev_hobbs_end %}readonly style="width:110px;background:#f0f4ff;"{% endif %}>
+            {% if prev_hobbs_end %}
+            <input type="hidden" id="dep-hobbs" value="{{ prev_hobbs_end }}">
+            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:#5b6573;">{{ prev_hobbs_end }}</div>
+            {% else %}
+            <input type="number" id="dep-hobbs" step="0.1" class="finput" style="width:110px;" value="">
+            {% endif %}
           </label>
           <label class="flabel">Hobbs at return <span class="req">*</span>
             <input type="number" name="return_hobbs" step="0.1" required class="finput" style="width:110px;"
@@ -292,9 +295,12 @@
         <div style="display:flex;gap:.5rem;align-items:flex-start;">
           <label class="flabel">Tacho at departure
             {% if not prev_tacho_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
-            <input type="number" id="dep-tacho" step="0.01" class="finput" style="width:110px;"
-                   value="{{ prev_tacho_end|default:'' }}"
-                   {% if prev_tacho_end %}readonly style="width:110px;background:#f0f4ff;"{% endif %}>
+            {% if prev_tacho_end %}
+            <input type="hidden" id="dep-tacho" value="{{ prev_tacho_end }}">
+            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:#5b6573;">{{ prev_tacho_end }}</div>
+            {% else %}
+            <input type="number" id="dep-tacho" step="0.01" class="finput" style="width:110px;" value="">
+            {% endif %}
           </label>
           <label class="flabel">Tacho at return <span class="req">*</span>
             <input type="number" name="return_tacho" step="0.01" required class="finput" style="width:110px;"
@@ -306,9 +312,12 @@
         <div style="display:flex;gap:.5rem;align-items:flex-start;">
           <label class="flabel">Air switch at departure
             {% if not prev_airswitch_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
-            <input type="number" id="dep-airswitch" step="0.1" class="finput" style="width:110px;"
-                   value="{{ prev_airswitch_end|default:'' }}"
-                   {% if prev_airswitch_end %}readonly style="width:110px;background:#f0f4ff;"{% endif %}>
+            {% if prev_airswitch_end %}
+            <input type="hidden" id="dep-airswitch" value="{{ prev_airswitch_end }}">
+            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:#5b6573;">{{ prev_airswitch_end }}</div>
+            {% else %}
+            <input type="number" id="dep-airswitch" step="0.1" class="finput" style="width:110px;" value="">
+            {% endif %}
           </label>
           <label class="flabel">Air switch at return <span class="req">*</span>
             <input type="number" name="return_airswitch" step="0.1" required class="finput" style="width:110px;"
@@ -519,7 +528,9 @@
       <div>
         <h2 class="sh2" style="margin-top:0;">
           Charges
-          {% if fc.is_paid %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>{% endif %}
+          {% if fc.is_paid %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>
+          {% elif fc_invoices %}<span class="paid-badge" style="background:#d1fae5;color:#065f46;">Invoice issued · {% for inv in fc_invoices %}<a href="{% url 'core:invoice_detail' club.slug inv.id %}" style="color:#065f46;">{{ inv.display_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+          {% endif %}
         </h2>
 
         <!-- Meter summary row -->
@@ -577,7 +588,7 @@
                 <td style="color:#8a93a0;font-size:.78rem;padding-left:.9rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
                 <td style="font-size:.82rem;">{{ item.description }}</td>
                 <td style="text-align:right;">${{ item.amount|currency }}</td>
-                <td style="width:28px;">{% if not fc.is_paid and item.item_type != 'hire' and item.item_type != 'fuel' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
+                <td style="width:28px;">{% if not fc.is_paid and item.item_type == 'landing' or not fc.is_paid and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
               </tr>
               {% endfor %}
               {% endfor %}
@@ -591,7 +602,7 @@
                 <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
                 <td style="font-size:.82rem;">{{ item.description }}</td>
                 <td style="text-align:right;">${{ item.amount|currency }}</td>
-                <td style="width:28px;">{% if not fc.is_paid %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
+                <td style="width:28px;">{% if not fc.is_paid and item.item_type == 'landing' or not fc.is_paid and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
               </tr>
               {% endfor %}
             {% else %}
@@ -600,7 +611,7 @@
               <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
               <td style="font-size:.82rem;">{{ item.description }}</td>
               <td style="text-align:right;">${{ item.amount|currency }}</td>
-              <td style="width:28px;">{% if not fc.is_paid %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
+              <td style="width:28px;">{% if not fc.is_paid and item.item_type == 'landing' or not fc.is_paid and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
             </tr>
             {% empty %}
             <tr><td colspan="4" style="color:#8a93a0;font-size:.85rem;padding:.6rem;">No charges added yet.</td></tr>
@@ -803,7 +814,6 @@
                   <option value="eftpos"{% if fp.method == "eftpos" %} selected{% endif %}>EFTPOS</option>
                   <option value="cash"{% if fp.method == "cash" %} selected{% endif %}>Cash</option>
                   <option value="credit"{% if fp.method == "credit" %} selected{% endif %}{% if fp.member.account.has_warning %} disabled{% endif %}>Account balance</option>
-                  <option value="invoice"{% if fp.method == "invoice" %} selected{% endif %}>Invoice</option>
                 </select>
                 <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
                   <input type="number" name="amount_{{ fp.id }}" step="0.01" min="0.01"
@@ -828,7 +838,7 @@
             if (!form) return;
             var statusEl = document.getElementById('ra-status');
             var submitBtn = document.getElementById('ra-submit-btn');
-            var grandTotal = {{ total }};
+            var grandTotal = {{ balance_owing }};
             function recalc() {
               var s = 0;
               form.querySelectorAll('.ra-amt').forEach(function(el){ s += parseFloat(el.value) || 0; });
@@ -967,7 +977,8 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="record_multi_payment">
 
-            <!-- Amounts box: this flight + optional outstanding -->
+            <!-- Amounts box: this flight + optional outstanding (hidden when single flight, single payer, no arrears) -->
+            {% if other_unpaid_list or other_outstanding_list or arrears_clearable %}
             <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
               <div style="padding:.28rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">This flight</div>
               <div class="mp-row" style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if other_unpaid_list or other_outstanding_list %}border-bottom:1px solid #e3e6ea;{% endif %}background:#f0f4ff;">
@@ -995,6 +1006,10 @@
               {% endfor %}
               {% endif %}
             </div>
+            {% else %}
+            {# Simple case: hidden flight amount row so JS recalcTotal() still works #}
+            <div class="mp-row" style="display:none;"><input class="mp-amount" value="{{ balance_owing }}" readonly></div>
+            {% endif %}
 
             {% if arrears_clearable %}
             <div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .7rem;background:#fff8e1;border:1px solid #fcd34d;border-radius:7px;margin-bottom:.4rem;">
@@ -1006,10 +1021,15 @@
             </div>
             {% endif %}
 
+            {% if other_unpaid_list or other_outstanding_list or arrears_clearable %}
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;padding:.3rem 0 .65rem;border-top:1px solid #eaecef;">
               <span style="color:#5b6573;font-weight:600;">Total</span>
               <span id="mp-grand-total" style="font-weight:700;color:#2b333d;">${{ balance_owing|add:other_total|currency }}</span>
             </div>
+            {% else %}
+            {# Hidden total element so JS can still update it without errors #}
+            <span id="mp-grand-total" style="display:none;">${{ balance_owing|currency }}</span>
+            {% endif %}
 
             <!-- Who's paying -->
             <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Who's paying</div>
@@ -1186,6 +1206,7 @@
             var issueForm = document.getElementById('issue-invoice-form');
             function syncIssueInvoiceFcIds() {
               if (!issueForm) return;
+              // Sync other_fc_ids checkboxes
               issueForm.querySelectorAll('[data-injected-fc]').forEach(function(el) { el.remove(); });
               form.querySelectorAll('input[name="other_fc_ids"]:checked').forEach(function(chk) {
                 var h = document.createElement('input');
@@ -1193,10 +1214,25 @@
                 h.setAttribute('data-injected-fc','1');
                 issueForm.appendChild(h);
               });
+              // Sync arrears checkbox
+              var existingArrears = issueForm.querySelector('[data-injected-arrears]');
+              if (existingArrears) existingArrears.remove();
+              if (arrearsChk && arrearsChk.checked) {
+                var ha = document.createElement('input');
+                ha.type = 'hidden'; ha.name = 'include_arrears'; ha.value = '1';
+                ha.setAttribute('data-injected-arrears','1');
+                issueForm.appendChild(ha);
+                var hamt = document.createElement('input');
+                hamt.type = 'hidden'; hamt.name = 'arrears_amount';
+                hamt.value = arrearsAmt ? arrearsAmt.value : '0';
+                hamt.setAttribute('data-injected-arrears','1');
+                issueForm.appendChild(hamt);
+              }
             }
             form.querySelectorAll('input[name="other_fc_ids"]').forEach(function(chk) {
               chk.addEventListener('change', syncIssueInvoiceFcIds);
             });
+            if (arrearsChk) arrearsChk.addEventListener('change', syncIssueInvoiceFcIds);
 
             recalcTotal();
           })();
@@ -1260,22 +1296,46 @@
               {% csrf_token %}
               <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
               <button type="button" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;"
-                onclick="if(!confirm('Generate receipt for {{ fp.member.user.get_short_name|escapejs }}? They will be notified by email.'))return;var n='rc_{{ forloop.counter }}_'+Date.now();var w=window.open('',n);document.getElementById('receipt-form-{{ forloop.counter }}').target=n;document.getElementById('receipt-form-{{ forloop.counter }}').submit();">Receipt</button>
+                onclick="var n='rc_{{ forloop.counter }}_'+Date.now();window.open('',n);document.getElementById('receipt-form-{{ forloop.counter }}').target=n;document.getElementById('receipt-form-{{ forloop.counter }}').submit();">Receipt</button>
             </form>
             {% endif %}
           </div>
           {% endwith %}
           {% endfor %}
-          {% if batch_session_payments %}
+          {% if batch_session_payments or arrears_clearance_at %}
           <div style="padding-top:.3rem;">
             <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#adb5bd;margin:.1rem 0 .2rem;">Also settled in this session</p>
             {% for sp in batch_session_payments %}
-            <div style="display:flex;align-items:center;gap:.4rem;padding:.28rem 0;font-size:.8rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
+            <div style="display:flex;align-items:center;gap:.4rem;padding:.28rem 0;font-size:.8rem;{% if not forloop.last or arrears_clearance_at %}border-bottom:1px solid #f0f2f4;{% endif %}">
               <span style="flex:1;font-weight:500;white-space:nowrap;">{{ sp.completion.booking.aircraft.registration }} · {{ sp.completion.booking.scheduled_start|date:"j M Y" }}</span>
               <span style="color:#8a93a0;white-space:nowrap;">${{ sp.amount|floatformat:2 }} · {{ sp.get_method_display }}</span>
               <span style="color:#2a7a3b;font-weight:600;white-space:nowrap;">✓ {{ sp.paid_at|date:"j M H:i" }}</span>
             </div>
             {% endfor %}
+            {% if arrears_clearance_at %}
+            <div style="padding:.28rem 0;font-size:.8rem;">
+              <div style="display:flex;align-items:center;gap:.4rem;">
+                <span style="flex:1;font-weight:500;">Arrears clearance — account balance restored</span>
+                <span style="color:#8a93a0;white-space:nowrap;">${{ arrears_clearance_at.amount|floatformat:2 }} · {{ arrears_clearance_at.get_payment_method_display }}</span>
+                <span style="color:#2a7a3b;font-weight:600;white-space:nowrap;">✓ {{ arrears_clearance_at.created_at|date:"j M H:i" }}</span>
+              </div>
+              {% if arrears_flights %}
+              <details style="margin-top:.25rem;">
+                <summary style="font-size:.72rem;color:#8a93a0;cursor:pointer;list-style:none;display:flex;align-items:center;gap:.25rem;">
+                  <span style="font-size:.6rem;">▶</span> Show {{ arrears_flights|length }} flight{{ arrears_flights|length|pluralize }} covered
+                </summary>
+                <div style="margin-top:.3rem;padding:.3rem .5rem;background:#f8f9fa;border-radius:.35rem;display:flex;flex-direction:column;gap:.15rem;">
+                  {% for af in arrears_flights %}
+                  <div style="display:flex;justify-content:space-between;font-size:.74rem;color:#5b6573;">
+                    <span>{{ af.flight_completion.booking.aircraft.registration }} · {{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}</span>
+                    <span style="font-weight:500;">${{ af.amount|floatformat:2 }}</span>
+                  </div>
+                  {% endfor %}
+                </div>
+              </details>
+              {% endif %}
+            </div>
+            {% endif %}
           </div>
           {% endif %}
           <div class="ch-total-row">
@@ -1295,11 +1355,12 @@
           <details id="invoice-instead-section">
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
             <div style="margin-top:.4rem;">
+              <p style="font-size:.78rem;color:#8a93a0;margin:0 0 .5rem;">Invoices are issued to {{ booking.member.user.get_full_name }} (the booking member) for the full outstanding amount. Individual contributors pay their share directly to {{ booking.member.user.first_name }}.</p>
               {% if total %}
               <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}">
                 {% csrf_token %}
                 <button type="button" class="cbtn" style="font-size:.8rem;"
-                  onclick="if(!confirm('Issue invoice to {{ booking.member.user.get_full_name|escapejs }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}? The member will be notified and the flight will be marked Completed.'))return;var n='inv_'+Date.now();var w=window.open('',n);document.getElementById('issue-invoice-form').target=n;document.getElementById('issue-invoice-form').submit();">Issue invoice</button>
+                  onclick="(function(){var arChk=document.getElementById('mp-arrears-chk');var arAmt=document.getElementById('mp-arrears-amt');var base='Issue invoice to {{ booking.member.user.get_full_name|escapejs }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}';var msg=base+(arChk&&arChk.checked&&arAmt?' plus arrears $'+arAmt.value:'')+'. The member will be notified and the flight will be marked Completed.';window.showAppConfirm(msg,function(){if(window.markOverlayChanged)window.markOverlayChanged();var n='inv_'+Date.now();var w=window.open('',n);document.getElementById('issue-invoice-form').target=n;document.getElementById('issue-invoice-form').submit();var _pt=setInterval(function(){if(w&&w.closed){clearInterval(_pt);if(window.reloadPageOverlay)window.reloadPageOverlay();}},600);});})();">Issue invoice</button>
               </form>
               {% else %}
               <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Issue invoice</span>

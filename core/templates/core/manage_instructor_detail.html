@@ -34,7 +34,7 @@
       <div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.8rem;">
           <h2 class="sh2" style="margin:0;">Contact details</h2>
-          <a href="{% url 'core:manage_member_detail' club.slug instr.id %}" class="row-action-btn" data-overlay style="font-size:.78rem;">Edit in Members →</a>
+          <a href="{% url 'core:manage_member_detail' club.slug instr.id %}" class="row-action-btn" data-overlay data-overlay-wide style="font-size:.78rem;">Edit in Members →</a>
         </div>
         <table class="info-table">
           <tr><th>Email</th><td>{{ instr.user.email|default:"—" }}</td></tr>

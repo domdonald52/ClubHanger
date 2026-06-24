@@ -186,7 +186,7 @@
           <td style="font-size:.83rem;color:#5b6573;">
             {% for b in row.bookings %}{{ b.scheduled_start|date:"H:i" }} {{ b.aircraft.registration }}{% if not forloop.last %}, {% endif %}{% endfor %}
           </td>
-          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention#credentials" class="row-action-btn" data-overlay>View →</a></td>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention#credentials" class="row-action-btn" data-overlay data-overlay-wide>View →</a></td>
         </tr>
         {% endfor %}
         </tbody>
@@ -210,7 +210,7 @@
       <tbody>
         {% for row in lapsed_creds_data %}
         <tr>
-          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention#credentials" data-overlay>{{ row.cm.user.get_full_name }}</a></td>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention#credentials" data-overlay data-overlay-wide>{{ row.cm.user.get_full_name }}</a></td>
           <td>
             {% for c in row.expired %}
               <span class="exc-issue-tag exc-issue-red">
@@ -225,7 +225,7 @@
               </a>
             {% endif %}
           </td>
-          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention#credentials" class="row-action-btn" data-overlay>Member →</a></td>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention#credentials" class="row-action-btn" data-overlay data-overlay-wide>Member →</a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -261,7 +261,7 @@
           <td><span class="urg-badge urg-{{ item.urgency }}">{{ item.get_urgency_display }}</span></td>
           <td style="color:#5b6573;white-space:nowrap;">{% if item.due_hours %}{{ item.due_hours }} hr{% else %}—{% endif %}</td>
           <td style="color:#5b6573;white-space:nowrap;">{% if item.due_date %}{{ item.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
-          <td><a href="{% url 'core:manage_aircraft_detail' club.slug item.aircraft_id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="row-action-btn" data-overlay>Aircraft →</a></td>
+          <td><a href="{% url 'core:manage_aircraft_detail' club.slug item.aircraft_id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="row-action-btn" data-overlay data-overlay-wide>Aircraft →</a></td>
         </tr>
         {% endfor %}
       </tbody>

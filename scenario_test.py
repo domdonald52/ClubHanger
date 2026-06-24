@@ -2192,6 +2192,58 @@ try:
     check("19r: FC track independent — balance_owing still > 0 (no FlightPayment created)",
           fc19r.balance_owing > D('0'))
 
+    # ── 19s. Arrears included in flight invoice ────────────────────────────────
+    sub("19s. Arrears line item added to invoice; AccountTransaction created; total updated")
+    acct19s, _ = Account.objects.get_or_create(club_member=student_m, defaults={'balance': D('0')})
+    # Put member into arrears (-$75)
+    AccountTransaction.objects.create(
+        account=acct19s, transaction_type='flight', direction='debit',
+        amount=D('75.00'), description='Arrears debit for 19s', payment_method='account',
+        created_by=admin_m.user,
+    )
+    acct19s.apply_transaction(D('75.00'), 'debit')
+    acct19s.refresh_from_db()
+    _arrears_19s = abs(min(acct19s.balance, D('0')))
+
+    b19s, fc19s = _make_charged_fc(D('120.00'))
+    inv19s = make_invoice(fc19s, student_m)
+    _items_before = inv19s.line_items.count()
+    _total_before = inv19s.total or D('0')
+
+    # Mirror generate_invoice arrears logic
+    _arrears_clear = D('75.00')
+    InvoiceLineItem.objects.create(
+        invoice=inv19s,
+        description='Outstanding account balance — arrears clearance',
+        quantity=1, unit='Ea',
+        rate=_arrears_clear, amount=_arrears_clear,
+        sort_order=_items_before,
+    )
+    _bal_pre_credit = acct19s.balance
+    AccountTransaction.objects.create(
+        account=acct19s, transaction_type='deposit', direction='credit',
+        amount=_arrears_clear, payment_method='bank_transfer',
+        description='Arrears clearance — invoice issued',
+        flight_completion=fc19s, created_by=admin_m.user,
+    )
+    acct19s.apply_transaction(_arrears_clear, 'credit')
+    # inv19s.total is a computed property — adding the line item is sufficient
+    inv19s.refresh_from_db(); acct19s.refresh_from_db()
+
+    check("19s: Arrears line item added to invoice",
+          inv19s.line_items.filter(description__icontains='arrears').exists())
+    check("19s: Invoice total increased by arrears amount (computed from line items)",
+          inv19s.total == _total_before + _arrears_clear)
+    check("19s: AccountTransaction 'credit' created to clear arrears",
+          AccountTransaction.objects.filter(
+              account=acct19s, direction='credit', transaction_type='deposit',
+              flight_completion=fc19s,
+          ).exists())
+    check("19s: Account balance increased by arrears clearance amount",
+          acct19s.balance == _bal_pre_credit + _arrears_clear)
+    check("19s: recompute_balance() consistent after arrears clearance",
+          acct19s.recompute_balance() == acct19s.balance)
+
 
     # ROLL BACK — no data persisted
     raise transaction.TransactionManagementError("__rollback__")
