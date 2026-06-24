@@ -24,49 +24,82 @@
     </div>
   </div>
 
-  <!-- Charges table -->
+  <!-- Charges table — unified: all flights with context, arrears expanded -->
   <div class="inv-card" style="margin-bottom:1.2rem;">
     <div class="inv-card-head">Charges</div>
     <div style="padding:.5rem 0;">
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
         <thead>
           <tr style="border-bottom:1px solid #eef1f4;">
-            <th style="padding:.4rem .9rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Description</th>
-            <th style="padding:.4rem .6rem;text-align:center;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:60px;">Qty</th>
-            <th style="padding:.4rem .6rem;text-align:center;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:50px;">Unit</th>
-            <th style="padding:.4rem .6rem;text-align:right;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:90px;">Rate</th>
+            <th style="padding:.4rem .9rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Date</th>
+            <th style="padding:.4rem .6rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Description</th>
             <th style="padding:.4rem .9rem;text-align:right;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Amount</th>
           </tr>
         </thead>
         <tbody>
           {% for item in line_items %}
+          {% if item.charge_item %}
+          {% with ci=item.charge_item b=item.charge_item.flight_completion.booking %}
           <tr style="border-bottom:1px solid #f4f6f8;">
-            <td style="padding:.5rem .9rem;">{{ item.description }}</td>
-            <td style="padding:.5rem .6rem;text-align:center;color:#5b6573;">{{ item.quantity }}</td>
-            <td style="padding:.5rem .6rem;text-align:center;color:#8a93a0;">{{ item.unit }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">${{ item.rate|currency }}</td>
+            <td style="padding:.5rem .9rem;white-space:nowrap;color:#5b6573;font-size:.82rem;">{{ b.scheduled_start|date:"j M Y" }}</td>
+            <td style="padding:.5rem .6rem;">
+              <span style="font-weight:500;">{{ b.aircraft.registration }}</span>{% if b.flight_type %} · {{ b.flight_type.name }}{% endif %}{% if b.instructor %} · {{ b.instructor.get_full_name }}{% endif %}
+              <br><span style="color:#8a93a0;font-size:.78rem;">{{ ci.get_item_type_display }}</span>
+            </td>
             <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ item.amount|currency }}</td>
           </tr>
+          {% endwith %}
+          {% elif item.display_is_arrears %}
+          <tr style="background:#f8f9fb;">
+            <td colspan="3" style="padding:.35rem .9rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Previous unpaid flights — cleared by this invoice</td>
+          </tr>
+          {% for af in arrears_flights %}
+          <tr style="border-bottom:1px solid #f4f6f8;">
+            {% if af.flight_completion %}
+            <td style="padding:.45rem .9rem .45rem 1.4rem;white-space:nowrap;color:#5b6573;font-size:.82rem;">{{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}</td>
+            <td style="padding:.45rem .6rem .45rem 1rem;">
+              <span style="font-weight:500;">{{ af.flight_completion.booking.aircraft.registration }}</span>{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}
+              <br><span style="color:#8a93a0;font-size:.78rem;">Aircraft hire</span>
+            </td>
+            {% else %}
+            <td style="padding:.45rem .9rem .45rem 1.4rem;white-space:nowrap;color:#5b6573;font-size:.82rem;">{{ af.disp_date|default:"—" }}</td>
+            <td style="padding:.45rem .6rem .45rem 1rem;">
+              <span style="font-weight:500;">{{ af.disp_aircraft|default:"—" }}</span>
+              <br><span style="color:#8a93a0;font-size:.78rem;">Aircraft hire</span>
+            </td>
+            {% endif %}
+            <td style="padding:.45rem .9rem;text-align:right;color:#5b6573;">${{ af.amount|floatformat:2 }}</td>
+          </tr>
           {% empty %}
-          <tr><td colspan="5" style="padding:1rem .9rem;color:#8a93a0;text-align:center;">No line items.</td></tr>
+          <tr><td colspan="3" style="padding:.4rem 1.4rem;color:#8a93a0;font-size:.8rem;font-style:italic;">No individual flight breakdown available.</td></tr>
+          {% endfor %}
+          {% else %}
+          <tr style="border-bottom:1px solid #f4f6f8;">
+            <td style="padding:.5rem .9rem;color:#8a93a0;font-size:.82rem;">—</td>
+            <td style="padding:.5rem .6rem;">{{ item.description }}</td>
+            <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ item.amount|currency }}</td>
+          </tr>
+          {% endif %}
+          {% empty %}
+          <tr><td colspan="3" style="padding:1rem .9rem;color:#8a93a0;text-align:center;">No line items.</td></tr>
           {% endfor %}
         </tbody>
         <tfoot>
           <tr style="border-top:2px solid #e3e6ea;">
-            <td colspan="4" style="padding:.5rem .9rem;text-align:right;color:#8a93a0;font-size:.82rem;">G.S.T. {{ invoice.gst_rate }}% included</td>
+            <td colspan="2" style="padding:.5rem .9rem;text-align:right;color:#8a93a0;font-size:.82rem;">G.S.T. {{ invoice.gst_rate }}% included</td>
             <td style="padding:.5rem .9rem;text-align:right;color:#8a93a0;">${{ invoice.gst_amount|currency }}</td>
           </tr>
           <tr>
-            <td colspan="4" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Invoice total</td>
+            <td colspan="2" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Invoice total</td>
             <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;">${{ invoice.total|currency }}</td>
           </tr>
           {% if invoice.amount_paid %}
           <tr>
-            <td colspan="4" style="padding:.4rem .9rem;text-align:right;color:#216c2a;">Payments received</td>
+            <td colspan="2" style="padding:.4rem .9rem;text-align:right;color:#216c2a;">Payments received</td>
             <td style="padding:.4rem .9rem;text-align:right;color:#216c2a;">${{ invoice.amount_paid|currency }}</td>
           </tr>
           <tr style="border-top:1px solid #eef1f4;">
-            <td colspan="4" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Total due</td>
+            <td colspan="2" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Total due</td>
             <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;{% if invoice.balance_due %}color:#c0392b;{% else %}color:#216c2a;{% endif %}">${{ invoice.balance_due|currency }}</td>
           </tr>
           {% endif %}
@@ -110,7 +143,7 @@
   {% endwith %}
 
   <!-- Actions card -->
-  {% if invoice.status != 'void' %}
+  {% if invoice.status == 'draft' or invoice.status == 'sent' %}
   <div class="inv-card" style="margin-bottom:1.2rem;">
     <div class="inv-card-head">Actions</div>
 
@@ -194,26 +227,6 @@
     })();
     </script>
 
-    {% elif invoice.status == 'paid' %}
-    <!-- Paid: description locked; notes still editable for bookkeeper reference -->
-    <div style="padding:.9rem .9rem .6rem;">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Flight description</div>
-      <div style="font-size:.9rem;color:#1f2937;">{{ invoice.description|default:"—" }}</div>
-    </div>
-    <form method="post" style="padding:0 .9rem .9rem;">
-      {% csrf_token %}
-      <label class="flabel" style="margin:0;">Internal notes
-        <textarea name="notes" class="finput" rows="1">{{ invoice.notes }}</textarea>
-      </label>
-      <div style="margin-top:.5rem;">
-        <button type="submit" name="action" value="save_notes" class="cbtn" style="font-size:.82rem;" data-dirty-save>Save notes</button>
-      </div>
-    </form>
-    <div style="padding:0 .9rem .9rem;">
-      {% with last_pay=invoice.payments.last %}
-      <p style="font-size:.84rem;color:#216c2a;font-weight:600;">✓ Paid in full — {{ invoice.paid_at|date:"j M Y" }} at {{ invoice.paid_at|time:"H:i" }}{% if last_pay %} · {{ last_pay.get_method_display }}{% endif %}</p>
-      {% endwith %}
-    </div>
     {% endif %}
 
     {% if invoice.status == 'draft' or invoice.status == 'sent' %}

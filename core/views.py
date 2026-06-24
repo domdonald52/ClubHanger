@@ -7144,17 +7144,65 @@ def invoice_detail(request, club_slug, invoice_id):
                     _fc_v.save(update_fields=['invoice_issued'])
             return redirect(_stay_url)
 
-    line_items = invoice.line_items.all()
+    _raw_items = list(invoice.line_items.select_related(
+        'charge_item__flight_completion__booking__aircraft',
+        'charge_item__flight_completion__booking__flight_type',
+        'charge_item__flight_completion__booking__instructor',
+    ).all())
+    for _it in _raw_items:
+        _it.display_is_arrears = (not _it.charge_item_id and 'arrears' in _it.description.lower())
+    line_items = _raw_items
     from .models import Account as _Acct
     _member_acct = None
     if invoice.member:
         _member_acct, _ = _Acct.objects.get_or_create(club_member=invoice.member, defaults={'balance': 0})
+
+    # Session payments and arrears breakdown (same logic as invoice_print)
+    from .models import FlightPayment as _FPd, AccountTransaction as _ATd
+    from decimal import Decimal as _Dd
+    _det_session = []
+    _det_arrears_at = None
+    _det_arrears_flights = []
+    if invoice.flight_completion_id:
+        _det_bids = set(_FPd.objects.filter(
+            completion_id=invoice.flight_completion_id, batch_id__isnull=False,
+        ).values_list('batch_id', flat=True))
+        if _det_bids:
+            _det_session = list(_FPd.objects.filter(batch_id__in=_det_bids, paid_at__isnull=False)
+                .exclude(completion_id=invoice.flight_completion_id)
+                .select_related('completion__booking__aircraft', 'completion__booking__flight_type')
+                .order_by('paid_at'))
+        _det_arrears_at = _ATd.objects.filter(
+            flight_completion_id=invoice.flight_completion_id,
+            transaction_type='deposit', direction='credit',
+            description__startswith='Arrears clearance',
+        ).first()
+        if _det_arrears_at:
+            import re as _re_d
+            _rem = _Dd(str(_det_arrears_at.amount))
+            for _fat in _ATd.objects.filter(
+                account=_det_arrears_at.account, transaction_type='flight', direction='debit',
+                created_at__lt=_det_arrears_at.created_at,
+            ).select_related('flight_completion__booking__aircraft', 'flight_completion__booking__flight_type',
+                              'flight_completion').order_by('-created_at'):
+                if _rem <= 0:
+                    break
+                if not _fat.flight_completion_id:
+                    _dm = _re_d.match(r'Flight\s*(?:—\s*)?(\S+)\s+(.+)$', _fat.description or '')
+                    _fat.disp_aircraft = _dm.group(1) if _dm else None
+                    _fat.disp_date     = _dm.group(2) if _dm else None
+                _det_arrears_flights.append(_fat)
+                _rem -= _Dd(str(_fat.amount))
+
     return render(request, 'core/invoice_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'invoice': invoice, 'line_items': line_items, 'config': config,
         'error': error, 'success': success,
         'member_account_balance': _member_acct.balance if _member_acct else None,
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
+        'session_payments': _det_session,
+        'arrears_clearance_at': _det_arrears_at,
+        'arrears_flights': _det_arrears_flights,
     })
 
 
@@ -7216,27 +7264,37 @@ def invoice_print(request, club_slug, invoice_id):
                 )
                 .order_by('-created_at')
             )
+            import re as _re_p
             for _at in _flight_ats:
                 if _remaining <= 0:
                     break
+                if not _at.flight_completion_id:
+                    _pm = _re_p.match(r'Flight\s*(?:—\s*)?(\S+)\s+(.+)$', _at.description or '')
+                    _at.disp_aircraft = _pm.group(1) if _pm else None
+                    _at.disp_date     = _pm.group(2) if _pm else None
                 arrears_flights.append(_at)
                 _remaining -= _D(str(_at.amount))
 
-    session_total = sum(_D(str(sp.amount)) for sp in session_payments)
-    arrears_total = _D(str(arrears_clearance_at.amount)) if arrears_clearance_at else _D('0')
-    grand_total   = _D(str(invoice.total or 0)) + session_total + arrears_total
-    grand_paid    = _D(str(invoice.amount_paid or 0)) + session_total + arrears_total
+    # session_total and arrears are already line items on the invoice — don't add again
+    grand_total   = _D(str(invoice.total or 0))
+    grand_paid    = _D(str(invoice.amount_paid or 0))
     grand_balance = grand_total - grand_paid
+
+    _raw_p = list(invoice.line_items.select_related(
+        'charge_item__flight_completion__booking__aircraft',
+        'charge_item__flight_completion__booking__flight_type',
+        'charge_item__flight_completion__booking__instructor',
+    ).all())
+    for _it_p in _raw_p:
+        _it_p.display_is_arrears = (not _it_p.charge_item_id and 'arrears' in _it_p.description.lower())
 
     return render(request, 'core/invoice_print.html', {
         'club': club, 'invoice': invoice,
-        'line_items': invoice.line_items.all(), 'config': config,
+        'line_items': _raw_p, 'config': config,
         'back_url': back_url,
         'session_payments': session_payments,
-        'session_total': session_total,
         'arrears_clearance_at': arrears_clearance_at,
         'arrears_flights': arrears_flights,
-        'arrears_total': arrears_total,
         'grand_total': grand_total,
         'grand_paid': grand_paid,
         'grand_balance': grand_balance,

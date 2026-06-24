@@ -559,7 +559,7 @@
       <div>
         <h2 class="sh2" style="margin-top:0;">
           Charges
-          {% if fc.is_paid %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>
+          {% if fc.is_paid %}{% if fc_invoices %}<span class="paid-badge">Paid · Invoice · issued {{ fc_invoices.0.sent_at|date:"j M Y" }} · paid {{ fc.paid_at|date:"j M Y" }}</span>{% else %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>{% endif %}
           {% elif fc_invoices %}<span class="paid-badge" style="background:#d1fae5;color:#065f46;">Invoice issued · {% for inv in fc_invoices %}<a href="{% url 'core:invoice_detail' club.slug inv.id %}" style="color:#065f46;">{{ inv.display_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</span>
           {% endif %}
         </h2>
@@ -597,10 +597,6 @@
             {% csrf_token %}<input type="hidden" name="action" value="void_checkin">
             <button type="submit" class="cbtn cbtn-danger" style="font-size:.8rem;">Void flights &amp; undo return</button>
           </form>
-          {% else %}
-          <button type="button" class="cbtn cbtn-danger" style="font-size:.8rem;opacity:.4;cursor:not-allowed;"
-            title="{% if fc_any_invoice_paid %}Reverse the invoice payment first to enable void.{% else %}Reverse the ${{ fc.amount_paid|currency }} payment first to enable void.{% endif %}"
-            disabled>Void flights &amp; undo return</button>
           {% endif %}
         </div>
         {% endif %}
@@ -649,10 +645,17 @@
             {% endfor %}
             {% endif %}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="2" class="ch-total-label" style="padding:.7rem .5rem;">Total</td>
+              <td class="ch-total-amount" style="text-align:right;padding:.7rem .5rem;">${{ total|currency }}</td>
+              <td style="padding:.7rem .5rem;"></td>
+            </tr>
+          </tfoot>
         </table>
 
         {% if not fc.is_paid and not fc_invoices %}
-        <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:.5rem;">
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:flex-start;margin:.6rem 0 .5rem;">
         <details class="add-wrap">
           <summary class="add-toggle">+ Add landing fee</summary>
           <form method="post" class="lf-form" style="padding:.2rem .7rem .8rem;">
@@ -735,10 +738,6 @@
         </div>
         {% endif %}
 
-        <div class="ch-total-row">
-          <span class="ch-total-label">Total</span>
-          <span class="ch-total-amount">${{ total|currency }}</span>
-        </div>
         {% if fc_invoices %}
         <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;">
           {% for inv in fc_invoices %}
@@ -1311,77 +1310,88 @@
         <div style="margin-top:.7rem;padding:.7rem 1rem;border:1px solid #e3e6ea;border-radius:8px;background:#fafbfc;">
           {% if fc_payments_paid %}
           {# Paid: per-contributor rows with Reverse + Receipt #}
-          <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;margin:0 0 .5rem;">Payments received</p>
-          {% for fp in fc_payments_paid %}
-          {% with fp_inv=fc_invoice_by_member|dict_get:fp.member_id %}
-          <div style="display:flex;align-items:center;gap:.4rem;padding:.28rem 0;font-size:.8rem;{% if not forloop.last or batch_session_payments %}border-bottom:1px solid #f0f2f4;{% endif %}">
-            <span style="flex:1;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ fp.member.user.get_full_name }}</span>
-            <span style="color:#8a93a0;white-space:nowrap;">${{ fp.amount|floatformat:2 }} · {{ fp.get_method_display }}</span>
-            <span style="color:#2a7a3b;font-weight:600;white-space:nowrap;">✓ {{ fp.paid_at|date:"j M H:i" }}</span>
-            {% if actor.is_admin and not fp_inv or actor.is_admin and fp_inv.status == 'void' %}
-            <form method="post" data-confirm="Reverse ${{ fp.amount|floatformat:2 }} payment from {{ fp.member.user.get_full_name }}?" style="margin:0;flex-shrink:0;">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="reverse_payment">
-              <input type="hidden" name="payment_id" value="{{ fp.id }}">
-              <button type="submit" class="cbtn cbtn-danger" style="font-size:.72rem;padding:.15rem .45rem;">Reverse</button>
-            </form>
-            {% endif %}
-            {% if fp_inv and fp_inv.status != 'void' %}
-            <a href="{% url 'core:invoice_print' club.slug fp_inv.id %}" target="_blank" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;flex-shrink:0;"
-               onclick="window.open(this.href,'_blank');return false;">Receipt</a>
-            {% else %}
-            <form id="receipt-form-{{ forloop.counter }}" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}" style="margin:0;flex-shrink:0;">
-              {% csrf_token %}
-              <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
-              <button type="button" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;"
-                onclick="var n='rc_{{ forloop.counter }}_'+Date.now();window.open('',n);document.getElementById('receipt-form-{{ forloop.counter }}').target=n;document.getElementById('receipt-form-{{ forloop.counter }}').submit();">Receipt</button>
-            </form>
-            {% endif %}
-          </div>
-          {% endwith %}
-          {% endfor %}
-          {% if batch_session_payments or arrears_clearance_at %}
-          <div style="padding-top:.3rem;">
-            <p style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#adb5bd;margin:.1rem 0 .2rem;">Also settled in this session</p>
+          <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;margin:0 0 .4rem;">Payments received</p>
+          <table style="width:100%;border-collapse:collapse;font-size:.8rem;">
+            <tbody>
+            {% for fp in fc_payments_paid %}
+            {% with fp_inv=fc_invoice_by_member|dict_get:fp.member_id %}
+            <tr style="border-bottom:1px solid #f0f2f4;">
+              <td style="padding:.3rem 0;">
+                <span style="font-weight:500;">{{ fp.member.user.get_full_name }}</span>
+                <span style="color:#8a93a0;margin-left:.3rem;">{{ fp.get_method_display }} · ✓ {{ fp.paid_at|date:"j M H:i" }}</span>
+              </td>
+              <td style="text-align:right;white-space:nowrap;padding:.3rem 0 .3rem .75rem;font-variant-numeric:tabular-nums;">${{ fp.amount|floatformat:2 }}</td>
+              <td style="text-align:right;white-space:nowrap;padding:.3rem 0 .3rem .4rem;">
+                {% if actor.is_admin and not fp_inv or actor.is_admin and fp_inv.status == 'void' %}
+                <form method="post" data-confirm="Reverse ${{ fp.amount|floatformat:2 }} payment from {{ fp.member.user.get_full_name }}?" style="margin:0;display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="reverse_payment">
+                  <input type="hidden" name="payment_id" value="{{ fp.id }}">
+                  <button type="submit" class="cbtn cbtn-danger" style="font-size:.72rem;padding:.15rem .45rem;">Reverse</button>
+                </form>
+                {% endif %}
+                {% if fp_inv and fp_inv.status != 'void' %}
+                <a href="{% url 'core:invoice_print' club.slug fp_inv.id %}" target="_blank" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;display:inline-block;"
+                   onclick="window.open(this.href,'_blank');return false;">Receipt</a>
+                {% else %}
+                <form id="receipt-form-{{ forloop.counter }}" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}" style="margin:0;display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
+                  <button type="button" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;"
+                    onclick="var n='rc_{{ forloop.counter }}_'+Date.now();window.open('',n);document.getElementById('receipt-form-{{ forloop.counter }}').target=n;document.getElementById('receipt-form-{{ forloop.counter }}').submit();">Receipt</button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% endwith %}
+            {% endfor %}
+            {% if batch_session_payments or arrears_clearance_at %}
+            <tr><td colspan="3" style="padding:.25rem 0 .1rem;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#adb5bd;">Also settled in this session</td></tr>
             {% for sp in batch_session_payments %}
-            <div style="display:flex;align-items:center;gap:.4rem;padding:.28rem 0;font-size:.8rem;{% if not forloop.last or arrears_clearance_at %}border-bottom:1px solid #f0f2f4;{% endif %}">
-              <span style="flex:1;font-weight:500;white-space:nowrap;">{{ sp.completion.booking.aircraft.registration }} · {{ sp.completion.booking.scheduled_start|date:"j M Y" }}</span>
-              <span style="color:#8a93a0;white-space:nowrap;">${{ sp.amount|floatformat:2 }} · {{ sp.get_method_display }}</span>
-              <span style="color:#2a7a3b;font-weight:600;white-space:nowrap;">✓ {{ sp.paid_at|date:"j M H:i" }}</span>
-            </div>
+            <tr style="border-bottom:1px solid #f0f2f4;">
+              <td style="padding:.3rem 0;">
+                <span style="font-weight:500;white-space:nowrap;">{{ sp.completion.booking.aircraft.registration }} · {{ sp.completion.booking.scheduled_start|date:"j M Y" }}</span>
+                <span style="color:#8a93a0;margin-left:.3rem;">{{ sp.get_method_display }} · ✓ {{ sp.paid_at|date:"j M H:i" }}</span>
+              </td>
+              <td style="text-align:right;white-space:nowrap;padding:.3rem 0 .3rem .75rem;font-variant-numeric:tabular-nums;">${{ sp.amount|floatformat:2 }}</td>
+              <td></td>
+            </tr>
             {% endfor %}
             {% if arrears_clearance_at %}
-            <div style="padding:.28rem 0;font-size:.8rem;">
-              <div style="display:flex;align-items:center;gap:.4rem;">
-                <span style="flex:1;font-weight:500;">Arrears clearance — account balance restored</span>
-                <span style="color:#8a93a0;white-space:nowrap;">${{ arrears_clearance_at.amount|floatformat:2 }} · {{ arrears_clearance_at.get_payment_method_display }}</span>
-                <span style="color:#2a7a3b;font-weight:600;white-space:nowrap;">✓ {{ arrears_clearance_at.created_at|date:"j M H:i" }}</span>
-              </div>
-              {% if arrears_flights %}
-              <details style="margin-top:.25rem;">
-                <summary style="font-size:.72rem;color:#8a93a0;cursor:pointer;list-style:none;display:flex;align-items:center;gap:.25rem;">
-                  <span style="font-size:.6rem;">▶</span> Show {{ arrears_flights|length }} flight{{ arrears_flights|length|pluralize }} covered
-                </summary>
-                <div style="margin-top:.3rem;padding:.3rem .5rem;background:#f8f9fa;border-radius:.35rem;display:flex;flex-direction:column;gap:.15rem;">
-                  {% for af in arrears_flights %}
-                  <div style="display:flex;justify-content:space-between;font-size:.74rem;color:#5b6573;">
-                    <span>{{ af.flight_completion.booking.aircraft.registration }} · {{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}</span>
-                    <span style="font-weight:500;">${{ af.amount|floatformat:2 }}</span>
+            <tr>
+              <td style="padding:.3rem 0;">
+                <span style="font-weight:500;">Arrears clearance — account balance restored</span>
+                <span style="color:#8a93a0;margin-left:.3rem;">{{ arrears_clearance_at.get_payment_method_display }} · ✓ {{ arrears_clearance_at.created_at|date:"j M H:i" }}</span>
+                {% if arrears_flights %}
+                <details style="margin-top:.2rem;">
+                  <summary style="font-size:.72rem;color:#8a93a0;cursor:pointer;list-style:none;display:flex;align-items:center;gap:.25rem;">
+                    <span style="font-size:.6rem;">▶</span> Show {{ arrears_flights|length }} flight{{ arrears_flights|length|pluralize }} covered
+                  </summary>
+                  <div style="margin-top:.3rem;padding:.3rem .5rem;background:#f8f9fa;border-radius:.35rem;display:flex;flex-direction:column;gap:.15rem;">
+                    {% for af in arrears_flights %}
+                    <div style="display:flex;justify-content:space-between;font-size:.74rem;color:#5b6573;">
+                      <span>{{ af.flight_completion.booking.aircraft.registration }} · {{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}</span>
+                      <span style="font-weight:500;">${{ af.amount|floatformat:2 }}</span>
+                    </div>
+                    {% endfor %}
                   </div>
-                  {% endfor %}
-                </div>
-              </details>
-              {% endif %}
-            </div>
+                </details>
+                {% endif %}
+              </td>
+              <td style="text-align:right;white-space:nowrap;padding:.3rem 0 .3rem .75rem;font-variant-numeric:tabular-nums;">${{ arrears_clearance_at.amount|floatformat:2 }}</td>
+              <td></td>
+            </tr>
             {% endif %}
-          </div>
-          {% endif %}
-          <div class="ch-total-row">
-            <span class="ch-total-label">Total received</span>
-            <span class="ch-total-amount" style="color:{% if fc.is_paid %}#2a7a3b{% else %}#b06800{% endif %};">
-              ${{ batch_session_total|currency }}{% if fc.is_paid %} <span style="font-size:.78rem;font-weight:500;">✓ Paid in full</span>{% endif %}
-            </span>
-          </div>
+            {% endif %}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td class="ch-total-label" style="padding:.65rem 0;border-top:2px solid #e3e6ea;">Total received</td>
+                <td class="ch-total-amount" style="text-align:right;padding:.65rem 0 .65rem .75rem;border-top:2px solid #e3e6ea;color:{% if fc.is_paid %}#2a7a3b{% else %}#b06800{% endif %};">${{ batch_session_total|currency }}</td>
+                <td style="border-top:2px solid #e3e6ea;padding:.65rem 0 .65rem .4rem;text-align:right;font-size:.78rem;font-weight:500;white-space:nowrap;color:#2a7a3b;">{% if fc.is_paid %}✓ Paid in full{% endif %}</td>
+              </tr>
+            </tfoot>
+          </table>
           {% if not fc.is_paid and balance_owing %}
           <div style="text-align:right;font-size:.73rem;color:#b06800;margin-top:.1rem;">${{ balance_owing|currency }} of ${{ total|currency }} remaining</div>
           {% endif %}

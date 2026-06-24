@@ -815,13 +815,13 @@ class Command(BaseCommand):
             if pay_method == "credit":
                 account = account_map.get(booking.member.pk)
                 if account:
-                    account_debits.append((account, total, booking))
+                    account_debits.append((account, total, booking, fc_obj))
 
         FlightChargeItem.objects.bulk_create(charge_items)
         FlightPayment.objects.bulk_create(payment_rows)
 
         # Apply account debits
-        for account, amount, booking in account_debits:
+        for account, amount, booking, fc_obj in account_debits:
             AccountTransaction.objects.create(
                 account=account,
                 transaction_type="flight",
@@ -831,7 +831,7 @@ class Command(BaseCommand):
                     f"Flight — {booking.aircraft.registration} "
                     f"{booking.scheduled_start.strftime('%d %b %Y')}"
                 ),
-                flight_completion=None,
+                flight_completion=fc_obj,
                 created_by=admin_user,
                 created_at=booking.arrived_at or booking.scheduled_end,
             )

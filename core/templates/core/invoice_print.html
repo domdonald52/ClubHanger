@@ -424,59 +424,58 @@ table.items tbody tr:last-child td { border-bottom: none; }
     </div>
     {% endif %}
 
-    <!-- Line items — this flight -->
+    <!-- Line items — unified: all flights with context, arrears expanded -->
     <table class="items">
       <thead>
         <tr>
+          <th style="width:64pt;">Date</th>
           <th>Description</th>
-          <th class="r" style="width:54pt;">Qty</th>
-          <th class="c" style="width:42pt;">Units</th>
-          <th class="r" style="width:72pt;">Rate</th>
           <th class="r" style="width:72pt;">Amount</th>
         </tr>
       </thead>
       <tbody>
         {% for item in line_items %}
+        {% if item.charge_item %}
+        {% with ci=item.charge_item b=item.charge_item.flight_completion.booking %}
         <tr>
-          <td>{{ item.description }}</td>
-          <td class="r">{{ item.quantity }}</td>
-          <td class="c">{{ item.unit }}</td>
-          <td class="r">${{ item.rate|currency }}</td>
+          <td style="white-space:nowrap;font-size:8.5pt;color:#6b7280;">{{ b.scheduled_start|date:"j M Y" }}</td>
+          <td>
+            <strong>{{ b.aircraft.registration }}</strong>{% if b.flight_type %} · {{ b.flight_type.name }}{% endif %}{% if b.instructor %} · {{ b.instructor.get_full_name }}{% endif %}
+            <br><span style="font-size:8pt;color:#9ca3af;">{{ ci.get_item_type_display }}</span>
+          </td>
           <td class="r">${{ item.amount|currency }}</td>
         </tr>
-        {% endfor %}
-        {% if session_payments or arrears_clearance_at %}
-        <tr><td colspan="5" style="padding:4pt 8pt 2pt;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;border-top:1px solid #e5e7eb;">Also settled in this payment session</td></tr>
-        {% for sp in session_payments %}
-        <tr>
-          <td>{{ sp.completion.booking.aircraft.registration }} — {{ sp.completion.booking.scheduled_start|date:"j M Y" }}{% if sp.completion.booking.flight_type %} · {{ sp.completion.booking.flight_type.name }}{% endif %}</td>
-          <td class="r">1.00</td>
-          <td class="c">Ea</td>
-          <td class="r">${{ sp.amount|currency }}</td>
-          <td class="r">${{ sp.amount|currency }}</td>
+        {% endwith %}
+        {% elif item.display_is_arrears %}
+        <tr style="background:#f9fafb;">
+          <td colspan="3" style="padding:3pt 8pt;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;">Previous unpaid flights — cleared by this invoice</td>
         </tr>
-        {% endfor %}
-        {% if arrears_clearance_at %}
+        {% for af in arrears_flights %}
         <tr>
-          <td>
-            {% if arrears_flights %}
-              Previous flight charges — settled by this invoice
-              <br><span style="font-size:7pt;color:#9ca3af;">
-                {% for af in arrears_flights %}
-                  {{ af.flight_completion.booking.aircraft.registration }} · {{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}{% if af.flight_completion.actual_flight_hours %} · {{ af.flight_completion.actual_flight_hours }}h{% endif %} — ${{ af.amount|currency }}{% if not forloop.last %}<br>{% endif %}
-                {% endfor %}
-              </span>
-            {% else %}
-              Account balance — clears outstanding debt
-            {% endif %}
+          {% if af.flight_completion %}
+          <td style="white-space:nowrap;font-size:8.5pt;color:#6b7280;padding-left:14pt;">{{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}</td>
+          <td style="padding-left:14pt;">
+            <strong>{{ af.flight_completion.booking.aircraft.registration }}</strong>{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}
+            <br><span style="font-size:8pt;color:#9ca3af;">Aircraft hire</span>
           </td>
-          <td class="r">1.00</td>
-          <td class="c">Ea</td>
-          <td class="r">${{ arrears_clearance_at.amount|currency }}</td>
-          <td class="r">${{ arrears_clearance_at.amount|currency }}</td>
+          {% else %}
+          <td style="white-space:nowrap;font-size:8.5pt;color:#6b7280;padding-left:14pt;">{{ af.disp_date|default:"—" }}</td>
+          <td style="padding-left:14pt;">
+            <strong>{{ af.disp_aircraft|default:"—" }}</strong>
+            <br><span style="font-size:8pt;color:#9ca3af;">Aircraft hire</span>
+          </td>
+          {% endif %}
+          <td class="r" style="color:#6b7280;">${{ af.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td style="font-size:8.5pt;color:#6b7280;">—</td>
+          <td>{{ item.description }}</td>
+          <td class="r">${{ item.amount|currency }}</td>
         </tr>
         {% endif %}
-        {% endif %}
+        {% endfor %}
       </tbody>
     </table>
 

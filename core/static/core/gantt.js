@@ -953,20 +953,6 @@
 
     pill.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
-      // e.preventDefault() on pointerdown suppresses native dblclick, so detect double-tap here
-      // before we decide to enter drag mode. Works for pending/confirmed pills that are draggable.
-      if (!e.target.hasAttribute("data-resize")) {
-        const now = performance.now();
-        if ((now - (pill._lastPD || 0)) < 400) {
-          pill._lastPD = 0;
-          e.stopPropagation();
-          const detailUrl = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
-          if (window.openPageOverlay) window.openPageOverlay(detailUrl);
-          else window.location.href = detailUrl;
-          return;
-        }
-        pill._lastPD = now;
-      }
       mode = e.target.hasAttribute("data-resize") ? "resize" : "move";
       if (mode === "move" && pill.dataset.status === "departed") {
         mode = null; // pill became departed in-page without reload — let dblclick open check-in normally
@@ -977,7 +963,7 @@
         return;
       }
       const rect = pill.getBoundingClientRect();
-      cursorOffsetX = e.clientX - rect.left; // capture where in the pill was clicked
+      cursorOffsetX = e.clientX - rect.left;
       cursorOffsetY = e.clientY - rect.top;
       startX = e.clientX;
       startY = e.clientY;
@@ -990,13 +976,15 @@
       linkedPill = null; dragGhost = null; linkedGhost = null;
       pill.setPointerCapture(e.pointerId);
       _cancelActiveDrag = cancelDrag;
-      e.preventDefault();
+      // No e.preventDefault() here — that would suppress native dblclick.
+      // Drag is handled via pointer capture; scroll/select prevention is in pointermove.
     });
 
     pill.addEventListener("pointermove", (e) => {
       if (!mode) return;
       if (!moved && (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3)) moved = true;
       if (!moved) return;
+      e.preventDefault(); // prevent scroll/text-select while actually dragging
 
       if (mode === "resize") {
         const dx = e.clientX - startX;
@@ -1055,7 +1043,6 @@
       }
 
       pill._didDrag = true;
-      pill._lastPD = 0; // reset so post-drag click isn't misdetected as double-click
       _recentDrag = true;
       requestAnimationFrame(() => { _recentDrag = false; });
 
