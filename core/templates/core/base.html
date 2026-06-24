@@ -1021,6 +1021,8 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
     // Form submissions: stay in overlay and navigate to the redirect target
     body.querySelectorAll('form').forEach(f => {
       f.addEventListener('submit', async (e) => {
+        // Skip if dcModal is handling this form (flag set by window.dcModal)
+        if (f._dcModal) { f._dcModal = false; return; }
         e.preventDefault();
         didChange = true;
         const explicitAction = f.getAttribute('action');
@@ -1089,6 +1091,7 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
   window.overlayGoBack = popOrClose;
   window.markOverlayChanged = function() { didChange = true; };
   window.reloadPageOverlay = function() { if (_currentUrl) loadOverlay(_currentUrl); };
+  window.softReloadPage = _softReload;
 })();
 </script>
 <script>

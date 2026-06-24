@@ -1320,13 +1320,10 @@
       if (pill._didDrag) { pill._didDrag = false; return; }
       e.stopPropagation();
       if (cfg.canManage) {
-        if (pill.dataset.status === "completed" || pill.dataset.status === "departed") {
-          const detailUrl = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
-          if (window.openPageOverlay) window.openPageOverlay(detailUrl);
-          else window.location.href = detailUrl;
-        } else {
-          openEdit(pill);
-        }
+        // All existing bookings go to the booking detail overlay — one path for the status cycle
+        const detailUrl = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
+        if (window.openPageOverlay) window.openPageOverlay(detailUrl);
+        else window.location.href = detailUrl;
       } else if (cfg.canBook) {
         const isOwn = pill.dataset.memberUserId === String(cfg.currentUserId);
         const st    = pill.dataset.status;

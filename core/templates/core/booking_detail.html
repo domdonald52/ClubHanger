@@ -46,13 +46,36 @@
     </div>
   </div>
 
-  {% if requires_decl and not has_submitted_decl and booking.status in 'pending confirmed' %}
-  <div class="notice warn" style="margin-bottom:.75rem;">
-    <strong>Declaration pending</strong> — This flight type requires a pre-departure declaration.
-    {% if booking.status == 'confirmed' %}The member has not yet submitted one.{% else %}One will be required before departure.{% endif %}
+  {% if actor.can_access_manage and booking.member and booking.member.user != actor.user and booking.status == 'pending' or actor.can_access_manage and booking.member and booking.member.user != actor.user and booking.status == 'confirmed' %}
+  <div style="margin-bottom:.75rem;">
+    <button type="button" id="bd-watch-btn" class="cbtn"
+            data-booking-id="{{ booking.id }}"
+            style="display:inline-flex;align-items:center;gap:.35rem;{% if is_watching %}background:var(--confirmed,#16a34a);color:#fff;border-color:var(--confirmed,#16a34a);{% endif %}">
+      <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 7.5S3.5 2 7.5 2s6.5 5.5 6.5 5.5S12.5 13 7.5 13 1 7.5 1 7.5z"/><circle cx="7.5" cy="7.5" r="2"/></svg>
+      <span id="bd-watch-label">{% if is_watching %}Watching ✓{% else %}Watch slot{% endif %}</span>
+    </button>
   </div>
+  <script>
+  (function() {
+    var btn = document.getElementById('bd-watch-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      var bookingId = btn.dataset.bookingId;
+      fetch('/api/booking/' + bookingId + '/watch/', {method:'POST', headers:{'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}, credentials:'same-origin'})
+        .then(function(r){ return r.json(); })
+        .then(function(data) {
+          var watching = data.watching;
+          var label = document.getElementById('bd-watch-label');
+          if (label) label.textContent = watching ? 'Watching ✓' : 'Watch slot';
+          btn.style.background = watching ? 'var(--confirmed,#16a34a)' : '';
+          btn.style.color = watching ? '#fff' : '';
+          btn.style.borderColor = watching ? 'var(--confirmed,#16a34a)' : '';
+          if (window.toast) window.toast(watching ? 'Watching this slot' : 'No longer watching', 'ok');
+        });
+    });
+  })();
+  </script>
   {% endif %}
-
   {% if watchers %}
   <div style="font-size:.82rem;color:#374151;margin-bottom:.75rem;padding:.5rem .75rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
     <span style="color:#1d4ed8;">&#128065;</span> Watched by {{ watchers|length }} {{ watchers|length|pluralize:"person,people" }}:
@@ -1360,7 +1383,7 @@
               <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}">
                 {% csrf_token %}
                 <button type="button" class="cbtn" style="font-size:.8rem;"
-                  onclick="(function(){var arChk=document.getElementById('mp-arrears-chk');var arAmt=document.getElementById('mp-arrears-amt');var base='Issue invoice to {{ booking.member.user.get_full_name|escapejs }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}';var msg=base+(arChk&&arChk.checked&&arAmt?' plus arrears $'+arAmt.value:'')+'. The member will be notified and the flight will be marked Completed.';window.showAppConfirm(msg,function(){if(window.markOverlayChanged)window.markOverlayChanged();var n='inv_'+Date.now();var w=window.open('',n);document.getElementById('issue-invoice-form').target=n;document.getElementById('issue-invoice-form').submit();var _pt=setInterval(function(){if(w&&w.closed){clearInterval(_pt);if(window.reloadPageOverlay)window.reloadPageOverlay();}},600);});})();">Issue invoice</button>
+                  onclick="(function(){var arChk=document.getElementById('mp-arrears-chk');var arAmt=document.getElementById('mp-arrears-amt');var base='Issue invoice to {{ booking.member.user.get_full_name|escapejs }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}';var msg=base+(arChk&&arChk.checked&&arAmt?' plus arrears $'+arAmt.value:'')+'. The member will be notified and the flight will be marked Completed.';window.showAppConfirm(msg,function(){if(window.markOverlayChanged)window.markOverlayChanged();var n='inv_'+Date.now();var w=window.open('',n);document.getElementById('issue-invoice-form').target=n;document.getElementById('issue-invoice-form').submit();var _pt=setInterval(function(){if(w&&w.closed){clearInterval(_pt);if(window.reloadPageOverlay)window.reloadPageOverlay();if(window.softReloadPage)window.softReloadPage();}},600);});})();">Issue invoice</button>
               </form>
               {% else %}
               <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Issue invoice</span>
@@ -1588,12 +1611,13 @@ window.lfFeeTypeChange = function lfFeeTypeChange(sel) {
         const resolved = action ? new URL(action, baseUrl).href : baseUrl;
         const target = resolved + (resolved.includes('?') ? '&' : '?') + 'inline=1';
         try {
-          const resp = await fetch(target, { method: 'POST', body: new FormData(f), credentials: 'same-origin' });
+          const fd = new FormData(f);
+          if (e.submitter && e.submitter.name) fd.set(e.submitter.name, e.submitter.value);
+          const resp = await fetch(target, { method: 'POST', body: fd, credentials: 'same-origin' });
           const html = await resp.text();
-          // If response is a redirect to booking_detail, close overlay and reload
+          // If response is a redirect to booking_detail, close decl overlay and refresh booking_detail
           if (resp.url && !resp.url.includes('declaration')) {
             closeDeclOverlay();
-            location.reload();
             return;
           }
           body.innerHTML = html;
@@ -1608,11 +1632,16 @@ window.lfFeeTypeChange = function lfFeeTypeChange(sel) {
 
   function closeDeclOverlay() {
     overlay.hidden = true;
-    location.reload();  // refresh in case declaration was submitted
+    if (window.reloadPageOverlay) window.reloadPageOverlay();
   }
 
   overlay.addEventListener('click', e => { if (e.target === overlay) closeDeclOverlay(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) closeDeclOverlay(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !overlay.hidden) {
+      e.stopImmediatePropagation();
+      closeDeclOverlay();
+    }
+  });
 })();
 
 // Auto-expand edit panel when arriving from conflict list

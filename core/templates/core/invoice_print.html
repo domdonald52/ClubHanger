@@ -459,12 +459,15 @@ table.items tbody tr:last-child td { border-bottom: none; }
         {% if arrears_clearance_at %}
         <tr>
           <td>
-            Arrears clearance — account balance restored
             {% if arrears_flights %}
-            <br><span style="font-size:7pt;color:#9ca3af;">
-              Covers:
-              {% for af in arrears_flights %}{{ af.flight_completion.booking.aircraft.registration }} {{ af.flight_completion.booking.scheduled_start|date:"j M Y" }} ${{ af.amount|currency }}{% if not forloop.last %}, {% endif %}{% endfor %}
-            </span>
+              Previous flight charges — settled by this invoice
+              <br><span style="font-size:7pt;color:#9ca3af;">
+                {% for af in arrears_flights %}
+                  {{ af.flight_completion.booking.aircraft.registration }} · {{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}{% if af.flight_completion.actual_flight_hours %} · {{ af.flight_completion.actual_flight_hours }}h{% endif %} — ${{ af.amount|currency }}{% if not forloop.last %}<br>{% endif %}
+                {% endfor %}
+              </span>
+            {% else %}
+              Account balance — clears outstanding debt
             {% endif %}
           </td>
           <td class="r">1.00</td>

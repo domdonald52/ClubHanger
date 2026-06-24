@@ -3959,6 +3959,7 @@ def booking_detail(request, club_slug, booking_id):
                ' — Charges' if booking.status in ('returned', 'completed') else '')
         ),
         'watchers': list(SlotWatch.objects.filter(booking=booking).select_related('club_member__user')) if actor.can_access_manage else [],
+        'is_watching': actor.can_access_manage and SlotWatch.objects.filter(booking=booking, club_member=actor).exists(),
     }
     return render(request, 'core/booking_detail.html', ctx)
 
@@ -5720,10 +5721,10 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
     fuel_rates = FuelSurchargeRate.objects.filter(aircraft=ac).order_by('-effective_from')
     all_surcharge_types = AircraftSurchargeType.objects.filter(club=club)
     assigned_surcharge_ids = set(ac.surcharges.values_list('id', flat=True))
-    maintenance_items = list(AircraftMaintenanceItem.objects.filter(aircraft=ac).order_by('urgency', 'due_date'))
+    maintenance_items = list(AircraftMaintenanceItem.objects.filter(aircraft=ac))
 
-    # Compute progress percentage for each maintenance item and attach as a dynamic attribute.
-    # Priority: date-based interval if both last_completed_date and due_date are set; else hours-based.
+    # Compute progress percentage and recalculate live urgency for each maintenance item.
+    # Urgency stored in DB can be stale — recalc on every page view and persist if changed.
     _latest_meters = (FlightCompletion.objects
                       .filter(booking__aircraft=ac, booking__club=club)
                       .exclude(hobbs_end__isnull=True)
@@ -5731,7 +5732,16 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                       .values('hobbs_end').first())
     _current_hobbs = float(_latest_meters['hobbs_end']) if _latest_meters else None
     _today = timezone.localdate()
+    try:
+        _ac_config = club.config
+    except Exception:
+        _ac_config = None
+    _UPR = {'red': 0, 'amber': 1, 'green': 2}
     for _m in maintenance_items:
+        _live_urg = _m.recalc_urgency(_ac_config)
+        if _m.urgency != _live_urg:
+            _m.urgency = _live_urg
+            _m.save(update_fields=['urgency'])
         _m.progress_pct = None
         if _m.last_completed_date and _m.due_date:
             _total = max(1, (_m.due_date - _m.last_completed_date).days)
@@ -5742,6 +5752,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
             if _total_h > 0:
                 _elapsed_h = _current_hobbs - float(_m.last_completed_hours)
                 _m.progress_pct = min(100, max(0, round(_elapsed_h / _total_h * 100)))
+    maintenance_items.sort(key=lambda _m: (_UPR.get(_m.urgency, 3), str(_m.due_date or ''), str(_m.due_hours or '')))
     flight_types = FlightType.objects.filter(club=club, is_billable=True)
     aircraft_blockout_types = BlockOutType.objects.filter(club=club, target='aircraft')
 
@@ -5757,7 +5768,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
     maint_log = (MaintenanceLogEntry.objects
                  .filter(aircraft=ac)
                  .select_related('flight_completion__booking__member__user')
-                 .order_by('-date', '-id')[:100])
+                 .order_by('-maint_hours_total', '-id')[:100])
     _maint_peak = MaintenanceLogEntry.objects.filter(aircraft=ac).aggregate(
         max_maint=_MMax('maint_hours_total'),
         max_hobbs=_MMax('hobbs_reading'),
@@ -6487,8 +6498,9 @@ def booking_declaration(request, club_slug, booking_id):
     error = None
     _is_app = request.path.startswith('/app/')
 
-    _decl_url = f'{request.path}{"?inline=1" if request.GET.get("inline") == "1" else ""}'
-    _saved_url = request.path + '?saved=1'
+    _is_inline = request.GET.get('inline') == '1'
+    _decl_url = f'{request.path}{"?inline=1" if _is_inline else ""}'
+    _saved_url = request.path + ('?inline=1&saved=1' if _is_inline else '?saved=1')
 
     if request.method == 'POST' and not readonly:
         action = request.POST.get('action', 'save_draft')
@@ -6561,7 +6573,6 @@ def booking_declaration(request, club_slug, booking_id):
     _delta = (booking.scheduled_start - _now).total_seconds()
     hours_to_departure = max(0, _delta / 3600)
 
-    _is_inline = request.GET.get('inline') == '1'
     if _is_app:
         _base = 'core/app/base.html'
     elif _is_inline:
@@ -6777,6 +6788,7 @@ def generate_invoice(request, club_slug, booking_id):
     _for_member_id = request.POST.get('for_member_id', '').strip()
     # Read other_fc_ids early so we can skip the early-exit when they're present
     _other_fc_ids = request.POST.getlist('other_fc_ids')
+    from decimal import Decimal as _D
     # Arrears: include outstanding account balance in the invoice
     _include_arrears = request.POST.get('include_arrears') == '1'
     try:
@@ -6784,8 +6796,6 @@ def generate_invoice(request, club_slug, booking_id):
     except Exception:
         _arrears_clear_amt = _D('0')
     _include_arrears = _include_arrears and _arrears_clear_amt > 0
-
-    from decimal import Decimal as _D
     if fp_list:
         payees = [
             (fp.member, fp.amount, fp.amount if fp.paid_at else 0, fp.paid_at,
@@ -6862,10 +6872,19 @@ def generate_invoice(request, club_slug, booking_id):
                 sort_order=0,
             )
         else:
+            _date_str = booking.scheduled_start.strftime('%-d %b %Y')
+            _hrs = float(fc.actual_flight_hours) if fc.actual_flight_hours else None
             for order, ci in enumerate(fc.charge_items.all()):
+                _base = ci.description or ci.get_item_type_display()
+                if ci.item_type in ('hire', 'instructor', 'fuel', 'surcharge'):
+                    _inv_desc = _base + f' · {_date_str}'
+                    if _hrs:
+                        _inv_desc += f' · {_hrs:.2f}h'
+                else:
+                    _inv_desc = _base
                 InvoiceLineItem.objects.create(
                     invoice=invoice,
-                    description=ci.description or ci.get_item_type_display(),
+                    description=_inv_desc,
                     quantity=1,
                     unit=UNIT_MAP.get(ci.item_type, 'Ea'),
                     rate=ci.amount,
@@ -7232,7 +7251,11 @@ def invoice_print(request, club_slug, invoice_id):
                     transaction_type='flight',
                     direction='debit',
                     created_at__lt=arrears_clearance_at.created_at,
-                ).select_related('flight_completion__booking__aircraft', 'flight_completion__booking')
+                ).select_related(
+                    'flight_completion__booking__aircraft',
+                    'flight_completion__booking__flight_type',
+                    'flight_completion',
+                )
                 .order_by('-created_at')
             )
             for _at in _flight_ats:
