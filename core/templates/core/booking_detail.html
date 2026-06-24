@@ -590,10 +590,10 @@
         </div>
         {% endif %}
 
-        {% if club_member.is_admin %}
+        {% if club_member.is_admin and not fc_invoices %}
         <div style="margin-bottom:.75rem;">
           {% if not fc.amount_paid or fc.amount_paid == 0 and not fc_any_invoice_paid %}
-          <form method="post" style="display:inline;" data-confirm="{% if fc_invoices %}Void flights? All charge items will be deleted, any invoices voided, and the booking will return to departed.{% else %}Void flights? All charge items will be deleted and the booking will return to departed.{% endif %}">
+          <form method="post" style="display:inline;" data-confirm="Void flights? All charge items will be deleted and the booking will return to departed.">
             {% csrf_token %}<input type="hidden" name="action" value="void_checkin">
             <button type="submit" class="cbtn cbtn-danger" style="font-size:.8rem;">Void flights &amp; undo return</button>
           </form>
@@ -619,7 +619,7 @@
                 <td style="color:#8a93a0;font-size:.78rem;padding-left:.9rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
                 <td style="font-size:.82rem;">{{ item.description }}</td>
                 <td style="text-align:right;">${{ item.amount|currency }}</td>
-                <td style="width:28px;">{% if not fc.is_paid and item.item_type == 'landing' or not fc.is_paid and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
+                <td style="width:28px;">{% if not fc.is_paid and not fc_invoices and item.item_type == 'landing' or not fc.is_paid and not fc_invoices and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
               </tr>
               {% endfor %}
               {% endfor %}
@@ -633,7 +633,7 @@
                 <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
                 <td style="font-size:.82rem;">{{ item.description }}</td>
                 <td style="text-align:right;">${{ item.amount|currency }}</td>
-                <td style="width:28px;">{% if not fc.is_paid and item.item_type == 'landing' or not fc.is_paid and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
+                <td style="width:28px;">{% if not fc.is_paid and not fc_invoices and item.item_type == 'landing' or not fc.is_paid and not fc_invoices and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
               </tr>
               {% endfor %}
             {% else %}
@@ -642,7 +642,7 @@
               <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{{ item.get_item_type_display }}</td>
               <td style="font-size:.82rem;">{{ item.description }}</td>
               <td style="text-align:right;">${{ item.amount|currency }}</td>
-              <td style="width:28px;">{% if not fc.is_paid and item.item_type == 'landing' or not fc.is_paid and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
+              <td style="width:28px;">{% if not fc.is_paid and not fc_invoices and item.item_type == 'landing' or not fc.is_paid and not fc_invoices and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
             </tr>
             {% empty %}
             <tr><td colspan="4" style="color:#8a93a0;font-size:.85rem;padding:.6rem;">No charges added yet.</td></tr>
@@ -651,7 +651,7 @@
           </tbody>
         </table>
 
-        {% if not fc.is_paid %}
+        {% if not fc.is_paid and not fc_invoices %}
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:.5rem;">
         <details class="add-wrap">
           <summary class="add-toggle">+ Add landing fee</summary>
@@ -739,10 +739,17 @@
           <span class="ch-total-label">Total</span>
           <span class="ch-total-amount">${{ total|currency }}</span>
         </div>
+        {% if fc_invoices %}
+        <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+          {% for inv in fc_invoices %}
+          <a href="{% url 'core:invoice_detail' club.slug inv.id %}" class="cbtn" style="font-size:.85rem;">View invoice {{ inv.display_number }} →</a>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div><!-- /left -->
 
-      <!-- RIGHT: payment panel -->
-      <div>
+      <!-- RIGHT: payment panel — hidden when invoice issued (payment tracked via invoice) -->
+      {% if not fc_invoices %}<div>
         {% if not fc.is_paid or overpayment %}
         <div class="ch-payment-wrap" style="margin-top:0;">
 
@@ -1401,7 +1408,7 @@
           {% endif %}
         </div>
         {% endif %}
-      </div><!-- /right -->
+      </div>{% endif %}<!-- /right -->
     </div><!-- /ch-grid -->
 
   </div>

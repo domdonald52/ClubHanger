@@ -3621,7 +3621,7 @@ def booking_detail(request, club_slug, booking_id):
     )
 
     # Build per-member invoice lookup (ForeignKey now, one per member per FC)
-    _fc_invoices = list(fc.invoices.all()) if fc else []
+    _fc_invoices = list(fc.invoices.exclude(status='void')) if fc else []
     fc_invoices = _fc_invoices
     _invoice_by_member = {inv.member_id: inv for inv in _fc_invoices}
     # Attach invoice to each FlightPayment for template convenience
