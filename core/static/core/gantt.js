@@ -245,6 +245,9 @@
   if (fClient) fClient.addEventListener("change", () => {
     if (fBilledToLabel) fBilledToLabel.style.display = fClient.value ? "" : "none";
   });
+  function updateClientState() {
+    if (fBilledToLabel) fBilledToLabel.style.display = (fClient && fClient.value) ? "" : "none";
+  }
 
   // ---- Quick-add contact mini-modal ------------------------------------
   const quickContactModal = document.getElementById("quick-contact-modal");
@@ -950,6 +953,20 @@
 
     pill.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
+      // e.preventDefault() on pointerdown suppresses native dblclick, so detect double-tap here
+      // before we decide to enter drag mode. Works for pending/confirmed pills that are draggable.
+      if (!e.target.hasAttribute("data-resize")) {
+        const now = performance.now();
+        if ((now - (pill._lastPD || 0)) < 400) {
+          pill._lastPD = 0;
+          e.stopPropagation();
+          const detailUrl = cfg.bookingDetailBase.replace("/0/", "/" + pill.dataset.id + "/");
+          if (window.openPageOverlay) window.openPageOverlay(detailUrl);
+          else window.location.href = detailUrl;
+          return;
+        }
+        pill._lastPD = now;
+      }
       mode = e.target.hasAttribute("data-resize") ? "resize" : "move";
       if (mode === "move" && pill.dataset.status === "departed") {
         mode = null; // pill became departed in-page without reload — let dblclick open check-in normally
@@ -1038,6 +1055,7 @@
       }
 
       pill._didDrag = true;
+      pill._lastPD = 0; // reset so post-drag click isn't misdetected as double-click
       _recentDrag = true;
       requestAnimationFrame(() => { _recentDrag = false; });
 
