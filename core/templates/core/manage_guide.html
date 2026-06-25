@@ -598,6 +598,7 @@
         <li><strong>Accidentally completed a flight (checked in too early or wrong data entered)</strong> — On the booking detail, scroll to the charge summary and click <strong>Void check-in</strong>. This clears all meter readings, charge items, and segments, and returns the flight to Departed so you can redo the check-in correctly. If a payment has already been recorded, you must reverse it first (see below) before voiding. If an invoice has been issued, the void will automatically void the invoice — but only if no payment has been recorded against it. If invoice payment has already been received, the reversal is blocked; contact the member to arrange a credit note or re-issue.</li>
         <li><strong>Accidentally recorded a payment</strong> — On the booking detail, find the payment in the Payments panel and click <strong>Reverse</strong>. This removes the payment record and reopens the flight for charging. For account credit payments, the reversal refunds the member's account balance; when you re-record payment, the balance is re-debited. Both the original and reversal appear in the member's account ledger as an audit trail. Note: if an invoice has been issued, payment must be reversed from the invoice (Sales → Invoices → [invoice]) rather than from the booking.</li>
         <li><strong>Cancelled a booking by mistake</strong> — Cancellation cannot be undone. Create a new booking for the member at the same time slot.</li>
+        <li><strong>Flight aborted or aircraft fault — club decides not to charge</strong> — On the booking detail, scroll to the bottom of the charges section and expand <strong>Waive charge</strong> (admin only). Enter a reason and confirm. All charge items are removed and the flight is marked completed with zero charge. The waive reason is shown on the charges screen as a permanent note. This cannot be undone — if the decision changes, you must void the check-in and re-complete the flight. Only available when no payment has been recorded.</li>
       </ul>
       <p>All reversals are admin-only and are recorded in the booking's audit log (visible at the bottom of the booking detail). If a status button doesn't appear, the prerequisite (no payment recorded, no charge items, etc.) has not been met — the reason is usually clear from context.</p>
 
@@ -682,7 +683,7 @@
         <summary>Meter gaps — what they mean and how to handle them</summary>
         <div class="dbody">
           <p>When you enter a hobbs/tacho start reading that doesn't match the previous flight's end reading on that aircraft, the system asks for a gap explanation. This is not an error — gaps are legitimate (ground run, maintenance, ferry flight by another pilot). You must record a note explaining the discrepancy.</p>
-          <p>Unexplained gaps appear on Manage → Integrity. To resolve them: open the flagged flight completion (the link on the Integrity page takes you directly there) and enter a note explaining the discrepancy in the gap explanation field — for example, "ground run for maintenance check: 1134.2–1134.5". If the gap represents a genuinely missing flight, add the missing flight record first.</p>
+          <p>If a reading was entered incorrectly, fix it in Fleet → Aircraft → [aircraft] → Maintenance → <strong>View full log →</strong>. Find the entry and click the <strong>pencil icon</strong> to amend the reading, entering a reason. The Integrity page updates immediately. Charges are not recomputed. If the gap represents genuinely unaccounted time (ground run, maintenance tow) and the readings are correct, no amendment is needed.</p>
           <p>Accumulating unexplained meter gaps makes your maintenance hours calculations unreliable, since maintenance hours are derived from the same meter readings.</p>
         </div>
       </details>
@@ -1108,12 +1109,13 @@
       <details class="dblock">
         <summary>Meter integrity and maintenance accuracy</summary>
         <div class="dbody">
-          <p>Maintenance hours accumulate from hobbs/tacho readings entered on flight completions. Manage → Integrity runs a cross-check across all completions and flags:</p>
+          <p>Maintenance hours accumulate from hobbs/tacho readings entered on flight completions. Manage → Integrity runs a cross-check across all completions on both Hobbs and Tacho and flags:</p>
           <ul>
-            <li>Start reading ≠ previous flight's end reading (gap or overlap)</li>
-            <li>Unreasonably large or small readings (possible typo)</li>
+            <li><strong>Gap</strong> — next flight's start reading is higher than the previous flight's end reading (unaccounted time)</li>
+            <li><strong>Overlap</strong> — next flight's start reading is lower than the previous flight's end reading (a reading was entered incorrectly)</li>
           </ul>
-          <p>Each flagged gap requires a note explaining the discrepancy (e.g., "ground run for maintenance check: 1134.2–1134.5"). Unresolved gaps mean your maintenance due-hours calculation may be understating or overstating actual hours flown. For airworthiness purposes, this is a significant risk.</p>
+          <p>To correct a wrong reading: go to Fleet → Aircraft → [aircraft] → Maintenance → <strong>View full log →</strong>. Find the relevant entry and click the <strong>pencil icon</strong> to amend the reading. Enter the corrected value and a reason. The correction cascades to the flight completion record and the Integrity check will immediately reflect the change. Charges are not recomputed when readings are amended.</p>
+          <p>Unresolved overlaps mean one reading is factually wrong and maintenance hours are being mis-stated. For airworthiness purposes, this is a significant risk.</p>
         </div>
       </details>
 
@@ -1198,8 +1200,12 @@
       </ul>
 
       <p><strong>Operations tab</strong></p>
-      <p>Checks for Hobbs meter gaps between consecutive flights on each aircraft — where the start reading on one flight does not match the end reading of the previous flight. A positive gap means unaccounted flight time; a negative gap means entries may be out of order or a reading was entered incorrectly.</p>
-      <p>To fix a flagged gap: click View next to the affected flight completion and enter a gap explanation note (for example: "ferry flight by third party", or "ground run: 1134.2–1134.5"). If the gap represents a missing flight record, add that flight first, then the gap should clear. Unresolved meter gaps cause maintenance hour calculations to drift — resolve them promptly to maintain airworthiness accuracy.</p>
+      <p>Checks for meter reading inconsistencies on both Hobbs and Tacho between consecutive flights on each aircraft. Two types of issue are reported:</p>
+      <ul>
+        <li><strong>Gap</strong> — the next flight's start reading is higher than the previous flight's end reading. Unaccounted time has elapsed between flights (ground run, ferry, maintenance run).</li>
+        <li><strong>Overlap</strong> — the next flight's start reading is lower than the previous flight's end reading. The readings contradict each other — one was entered incorrectly.</li>
+      </ul>
+      <p>To fix either: click <strong>View log →</strong> next to the flagged entry to open the full maintenance log for that aircraft. Find the relevant entry and click the <strong>pencil icon</strong> on that row to open the amend dialog. Correct the start and/or end reading, enter a reason, and save. The Integrity page will reflect the correction immediately. If the gap represents genuinely unaccounted time (e.g. a ground run by a third party), the readings are correct and no action is needed — the gap will remain visible as a record of the unaccounted time. Unresolved genuine overlaps mean one reading is wrong and maintenance hours are being mis-stated.</p>
 
       <p><strong>Members tab</strong></p>
       <p>Identifies members whose standing is still Active but whose subscription has expired. This can happen if a member's expiry date was updated manually without triggering the standing check, or if the auto-lapse has not been run since the expiry date passed.</p>

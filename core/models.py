@@ -1693,6 +1693,10 @@ class FlightCompletion(models.Model):
         help_text="Explanation required when start reading doesn't match the previous flight's end reading"
     )
 
+    # Charge waiver — admin can waive the charge (e.g. aircraft fault, aborted flight)
+    charge_waived = models.BooleanField(default=False)
+    waive_reason = models.TextField(blank=True, default='')
+
     # Audit
     logged_by = models.ForeignKey(User, on_delete=models.PROTECT)
     created_at = models.DateTimeField(auto_now_add=True)

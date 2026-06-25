@@ -495,7 +495,6 @@
       <h2 class="sh2" style="margin:0;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100 entries)</span></h2>
       <div style="display:flex;gap:.4rem;align-items:center;">
         <a href="{% url 'core:aircraft_maintenance_log' club.slug ac.id %}" target="_blank" class="cbtn-sm">View full log →</a>
-        {% if club_member.is_admin %}<button type="button" class="cbtn-add" onclick="document.getElementById('add-manual-log-modal').hidden=false">+ Log manual entry</button>{% endif %}
       </div>
     </div>
     <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .8rem;">Auto-recorded at each check-in. Manual entries explain meter gaps (ground runs, tows, corrections, errors).</p>
@@ -742,55 +741,6 @@
         </div>
         <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
           <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- Manual maintenance log entry modal -->
-  <div id="add-manual-log-modal" class="modal-back" hidden>
-    <div class="modal" style="width:min(520px,95vw);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 style="margin:0;">Log manual entry</h2>
-        <button type="button" class="pi-close" onclick="document.getElementById('add-manual-log-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
-      </div>
-      <p style="font-size:.82rem;color:#8a93a0;margin:-.4rem 0 .9rem;">Use this to explain a meter gap — ground runs, towing, meter corrections, or errors. Entries without flight hours (0 hrs) are purely documentary.</p>
-      <form method="post">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="add_manual_log_entry">
-        <div class="fgrid">
-          <label class="flabel">Date <span class="req">*</span>
-            <input type="date" name="entry_date" class="finput" value="{% now 'Y-m-d' %}" required>
-          </label>
-          <label class="flabel">Maintenance hours this entry
-            <input type="number" name="maint_hours" class="finput" min="0" step="0.1" value="0" placeholder="0.0">
-          </label>
-        </div>
-        <label class="flabel" style="margin-top:.5rem;">Entry type / reason <span class="req">*</span>
-          <select name="notes" class="finput" required id="ml-notes-select" onchange="document.getElementById('ml-notes-custom').style.display=this.value==='__custom__'?'block':'none';">
-            <option value="">— select —</option>
-            <option value="Ground run (non-booking)">Ground run (non-booking)</option>
-            <option value="Towing / handling">Towing / handling</option>
-            <option value="Meter replacement — new baseline set">Meter replacement — new baseline set</option>
-            <option value="Correction to previous entry — data entry error">Correction to previous entry — data entry error</option>
-            <option value="Historical gap — unable to identify source">Historical gap — unable to identify source</option>
-            <option value="__custom__">Other (enter below)</option>
-          </select>
-        </label>
-        <label class="flabel" id="ml-notes-custom" style="display:none;margin-top:.3rem;">Custom reason
-          <input type="text" class="finput" placeholder="Describe the reason for this entry" maxlength="500"
-                 oninput="document.querySelector('[name=notes]').value=this.value || '__custom__'">
-        </label>
-        <div style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid #eef1f4;">
-          <div style="font-size:.8rem;font-weight:600;color:#5b6573;margin-bottom:.4rem;">Meter readings at end of this entry <span style="font-weight:400;color:#8a93a0;">(optional — fill in to document actual values)</span></div>
-          <div class="fgrid">
-            <label class="flabel">Hobbs <input type="number" name="hobbs_reading" class="finput" min="0" step="0.01" placeholder="—"></label>
-            <label class="flabel">Tacho <input type="number" name="tacho_reading" class="finput" min="0" step="0.01" placeholder="—"></label>
-            <label class="flabel">Air switch <input type="number" name="airswitch_reading" class="finput" min="0" step="0.01" placeholder="—"></label>
-          </div>
-        </div>
-        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
-          <button type="submit" class="cbtn primary">Save</button>
         </div>
       </form>
     </div>

@@ -87,16 +87,6 @@
         <div class="dash-kpi-sect">Members</div>
         <div class="dash-kpi-lbl">Active members</div>
         <div class="dash-kpi-val"><a href="{{ dash_members_url }}" style="color:inherit;text-decoration:none;">{{ active_members_count }}</a></div>
-        <div class="dash-kpi-sub">Currently</div>
-        <hr class="dash-kpi-hr">
-        <div class="dash-kpi-row-lbl">New this FY</div>
-        <div class="dash-kpi-row-val">{{ dash_new_members_count }}</div>
-        <div class="dash-kpi-sub">since {{ fy_start_date|date:"j M Y" }}</div>
-        {% if dash_sex_set %}
-        <hr class="dash-kpi-hr">
-        <div class="dash-kpi-row-lbl">Gender (where set)</div>
-        <div class="dash-kpi-sub" style="font-size:.82rem;color:#5b6573;">{{ dash_sex_m }}M · {{ dash_sex_f }}F <span style="color:#c0c8d4;">of {{ active_members_count }}</span></div>
-        {% endif %}
         {% if dash_top_categories %}
         <hr class="dash-kpi-hr">
         <div class="dash-kpi-row-lbl">By category</div>
@@ -134,34 +124,46 @@
     </div>
 
     <!-- Charts row 1: hours + revenue -->
-    <div class="dash-grid-2" style="margin-bottom:1rem;">
+    <div class="dash-grid-2" style="margin-bottom:.75rem;">
       <div class="dash-card">
-        <h2 class="dash-card-h">Monthly flight hours <span class="dash-period">· {{ fy_label }}</span></h2>
+        <div class="dash-card-hdr">
+          <h2 class="dash-card-h">Monthly flight hours <span class="dash-period">· {{ fy_label }}</span></h2>
+          {% if datasets != "[]" %}<button class="cbtn-sm cbtn-icon" style="flex-shrink:0;width:26px;height:26px;font-size:.85rem;" onclick="openChartModal('dash-hours-chart','Monthly flight hours · {{ fy_label|escapejs }}')" title="Expand"><i class="ti ti-arrows-maximize"></i></button>{% endif %}
+        </div>
         {% if datasets != "[]" %}
-        <canvas id="dash-hours-chart" height="200"></canvas>
+        <canvas id="dash-hours-chart" height="150"></canvas>
         {% else %}
         <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
         {% endif %}
       </div>
       <div class="dash-card">
-        <h2 class="dash-card-h">Monthly revenue <span class="dash-period">· {{ fy_label }}</span></h2>
-        <canvas id="dash-revenue-chart" height="200"></canvas>
+        <div class="dash-card-hdr">
+          <h2 class="dash-card-h">Monthly revenue <span class="dash-period">· {{ fy_label }}</span></h2>
+          <button class="cbtn-sm cbtn-icon" style="flex-shrink:0;width:26px;height:26px;font-size:.85rem;" onclick="openChartModal('dash-revenue-chart','Monthly revenue · {{ fy_label|escapejs }}')" title="Expand"><i class="ti ti-arrows-maximize"></i></button>
+        </div>
+        <canvas id="dash-revenue-chart" height="150"></canvas>
       </div>
     </div>
 
     <!-- Charts row 2: instructor hours + flights -->
-    <div class="dash-grid-2" style="margin-bottom:1rem;">
+    <div class="dash-grid-2" style="margin-bottom:.75rem;">
       <div class="dash-card">
-        <h2 class="dash-card-h">Instructor hours by month <span class="dash-period">· {{ fy_label }}</span></h2>
+        <div class="dash-card-hdr">
+          <h2 class="dash-card-h">Instructor hours by month <span class="dash-period">· {{ fy_label }}</span></h2>
+          {% if instr_datasets != "[]" %}<button class="cbtn-sm cbtn-icon" style="flex-shrink:0;width:26px;height:26px;font-size:.85rem;" onclick="openChartModal('dash-instr-chart','Instructor hours by month · {{ fy_label|escapejs }}')" title="Expand"><i class="ti ti-arrows-maximize"></i></button>{% endif %}
+        </div>
         {% if instr_datasets != "[]" %}
-        <canvas id="dash-instr-chart" height="200"></canvas>
+        <canvas id="dash-instr-chart" height="150"></canvas>
         {% else %}
         <p style="font-size:.85rem;color:#8a93a0;margin:0;">No dual flights recorded in this period.</p>
         {% endif %}
       </div>
       <div class="dash-card">
-        <h2 class="dash-card-h">Flights per month <span class="dash-period">· {{ fy_label }}</span></h2>
-        <canvas id="dash-flights-chart" height="200"></canvas>
+        <div class="dash-card-hdr">
+          <h2 class="dash-card-h">Flights per month <span class="dash-period">· {{ fy_label }}</span></h2>
+          <button class="cbtn-sm cbtn-icon" style="flex-shrink:0;width:26px;height:26px;font-size:.85rem;" onclick="openChartModal('dash-flights-chart','Flights per month · {{ fy_label|escapejs }}')" title="Expand"><i class="ti ti-arrows-maximize"></i></button>
+        </div>
+        <canvas id="dash-flights-chart" height="150"></canvas>
       </div>
     </div>
 
@@ -192,8 +194,11 @@
       </div>
       {% if dash_has_budget %}
       <div class="dash-card">
-        <h2 class="dash-card-h">Budget vs actual <span class="dash-period">· {{ fy_label }}</span></h2>
-        <canvas id="dash-budget-chart" height="220"></canvas>
+        <div class="dash-card-hdr">
+          <h2 class="dash-card-h">Budget vs actual <span class="dash-period">· {{ fy_label }}</span></h2>
+          <button class="cbtn-sm cbtn-icon" style="flex-shrink:0;width:26px;height:26px;font-size:.85rem;" onclick="openChartModal('dash-budget-chart','Budget vs actual · {{ fy_label|escapejs }}')" title="Expand"><i class="ti ti-arrows-maximize"></i></button>
+        </div>
+        <canvas id="dash-budget-chart" height="150"></canvas>
       </div>
       {% else %}
       <div class="dash-card">
@@ -223,6 +228,20 @@
     </div>
 
   </div><!-- /tab-dashboard -->
+
+  <!-- Chart pop-out modal -->
+  <div id="chart-modal" class="chart-modal-backdrop" hidden>
+    <div class="chart-modal-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 id="chart-modal-title" style="font-size:1rem;font-weight:700;margin:0;"></h2>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <button class="cbtn-sm cbtn-icon" id="chart-copy-btn" onclick="copyChartToClipboard()" title="Copy chart as image"><i class="ti ti-clipboard"></i></button>
+          <button class="pi-close" onclick="closeChartModal()" title="Close"><i class="ti ti-x"></i></button>
+        </div>
+      </div>
+      <canvas id="chart-modal-canvas"></canvas>
+    </div>
+  </div>
 
   <!-- ── HISTORICAL tab ── -->
   <div id="tab-historical" class="stab-panel">
@@ -514,28 +533,32 @@
 </div>
 
 <style>
-.dash-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:1rem;}
-.dash-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
-.dash-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;}
-.dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.dash-grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem;align-items:start;}
+.dash-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;align-items:start;}
+.dash-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;}
+.dash-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
 @media(max-width:1100px){.dash-grid-5{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:900px){.dash-grid-4,.dash-grid-5{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:700px){.dash-grid-5,.dash-grid-4,.dash-grid-3,.dash-grid-2{grid-template-columns:1fr;}}
-.dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.75rem 1rem;}
+.dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.55rem .8rem;}
 .dash-kpi-warn{border-color:#fca5a5;background:#fff8f8;}
 .dash-kpi-good{border-color:#86efac;background:#f0fdf4;}
-.dash-kpi-sect{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#c0c8d4;margin-bottom:.45rem;}
+.dash-kpi-sect{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#c0c8d4;margin-bottom:.2rem;}
 .dash-kpi-lbl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.1rem;}
-.dash-kpi-val{font-size:1.45rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.1rem;}
-.dash-kpi-unit{font-size:.9rem;font-weight:400;color:#5b6573;margin-left:.15rem;}
+.dash-kpi-val{font-size:1.25rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.1rem;}
+.dash-kpi-unit{font-size:.85rem;font-weight:400;color:#5b6573;margin-left:.1rem;}
 .dash-kpi-sub{font-size:.72rem;color:#8a93a0;line-height:1.4;}
-.dash-kpi-hr{border:none;border-top:1px solid #edeef1;margin:.55rem 0;}
-.dash-kpi-row-lbl{font-size:.68rem;color:#8a93a0;margin-bottom:.05rem;text-transform:uppercase;letter-spacing:.04em;}
-.dash-kpi-row-val{font-size:1.05rem;font-weight:700;color:#1f2933;line-height:1.1;margin-bottom:.05rem;}
+.dash-kpi-hr{border:none;border-top:1px solid #edeef1;margin:.35rem 0;}
+.dash-kpi-row-lbl{font-size:.68rem;color:#8a93a0;margin-bottom:.02rem;text-transform:uppercase;letter-spacing:.04em;}
+.dash-kpi-row-val{font-size:.95rem;font-weight:700;color:#1f2933;line-height:1.1;margin-bottom:.03rem;}
 .dash-kpi-warn-val{color:#c0392b;}
-.dash-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1rem 1.2rem;}
-.dash-card-h{font-size:.88rem;font-weight:650;margin:0 0 .8rem;color:#1f2933;}
+.dash-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.85rem 1rem;}
+.dash-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;}
+.dash-card-h{font-size:.85rem;font-weight:650;margin:0;color:#1f2933;}
 .dash-period{font-weight:400;color:#b8c0cc;font-size:.85em;}
+/* Chart pop-out modal */
+.chart-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem;}
+.chart-modal-box{background:#fff;border-radius:12px;padding:1.4rem 1.5rem 1.2rem;width:100%;max-width:900px;max-height:90vh;overflow:auto;box-shadow:0 8px 40px rgba(0,0,0,.2);}
 .hist-toggle.active{background:var(--primary);color:#fff;border-color:var(--primary);}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
@@ -573,6 +596,53 @@ function _themeColors(n) {
 
 const _legendFont = { size: 11 };
 
+// ── Chart registry + pop-out ─────────────────────────────────────────────────
+const _chartConfigs = {};
+function _mkChart(id, config) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  _chartConfigs[id] = config;
+  return new Chart(el, config);
+}
+function openChartModal(id, title) {
+  const cfg = _chartConfigs[id];
+  if (!cfg) return;
+  document.getElementById('chart-modal-title').textContent = title;
+  const mc = document.getElementById('chart-modal-canvas');
+  const existing = Chart.getChart(mc);
+  if (existing) existing.destroy();
+  // Deep clone so modal chart doesn't share state
+  const cloned = JSON.parse(JSON.stringify(cfg));
+  // Larger legend + ticks for the expanded view
+  if (cloned.options && cloned.options.plugins && cloned.options.plugins.legend)
+    cloned.options.plugins.legend.labels = { ...(cloned.options.plugins.legend.labels||{}), font: { size: 12 } };
+  new Chart(mc, cloned);
+  document.getElementById('chart-modal').hidden = false;
+}
+function closeChartModal() {
+  const mc = document.getElementById('chart-modal-canvas');
+  const existing = Chart.getChart(mc);
+  if (existing) existing.destroy();
+  document.getElementById('chart-modal').hidden = true;
+}
+function copyChartToClipboard() {
+  const mc = document.getElementById('chart-modal-canvas');
+  const btn = document.getElementById('chart-copy-btn');
+  mc.toBlob(async function(blob) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+      btn.innerHTML = '<i class="ti ti-check"></i>';
+      setTimeout(function(){ btn.innerHTML = '<i class="ti ti-clipboard"></i>'; }, 1800);
+    } catch(e) {
+      // Fallback: open in new tab for manual save
+      window.open(mc.toDataURL('image/png'), '_blank');
+    }
+  }, 'image/png');
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeChartModal();
+});
+
 // ── Dashboard charts ─────────────────────────────────────────────────────────
 const _stackedOpts = {
   responsive: true,
@@ -585,8 +655,7 @@ const _stackedOpts = {
 };
 {% if datasets != "[]" %}
 (function(){
-  const el = document.getElementById('dash-hours-chart');
-  if (el) new Chart(el, {
+  _mkChart('dash-hours-chart', {
     type: 'bar',
     data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ datasets|safe }}) },
     options: { ..._stackedOpts, scales: { ..._stackedOpts.scales,
@@ -595,13 +664,11 @@ const _stackedOpts = {
 })();
 {% endif %}
 (function(){
-  const revEl = document.getElementById('dash-revenue-chart');
-  if (!revEl) return;
   const charged   = {{ dash_monthly_charged|safe }};
   const collected = {{ dash_monthly_collected|safe }};
   const hasData   = charged.some(v => v > 0) || collected.some(v => v > 0);
-  if (!hasData) { revEl.parentElement.querySelector('canvas')?.remove(); return; }
-  new Chart(revEl, {
+  if (!hasData) { const el = document.getElementById('dash-revenue-chart'); if (el) el.remove(); return; }
+  _mkChart('dash-revenue-chart', {
     type: 'bar',
     data: {
       labels: {{ month_labels|safe }},
@@ -623,8 +690,7 @@ const _stackedOpts = {
 })();
 {% if instr_datasets != "[]" %}
 (function(){
-  const el = document.getElementById('dash-instr-chart');
-  if (el) new Chart(el, {
+  _mkChart('dash-instr-chart', {
     type: 'bar',
     data: { labels: {{ month_labels|safe }}, datasets: _applyColors({{ instr_datasets|safe }}) },
     options: { ..._stackedOpts, scales: { ..._stackedOpts.scales,
@@ -633,8 +699,6 @@ const _stackedOpts = {
 })();
 {% endif %}
 (function(){
-  const el = document.getElementById('dash-flights-chart');
-  if (!el) return;
   const solo  = {{ dash_solo_flights|safe }};
   const dual  = {{ dash_dual_flights|safe }};
   const trial = {{ dash_trial_flights|safe }};
@@ -645,7 +709,7 @@ const _stackedOpts = {
   if (trial.some(v => v > 0)) {
     datasets.push({ label: 'Trial', data: trial, backgroundColor: CHART_PALETTE[2], borderRadius: 0, borderSkipped: false });
   }
-  new Chart(el, {
+  _mkChart('dash-flights-chart', {
     type: 'bar',
     data: { labels: {{ month_labels|safe }}, datasets },
     options: { ..._stackedOpts, scales: { ..._stackedOpts.scales,
@@ -655,14 +719,12 @@ const _stackedOpts = {
 
 {% if dash_has_budget %}
 (function(){
-  const budgetEl = document.getElementById('dash-budget-chart');
-  if (!budgetEl) return;
   const actual  = {{ dash_actual_monthly|safe }};
   const budget  = {{ dash_budget_monthly|safe }};
   const cumVar  = {{ dash_cum_variance|safe }};
   const labels  = {{ month_labels|safe }};
   const actualColor = _themeColors(1)[0];
-  new Chart(budgetEl, {
+  _mkChart('dash-budget-chart', {
     type: 'bar',
     data: {
       labels,

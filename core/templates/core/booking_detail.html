@@ -509,6 +509,11 @@
           Outcome: <strong>{{ fc.get_outcome_display }}</strong>{% if fc.outcome_notes %} — {{ fc.outcome_notes }}{% endif %}
         </div>
         {% endif %}
+        {% if fc.charge_waived %}
+        <div class="notice ok" style="margin-bottom:.8rem;">
+          <strong>Charge waived</strong> — {{ fc.waive_reason }}
+        </div>
+        {% endif %}
         <div style="font-size:.95rem;font-weight:700;color:#1f2933;margin-bottom:.5rem;">Charges</div>
         <table class="ch-table">
           <tbody>
@@ -1313,6 +1318,28 @@
         </div>
         {% endif %}
       </div>{% endif %}<!-- /payment panel -->
+
+      {% if club_member.is_admin and fc %}
+      <div style="border-top:1px solid #eef1f4;margin-top:.8rem;padding-top:.6rem;display:flex;flex-direction:column;gap:.3rem;">
+
+        {% if not fc.charge_waived and not fc.amount_paid %}
+        <details>
+          <summary style="font-size:.78rem;cursor:pointer;color:#8a93a0;user-select:none;">Waive charge</summary>
+          <form method="post" style="margin-top:.6rem;" data-confirm="Waive the full charge for this flight? This cannot be undone and all charge items will be deleted.">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="waive_charge">
+            <p style="font-size:.76rem;color:#8a93a0;margin:0 0 .6rem;">Use for aborted flights or aircraft faults where the club decides not to charge. Meter readings remain unchanged.</p>
+            <label class="flabel">Reason <span class="req">*</span>
+              <input type="text" name="waive_reason" class="finput" placeholder="e.g. Aircraft fault — engine rough after start, flight aborted" required>
+            </label>
+            <button type="submit" class="cbtn cbtn-danger" style="margin-top:.4rem;font-size:.82rem;">Waive charge</button>
+          </form>
+        </details>
+        {% endif %}
+
+      </div>
+      {% endif %}
+
   </div>
   {% endif %}
 

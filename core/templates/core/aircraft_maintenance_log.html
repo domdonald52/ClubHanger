@@ -17,7 +17,7 @@
   .mlog-crumb{font-size:.8rem;color:#8a93a0;margin-bottom:.25rem;}
   .mlog-table{width:100%;border-collapse:collapse;font-size:.82rem;}
   .mlog-table th{padding:.38rem .55rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.73rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;white-space:nowrap;}
-  .mlog-table td{padding:.42rem .55rem;border-bottom:1px solid #f0f2f4;vertical-align:top;}
+  .mlog-table td{padding:.42rem .55rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .mlog-table tr:last-child td{border-bottom:none;}
   .mlog-table tr.manual-row td{background:#fffbeb;}
   .gap-pos{color:#c0392b;font-weight:600;}
@@ -27,6 +27,23 @@
   .cbtn-sm{padding:.45rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;height:2.15rem;box-sizing:border-box;}
   .cbtn-sm:hover{background:#f3f5f7;}
   .cbtn-icon{padding:0!important;width:34px!important;height:34px!important;display:inline-flex!important;align-items:center;justify-content:center;font-size:1.1rem;}
+  /* Modal */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;}
+  .modal-box{background:#fff;border-radius:12px;padding:1.4rem 1.5rem 1.2rem;width:100%;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.18);}
+  .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+  .modal-hdr h2{font-size:1rem;font-weight:700;margin:0;}
+  .pi-close{background:none;border:1px solid #d6dae0;border-radius:6px;padding:0;width:28px;height:28px;cursor:pointer;font-size:1rem;color:#5b6573;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .flabel{display:flex;flex-direction:column;gap:.25rem;font-size:.8rem;font-weight:500;color:#374151;}
+  .finput{border:1px solid #d1d5db;border-radius:6px;padding:.4rem .55rem;font-size:.85rem;font-family:inherit;width:100%;}
+  .finput:focus{outline:2px solid #3b82f6;outline-offset:1px;border-color:#3b82f6;}
+  .field-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem;}
+  .field-row .flabel{flex:1;min-width:110px;}
+  .cbtn-primary{background:#1d4ed8;color:#fff;border:none;border-radius:7px;padding:.5rem 1rem;font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;}
+  .cbtn-primary:hover{background:#1e40af;}
+  .amend-note{font-size:.76rem;color:#8a93a0;margin-bottom:.8rem;line-height:1.5;}
+  /* Toast */
+  .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1f2933;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.85rem;font-weight:500;z-index:300;box-shadow:0 4px 16px rgba(0,0,0,.2);}
+  [hidden]{display:none!important;}
   @media print {
     .no-print{display:none!important;}
     body{background:#fff;font-size:11px;}
@@ -65,6 +82,7 @@
         <th class="col-sep" style="text-align:right;">Flight hrs</th>
         <th style="text-align:right;">Maint hrs</th>
         <th style="text-align:right;">Total maint</th>
+        {% if club_member.is_admin %}<th class="no-print" style="width:1%;"></th>{% endif %}
       </tr>
     </thead>
     <tbody>
@@ -82,8 +100,8 @@
         <td style="font-variant-numeric:tabular-nums;">{{ r.hobbs_end|default:"—" }}</td>
         <td style="font-variant-numeric:tabular-nums;">
           {% if r.hobbs_gap %}
-            {% if r.hobbs_gap > 0 %}<span class="gap-pos">+{{ r.hobbs_gap }}</span>
-            {% else %}<span class="gap-neg">{{ r.hobbs_gap }}</span>{% endif %}
+            {% if r.hobbs_gap > 0 %}<span class="gap-pos" title="Unaccounted time">+{{ r.hobbs_gap }}</span>
+            {% else %}<span class="gap-neg" title="Readings overlap">{{ r.hobbs_gap }}</span>{% endif %}
           {% else %}—{% endif %}
         </td>
         {% endif %}
@@ -98,6 +116,19 @@
         <td class="col-sep" style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.flight_hrs|default:"—" }}</td>
         <td style="text-align:right;font-variant-numeric:tabular-nums;">{{ r.maint_flight }}</td>
         <td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:500;">{{ r.maint_total }}</td>
+        {% if club_member.is_admin %}
+        <td class="no-print" style="text-align:right;white-space:nowrap;">
+          {% if not r.is_manual %}
+          <button type="button" class="cbtn-sm cbtn-icon" title="Amend readings"
+            onclick="openAmend({{ r.mle_id }},
+              '{{ r.hobbs_start|default:'' }}','{{ r.hobbs_end|default:'' }}',
+              '{{ r.tacho_start|default:'' }}','{{ r.tacho_end|default:'' }}',
+              '{{ r.as_start|default:'' }}','{{ r.as_end|default:'' }}')">
+            <i class="ti ti-pencil"></i>
+          </button>
+          {% endif %}
+        </td>
+        {% endif %}
       </tr>
       {% endfor %}
     </tbody>
@@ -107,5 +138,70 @@
   <p style="color:#8a93a0;">No log entries yet.</p>
   {% endif %}
 </div>
+
+{% if club_member.is_admin %}
+<!-- Amend readings modal -->
+<div id="amend-modal" class="modal-backdrop" hidden>
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <h2>Amend readings</h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('amend-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
+    <p class="amend-note">Corrects a data-entry error. Charges are <strong>not</strong> recomputed. Amending an end reading may resolve or create integrity warnings — the integrity screen will reflect changes immediately.</p>
+    <p class="amend-note" style="margin-bottom:1rem;">Only this entry's readings are updated. If the <em>next</em> flight's start reading is also wrong, amend that entry separately.</p>
+    <form method="post" id="amend-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="amend_reading">
+      <input type="hidden" name="mle_id" id="amend-mle-id">
+      {% if ac.records_hobbs %}
+      <div class="field-row" id="amend-hobbs-row">
+        <label class="flabel">Hobbs start<input type="number" name="hobbs_start" id="amend-hobbs-start" step="0.01" class="finput"></label>
+        <label class="flabel">Hobbs end<input type="number" name="hobbs_end" id="amend-hobbs-end" step="0.01" class="finput"></label>
+      </div>
+      {% endif %}
+      {% if ac.records_tacho %}
+      <div class="field-row" id="amend-tacho-row">
+        <label class="flabel">Tacho start<input type="number" name="tacho_start" id="amend-tacho-start" step="0.01" class="finput"></label>
+        <label class="flabel">Tacho end<input type="number" name="tacho_end" id="amend-tacho-end" step="0.01" class="finput"></label>
+      </div>
+      {% endif %}
+      {% if ac.records_airswitch %}
+      <div class="field-row" id="amend-as-row">
+        <label class="flabel">Air sw. start<input type="number" name="airswitch_start" id="amend-as-start" step="0.01" class="finput"></label>
+        <label class="flabel">Air sw. end<input type="number" name="airswitch_end" id="amend-as-end" step="0.01" class="finput"></label>
+      </div>
+      {% endif %}
+      <label class="flabel" style="margin-bottom:.8rem;">
+        Reason for amendment <span style="color:#c0392b;">*</span>
+        <input type="text" name="amendment_note" class="finput" placeholder="e.g. Student wrote incorrect value in paper log" required>
+      </label>
+      <button type="submit" class="cbtn-primary">Save amendments</button>
+    </form>
+  </div>
+</div>
+
+<script>
+function openAmend(mleId, hobbsStart, hobbsEnd, tachoStart, tachoEnd, asStart, asEnd) {
+  document.getElementById('amend-mle-id').value = mleId;
+  var set = function(id, val) { var el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('amend-hobbs-start', hobbsStart);
+  set('amend-hobbs-end',   hobbsEnd);
+  set('amend-tacho-start', tachoStart);
+  set('amend-tacho-end',   tachoEnd);
+  set('amend-as-start',    asStart);
+  set('amend-as-end',      asEnd);
+  document.getElementById('amend-modal').hidden = false;
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') document.getElementById('amend-modal').hidden = true;
+});
+</script>
+{% endif %}
+
+{% if saved %}
+<div class="toast no-print" id="saved-toast">Readings amended</div>
+<script>setTimeout(function(){ var t=document.getElementById('saved-toast'); if(t) t.remove(); }, 3000);</script>
+{% endif %}
+
 </body>
 </html>

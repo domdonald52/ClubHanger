@@ -40,7 +40,7 @@ from core.models import (
     Booking, BookingStatus, FlightCompletion, FlightChargeItem, FlightPayment,
     Invoice, InvoiceLineItem, BlockOutType, BlockOut, OccurrenceReport,
     Aerodrome, AerodromeFeeType, MemberCredential, CredentialType,
-    AircraftMaintenanceItem,
+    AircraftMaintenanceItem, LessonNote,
 )
 
 User = get_user_model()
@@ -292,6 +292,12 @@ class Command(BaseCommand):
             self._setup_accounts(club, members, admin_user)
             self._setup_completions(club, aircraft, members, admin_user)
             self._setup_invoices(club, members, admin_user)
+
+        # ── Lesson notes (idempotent — skips if any exist) ────────────────────
+        if LessonNote.objects.filter(booking__club=club).exists():
+            self.stdout.write("  Lesson notes exist — skipping")
+        else:
+            self._setup_lesson_notes(club, members)
 
         # ── Block-outs ─────────────────────────────────────────────────────────
         if BlockOut.objects.filter(club=club).exists():
@@ -1051,6 +1057,101 @@ class Command(BaseCommand):
         self.stdout.write(f"  Maintenance items: {len(items)} across {len(aircraft)} aircraft")
 
     # ── Block-outs ────────────────────────────────────────────────────────────
+
+    def _setup_lesson_notes(self, club, members):
+        instructors = {m.user.username: m.user for m in members if m.role and m.role.name == "Instructor"}
+
+        # Per-student note progressions — exercises, debrief, next plan
+        PROGRESSIONS = [
+            # Early student — first few lessons
+            [
+                (
+                    "Pre-flight inspection walkthrough\nEffects of controls — straight and level\nClimbing and descending turns",
+                    "Showed good awareness during pre-flight. Tendency to over-control in roll during turns — common at this stage. Altitude holding needs work but is improving. Confident communication with me in the cockpit.",
+                    "Consolidate straight and level, climbing/descending turns. Introduce traffic pattern entry and circuit awareness. Review HASELL checks before next lesson.",
+                ),
+                (
+                    "HASELL checks\nTraffic pattern — upwind, crosswind, downwind\nBase and final approach — power-off glide",
+                    "Much better control feel this lesson. Circuit work is coming together — overshooting finals on the first two approaches, then corrected well. HASELL check read from notes — aim to have these memory items by next flight.",
+                    "Continue circuit consolidation. Introduce solo standard — aim for three consistently stable approaches. Pre-solo checks briefing on the ground before we go up.",
+                ),
+                (
+                    "First supervised solo — 3 circuits\nPost-solo debrief",
+                    "Great first solo. Approaches were stable and consistent. Slight float on landing 3 — discussed ground effect and how to manage it. Big milestone achieved — student was understandably nervous beforehand but performed to a high standard once airborne.",
+                    "Continue solo circuit consolidation — aim for 5 solo circuits next lesson before moving on to area solo. Revise emergency procedures (engine failure on take-off) before next dual.",
+                ),
+            ],
+            # Intermediate student — working toward licence
+            [
+                (
+                    "Stall recognition and recovery — power-on and power-off\nIncipient spin entry and recovery\nSteep turns 45°",
+                    "Confident with power-off stalls. Hesitant on power-on stall recovery — discussed the importance of immediate rudder application. Steep turns were accurate within ±100 ft. Good situational awareness throughout.",
+                    "Consolidate steep turns and stall recovery. Introduce forced landing procedure from altitude. Brief on MAYDAY calls.",
+                ),
+                (
+                    "Precautionary landing — field selection and approach\nForced landing from 3000 ft\nPanavia checks",
+                    "Field selection was methodical — good use of wind shadow and slope assessment. Forced landing height judgment was slightly high on first attempt; second was very good. Panavia checks completed without prompting.",
+                    "Navigation exercise — local area 30 nm triangle. Introduce VOR tracking and NDB holds if time permits. File a student flight plan before the lesson.",
+                ),
+                (
+                    "Cross-country navigation — NZWN–NZPM–NZWN\nDiversion exercise en route\nVOR tracking",
+                    "Excellent flight — held headings and altitudes well throughout. Handled the diversion calmly; chose an appropriate alternate and recalculated ETA accurately. VOR tracking solid. Ready to progress to cross-country solo endorsement check.",
+                    "Pre-licence check ride preparation. Review all memory items, emergency procedures, and licence skill test standards. Book the next lesson as a mock test.",
+                ),
+            ],
+            # More advanced — instrument/night work
+            [
+                (
+                    "IMC appreciation — unusual attitudes\nPartial panel — standby instruments only\nRecovery from spiral dive and incipient spin under the hood",
+                    "Handled unusual attitudes well for a first instrument lesson. Partial panel showed tendency to fixate on altimeter — discussed the instrument scan. Good recovery technique once scan was re-established.",
+                    "Continue partial panel flying. Introduce NDB tracking and procedure turns. Revise aerodrome met minima for IFR approaches.",
+                ),
+                (
+                    "NDB non-precision approach — NZWN ILS/NDB Rwy 16\nMissed approach and holding pattern\nNight currency circuits — 4 landings",
+                    "Approach was stabilised to MDA; decision-making on go/no-go was sound. Holding pattern entry was correct but timing drifted slightly on the outbound leg. Night circuits — good lighting awareness, maintained circuit altitude well.",
+                    "Book a full night cross-country to maintain night rating currency. Continue instrument approaches — next lesson: ILS raw data (no flight director). Brief on SIGMET interpretation.",
+                ),
+            ],
+        ]
+
+        # Assign a progression to each student-like member (not instructors, not lapsed)
+        student_usernames = [
+            m.user.username for m in members
+            if m.role and m.role.name not in ("Instructor",) and m.standing == "active"
+        ]
+
+        notes_created = 0
+        for i, username in enumerate(student_usernames):
+            try:
+                student_member = next(m for m in members if m.user.username == username)
+            except StopIteration:
+                continue
+
+            progression = PROGRESSIONS[i % len(PROGRESSIONS)]
+
+            # Find completed dual (instructed) bookings for this student, oldest first
+            dual_bookings = list(
+                Booking.objects.filter(
+                    club=club,
+                    member=student_member,
+                    status=BookingStatus.COMPLETED,
+                    instructor__isnull=False,
+                )
+                .select_related('instructor')
+                .order_by('scheduled_start')[:len(progression)]
+            )
+
+            for booking, (exercises, debrief, next_plan) in zip(dual_bookings, progression):
+                LessonNote.objects.create(
+                    booking=booking,
+                    author=booking.instructor,
+                    exercises_covered=exercises,
+                    debrief_notes=debrief,
+                    next_lesson_plan=next_plan,
+                )
+                notes_created += 1
+
+        self.stdout.write(f"  Lesson notes: {notes_created} created")
 
     def _setup_instructor_credentials(self, club, members):
         today = date.today()

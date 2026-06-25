@@ -3537,6 +3537,23 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
+        elif action == 'waive_charge' and booking.status in ('returned', 'completed') and actor.is_admin:
+            fc = booking.flight_completion
+            if fc and not fc.amount_paid:
+                reason = request.POST.get('waive_reason', '').strip()
+                if not reason:
+                    error = 'A reason is required to waive the charge.'
+                else:
+                    fc.charge_items.all().delete()
+                    fc.charge_waived = True
+                    fc.waive_reason = reason
+                    fc.total_charge = 0
+                    fc.save(update_fields=['charge_waived', 'waive_reason', 'total_charge'])
+                    # Mark booking completed (zero-charge = settled)
+                    Booking.objects.filter(pk=booking.pk).update(status='completed')
+                    booking.refresh_from_db()
+                    success = 'Charge waived.'
+
         is_inline = request.POST.get('inline') == '1' or request.GET.get('inline') == '1'
         if error:
             if is_inline:
@@ -5645,33 +5662,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         elif action == 'delete_maintenance' and actor.is_admin:
             AircraftMaintenanceItem.objects.filter(aircraft=ac, id=request.POST.get('maint_id')).delete()
 
-        elif action == 'add_manual_log_entry' and actor.is_admin:
-            from .models import MaintenanceLogEntry as _MLE
-            from decimal import Decimal as _D
-            entry_date = request.POST.get('entry_date') or timezone.localdate().isoformat()
-            notes = request.POST.get('notes', '').strip()
-            hobbs = request.POST.get('hobbs_reading') or None
-            tacho = request.POST.get('tacho_reading') or None
-            airswitch = request.POST.get('airswitch_reading') or None
-            try:
-                maint_hrs = _D(request.POST.get('maint_hours', '0') or '0')
-            except Exception:
-                maint_hrs = _D('0')
-            # Compute cumulative total from last log entry
-            prev = _MLE.objects.filter(aircraft=ac).order_by('-date', '-id').first()
-            prev_total = prev.maint_hours_total if prev else _D(str(ac.maint_hours_initial or 0))
-            _MLE.objects.create(
-                aircraft=ac,
-                date=entry_date,
-                hobbs_reading=hobbs,
-                tacho_reading=tacho,
-                airswitch_reading=airswitch,
-                maint_hours_flight=maint_hrs,
-                maint_hours_total=prev_total + maint_hrs,
-                notes=notes,
-            )
-            _saved = True
-
         elif action == 'add_aircraft_blockout':
             _create_blockout_from_post(request, club, scope='aircraft', aircraft=ac)
 
@@ -5803,7 +5793,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
 @login_required
 def aircraft_maintenance_log(request, club_slug, aircraft_id):
     import csv as _csv
-    from decimal import Decimal as _D
+    from decimal import Decimal as _D, InvalidOperation
     from django.http import HttpResponse as _HR
 
     club = get_object_or_404(Club, slug=club_slug)
@@ -5814,6 +5804,49 @@ def aircraft_maintenance_log(request, club_slug, aircraft_id):
     if err := require_admin(actor, club, request): return err
 
     ac = get_object_or_404(Aircraft, id=aircraft_id, club=club)
+
+    if request.method == 'POST' and request.POST.get('action') == 'amend_reading':
+        from .models import MaintenanceLogEntry as _MLE
+        mle_id = request.POST.get('mle_id', '').strip()
+        mle = get_object_or_404(_MLE, id=mle_id, aircraft=ac)
+        fc = getattr(mle, 'flight_completion', None)
+
+        def _dec(val):
+            try:
+                s = (val or '').strip()
+                return _D(s) if s else None
+            except InvalidOperation:
+                return None
+
+        # FC fields: both start and end per instrument
+        fc_fields = []
+        if fc:
+            for key in ('hobbs_start', 'hobbs_end', 'tacho_start', 'tacho_end', 'airswitch_start', 'airswitch_end'):
+                v = _dec(request.POST.get(key, ''))
+                if v is not None:
+                    setattr(fc, key, v)
+                    fc_fields.append(key)
+
+        # MLE end readings (MLE only stores end values)
+        mle_fields = []
+        mle_map = {'hobbs_end': 'hobbs_reading', 'tacho_end': 'tacho_reading', 'airswitch_end': 'airswitch_reading'}
+        for post_key, mle_attr in mle_map.items():
+            v = _dec(request.POST.get(post_key, ''))
+            if v is not None:
+                setattr(mle, mle_attr, v)
+                mle_fields.append(mle_attr)
+
+        note = request.POST.get('amendment_note', '').strip()
+        if note:
+            mle.notes = ((mle.notes + '\n') if mle.notes else '') + f'[Amended: {note}]'
+            mle_fields.append('notes')
+
+        if fc and fc_fields:
+            fc.save(update_fields=fc_fields)
+        if mle_fields:
+            mle.save(update_fields=mle_fields)
+
+        return redirect(request.path + '?saved=1')
 
     entries_qs = (
         ac.maint_log
@@ -5850,6 +5883,7 @@ def aircraft_maintenance_log(request, club_slug, aircraft_id):
             flight_hrs = _D(str(as_end)) - _D(str(as_start))
 
         rows.append({
+            'mle_id': e.id,
             'date': e.date,
             'member': member_name,
             'is_manual': fc is None,
@@ -5891,8 +5925,9 @@ def aircraft_maintenance_log(request, club_slug, aircraft_id):
             ])
         return resp
 
+    saved = request.GET.get('saved') == '1'
     return render(request, 'core/aircraft_maintenance_log.html', {
-        'club': club, 'club_member': actor, 'ac': ac, 'rows': rows,
+        'club': club, 'club_member': actor, 'ac': ac, 'rows': rows, 'saved': saved,
     })
 
 
@@ -9219,32 +9254,51 @@ def health_check(request, club_slug):
     else:
         _ok('financial', 'Invoice/FC payment sync')
 
-    # ── 5. Meter hour gaps ───────────────────────────────────────────────────
+    # ── 5. Meter hour gaps (Hobbs + Tacho) ──────────────────────────────────
     from .models import MaintenanceLogEntry
     meter_gaps = []
+    def _gap_text(instrument, ac_reg, gap, departed_at):
+        date_str = departed_at.strftime('%d %b %y') if departed_at else '?'
+        if gap < 0:
+            return f"{ac_reg} {instrument}: overlap of {abs(gap):.2f} hrs — readings go backwards before flight on {date_str}"
+        return f"{ac_reg} {instrument}: {gap:.2f} hrs unaccounted before flight on {date_str}"
+
     for ac in Aircraft.objects.filter(club=club).exclude(status='retired'):
+        log_url = _rev('core:aircraft_maintenance_log', kwargs={'club_slug': club_slug, 'aircraft_id': ac.id})
+        # Hobbs
         fcs = list(
             FlightCompletion.objects
             .filter(booking__aircraft=ac, hobbs_end__isnull=False, hobbs_start__isnull=False)
             .order_by('booking__departed_at')
-            .values('id', 'hobbs_start', 'hobbs_end', 'booking__departed_at', 'booking__id')
+            .values('hobbs_start', 'hobbs_end', 'booking__departed_at')
         )
         for i in range(1, len(fcs)):
-            prev_end = _D(str(fcs[i-1]['hobbs_end']))
-            curr_start = _D(str(fcs[i]['hobbs_start']))
-            gap = curr_start - prev_end
+            gap = _D(str(fcs[i]['hobbs_start'])) - _D(str(fcs[i-1]['hobbs_end']))
             if abs(gap) > _D('0.05'):
                 meter_gaps.append({
-                    'text': (
-                        f"{ac.registration}: gap of {gap:+.2f} hrs before flight on "
-                        f"{fcs[i]['booking__departed_at'].strftime('%d %b %y') if fcs[i]['booking__departed_at'] else '?'}"
-                    ),
-                    'url': _rev('core:manage_aircraft_detail', kwargs={'club_slug': club_slug, 'aircraft_id': ac.id}) + '?tab=maintenance',
-                    'link_label': 'Log entry →',
+                    'text': _gap_text('Hobbs', ac.registration, gap, fcs[i]['booking__departed_at']),
+                    'url': log_url,
+                    'link_label': 'View log →',
                 })
+        # Tacho
+        fcs_t = list(
+            FlightCompletion.objects
+            .filter(booking__aircraft=ac, tacho_end__isnull=False, tacho_start__isnull=False)
+            .order_by('booking__departed_at')
+            .values('tacho_start', 'tacho_end', 'booking__departed_at')
+        )
+        for i in range(1, len(fcs_t)):
+            gap = _D(str(fcs_t[i]['tacho_start'])) - _D(str(fcs_t[i-1]['tacho_end']))
+            if abs(gap) > _D('0.05'):
+                meter_gaps.append({
+                    'text': _gap_text('Tacho', ac.registration, gap, fcs_t[i]['booking__departed_at']),
+                    'url': log_url,
+                    'link_label': 'View log →',
+                })
+
     if meter_gaps:
         _issue('operations', 'warn',
-               f"{len(meter_gaps)} hobbs gap(s) detected between consecutive flights",
+               f"{len(meter_gaps)} meter reading issue(s) detected between consecutive flights",
                rows=meter_gaps)
     else:
         _ok('operations', 'Meter readings')
