@@ -7048,6 +7048,12 @@ def invoice_detail(request, club_slug, invoice_id):
     config = get_config(club)
     error = success = ''
 
+    # Auto-issue draft membership invoices — they should never sit in draft
+    if request.method == 'GET' and invoice.status == 'draft' and invoice.subscription_expiry_date:
+        invoice.status = 'sent'
+        invoice.sent_at = timezone.now()
+        invoice.save(update_fields=['status', 'sent_at'])
+
     _is_inline = request.GET.get('inline') == '1'
     _stay_url  = request.path + ('?inline=1&saved=1' if _is_inline else '?saved=1')
 

@@ -20,8 +20,6 @@ body {
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: .6rem;
   padding: .65rem 1.2rem;
   background: #f3f4f6;
   border-bottom: 1px solid #d1d5db;
@@ -29,6 +27,29 @@ body {
   top: 0;
   z-index: 10;
 }
+.toolbar-actions {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: .6rem;
+}
+.toolbar .btn-close, a.btn-close {
+  background: none !important;
+  border: 1.5px solid #d1d5db !important;
+  border-radius: 5px;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #374151;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.toolbar .btn-close:hover, a.btn-close:hover { background: #e5e7eb !important; }
 .toolbar button, .action-bar button, .action-bar .btn-email {
   display: inline-flex;
   align-items: center;
@@ -74,7 +95,7 @@ body {
 
 /* ── A4 paper ───────────────────────────────────────────── */
 .paper-wrap {
-  padding: 1.5rem 1rem 6rem;
+  padding: 1.5rem 1rem 2rem;
 }
 .paper {
   background: #fff;
@@ -347,20 +368,44 @@ table.items tbody tr:last-child td { border-bottom: none; }
 </head>
 <body>
 
-<!-- ── Top toolbar: Close only (hidden in print) ── -->
+<!-- ── Top toolbar: Email + Print centred, × top-right (hidden in print) ── -->
 <div class="toolbar">
+  <div class="toolbar-actions">
+    {% if invoice.status == 'draft' %}
+    <form method="post" action="{% url 'core:invoice_detail' club.slug invoice.id %}" style="margin:0;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="mark_sent">
+      <input type="hidden" name="next_url" value="{% url 'core:invoice_print' club.slug invoice.id %}">
+      <button type="submit" class="btn-email">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+        Email to {{ invoice.member.user.get_short_name }}
+      </button>
+    </form>
+    {% elif invoice.status == 'sent' or invoice.status == 'paid' %}
+    <form method="post" action="{% url 'core:invoice_detail' club.slug invoice.id %}" style="margin:0;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="send_copy">
+      <input type="hidden" name="next_url" value="{% url 'core:invoice_print' club.slug invoice.id %}">
+      <button type="submit" class="btn-email">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
+        Email to {{ invoice.member.user.get_short_name }}
+      </button>
+    </form>
+    {% endif %}
+    <button class="btn-print" onclick="window.print()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+  </div>
   {% if back_url %}
-  <a href="{{ back_url }}" class="btn-back">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    Back
+  <a href="{{ back_url }}" class="btn-close" title="Close">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
   </a>
   {% else %}
-  <button class="btn-back" onclick="window.close();">
+  <button class="btn-close" onclick="window.close();" title="Close">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    Close
   </button>
   {% endif %}
-  <span style="font-size:.8rem;color:#6b7280;font-weight:600;">{{ invoice.display_number }}</span>
 </div>
 
 <!-- ── A4 paper ── -->
@@ -540,34 +585,6 @@ table.items tbody tr:last-child td { border-bottom: none; }
 </div><!-- /paper -->
 </div><!-- /paper-wrap -->
 
-<!-- ── Bottom action bar: Email + Print (hidden in print) ── -->
-<div class="action-bar">
-  {% if invoice.status == 'draft' %}
-  <form method="post" action="{% url 'core:invoice_detail' club.slug invoice.id %}" style="margin:0;">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="mark_sent">
-    <input type="hidden" name="next_url" value="{% url 'core:invoice_print' club.slug invoice.id %}">
-    <button type="submit" class="btn-email">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
-      Email to {{ invoice.member.user.get_short_name }}
-    </button>
-  </form>
-  {% elif invoice.status == 'sent' or invoice.status == 'paid' %}
-  <form method="post" action="{% url 'core:invoice_detail' club.slug invoice.id %}" style="margin:0;">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="send_copy">
-    <input type="hidden" name="next_url" value="{% url 'core:invoice_print' club.slug invoice.id %}">
-    <button type="submit" class="btn-email">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><polyline points="2,4 12,13 22,4"/></svg>
-      Email to {{ invoice.member.user.get_short_name }}{% if invoice.sent_at %} (sent {{ invoice.sent_at|date:"j M" }}){% endif %}
-    </button>
-  </form>
-  {% endif %}
-  <button class="btn-print" onclick="window.print()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-    Print
-  </button>
-</div>
 
 </body>
 </html>

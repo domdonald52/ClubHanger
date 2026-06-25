@@ -69,24 +69,20 @@ def theme(request):
                 ctx['open_actions_count'] = 0
             if cm.can_access_manage:
                 try:
-                    from .models import Booking, AircraftMaintenanceItem, MemberCredential, MaintenanceUrgency
+                    from .models import Booking, AircraftMaintenanceItem, MemberCredential, MaintenanceUrgency, Invoice
                     from django.db.models import Q, Exists, OuterRef
-                    from datetime import date
+                    from datetime import date, timedelta
+                    from django.utils import timezone as _tz
                     _today = date.today()
                     _n = 0
+                    # Unpaid completed flights (no invoice)
                     _n += Booking.objects.filter(
                         club=club, status='completed',
-                        flight_completion__paid_at__isnull=True,
-                        flight_completion__total_charge__gt=0,
-                    ).count()
-                    _n += Booking.objects.filter(
-                        club=club, scheduled_start__date__gte=_today,
-                    ).exclude(status__in=['cancelled', 'completed']).filter(
-                        Q(blockout_conflict=True) |
-                        Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
-                        Q(aircraft__status='retired')
-                    ).count()
-                    # Booking-vs-booking aircraft and instructor clashes
+                        flight_completions__paid_at__isnull=True,
+                        flight_completions__total_charge__gt=0,
+                        flight_completions__invoices__isnull=True,
+                    ).distinct().count()
+                    # Booking conflicts — build one deduped set of IDs (mirrors manage_exceptions)
                     _future = Booking.objects.filter(
                         club=club, status__in=['pending', 'confirmed'],
                         scheduled_start__date__gte=_today)
@@ -111,11 +107,70 @@ def theme(request):
                         .annotate(_cl=Exists(_in_sub)).filter(_cl=True)
                         .values_list('id', flat=True)
                     )
-                    _n += len(_clash_ids)
+                    _conf_ids = set(
+                        Booking.objects.filter(
+                            club=club, scheduled_start__date__gte=_today,
+                        ).exclude(status__in=['cancelled', 'completed']).filter(
+                            Q(blockout_conflict=True) |
+                            Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
+                            Q(member__standing='active',
+                              member__subscription_expires__isnull=False,
+                              member__subscription_expires__lt=_today) |
+                            Q(aircraft__status='retired') |
+                            Q(id__in=_clash_ids)
+                        ).values_list('id', flat=True)
+                    )
+                    _n += len(_conf_ids)
+                    # Instructor off-roster — only bookings not already counted above
+                    from .models import InstructorAvailability as _IA
+                    _roster_uids = set(
+                        ClubMember.objects.filter(club=club, is_on_instructor_roster=True)
+                        .values_list('user_id', flat=True)
+                    )
+                    _av_by_user = {}
+                    for _av in _IA.objects.filter(club_member__club=club).select_related('club_member'):
+                        _av_by_user.setdefault(_av.club_member.user_id, []).append(_av)
+                    _instr_bks = list(
+                        Booking.objects.filter(
+                            club=club, instructor__isnull=False,
+                            scheduled_start__date__gte=_today,
+                        ).exclude(status__in=['cancelled', 'completed'])
+                        .exclude(id__in=_conf_ids)
+                        .values_list('id', 'instructor_id', 'scheduled_start')
+                    )
+                    _n += sum(
+                        1 for _, _uid, _start in _instr_bks
+                        if _uid in _roster_uids and (
+                            not _av_by_user.get(_uid) or
+                            not any(w.applies_on(_start.date()) for w in _av_by_user[_uid])
+                        )
+                    )
+                    # Maintenance items (amber/red)
                     _n += AircraftMaintenanceItem.objects.filter(
                         aircraft__club=club, aircraft__status='online',
                         urgency__in=[MaintenanceUrgency.AMBER, MaintenanceUrgency.RED],
                     ).count()
+                    # Unpaid invoices (draft or sent)
+                    _n += Invoice.objects.filter(
+                        club=club, status__in=(Invoice.STATUS_DRAFT, Invoice.STATUS_SENT),
+                    ).count()
+                    # Overdue returns (departed >24h)
+                    _n += Booking.objects.filter(
+                        club=club, status='departed',
+                        departed_at__lt=_tz.now() - timedelta(hours=24),
+                    ).count()
+                    # Lapsed credentials for members with upcoming bookings
+                    _fut_user_ids = (
+                        Booking.objects
+                        .filter(club=club, scheduled_start__date__gte=_today)
+                        .exclude(status__in=['cancelled', 'completed'])
+                        .values_list('member__user_id', flat=True).distinct()
+                    )
+                    _n += (
+                        MemberCredential.objects
+                        .filter(member_id__in=_fut_user_ids, expiry_date__lt=_today)
+                        .values('member_id').distinct().count()
+                    )
                     ctx['exceptions_count'] = _n
                 except Exception:
                     ctx['exceptions_count'] = 0

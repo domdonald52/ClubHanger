@@ -77,8 +77,8 @@
         .nav-section-items { overflow: hidden; max-height: 400px; transition: max-height .22s ease; }
         .nav-section.closed .nav-section-items { max-height: 0; }
         .nav-toggle-end { display:inline-flex; align-items:center; gap:5px; }
-        .nav-alert-dot { display:none; width:7px; height:7px; background:#e53e3e; border-radius:50%; flex-shrink:0; }
-        .nav-section.closed .nav-alert-dot { display:block; }
+        .nav-alert-dot { display:none; min-width:16px; height:16px; padding:0 4px; background:#e53e3e; border-radius:8px; flex-shrink:0; font-size:.65rem; font-weight:700; color:#fff; line-height:16px; text-align:center; }
+        .nav-section.closed .nav-alert-dot { display:inline-flex; align-items:center; justify-content:center; }
         .user-info { font-size: .8rem; color: rgba(255,255,255,.75); display: flex; align-items: center; gap: .55rem; white-space: nowrap; }
         .ch-brand { display: flex; align-items: center; flex-shrink: 0; }
         @media (max-width: 600px) { .ch-brand { display: none; } }
@@ -783,6 +783,7 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
       var chev = toggle.querySelector('.chev');
       var dot = document.createElement('span');
       dot.className = 'nav-alert-dot';
+      dot.textContent = total;
       dot.title = total + ' item' + (total > 1 ? 's' : '') + ' need attention';
       var end = document.createElement('span');
       end.className = 'nav-toggle-end';

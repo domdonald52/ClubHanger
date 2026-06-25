@@ -23,7 +23,7 @@
       {% else %}
       <span class="inv-badge inv-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
       {% endif %}
-      <a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn-sm cbtn-icon" title="Print / PDF"><i class="ti ti-printer"></i></a>
+      <a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn-sm cbtn-icon" title="Preview / print / email"><i class="ti ti-eye"></i></a>
       {% if invoice.flight_completion %}
       <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}" class="cbtn" data-overlay data-overlay-wide>View booking</a>
       {% endif %}
@@ -163,8 +163,8 @@
 
     {% if error %}<div class="notice err" style="margin:.9rem .9rem 0;">{{ error }}</div>{% endif %}
 
-    {% if invoice.status == 'draft' %}
-    <!-- Draft: description editable; two submit buttons -->
+    {% if invoice.status == 'draft' and not invoice.subscription_expiry_date %}
+    <!-- Draft: description editable; two submit buttons (flight invoices only) -->
     <form method="post" style="padding:.9rem;">
       {% csrf_token %}
       <div style="margin-bottom:1rem;">
