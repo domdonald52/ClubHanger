@@ -6,7 +6,7 @@
 
 <p style="margin:0 0 1rem;">
   {% if invite.invited_by %}{{ invite.invited_by.get_full_name|default:invite.invited_by.email }} has{% else %}An admin has{% endif %}
-  invited you to join <strong>{{ invite.club.name }}</strong> on ClubHangar — the club's booking and membership system.
+  invited you to join <strong>{{ invite.club.name }}</strong> on Club Hangar — the club's booking and membership system.
 </p>
 
 {% if invite.role %}

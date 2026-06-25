@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="{{ club.name }}">
 <meta name="theme-color" content="{{ theme.banner|default:'#1d3a5f' }}">
 <meta name="vapid-public-key" content="{{ vapid_public_key }}">
-<title>{% block title %}ClubHangar{% endblock %}</title>
+<title>{% block title %}Club Hangar{% endblock %}</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
 {% if theme.logo %}
 <link rel="icon" href="{{ theme.logo.url }}" type="image/png">
@@ -179,11 +179,11 @@
   {% if theme.logo %}
   <img src="{{ theme.logo.url }}" alt="{{ club.name }}" width="72" height="20" fetchpriority="high" style="flex-shrink:0;height:20px;width:auto;max-width:72px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.1rem;">
   {% else %}
-  <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="ClubHangar" style="flex-shrink:0;height:22px;width:22px;object-fit:contain;pointer-events:none;margin-right:.2rem;">
+  <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="Club Hangar" style="flex-shrink:0;height:22px;width:22px;object-fit:contain;pointer-events:none;margin-right:.2rem;">
   {% endif %}
   {% endblock %}
   {% block app_bar %}
-  <span class="app-bar-title">{% block page_title %}ClubHangar{% endblock %}</span>
+  <span class="app-bar-title">{% block page_title %}Club Hangar{% endblock %}</span>
   {% endblock %}
   {% block app_bar_right %}
   <a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" style="position:relative;padding:.3rem .1rem .3rem .4rem;" title="Notifications">

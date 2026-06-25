@@ -168,7 +168,7 @@
     <form method="post" style="padding:.9rem;">
       {% csrf_token %}
       <div style="margin-bottom:1rem;">
-        <label class="flabel" style="margin:0;">Flight description <span style="font-weight:400;color:#8a93a0;">(shown on invoice)</span>
+        <label class="flabel" style="margin:0;">Description <span style="font-weight:400;color:#8a93a0;">(shown on invoice)</span>
           <input type="text" name="description" value="{{ invoice.description }}" class="finput">
         </label>
       </div>

@@ -1,44 +1,54 @@
-{% extends "core/base.html" %}
-{% block title %}Maintenance log · {{ ac.registration }} · {{ club.name }}{% endblock %}
-
-{% block content %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Maintenance log · {{ ac.registration }} · {{ club.name }}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
 <style>
-.mlog-wrap{max-width:1300px;margin:0 auto;padding:2rem;}
-.mlog-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
-.mlog-actions{display:flex;gap:.5rem;flex-shrink:0;}
-.mlog-table{width:100%;border-collapse:collapse;font-size:.82rem;}
-.mlog-table th{padding:.38rem .55rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.73rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;white-space:nowrap;}
-.mlog-table td{padding:.42rem .55rem;border-bottom:1px solid #f0f2f4;vertical-align:top;}
-.mlog-table tr:last-child td{border-bottom:none;}
-.mlog-table tr.manual-row td{background:#fffbeb;}
-.gap-pos{color:#c0392b;font-weight:600;}
-.gap-neg{color:#2563eb;font-weight:600;}
-.manual-badge{display:inline-block;font-size:.7rem;font-weight:600;background:#fff3cd;color:#856404;border:1px solid #fcd34d;border-radius:4px;padding:.1rem .35rem;margin-bottom:.15rem;}
-.mlog-meta{font-size:.82rem;color:#5b6573;margin-bottom:.2rem;}
-.col-sep{border-left:1px solid #e3e6ea;}
-@media print {
-  .no-print{display:none!important;}
-  .mlog-wrap{padding:.5rem;}
-  .mlog-table{font-size:.72rem;}
-  .mlog-table th,.mlog-table td{padding:.25rem .35rem;}
-  body{font-size:11px;}
-}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:.88rem;color:#1f2933;background:#f4f6f9;}
+  .mlog-wrap{max-width:1300px;margin:0 auto;padding:2rem;}
+  .mlog-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+  .mlog-actions{display:flex;gap:.5rem;flex-shrink:0;}
+  .mlog-title{font-size:1.3rem;font-weight:700;margin-bottom:.2rem;}
+  .mlog-meta{font-size:.82rem;color:#5b6573;margin-bottom:.2rem;}
+  .mlog-crumb{font-size:.8rem;color:#8a93a0;margin-bottom:.25rem;}
+  .mlog-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+  .mlog-table th{padding:.38rem .55rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.73rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;white-space:nowrap;}
+  .mlog-table td{padding:.42rem .55rem;border-bottom:1px solid #f0f2f4;vertical-align:top;}
+  .mlog-table tr:last-child td{border-bottom:none;}
+  .mlog-table tr.manual-row td{background:#fffbeb;}
+  .gap-pos{color:#c0392b;font-weight:600;}
+  .gap-neg{color:#2563eb;font-weight:600;}
+  .manual-badge{display:inline-block;font-size:.7rem;font-weight:600;background:#fff3cd;color:#856404;border:1px solid #fcd34d;border-radius:4px;padding:.1rem .35rem;margin-bottom:.15rem;}
+  .col-sep{border-left:1px solid #e3e6ea;}
+  .cbtn-sm{padding:.45rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;height:2.15rem;box-sizing:border-box;}
+  .cbtn-sm:hover{background:#f3f5f7;}
+  .cbtn-icon{padding:0!important;width:34px!important;height:34px!important;display:inline-flex!important;align-items:center;justify-content:center;font-size:1.1rem;}
+  @media print {
+    .no-print{display:none!important;}
+    body{background:#fff;font-size:11px;}
+    .mlog-wrap{padding:.5rem;}
+    .mlog-table{font-size:.72rem;}
+    .mlog-table th,.mlog-table td{padding:.25rem .35rem;}
+  }
 </style>
-
+</head>
+<body>
 <div class="mlog-wrap">
   <div class="mlog-hdr">
     <div>
-      <div style="font-size:.8rem;color:#8a93a0;margin-bottom:.25rem;">
-        <span style="color:#8a93a0;">Aircraft › {{ ac.registration }}</span>
-      </div>
-      <h1 style="margin:0 0 .2rem;font-size:1.3rem;">{{ ac.registration }} — Maintenance log</h1>
+      <div class="mlog-crumb">Aircraft › {{ ac.registration }}</div>
+      <div class="mlog-title">{{ ac.registration }} — Maintenance log</div>
       {% if ac.aircraft_type %}<div class="mlog-meta">{{ ac.aircraft_type.name }}{% if ac.serial_number %} · s/n {{ ac.serial_number }}{% endif %}</div>{% endif %}
       <div class="mlog-meta">{{ rows|length }} entr{{ rows|length|pluralize:"y,ies" }} · {{ club.name }}</div>
     </div>
     <div class="mlog-actions no-print">
-      <a href="?fmt=csv" class="cbtn-sm">↓ CSV</a>
-      <button onclick="window.print()" class="cbtn-sm">⎙ Print</button>
-      <button onclick="window.close()" class="cbtn-sm">✕ Close</button>
+      <a href="?fmt=csv" class="cbtn-sm cbtn-icon" title="Download CSV"><i class="ti ti-download"></i></a>
+      <button onclick="window.print()" class="cbtn-sm cbtn-icon" title="Print"><i class="ti ti-printer"></i></button>
+      <button onclick="window.close()" class="cbtn-sm cbtn-icon" title="Close"><i class="ti ti-x"></i></button>
     </div>
   </div>
 
@@ -97,4 +107,5 @@
   <p style="color:#8a93a0;">No log entries yet.</p>
   {% endif %}
 </div>
-{% endblock %}
+</body>
+</html>

@@ -115,7 +115,7 @@
         </label>
         <div style="display:flex;gap:.4rem;">
           <button type="submit" class="btn">Save</button>
-          <button type="button" class="cbtn" onclick="document.getElementById('add-pax-form').hidden=true">✕ Close</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-pax-form').hidden=true"><i class="ti ti-x"></i> Close</button>
         </div>
       </form>
     </div>
@@ -129,10 +129,10 @@
           <td>{{ fp.name }}</td>
           <td style="color:#8a93a0;">{{ fp.phone }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;" data-confirm="Remove {{ fp.name }}?">{% csrf_token %}
+            <form method="post" style="display:contents;" data-confirm="Remove {{ fp.name }}?">{% csrf_token %}
               <input type="hidden" name="action" value="delete_frequent_passenger">
               <input type="hidden" name="fp_id" value="{{ fp.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Remove</button>
+              <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Remove"><i class="ti ti-user-minus"></i></button>
             </form>
           </td>
         </tr>
@@ -176,7 +176,7 @@
         <label class="flabel">Subscription expires
           <div style="display:flex;gap:.4rem;align-items:center;">
             <input type="date" name="subscription_expires" id="sub-exp-input" value="{{ member.subscription_expires|date:'Y-m-d' }}" class="finput" style="flex:1;">
-            <button type="button" class="cbtn-sm" style="white-space:nowrap;flex-shrink:0;" title="Set to end of current financial year ({{ next_fy_end|date:'j M Y' }})" onclick="document.getElementById('sub-exp-input').value='{{ next_fy_end|date:'Y-m-d' }}'">FY end ({{ next_fy_end|date:"j M" }})</button>
+            <button type="button" class="cbtn-sm" style="white-space:nowrap;flex-shrink:0;" title="Set to {{ fy_end|date:'j M Y' }} — end of current financial year" onclick="document.getElementById('sub-exp-input').value='{{ fy_end|date:'Y-m-d' }}'">{{ fy_label }} end</button>
           </div>
         </label>
         <label class="flabel">Last renewed<input type="date" value="{{ member.last_renewed|date:'Y-m-d' }}" class="finput" disabled style="opacity:.5;"></label>
@@ -248,13 +248,13 @@
           {% if club_member.is_admin or club_member.is_instructor %}
           <td style="text-align:right;white-space:nowrap;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-xs"
-                      onclick="openEditCred({{ c.id }},{{ c.credential_type_id }},'{{ c.name|escapejs }}','{{ c.certificate_number|escapejs }}','{{ c.issue_date|default:'' }}','{{ c.expiry_date|default:'' }}','{{ c.notes|escapejs }}',{{ c.aircraft_type_id|default:'null' }})">Edit</button>
-              <form method="post" style="display:inline;" data-confirm="Delete this credential?">
+              <button type="button" class="cbtn-xs cbtn-icon" title="Edit"
+                      onclick="openEditCred({{ c.id }},{{ c.credential_type_id }},'{{ c.name|escapejs }}','{{ c.certificate_number|escapejs }}','{{ c.issue_date|default:'' }}','{{ c.expiry_date|default:'' }}','{{ c.notes|escapejs }}',{{ c.aircraft_type_id|default:'null' }})"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" data-confirm="Delete this credential?">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_credential">
                 <input type="hidden" name="cred_id" value="{{ c.id }}">
-                <button type="submit" class="cbtn-xs cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-xs cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
           </td>
@@ -315,7 +315,7 @@
           <input type="file" name="evidence" accept="image/*,.pdf" class="finput">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true">✕ Close</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Add credential</button>
         </div>
@@ -369,7 +369,7 @@
           <input type="file" name="evidence" accept="image/*,.pdf" class="finput">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('edit-cred-modal').hidden=true">✕ Close</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('edit-cred-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Save</button>
         </div>
@@ -398,7 +398,7 @@
           <textarea name="notes" class="finput" rows="2" placeholder="e.g. Pro-rata from June" style="resize:vertical;"></textarea>
         </label>
         <div class="modal-actions">
-          <button type="submit" class="cbtn-add">↗ Generate &amp; send</button>
+          <button type="submit" class="cbtn primary">Generate invoice</button>
           <button type="button" class="cbtn" onclick="document.getElementById('sub-inv-modal').hidden=true">Cancel</button>
         </div>
       </form>
@@ -815,19 +815,19 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
       <td style="font-size:.81rem;color:#5b6573;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ note.exercises_covered|truncatechars:55 }}</td>
       <td style="white-space:nowrap;text-align:right;">
         <div style="display:inline-flex;gap:.3rem;">
-          <a href="{% url 'core:lesson_note_print' club.slug note.id %}" target="_blank" class="cbtn-sm">Print</a>
-          <form method="post" style="display:inline;" data-confirm="Email this note to {{ note.booking.member.user.email }}?">
+          <a href="{% url 'core:lesson_note_print' club.slug note.id %}" target="_blank" class="cbtn-sm cbtn-icon" title="Print"><i class="ti ti-printer"></i></a>
+          <form method="post" style="display:contents;" data-confirm="Email this note to {{ note.booking.member.user.email }}?">
             {% csrf_token %}
             <input type="hidden" name="action" value="email_lesson_note">
             <input type="hidden" name="note_id" value="{{ note.id }}">
-            <button type="submit" class="cbtn-sm">Email</button>
+            <button type="submit" class="cbtn-sm cbtn-icon" title="Email"><i class="ti ti-mail"></i></button>
           </form>
-          <a href="?edit_note={{ note.id }}#training" class="cbtn-sm">Edit</a>
-          <form method="post" style="display:inline;" data-confirm="Delete this lesson note?">
+          <a href="?edit_note={{ note.id }}#training" class="cbtn-sm cbtn-icon" title="Edit"><i class="ti ti-pencil"></i></a>
+          <form method="post" style="display:contents;" data-confirm="Delete this lesson note?">
             {% csrf_token %}
             <input type="hidden" name="action" value="delete_lesson_note">
             <input type="hidden" name="note_id" value="{{ note.id }}">
-            <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+            <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
           </form>
         </div>
       </td>

@@ -37,7 +37,7 @@
         </td>
         <td style="text-align:right;font-weight:600;">${{ fc.total_charge|currency }}</td>
         <td style="text-align:right;">
-          <a href="{% url 'core:booking_detail' club.slug fc.booking.id %}" class="row-action-btn">Process →</a>
+          <a href="{% url 'core:booking_detail' club.slug fc.booking.id %}" class="cbtn-sm cbtn-icon" title="Process charges" data-overlay><i class="ti ti-chevron-right"></i></a>
         </td>
       </tr>
       {% endfor %}

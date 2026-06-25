@@ -2,20 +2,20 @@
 <div class="pi-wrap">
   <div class="pi-header">
     <div class="pi-title">{% if request.GET.back_label %}<a href="{{ request.GET.back }}" class="crumb-link" data-close-overlay>{{ request.GET.back_label }}</a><span class="crumb-sep"> ›</span> {% endif %}<span class="crumb-cur">{% autoescape off %}{% block inline_title %}{% endblock %}{% endautoescape %}</span></div>
-    <button class="pi-close" data-close-overlay>✕ Close</button>
+    <button class="pi-close" data-close-overlay title="Close"><i class="ti ti-x"></i></button>
   </div>
   <div class="pi-body">{% block content %}{% endblock %}</div>
 </div>
 <style>
   /* ── Overlay chrome ── */
-  .pi-wrap{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2933;}
+  .pi-wrap{font-family:var(--font);color:#1f2933;}
   .pi-header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;padding:.85rem 1.2rem;border-bottom:1px solid #eef1f4;background:#fafbfc;position:sticky;top:0;z-index:10;border-radius:10px 10px 0 0;}
   .pi-title{font-size:.82rem;font-weight:500;margin:0;color:#8a93a0;display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;}
   .pi-title .crumb-cur{color:#1f2933;font-weight:650;}
   .pi-title .crumb-sep{opacity:.5;}
   .pi-title .crumb-link{color:#8a93a0;text-decoration:none;}
   .pi-title .crumb-link:hover{color:#1f2933;text-decoration:none;}
-  .pi-close{background:none;border:1px solid #d6dae0;border-radius:6px;padding:.28rem .6rem;cursor:pointer;font-size:.8rem;color:#5b6573;display:flex;align-items:center;gap:.3rem;flex-shrink:0;}
+  .pi-close{background:none;border:1px solid #d6dae0;border-radius:6px;padding:0;width:28px;height:28px;cursor:pointer;font-size:1rem;color:#5b6573;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
   .pi-close:hover{background:#f3f5f7;}
   .pi-body{padding:0 0 1rem;}
   .pi-body .back-link{display:none!important;}
@@ -25,6 +25,7 @@
   .pi-wrap{
     --primary:{{ theme.primary|default:'#2f7dd1' }};--banner:#1f2933;
     --dual-accent:{{ theme.dual_accent|default:'#1D9E75' }};
+    --font:{{ theme.font_family|default:"system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif"|safe }};
   }
   .stab-bar{display:flex;gap:2px;margin-bottom:1.4rem;border-bottom:2px solid #e3e6ea;flex-wrap:wrap;}
   .stab-btn{padding:.55rem 1.1rem;border:none;background:none;cursor:pointer;font-size:.9rem;font-weight:500;font-family:inherit;color:#5b6573;border-bottom:2px solid transparent;margin-bottom:-2px;border-radius:6px 6px 0 0;transition:color .15s;}
@@ -47,7 +48,8 @@
   .tog-sw input:checked+.tog-track::after{transform:translateX(16px);}
   .sh2{font-size:1rem;font-weight:650;margin:.4rem 0 .7rem;color:#1f2933;}
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
+  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;height:2.15rem;line-height:1.2;}
+  textarea.finput{height:auto;}
   .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
   .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:.8rem;}
   .notice.ok{background:#eaf6ec;color:#216c2a;}
@@ -61,13 +63,14 @@
   .cbtn.danger:hover{filter:brightness(1.08);background:#d64545;text-decoration:none;}
   .cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-block;}
   .cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);text-decoration:none;}
-  .cbtn-sm{padding:.22rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;}
+  .cbtn-sm{padding:.45rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;height:2.15rem;box-sizing:border-box;}
   .cbtn-sm:hover{background:#f3f5f7;text-decoration:none;}
   .cbtn-sm.active{background:color-mix(in srgb,var(--primary) 10%,#fff);border-color:var(--primary);color:var(--primary);}
   .cbtn-sm.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
   .cbtn-sm.primary:hover{filter:brightness(1.08);background:var(--primary);text-decoration:none;}
   .cbtn-danger{border-color:#fca5a5;color:#c0392b;}
   .cbtn-danger:hover{background:#fff0f0;text-decoration:none;}
+  .cbtn-icon{padding:0!important;width:26px;height:26px;display:inline-flex!important;align-items:center;justify-content:center;font-size:.9rem;}
   .cbtn-warn{border-color:#fcd34d;color:#92400e;background:#fffbeb;}
   .cbtn-warn:hover{background:#fef3c7;text-decoration:none;}
   .btn{padding:.42rem .9rem;border:none;border-radius:7px;cursor:pointer;font-size:.85rem;font-weight:500;font-family:inherit;background:var(--primary);color:#fff;display:inline-block;text-decoration:none;transition:filter .15s;}

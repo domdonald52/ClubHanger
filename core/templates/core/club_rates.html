@@ -36,11 +36,11 @@
             {% if r.aircraft.hire_includes_fuel %}Wet{% else %}Dry{% endif %}
           </td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;" data-confirm="Delete this rate?">
+            <form method="post" style="display:contents;" data-confirm="Delete this rate?">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_hire_rate">
               <input type="hidden" name="rate_id" value="{{ r.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+              <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
             </form>
           </td>
         </tr>

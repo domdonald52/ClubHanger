@@ -194,7 +194,10 @@
 <!-- Add webcam modal -->
 <div id="add-wc-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(520px,95vw);">
-    <h2>Add webcam</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Add webcam</h2>
+      <button type="button" class="pi-close" id="add-wc-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_webcam">
@@ -210,9 +213,7 @@
       <label class="flabel" style="margin-top:.6rem;">Description <span style="font-weight:400;color:#8a93a0;">(optional)</span>
         <input type="text" name="description" class="finput" placeholder="e.g. Remutaka Pass — east approach">
       </label>
-      <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="add-wc-cancel">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Add</button>
       </div>
     </form>
@@ -240,7 +241,10 @@
 <!-- Edit webcam modal -->
 <div id="edit-wc-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(520px,95vw);">
-    <h2>Edit webcam</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Edit webcam</h2>
+      <button type="button" class="pi-close" id="ewc-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="edit_webcam">
@@ -257,9 +261,7 @@
       <label class="flabel" style="margin-top:.6rem;">Description
         <input type="text" name="description" id="ewc-desc" class="finput">
       </label>
-      <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="ewc-cancel">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
     </form>

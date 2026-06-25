@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Join {{ club.name }} — ClubHangar</title>
+<title>Join {{ club.name }} — Club Hangar</title>
 {% load static %}
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
@@ -36,9 +36,9 @@
 <body>
 <div class="card">
   <div class="brand">
-    <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="ClubHangar">
+    <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="Club Hangar">
     <div>
-      <div class="brand-text">ClubHangar</div>
+      <div class="brand-text">Club Hangar</div>
       <div class="brand-sub">FLY · LOG · MANAGE</div>
     </div>
   </div>
@@ -79,7 +79,7 @@
 
   {% elif state == 'create' %}
     <h1>Join {{ club.name }}</h1>
-    <p class="club-name" style="margin-bottom:1.2rem;">Create your ClubHangar account to get started.</p>
+    <p class="club-name" style="margin-bottom:1.2rem;">Create your Club Hangar account to get started.</p>
     {% if invite.role %}
     <span class="badge">Role: {{ invite.role.name }}</span>
     {% endif %}

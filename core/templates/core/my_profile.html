@@ -352,7 +352,7 @@
       <td>{{ a.report.occurrence_type.name }}</td>
       <td>{{ a.description }}</td>
       <td style="color:#8a93a0;font-size:.83rem;">{% if a.due_date %}{{ a.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
-      <td><a href="{% url 'core:occurrence_detail' club.slug a.report_id %}" class="cbtn-sm" data-overlay>View</a></td>
+      <td><a href="{% url 'core:occurrence_detail' club.slug a.report_id %}" class="cbtn-sm cbtn-icon" title="View" data-overlay><i class="ti ti-eye"></i></a></td>
     </tr>
     {% endfor %}
     </tbody>

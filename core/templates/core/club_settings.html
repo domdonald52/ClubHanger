@@ -108,7 +108,7 @@
                     onclick="showAppConfirm('Remove the app banner image?', function(){ document.getElementById('remove-app-banner-form').submit(); })">Remove</button>
             {% endif %}
           </div>
-          <div style="font-size:.73rem;color:#8a93a0;margin-top:.4rem;">Landscape, ~3:1 ratio (e.g. 1200×400px). Falls back to the ClubHangar default if not set.</div>
+          <div style="font-size:.73rem;color:#8a93a0;margin-top:.4rem;">Landscape, ~3:1 ratio (e.g. 1200×400px). Falls back to the Club Hangar default if not set.</div>
         </div>
 
         <!-- Club name -->
@@ -478,11 +478,11 @@
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditFt({{ ft.id }},'{{ ft.name }}')">Edit</button>
-              <form method="post" style="display:inline;" data-confirm="Delete {{ ft.name }}?">{% csrf_token %}
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditFt({{ ft.id }},'{{ ft.name }}')"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" data-confirm="Delete {{ ft.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_flight_type">
                 <input type="hidden" name="ft_id" value="{{ ft.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
           </td>
@@ -525,11 +525,11 @@
           <td style="color:#8a93a0;font-size:.82rem;">{{ ig.display_order }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditIg({{ ig.id }},'{{ ig.name }}','{{ ig.hourly_rate }}','{{ ig.display_order }}')">Edit</button>
-              <form method="post" style="display:inline;" data-confirm="Delete {{ ig.name }}?">{% csrf_token %}
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditIg({{ ig.id }},'{{ ig.name }}','{{ ig.hourly_rate }}','{{ ig.display_order }}')"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" data-confirm="Delete {{ ig.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_instructor_grade">
                 <input type="hidden" name="ig_id" value="{{ ig.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
           </td>
@@ -564,11 +564,11 @@
           <td>${{ st.amount|currency }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditSc({{ st.id }},'{{ st.name }}','{{ st.description }}','{{ st.amount }}')">Edit</button>
-              <form method="post" style="display:inline;" data-confirm="Delete {{ st.name }}?">{% csrf_token %}
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditSc({{ st.id }},'{{ st.name }}','{{ st.description }}','{{ st.amount }}')"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" data-confirm="Delete {{ st.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_surcharge_type">
                 <input type="hidden" name="st_id" value="{{ st.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
           </td>
@@ -609,11 +609,11 @@
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')">Edit</button>
-              <form method="post" style="display:inline;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_blockout_type">
                 <input type="hidden" name="bot_id" value="{{ bt.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
           </td>
@@ -662,11 +662,11 @@
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')">Edit</button>
-              <form method="post" style="display:inline;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_blockout_type">
                 <input type="hidden" name="bot_id" value="{{ bt.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
           </td>
@@ -715,11 +715,11 @@
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')">Edit</button>
-              <form method="post" style="display:inline;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditBot({{ bt.id }},'{{ bt.name }}','{{ bt.color }}')"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" data-confirm="Delete {{ bt.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_blockout_type">
                 <input type="hidden" name="bot_id" value="{{ bt.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
           </td>
@@ -853,7 +853,7 @@
             <input type="text" name="ot_desc" id="edit-ot-desc" class="finput">
           </label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true">✕ Close</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
             <span style="flex:1"></span>
             <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
@@ -932,7 +932,7 @@
             <input type="text" name="ct_name" id="edit-ct-name" class="finput" required>
           </label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true">✕ Close</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
             <span style="flex:1"></span>
             <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
@@ -1020,7 +1020,7 @@
           </div>
           <label class="flabel">Description<input type="text" name="vt_desc" id="edit-vt-desc" class="finput" placeholder="Optional"></label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-vt-modal').hidden=true">✕ Close</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-vt-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
             <span style="flex:1"></span>
             <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
@@ -1145,10 +1145,19 @@
     <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
 
     <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Renewal invoices</h3>
+    {% if request.GET.bulk_done and request.GET.tab == 'membership' %}
+    <div class="notice ok" style="margin-bottom:1rem;">
+      {% if request.GET.bulk_done == '0' %}
+      No members were eligible for {{ request.GET.bulk_fy }} bulk renewal — all are already invoiced or have no fee set.
+      {% else %}
+      ✓ {{ request.GET.bulk_done }} {{ request.GET.bulk_fy }} renewal invoice{{ request.GET.bulk_done|pluralize }} generated and sent.
+      {% endif %}
+    </div>
+    {% endif %}
     <p class="s-desc" style="margin-bottom:.9rem;">
       Send annual subscription invoices to all active members whose role requires renewal and has a fee set.
       Next financial year end: <strong>{{ renewal_fy_end|date:"j N Y" }}</strong> ({{ renewal_fy_label }}).
-      Invoices are created as <em>sent</em> using the role's annual fee — the same amount that pre-fills the manual invoice modal.
+      Invoices are sent immediately using the role's annual fee.
       Members already holding an unpaid subscription invoice are skipped automatically.
     </p>
     <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:1rem;">
@@ -1426,7 +1435,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-ft-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-ft-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add flight type</button>
       </div>
@@ -1445,7 +1454,7 @@
         <input type="text" name="ft_name" id="eft-name" required class="finput">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-ft-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-ft-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1474,7 +1483,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-ig-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-ig-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add grade</button>
       </div>
@@ -1504,7 +1513,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-ig-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-ig-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1531,7 +1540,7 @@
         </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add surcharge</button>
       </div>
@@ -1559,7 +1568,7 @@
         </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1587,7 +1596,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-bot-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-bot-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add type</button>
       </div>
@@ -1610,7 +1619,7 @@
                style="display:block;width:48px;height:36px;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-bot-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-bot-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1631,7 +1640,7 @@
         <input type="text" name="at_icao" id="eat-icao" class="finput" maxlength="10" placeholder="e.g. C172">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-at-modal')">✕ Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-at-modal')"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>

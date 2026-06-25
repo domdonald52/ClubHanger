@@ -47,7 +47,7 @@
         <td style="color:#8a93a0;">{{ c.organisation|default:"—" }}</td>
         <td style="color:#8a93a0;">{{ c.phone|default:"—" }}</td>
         <td style="text-align:right;">
-          <a href="{% url 'core:contact_detail' club.slug c.id %}" class="row-action-btn" data-overlay data-overlay-wide>Manage →</a>
+          <a href="{% url 'core:contact_detail' club.slug c.id %}" class="cbtn-sm cbtn-icon" title="Manage contact" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a>
         </td>
       </tr>
       {% endfor %}
@@ -105,7 +105,7 @@
         <textarea name="notes" class="finput" rows="2"></textarea>
       </label>
       <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem;">
-        <button type="button" class="cbtn" onclick="document.getElementById('add-contact-modal').hidden=true">✕ Close</button>
+        <button type="button" class="cbtn" onclick="document.getElementById('add-contact-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
         <button type="submit" class="cbtn primary">Add contact</button>
       </div>
     </form>

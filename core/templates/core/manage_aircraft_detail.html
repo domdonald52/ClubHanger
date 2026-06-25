@@ -252,13 +252,13 @@
           <td style="text-align:right;">
             {% if club_member.is_admin %}
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm"
-                      onclick="openEditRate({{ r.id }},'{{ r.amount }}',{{ r.includes_fuel|yesno:'true,false' }})">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete this rate?')">
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit"
+                      onclick="openEditRate({{ r.id }},'{{ r.amount }}',{{ r.includes_fuel|yesno:'true,false' }})"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete this rate?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_hire_rate">
                 <input type="hidden" name="rate_id" value="{{ r.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
             {% endif %}
@@ -319,11 +319,11 @@
             <td style="color:#8a93a0;font-size:.82rem;">{{ r.notes|default:"—" }}</td>
             <td style="text-align:right;">
               {% if club_member.is_admin %}
-              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete this rate?')">
+              <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete this rate?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_fuel_rate">
                 <input type="hidden" name="rate_id" value="{{ r.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
               {% endif %}
             </td>
@@ -415,11 +415,11 @@
           <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
           <td style="color:#8a93a0;">{{ bo.label }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete this block-out?')">
+            <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete this block-out?')">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_blockout">
               <input type="hidden" name="bo_id" value="{{ bo.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+              <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
             </form>
           </td>
         </tr>
@@ -442,7 +442,7 @@
 
     {% if maintenance_items %}
     <table class="ft-table" style="margin-bottom:1.5rem;">
-      <thead><tr><th>Item</th><th style="white-space:nowrap;">Due date</th><th style="white-space:nowrap;">Due hrs</th><th style="white-space:nowrap;">Last done</th><th style="min-width:160px;">Status</th><th></th></tr></thead>
+      <thead><tr><th>Item</th><th style="white-space:nowrap;">Due date</th><th style="white-space:nowrap;">Due hrs</th><th style="white-space:nowrap;">Last done</th><th>Status</th><th style="min-width:90px;"></th><th></th></tr></thead>
       <tbody>
         {% for m in maintenance_items %}
         <tr>
@@ -450,32 +450,30 @@
           <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_date|default:"—" }}</td>
           <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_hours|default:"—" }}</td>
           <td style="font-size:.82rem;color:#8a93a0;white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
+          <td><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
           <td>
-            <div style="display:flex;align-items:center;gap:.4rem;">
-              <span class="urg-badge urg-{{ m.urgency }}" style="flex-shrink:0;">{{ m.get_urgency_display }}</span>
-              {% if m.progress_pct is not None %}
-              <div class="maint-bar-wrap" style="flex:1;min-width:50px;" title="{{ m.progress_pct }}% through interval">
-                <div class="maint-bar maint-bar-{{ m.urgency }}" style="width:{{ m.progress_pct }}%;"></div>
-              </div>
-              {% endif %}
+            {% if m.progress_pct is not None %}
+            <div class="maint-bar-wrap" title="{{ m.progress_pct }}% through interval">
+              <div class="maint-bar maint-bar-{{ m.urgency }}" style="width:{{ m.progress_pct }}%;"></div>
             </div>
+            {% endif %}
           </td>
           <td style="text-align:right;">
             {% if club_member.is_admin %}
-            <div style="display:inline-flex;gap:.3rem;">
-              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Mark {{ m.name|escapejs }} as done today?','Mark done',false)">
+            <div style="display:inline-flex;gap:.3rem;align-items:center;">
+              <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Mark {{ m.name|escapejs }} as done today?','Mark done',false)">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="mark_maintenance_done">
                 <input type="hidden" name="maint_id" value="{{ m.id }}">
-                <button type="submit" class="cbtn-sm cbtn-ok">Mark done</button>
+                <button type="submit" class="cbtn-sm cbtn-ok cbtn-icon" title="Mark as done"><i class="ti ti-check"></i></button>
               </form>
-              <button type="button" class="cbtn-sm"
-                      onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|date:"Y-m-d"|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|date:"Y-m-d"|default:'' }}','{{ m.last_completed_hours|default:'' }}','{{ m.interval_days|default:'' }}','{{ m.interval_hours|default:'' }}')">Edit</button>
-              <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete {{ m.name|escapejs }}?')">
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit"
+                      onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|date:"Y-m-d"|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|date:"Y-m-d"|default:'' }}','{{ m.last_completed_hours|default:'' }}','{{ m.interval_days|default:'' }}','{{ m.interval_hours|default:'' }}')"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete {{ m.name|escapejs }}?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_maintenance">
                 <input type="hidden" name="maint_id" value="{{ m.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
               </form>
             </div>
             {% endif %}
@@ -496,7 +494,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
       <h2 class="sh2" style="margin:0;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100 entries)</span></h2>
       <div style="display:flex;gap:.4rem;align-items:center;">
-        <a href="{% url 'core:aircraft_maintenance_log' club.slug ac.id %}" target="_blank" class="cbtn-sm">Full log / print →</a>
+        <a href="{% url 'core:aircraft_maintenance_log' club.slug ac.id %}" target="_blank" class="cbtn-sm">View full log →</a>
         {% if club_member.is_admin %}<button type="button" class="cbtn-add" onclick="document.getElementById('add-manual-log-modal').hidden=false">+ Log manual entry</button>{% endif %}
       </div>
     </div>
@@ -551,7 +549,10 @@
   <!-- Add hire rate modal -->
   <div id="add-rate-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(480px,95vw);">
-      <h2>Add hire rate</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="margin:0;">Add hire rate</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('add-rate-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="save_hire_rate">
@@ -580,9 +581,7 @@
         <label class="flabel" style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem;">
           <input type="checkbox" name="includes_fuel"> Wet hire (fuel included in rate — no separate fuel charge)
         </label>
-        <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-rate-modal').hidden=true">✕ Close</button>
-          <span style="flex:1"></span>
+        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
           <button type="submit" class="cbtn primary">Add rate</button>
         </div>
       </form>
@@ -592,7 +591,10 @@
   <!-- Edit hire rate modal -->
   <div id="edit-rate-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(380px,95vw);">
-      <h2>Edit hire rate</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="margin:0;">Edit hire rate</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('edit-rate-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="edit_hire_rate">
@@ -606,9 +608,7 @@
         <label class="flabel" style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem;">
           <input type="checkbox" name="includes_fuel" id="erm-wet"> Wet hire (fuel included)
         </label>
-        <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('edit-rate-modal').hidden=true">✕ Close</button>
-          <span style="flex:1"></span>
+        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
           <button type="submit" class="cbtn" data-dirty-save>Save</button>
         </div>
       </form>
@@ -618,7 +618,10 @@
   <!-- Add fuel charge rate modal -->
   <div id="add-fuel-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(460px,95vw);">
-      <h2>Add fuel charge rate</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="margin:0;">Add fuel charge rate</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('add-fuel-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="add_fuel_rate">
@@ -636,9 +639,7 @@
         <label class="flabel" style="margin-top:.1rem;">Notes <span style="font-weight:400;">(optional)</span>
           <input type="text" name="notes" class="finput" placeholder="e.g. Committee approved 2026-06-01">
         </label>
-        <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-fuel-modal').hidden=true">✕ Close</button>
-          <span style="flex:1"></span>
+        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
           <button type="submit" class="cbtn primary">Add rate</button>
         </div>
       </form>
@@ -648,7 +649,10 @@
   <!-- Add maintenance item modal -->
   <div id="add-maint-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(540px,95vw);">
-      <h2>Add maintenance item</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="margin:0;">Add maintenance item</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('add-maint-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="add_maintenance">
@@ -685,9 +689,7 @@
             </label>
           </div>
         </div>
-        <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-maint-modal').hidden=true">✕ Close</button>
-          <span style="flex:1"></span>
+        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
           <button type="submit" class="cbtn primary">Add item</button>
         </div>
       </form>
@@ -699,7 +701,7 @@
     <div class="modal" style="width:min(540px,95vw);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
         <h2 style="margin:0;">Edit maintenance item</h2>
-        <button type="button" onclick="document.getElementById('edit-maint-modal').hidden=true" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:#8a93a0;line-height:1;padding:.1rem .3rem;" title="Close">✕</button>
+        <button type="button" class="pi-close" onclick="document.getElementById('edit-maint-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post">
         {% csrf_token %}
@@ -748,7 +750,10 @@
   <!-- Manual maintenance log entry modal -->
   <div id="add-manual-log-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(520px,95vw);">
-      <h2>Log manual entry</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="margin:0;">Log manual entry</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('add-manual-log-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <p style="font-size:.82rem;color:#8a93a0;margin:-.4rem 0 .9rem;">Use this to explain a meter gap — ground runs, towing, meter corrections, or errors. Entries without flight hours (0 hrs) are purely documentary.</p>
       <form method="post">
         {% csrf_token %}
@@ -784,10 +789,8 @@
             <label class="flabel">Air switch <input type="number" name="airswitch_reading" class="finput" min="0" step="0.01" placeholder="—"></label>
           </div>
         </div>
-        <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-manual-log-modal').hidden=true">✕ Close</button>
-          <span style="flex:1"></span>
-          <button type="submit" class="cbtn primary">Save entry</button>
+        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
+          <button type="submit" class="cbtn primary">Save</button>
         </div>
       </form>
     </div>
@@ -809,7 +812,10 @@
   <!-- Add block-out modal (aircraft) -->
   <div id="add-ac-bo-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(480px,94vw);">
-      <h2>Add block-out — {{ ac.registration }}</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="margin:0;">Add block-out — {{ ac.registration }}</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('add-ac-bo-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="add_aircraft_blockout">
@@ -852,10 +858,8 @@
           <label class="flabel">Start<input type="time" name="start_time" class="finput" value="08:00"></label>
           <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
         </div>
-        <div class="modal-actions" style="margin-top:.8rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-ac-bo-modal').hidden=true">✕ Close</button>
-          <span style="flex:1"></span>
-          <button type="submit" class="cbtn primary">Save block-out</button>
+        <div class="modal-actions" style="margin-top:.8rem;justify-content:flex-end;">
+          <button type="submit" class="cbtn primary">Save</button>
         </div>
       </form>
     </div>
@@ -900,7 +904,7 @@
             {% if b.flight_completion and b.flight_completion.total_charge %}${{ b.flight_completion.total_charge|currency }}{% else %}—{% endif %}
           </td>
           <td style="text-align:right;">
-            <a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_aircraft_detail' club.slug ac.id %}" class="row-action-link">View →</a>
+            <a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_aircraft_detail' club.slug ac.id %}" class="cbtn-sm cbtn-icon" title="View booking" data-overlay><i class="ti ti-eye"></i></a>
           </td>
         </tr>
         {% endfor %}

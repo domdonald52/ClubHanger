@@ -61,7 +61,7 @@
         <td style="color:#8a93a0;font-size:.82rem;">
           {% with open=r.actions.all %}{% if open %}{{ open|length }} action{{ open|length|pluralize }}{% else %}—{% endif %}{% endwith %}
         </td>
-        <td><a href="{% url 'core:occurrence_detail' club.slug r.id %}" class="cbtn-sm" data-overlay>View</a></td>
+        <td><a href="{% url 'core:occurrence_detail' club.slug r.id %}" class="cbtn-sm cbtn-icon" title="View" data-overlay><i class="ti ti-eye"></i></a></td>
       </tr>
       {% endfor %}
     </tbody>

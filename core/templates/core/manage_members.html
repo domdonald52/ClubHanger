@@ -36,7 +36,7 @@
     <label class="flabel" style="margin:0;font-size:.8rem;">to
       <input type="date" name="exp_to" value="{{ f_exp_to }}" class="finput" style="width:130px;">
     </label>
-    <button type="submit" class="cbtn-sm" style="align-self:flex-end;">Search</button>
+    <button type="submit" class="cbtn-sm" style="align-self:flex-end;"><i class="ti ti-search" style="font-size:.85rem;margin-right:.25rem;"></i>Search</button>
     {% if q or f_standing or f_role or f_exp_from or f_exp_to %}<a href="{% url 'core:manage_members' club.slug %}" class="cbtn-sm" style="align-self:flex-end;">Clear</a>{% endif %}
   </form>
 
@@ -45,6 +45,7 @@
       <tr>
         <th style="width:36px;"></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=name&dir={% if sort == 'name' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'name' %}sort-active{% endif %}">Name{% if sort == 'name' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th>Email</th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=standing&dir={% if sort == 'standing' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'standing' %}sort-active{% endif %}">Standing{% if sort == 'standing' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=role&dir={% if sort == 'role' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'role' %}sort-active{% endif %}">Role{% if sort == 'role' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=expires&dir={% if sort == 'expires' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'expires' %}sort-active{% endif %}">Subscription expires{% if sort == 'expires' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
@@ -67,8 +68,8 @@
         <td>
           <strong>{{ m.user.get_full_name }}</strong>
           {% if m == club_member %}<span class="badge badge-you">you</span>{% endif %}
-          <div style="font-size:.75rem;color:#8a93a0;">{{ m.user.email }}</div>
         </td>
+        <td style="font-size:.78rem;color:#8a93a0;">{{ m.user.email }}</td>
         <td><span class="standing-chip standing-{{ m.standing }}">{{ m.get_standing_display }}</span></td>
         <td style="font-size:.83rem;color:#5b6573;">
           {{ m.role.name|default:"—" }}
@@ -89,11 +90,11 @@
         </td>
         <td style="font-size:.83rem;color:#8a93a0;">{{ m.join_date }}</td>
         <td>
-          <a href="{% url 'core:manage_member_detail' club.slug m.id %}?back={% url 'core:manage_members' club.slug %}&back_label=Members" class="row-action-btn" data-overlay data-overlay-wide>Manage →</a>
+          <a href="{% url 'core:manage_member_detail' club.slug m.id %}?back={% url 'core:manage_members' club.slug %}&back_label=Members" class="cbtn-sm cbtn-icon" title="Manage member" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="7" style="text-align:center;color:#8a93a0;padding:2rem;">No members found.</td></tr>
+      <tr><td colspan="8" style="text-align:center;color:#8a93a0;padding:2rem;">No members found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -182,10 +183,6 @@
   .badge{display:inline-block;padding:.1rem .4rem;border-radius:8px;font-size:.7rem;font-weight:600;margin-left:.3rem;vertical-align:middle;}
   .badge-you{background:#e8f0fb;color:#2f7dd1;}
 
-  .row-action-btn{font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;}
-  .row-action-btn:hover{background:#f3f5f7;color:#1f2933;}
-
-  .finput{display:block;width:100%;padding:.4rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
   .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
   .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(460px,95vw);}
@@ -210,7 +207,10 @@
 <!-- Invite member modal -->
 <div id="invite-modal" class="modal-back" hidden>
   <div class="modal">
-    <h2>Invite member</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Invite member</h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('invite-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <p style="font-size:.84rem;color:#5b6573;margin:0 0 1rem;">Sends a 7-day sign-up link to the recipient's email. They create their own account and are added with Pending standing.</p>
     <form method="post" action="{% url 'core:send_invite' club.slug %}">
       {% csrf_token %}
@@ -223,9 +223,7 @@
           {% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
         </select>
       </label>
-      <div class="modal-actions">
-        <button type="button" class="cbtn" onclick="document.getElementById('invite-modal').hidden=true">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Send invite</button>
       </div>
     </form>
@@ -235,7 +233,10 @@
 <!-- Add member modal -->
 <div id="add-member-modal" class="modal-back" hidden>
   <div class="modal">
-    <h2>Add member</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Add member</h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('add-member-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_member">
@@ -261,9 +262,7 @@
           <input type="password" name="password" class="finput" autocomplete="new-password">
         </label>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="cbtn" onclick="document.getElementById('add-member-modal').hidden=true">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="justify-content:flex-end;">
         <button type="submit" class="cbtn primary" id="add-submit-btn">Send invite</button>
       </div>
     </form>
@@ -272,7 +271,10 @@
 <!-- Registrar export modal -->
 <div id="registrar-modal" class="modal-back" hidden>
   <div class="modal" style="max-width:520px;">
-    <h2>Registrar export</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Registrar export</h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('registrar-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <p style="font-size:.85rem;color:#5b6573;margin:0 0 1rem;">Generates a point-in-time list of all members active on a chosen date.</p>
     <label class="flabel">As at date
       <input type="date" id="reg-as-of" class="finput" value="{{ today_iso }}">
@@ -284,9 +286,7 @@
         <tbody id="reg-tbody"></tbody>
       </table>
     </div>
-    <div class="modal-actions" style="margin-top:1rem;">
-      <button type="button" class="cbtn" onclick="document.getElementById('registrar-modal').hidden=true">✕ Close</button>
-      <span style="flex:1"></span>
+    <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
       <button type="button" class="cbtn" id="reg-preview-btn" onclick="regPreview()">Preview</button>
       <a id="reg-csv-btn" class="cbtn primary" style="display:none;text-decoration:none;" href="#">Download CSV</a>
     </div>

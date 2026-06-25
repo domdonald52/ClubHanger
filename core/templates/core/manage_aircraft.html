@@ -39,7 +39,7 @@
           <span class="status-badge status-online">Active</span>
         </td>
         <td style="text-align:right;">
-          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}?back={% url 'core:manage_aircraft' club.slug %}&back_label=Aircraft" class="row-action-btn" data-overlay data-overlay-wide>Manage →</a>
+          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}?back={% url 'core:manage_aircraft' club.slug %}&back_label=Aircraft" class="cbtn-sm cbtn-icon" title="Manage aircraft" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a>
         </td>
       </tr>
       {% endfor %}
@@ -58,7 +58,7 @@
           <span class="status-badge status-retired">Retired</span>
         </td>
         <td style="text-align:right;">
-          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}?back={% url 'core:manage_aircraft' club.slug %}&back_label=Aircraft" class="row-action-btn" data-overlay data-overlay-wide>Manage →</a>
+          <a href="{% url 'core:manage_aircraft_detail' club.slug ac.id %}?back={% url 'core:manage_aircraft' club.slug %}&back_label=Aircraft" class="cbtn-sm cbtn-icon" title="Manage aircraft" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a>
         </td>
       </tr>
       {% endfor %}
@@ -93,7 +93,7 @@
         {% endif %}
       </label>
       <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="add-ac-cancel">✕ Close</button>
+        <button type="button" class="cbtn" id="add-ac-cancel"><i class="ti ti-x"></i> Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add aircraft</button>
       </div>
@@ -125,9 +125,6 @@
   .conflict-badge{background:#e03131;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:10px;line-height:1.2;}
 
   .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
-
   .ac-table{width:100%;border-collapse:collapse;font-size:.88rem;}
   .ac-table th{padding:.4rem .7rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
   .ac-table td{padding:.6rem .7rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
@@ -139,7 +136,5 @@
   .ac-section-divider td{padding:.4rem .7rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#adb5bd;background:#f8f9fb;border-top:2px solid #e3e6ea;border-bottom:1px solid #e3e6ea;}
   .ac-row-retired{opacity:.6;}
   .ac-row-retired:hover{opacity:1;}
-  .row-action-btn{font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;}
-  .row-action-btn:hover{background:#f3f5f7;color:#1f2933;}
 </style>
 {% endblock %}

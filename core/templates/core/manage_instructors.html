@@ -26,7 +26,7 @@
         </td>
         <td style="text-align:right;">
           <div style="display:inline-flex;gap:.3rem;">
-            <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}?tab=availability&back={% url 'core:manage_instructors' club.slug %}&back_label=Instructors" class="row-action-btn" data-overlay data-overlay-wide>Manage →</a>
+            <a href="{% url 'core:manage_instructor_detail' club.slug instr.id %}?tab=availability&back={% url 'core:manage_instructors' club.slug %}&back_label=Instructors" class="cbtn-sm cbtn-icon" title="Manage instructor" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a>
             {% if club_member.is_admin %}
             <button type="button" class="cbtn-sm cbtn-danger"
               title="Remove from roster — this does not delete the instructor or their history"
@@ -108,22 +108,20 @@
   .ac-table td{padding:.6rem .7rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
   .ac-table tr:last-child td{border-bottom:0;}
 
-  .row-action-btn{font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;}
-  .row-action-btn:hover{background:#f3f5f7;color:#1f2933;}
   .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
   .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(460px,95vw);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
   .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:1rem;}
-  .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
 </style>
 
 <!-- Remove from roster modal -->
 <div id="remove-instr-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(560px,95vw);">
-    <h2 id="remove-title" style="margin:0 0 .5rem;font-size:1.05rem;"></h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 id="remove-title" style="margin:0;font-size:1.05rem;"></h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('remove-instr-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <p id="remove-desc" style="font-size:.84rem;color:#5b6573;margin:0 0 .9rem;"></p>
     <form method="post" id="remove-form">
       {% csrf_token %}
@@ -143,9 +141,7 @@
           <tbody id="remove-bookings-body"></tbody>
         </table>
       </div>
-      <div class="modal-actions">
-        <button type="button" class="cbtn" onclick="document.getElementById('remove-instr-modal').hidden=true">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="justify-content:flex-end;">
         <button type="submit" class="cbtn cbtn-danger">Remove from roster</button>
       </div>
     </form>
@@ -155,7 +151,10 @@
 <!-- Add to roster modal -->
 <div id="add-instr-modal" class="modal-back" hidden>
   <div class="modal">
-    <h2>Add to instructor roster</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Add to instructor roster</h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('add-instr-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     {% if eligible_members %}
     <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">Only active members with an instructor-type role are shown.</p>
     <form method="post">
@@ -169,9 +168,7 @@
           {% endfor %}
         </select>
       </label>
-      <div class="modal-actions">
-        <button type="button" class="cbtn" onclick="document.getElementById('add-instr-modal').hidden=true">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Add to roster</button>
       </div>
     </form>
@@ -185,8 +182,7 @@
       No members have an instructor-type role yet. Assign the instructor role to a member on their <a href="{% url 'core:manage_members' club.slug %}">member profile</a>, then add them here.
     </p>
     {% endif %}
-    <div class="modal-actions">
-      <button type="button" class="cbtn" onclick="document.getElementById('add-instr-modal').hidden=true">✕ Close</button>
+    <div class="modal-actions" style="justify-content:flex-end;">
     </div>
     {% endif %}
   </div>

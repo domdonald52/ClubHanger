@@ -2023,10 +2023,9 @@ def club_settings(request, club_slug, mode='settings'):
                 from .services import notification_service as _ns
                 _ns.notify_invoice_issued(inv)
                 created += 1
-            msg = (f'{created} renewal invoice(s) sent for {fy_label}.'
-                   if created else f'No members eligible for {fy_label} bulk renewal.')
-            _msgs.success(request, msg)
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=membership&saved=1")
+            from django.urls import reverse as _rev_s
+            _settings_url = _rev_s(_redir_name, kwargs={'club_slug': club_slug})
+            return redirect(f"{_settings_url}?tab=membership&bulk_done={created}&bulk_fy={fy_label}")
 
         elif action == 'save_membership_tab':
             try:
@@ -4338,8 +4337,12 @@ def manage_member_detail(request, club_slug, member_id):
             )
             from .services import notification_service as _ns
             _ns.notify_invoice_issued(inv)
-            return _inline_redirect(request, 'core:manage_member_detail',
-                                    club_slug=club_slug, member_id=member_id, saved=True)
+            # Redirect straight to print preview — email/print from there
+            from django.http import HttpResponseRedirect as _HRR
+            from urllib.parse import quote as _q
+            _member_url = _rev('core:manage_member_detail', kwargs={'club_slug': club_slug, 'member_id': member_id})
+            _print_url = _rev('core:invoice_print', kwargs={'club_slug': club.slug, 'invoice_id': inv.id})
+            return _HRR(f"{_print_url}?back={_q(_member_url, safe='/')}")
 
         elif action in ('save_lesson_note', 'delete_lesson_note', 'email_lesson_note') and (actor.is_instructor or actor.is_admin):
             from .models import LessonNote as _LN
@@ -9149,11 +9152,11 @@ def health_check(request, club_slug):
                .select_related('booking__member__user', 'booking__aircraft')):
         computed = sum(ci.amount for ci in fc.charge_items.all()) or _D('0')
         if abs(computed - fc.total_charge) > _D('0.01'):
+            _reg = fc.booking.aircraft.registration if fc.booking.aircraft else '?'
+            _dt = fc.booking.scheduled_start.strftime('%d %b %y') if fc.booking.scheduled_start else '?'
             charge_drifts.append({
                 'text': (
-                    f"FC #{fc.id} ({fc.booking.aircraft.registration if fc.booking.aircraft else '?'} "
-                    f"{fc.booking.scheduled_start.strftime('%d %b %y') if fc.booking.scheduled_start else '?'}): "
-                    f"stored ${fc.total_charge}, items sum ${computed:.2f}"
+                    f"{_reg} {_dt}: stored ${fc.total_charge}, items sum ${computed:.2f}"
                 ),
                 'url': _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': fc.booking.id}),
             })
@@ -9176,11 +9179,11 @@ def health_check(request, club_slug):
         computed = (_FP.objects.filter(completion=fc, paid_at__isnull=False)
                     .aggregate(t=Sum('amount'))['t'] or _D('0'))
         if abs(computed - fc.amount_paid) > _D('0.01'):
+            _reg = fc.booking.aircraft.registration if fc.booking.aircraft else '?'
+            _dt = fc.booking.scheduled_start.strftime('%d %b %y') if fc.booking.scheduled_start else '?'
             payment_drifts.append({
                 'text': (
-                    f"FC #{fc.id} ({fc.booking.aircraft.registration if fc.booking.aircraft else '?'} "
-                    f"{fc.booking.scheduled_start.strftime('%d %b %y') if fc.booking.scheduled_start else '?'}): "
-                    f"stored ${fc.amount_paid}, received payments sum ${computed:.2f}"
+                    f"{_reg} {_dt}: stored ${fc.amount_paid}, received payments sum ${computed:.2f}"
                 ),
                 'url': _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': fc.booking.id}),
             })
@@ -9205,7 +9208,7 @@ def health_check(request, club_slug):
             inv_fc_drifts.append({
                 'text': (
                     f"Invoice {_inv.display_number} paid (${_inv.total}) "
-                    f"but FC #{_ifc.id} still shows ${_ifc.balance_owing:.2f} owing — {_mn}"
+                    f"but the linked flight still shows ${_ifc.balance_owing:.2f} owing — {_mn}"
                 ),
                 'url': _rev('core:invoice_detail', kwargs={'club_slug': club_slug, 'invoice_id': _inv.id}),
             })
@@ -9233,11 +9236,11 @@ def health_check(request, club_slug):
             if abs(gap) > _D('0.05'):
                 meter_gaps.append({
                     'text': (
-                        f"{ac.registration}: gap of {gap:+.2f} hrs before FC #{fcs[i]['id']} "
-                        f"({fcs[i]['booking__departed_at'].strftime('%d %b %y') if fcs[i]['booking__departed_at'] else '?'})"
+                        f"{ac.registration}: gap of {gap:+.2f} hrs before flight on "
+                        f"{fcs[i]['booking__departed_at'].strftime('%d %b %y') if fcs[i]['booking__departed_at'] else '?'}"
                     ),
-                    'url': _rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': fcs[i]['booking__id']}),
-                    'link_label': 'Edit readings →',
+                    'url': _rev('core:manage_aircraft_detail', kwargs={'club_slug': club_slug, 'aircraft_id': ac.id}) + '?tab=maintenance',
+                    'link_label': 'Log entry →',
                 })
     if meter_gaps:
         _issue('operations', 'warn',

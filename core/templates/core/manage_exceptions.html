@@ -24,7 +24,7 @@
         <td style="padding:.3rem .5rem 0 0;font-weight:600;">{{ b.aircraft.registration|default:"?" }}</td>
         <td style="padding:.3rem .5rem 0 0;">{{ b.member.user.get_full_name|default:"?" }}</td>
         <td style="padding:.3rem .5rem 0 0;color:#c0392b;font-weight:600;">departed {{ b.departed_at|timesince }} ago ({{ b.departed_at|date:"j M H:i" }})</td>
-        <td style="padding:.3rem 0 0 0;"><a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="cbtn-sm cbtn-danger" data-overlay>View →</a></td>
+        <td style="padding:.3rem 0 0 0;"><a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="cbtn-sm cbtn-danger cbtn-icon" title="View booking" data-overlay><i class="ti ti-eye"></i></a></td>
       </tr>
       {% endfor %}
     </table>
@@ -80,7 +80,7 @@
           <td>{{ b.arrived_at|date:"j M Y"|default:b.scheduled_start|date:"j M Y" }}</td>
           <td style="text-align:right;font-weight:600;">${{ fc.total_charge|currency }}</td>
           <td style="text-align:right;color:#8a93a0;">${{ fc.amount_paid|currency }}</td>
-          <td><a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="row-action-btn" data-overlay>View →</a></td>
+          <td><a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="cbtn-sm cbtn-icon" title="View" data-overlay><i class="ti ti-eye"></i></a></td>
         </tr>
         {% endwith %}
         {% endfor %}
@@ -115,7 +115,7 @@
           <td>{{ row.b.scheduled_start|date:"j M Y H:i" }}</td>
           <td><span class="status-chip status-{{ row.b.display_status_key }}">{{ row.b.display_status }}</span></td>
           <td>{% for label in row.labels %}<span class="exc-issue-tag">{{ label }}</span>{% endfor %}</td>
-          <td><a href="{% url 'core:booking_detail' club.slug row.b.id %}?edit=1&back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="row-action-btn" data-overlay>View →</a></td>
+          <td><a href="{% url 'core:booking_detail' club.slug row.b.id %}?edit=1&back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="cbtn-sm cbtn-icon" title="View" data-overlay><i class="ti ti-eye"></i></a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -163,7 +163,7 @@
           <td style="font-size:.83rem;white-space:nowrap;">{{ inv.issue_date|date:"j M Y" }}</td>
           <td style="font-size:.83rem;white-space:nowrap;{% if inv.due_date < today %}color:#c0392b;font-weight:600;{% endif %}">{{ inv.due_date|date:"j M Y" }}</td>
           <td style="text-align:right;font-weight:600;">${{ inv.total|currency }}</td>
-          <td><a href="{% url 'core:invoice_detail' club.slug inv.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="row-action-btn" data-overlay>View →</a></td>
+          <td><a href="{% url 'core:invoice_detail' club.slug inv.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="cbtn-sm cbtn-icon" title="View" data-overlay><i class="ti ti-eye"></i></a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -233,7 +233,7 @@
               </a>
             {% endif %}
           </td>
-          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention#credentials" class="row-action-btn" data-overlay data-overlay-wide>Member →</a></td>
+          <td><a href="{% url 'core:manage_member_detail' club.slug row.cm.id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention#credentials" class="cbtn-sm cbtn-icon" title="View member" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -269,7 +269,7 @@
           <td><span class="urg-badge urg-{{ item.urgency }}">{{ item.get_urgency_display }}</span></td>
           <td style="color:#5b6573;white-space:nowrap;">{% if item.due_hours %}{{ item.due_hours }} hr{% else %}—{% endif %}</td>
           <td style="color:#5b6573;white-space:nowrap;">{% if item.due_date %}{{ item.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
-          <td><a href="{% url 'core:manage_aircraft_detail' club.slug item.aircraft_id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="row-action-btn" data-overlay data-overlay-wide>Aircraft →</a></td>
+          <td><a href="{% url 'core:manage_aircraft_detail' club.slug item.aircraft_id %}?back={% url 'core:manage_exceptions' club.slug %}&back_label=Attention" class="cbtn-sm cbtn-icon" title="View aircraft" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a></td>
         </tr>
         {% endfor %}
       </tbody>

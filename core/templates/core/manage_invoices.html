@@ -67,8 +67,8 @@
           {% endif %}
         </td>
         <td style="text-align:right;white-space:nowrap;">
-          <a href="{% url 'core:invoice_detail' club.slug inv.id %}" class="row-action-btn" data-overlay>View</a>
-          <a href="{% url 'core:invoice_print' club.slug inv.id %}" target="_blank" class="row-action-btn" style="margin-left:.2rem;">Print</a>
+          <a href="{% url 'core:invoice_detail' club.slug inv.id %}" class="cbtn-sm cbtn-icon" title="View invoice" data-overlay><i class="ti ti-eye"></i></a>
+          <a href="{% url 'core:invoice_print' club.slug inv.id %}" target="_blank" class="cbtn-sm cbtn-icon" title="Print invoice" style="margin-left:.2rem;"><i class="ti ti-printer"></i></a>
         </td>
       </tr>
       {% endfor %}

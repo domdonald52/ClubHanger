@@ -81,7 +81,7 @@
         .nav-section.closed .nav-alert-dot { display:block; }
         .user-info { font-size: .8rem; color: rgba(255,255,255,.75); display: flex; align-items: center; gap: .55rem; white-space: nowrap; }
         .ch-brand { display: flex; align-items: center; gap: .35rem; border-left: 1px solid rgba(255,255,255,.15); padding-left: .65rem; margin-left: .1rem; flex-shrink: 0; opacity: .75; }
-        .ch-brand-text { font-size: .72rem; font-weight: 650; color: rgba(255,255,255,.85); letter-spacing: .04em; }
+        .ch-brand-text { font-size: .72rem; font-weight: 650; color: rgba(255,255,255,.85); letter-spacing: .04em; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
         @media (max-width: 600px) { .ch-brand-text { display: none; } }
         .role-badge { font-size: .7rem; font-weight: 600; padding: .15rem .45rem; border-radius: 4px; background: rgba(255,255,255,.18); color: #fff; letter-spacing: .02em; }
         .user-menu { position: relative; }
@@ -241,12 +241,12 @@
                     </div>
                 </div>
                 {% endif %}
-                <div class="ch-brand" title="Powered by ClubHangar">
+                <div class="ch-brand" title="Powered by Club Hangar">
                     <svg width="20" height="20" viewBox="0 0 200 200" aria-hidden="true">
                         <circle cx="100" cy="100" r="95" fill="rgba(255,255,255,.1)" stroke="rgba(255,255,255,.35)" stroke-width="8"/>
                         <path d="M100 45 L130 115 L100 100 L70 115 Z" fill="#fff"/>
                     </svg>
-                    <span class="ch-brand-text">ClubHangar</span>
+                    <span class="ch-brand-text">Club Hangar</span>
                 </div>
             </div>
         </div>
@@ -377,7 +377,7 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Send feedback
           </button>
-          <div class="sidenav-foot-copy">© 2026 Dominic Donald · ClubHangar</div>
+          <div class="sidenav-foot-copy">© 2026 Dominic Donald · Club Hangar</div>
         </div>
     </nav>
     {% endif %}
@@ -387,8 +387,8 @@
 /* ── Form primitives (used on full pages AND overlays — keep in sync with base_inline.html) ── */
 .sh2{font-size:1rem;font-weight:650;margin:.4rem 0 .7rem;color:#1f2933;}
 .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-.finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
-textarea.finput{resize:vertical;}
+.finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;height:2.15rem;line-height:1.2;}
+textarea.finput{resize:vertical;height:auto;}
 select.finput{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b7280' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .65rem center;background-size:.55rem;padding-right:2rem;cursor:pointer;}
 input[type=file].finput{padding:.2rem .35rem;}
 input[type=file].finput::file-selector-button,input[type=file].finput::-webkit-file-upload-button{background:var(--primary);color:#fff;border:none;border-radius:5px;padding:.28rem .7rem;font-size:.82rem;font-weight:600;font-family:inherit;cursor:pointer;margin-right:.55rem;transition:opacity .15s;}
@@ -430,10 +430,11 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
 .cbtn.primary:hover{filter:brightness(1.08);background:var(--primary);text-decoration:none;}
 .cbtn-add{padding:.28rem .65rem;border-radius:6px;border:1px solid var(--primary);background:color-mix(in srgb,var(--primary) 8%,#fff);color:var(--primary);font-size:.8rem;font-weight:500;cursor:pointer;text-decoration:none;display:inline-block;}
 .cbtn-add:hover{background:color-mix(in srgb,var(--primary) 15%,#fff);text-decoration:none;}
-.cbtn-sm{padding:.22rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block;}
+.cbtn-sm{padding:.45rem .55rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.78rem;font-weight:500;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;height:2.15rem;box-sizing:border-box;}
 .cbtn-sm:hover{background:#f3f5f7;text-decoration:none;}
 .cbtn-sm.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
 .cbtn-sm.primary:hover{filter:brightness(1.08);background:var(--primary);text-decoration:none;}
+.cbtn-icon{padding:0!important;width:26px;height:26px;display:inline-flex!important;align-items:center;justify-content:center;font-size:.9rem;}
 .cbtn-danger{border-color:#fca5a5;color:#c0392b;}
 .cbtn-ok{border-color:#86efac;color:#166534;background:#f0fdf4;}
 .cbtn-warn{border-color:#fcd34d;color:#92400e;background:#fffbeb;}
@@ -994,7 +995,7 @@ span.cal-chip{background:#f0f2f5;color:#b0b8c1;}
   }
 
   function attachHandlers(baseUrl) {
-    // ✕ Close: if there's overlay history (e.g. receipt pushed from charges), go back one step.
+    // <i class="ti ti-x"></i> Close: if there's overlay history (e.g. receipt pushed from charges), go back one step.
     // Anchor variant always navigates to its href. If no history, close entirely.
     body.querySelectorAll('[data-close-overlay]').forEach(el => {
       el.addEventListener('click', e => {

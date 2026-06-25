@@ -50,7 +50,7 @@
         <td style="color:#8a93a0;">{{ bo.label }}</td>
         <td style="text-align:right;">
           <div style="display:inline-flex;gap:.35rem;align-items:center;">
-            <button type="button" class="cbtn-sm"
+            <button type="button" class="cbtn-sm cbtn-icon" title="Edit"
                     onclick="openEditBo(
                       {{ bo.id }},
                       '{{ bo.blockout_type.id|default:'' }}',
@@ -61,12 +61,12 @@
                       {{ bo.all_day|yesno:'true,false' }},
                       '{{ bo.start_time|time:'H:i'|default:'' }}',
                       '{{ bo.end_time|time:'H:i'|default:'' }}'
-                    )">Edit</button>
-            <form method="post" style="display:inline;" class="bo-delete-form">
+                    )"><i class="ti ti-pencil"></i></button>
+            <form method="post" style="display:contents;" class="bo-delete-form">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_blockout">
               <input type="hidden" name="bo_id" value="{{ bo.id }}">
-              <button type="button" class="cbtn-sm cbtn-danger" onclick="confirmDeleteBo(this.closest('form'))">Delete</button>
+              <button type="button" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete" onclick="confirmDeleteBo(this.closest('form'))"><i class="ti ti-trash"></i></button>
             </form>
           </div>
         </td>
@@ -88,7 +88,10 @@
 <!-- Add block-out modal -->
 <div id="add-bo-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(540px,96vw);">
-    <h2>Add all-resource block-out</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Add all-resource block-out</h2>
+      <button type="button" class="pi-close" id="add-bo-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_blockout">
@@ -136,9 +139,7 @@
         <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
       </div>
 
-      <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="add-bo-cancel">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Add block-out</button>
       </div>
     </form>
@@ -148,7 +149,10 @@
 <!-- Edit block-out modal -->
 <div id="edit-bo-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(540px,96vw);">
-    <h2>Edit block-out</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Edit block-out</h2>
+      <button type="button" class="pi-close" id="edit-bo-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="edit_blockout">
@@ -197,9 +201,7 @@
         <label class="flabel">End<input type="time" name="end_time" id="ebm-end" class="finput"></label>
       </div>
 
-      <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="edit-bo-cancel">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Save</button>
       </div>
     </form>
@@ -241,10 +243,7 @@
 
   .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
   .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
-
-.cbtn-sm
-.cbtn-sm
-.modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
+  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
   .modal-back[hidden]{display:none;}
   .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}

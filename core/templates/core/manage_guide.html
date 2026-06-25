@@ -5,7 +5,7 @@
 {% block content %}
 <style>
 /* ── Layout ── */
-.guide-wrap{display:flex;gap:2.5rem;max-width:1080px;margin:0 auto;padding:1.5rem 1rem 4rem;}
+.guide-wrap{display:flex;gap:2.5rem;max-width:1080px;margin:0;padding:1.5rem 1rem 4rem;}
 .guide-nav{width:185px;flex-shrink:0;}
 .guide-nav-inner{position:sticky;top:1.5rem;max-height:calc(100vh - 3rem);overflow-y:auto;}
 .guide-nav h3{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#9aa3ad;margin:0 0 .3rem .1rem;padding-top:.7rem;}
@@ -131,12 +131,12 @@
       </div>
     </div>
     <h1>User guide</h1>
-    <p class="lead">ClubHangar is a management system for flying clubs — it handles members, bookings, invoicing, aircraft maintenance, and safety from one place. This guide is a process and role reference for admins and instructors, not a button-by-button manual. It covers what the system does for you, what still happens outside it, and how the four main areas connect.</p>
+    <p class="lead">Club Hangar is a management system for flying clubs — it handles members, bookings, invoicing, aircraft maintenance, and safety from one place. This guide is a process and role reference for admins and instructors, not a button-by-button manual. It covers what the system does for you, what still happens outside it, and how the four main areas connect.</p>
 
     <!-- ════════════════ OVERVIEW -->
     <div class="gsec" id="overview">
       <h2>Overview</h2>
-      <p>ClubHangar has two interfaces:</p>
+      <p>Club Hangar has two interfaces:</p>
       <div class="role-cards" style="grid-template-columns:1fr 1fr;">
         <div class="role-card"><h4>Management web app</h4><p>For admins and instructors. Bookings calendar, member management, invoicing, safety, fleet, reports, settings. Best on desktop or tablet.</p></div>
         <div class="role-card"><h4>Mobile app (PWA)</h4><p>For club members. Book flights, view account balance, manage credentials and profile, view notices. Accessed at <code>/app/{{ club.slug }}/</code> — members add it to their home screen.</p></div>
@@ -147,10 +147,10 @@
     <!-- ════════════════ PEOPLE -->
     <div class="gsec" id="people">
       <h2>Members &amp; contacts</h2>
-      <p>ClubHangar has two different types of person record. Understanding the distinction matters for how you set people up.</p>
+      <p>Club Hangar has two different types of person record. Understanding the distinction matters for how you set people up.</p>
 
       <h3 id="people-members">Club members</h3>
-      <p>A <strong>club member</strong> is anyone with a login account in ClubHangar — not just paying members of the club. The term covers:</p>
+      <p>A <strong>club member</strong> is anyone with a login account in Club Hangar — not just paying members of the club. The term covers:</p>
       <ul>
         <li><strong>Paying members</strong> — ordinary flying members with a subscription, a role, and booking access</li>
         <li><strong>Instructors</strong> — club or contracted flying staff who need accounts to appear on bookings, flight records, and declarations</li>
@@ -158,7 +158,7 @@
         <li><strong>Non-members</strong> — trial flight participants, Young Eagles, etc. who need a record but are not club members (standing: Non-member)</li>
       </ul>
       <p>Every member record has a <strong>standing</strong> and optionally a <strong>role</strong>.</p>
-      <p><strong>Standing</strong> reflects the person's formal membership status within your incorporated society — whether they have been ratified by the committee, are pending that ratification, have let their subscription lapse, have been suspended, or have resigned. This is not just a system flag: under the Incorporated Societies Act 2022, only ratified (Active) members may vote at general meetings or stand for committee, and the society has specific record-keeping obligations for members who resign or are removed. ClubHangar tracks standing to mirror these real-world legal states. The practical system consequences — whether someone can book a flight, access the mobile app, or appear in membership reports — all flow from that underlying status.</p>
+      <p><strong>Standing</strong> reflects the person's formal membership status within your incorporated society — whether they have been ratified by the committee, are pending that ratification, have let their subscription lapse, have been suspended, or have resigned. This is not just a system flag: under the Incorporated Societies Act 2022, only ratified (Active) members may vote at general meetings or stand for committee, and the society has specific record-keeping obligations for members who resign or are removed. Club Hangar tracks standing to mirror these real-world legal states. The practical system consequences — whether someone can book a flight, access the mobile app, or appear in membership reports — all flow from that underlying status.</p>
       <p><strong>Role</strong> represents the membership category as defined in your club rules — Full Member, Student Pilot, Life Member, and so on. It carries the annual subscription fee, any special conditions, and optionally grants extra system access. A person's role can change (e.g. a student graduates to full member) without affecting their standing.</p>
       <div class="callout info">
         <strong>"Pending Approval" is a standing, not a role.</strong> When a new member appears in the Members list, the Standing column shows "Pending Approval." This tells you their ISA ratification state — the committee hasn't formally voted them in yet. It has nothing to do with their role (e.g. "Full Member" or "Student Pilot"), which is the billing and access category set in Settings → Roles. You can — and usually should — assign a role to a Pending member, because you need one before you can generate their subscription invoice. Standalone, the standing "Pending Approval" just means: account created, not yet ratified.
@@ -185,7 +185,7 @@
       </div>
 
       <div class="callout info">
-        <strong>Why instructors need a member account:</strong> Instructors must appear on booking records, flight completions, and training declarations. ClubHangar finds them, assigns them to bookings, and records their grade-based rate by looking them up as a club member. An instructor who is also a paying club member simply has a role that carries both the instructor flag and a membership subscription — the two are independent. An instructor who is not a club member (e.g. a contracted external CFI) can be given a member account with Pending or Non-member standing, no subscription, and an instructor role.
+        <strong>Why instructors need a member account:</strong> Instructors must appear on booking records, flight completions, and training declarations. Club Hangar finds them, assigns them to bookings, and records their grade-based rate by looking them up as a club member. An instructor who is also a paying club member simply has a role that carries both the instructor flag and a membership subscription — the two are independent. An instructor who is not a club member (e.g. a contracted external CFI) can be given a member account with Pending or Non-member standing, no subscription, and an instructor role.
       </div>
 
       <details class="dblock">
@@ -204,7 +204,7 @@
       <details class="dblock">
         <summary>Staff instructors who are not club members</summary>
         <div class="dbody">
-          <p>Some clubs employ or contract instructors who are not members of the club in the membership sense — they don't pay a subscription, don't have voting rights, and aren't on the ISA register as members. ClubHangar handles this by separating the concepts:</p>
+          <p>Some clubs employ or contract instructors who are not members of the club in the membership sense — they don't pay a subscription, don't have voting rights, and aren't on the ISA register as members. Club Hangar handles this by separating the concepts:</p>
           <ul>
             <li>Give the instructor a member account with standing set to <strong>Non-member</strong> or <strong>Pending</strong>. They get a login, appear on bookings and completions, and can use the management web app.</li>
             <li>Assign them an instructor role (with the instructor flag). Do not generate a subscription invoice for them.</li>
@@ -265,7 +265,7 @@
     <div class="gsec" id="setup">
       <h2>Setting up the club</h2>
 
-      <p>ClubHangar is configured through two screens: <strong>Settings</strong> and <strong>Settings → Types</strong>. Most of this is a one-time exercise, but getting it right at the start avoids problems in invoices, maintenance alerts, and membership records later. The sections below explain each tab, what each setting does, and where its effects surface in the rest of the system.</p>
+      <p>Club Hangar is configured through two screens: <strong>Settings</strong> and <strong>Settings → Types</strong>. Most of this is a one-time exercise, but getting it right at the start avoids problems in invoices, maintenance alerts, and membership records later. The sections below explain each tab, what each setting does, and where its effects surface in the rest of the system.</p>
 
       <h3 id="setup-general">General</h3>
       <p>The General tab holds your club's public identity: name, phone, email, and postal address. These are not just display fields — they print verbatim on every invoice the system produces. If your club trades under a different name from its legal entity name, use the trading name here and put the registered legal name in Billing.</p>
@@ -298,7 +298,7 @@
       <p>The Appearance tab lets you match the system's colour scheme to your club's identity. The banner colour fills the sidebar header; the primary colour is used for buttons and highlights. Booking status colours (Pending, Confirmed, Departed, Completed, etc.) control how each booking type appears on the Gantt calendar — choosing distinct colours makes it easy to see at a glance how far through the lifecycle each flight is. The body font affects the management web app only; the mobile app uses its own styling. Chart colours affect the bar and line charts in Reports.</p>
 
       <h3 id="setup-roles">Roles</h3>
-      <p>A <strong>role</strong> is a system-level category that controls what a person in ClubHangar can access and how the billing cycle applies to them. Some roles map naturally to club membership categories (Full Member, Student Pilot, Life Member), but a role is not the same thing as club membership. A person can have a system account — and therefore appear on bookings, flight records, and safety reports — without being a member of the incorporated society. An external CFI, for example, has a system role but is not on the ISA register and pays no subscription.</p>
+      <p>A <strong>role</strong> is a system-level category that controls what a person in Club Hangar can access and how the billing cycle applies to them. Some roles map naturally to club membership categories (Full Member, Student Pilot, Life Member), but a role is not the same thing as club membership. A person can have a system account — and therefore appear on bookings, flight records, and safety reports — without being a member of the incorporated society. An external CFI, for example, has a system role but is not on the ISA register and pays no subscription.</p>
       <p>Three system roles exist by default and cannot be deleted:</p>
       <ul>
         <li><strong>Admin</strong> — full access to everything, including Settings and Types. Assign sparingly; this role carries all permissions implied.</li>
@@ -381,7 +381,7 @@
 
       <p><strong>2 — Member creates account:</strong> The recipient clicks the link and enters their name and a password. Their account and member record are created automatically — you don't need to do anything.</p>
       <p><strong>3 — Pending:</strong> The new member appears on the Members page with standing Pending. They can use the mobile app to see their account and profile but cannot request bookings or appear as an active member in reports.</p>
-      <p><strong>4 — Committee ratification (ISA 2022):</strong> The committee must formally vote to admit the member before membership takes effect. Record the meeting reference and date in your club minutes. This step happens outside ClubHangar.</p>
+      <p><strong>4 — Committee ratification (ISA 2022):</strong> The committee must formally vote to admit the member before membership takes effect. Record the meeting reference and date in your club minutes. This step happens outside Club Hangar.</p>
 
       <div class="callout tip">
         <strong>Adding a member manually:</strong> Use <em>+ Add manually</em> for someone who joined in person or whose email you already have. By default the form sends them an invite email so they can set their own password — the same secure flow as the standard invite. Untick "Send invite email" only if you need to set a specific temporary password yourself (for example, to configure the account before they arrive). When untick is used, leave the password field blank to auto-generate one — note it immediately, as it won't be shown again.
@@ -432,7 +432,7 @@
       <p>Each invoice is dated today and carries a due date based on your payment terms (Settings → Billing → Payment terms). The expiry date on the invoice is set to FY end, which is the date the system will advance the member's <code>subscription_expires</code> to when you mark it paid.</p>
 
       <h4 style="margin:.8rem 0 .3rem;font-size:.92rem;">What happens automatically — expiry warning emails</h4>
-      <p>Separately from the invoice, ClubHangar sends automatic reminder emails to members at <strong>30 days</strong> and <strong>7 days</strong> before their subscription expiry date. These are sent by the daily notification job and tell the member their subscription expires soon and to contact the club. They fire based on the <code>subscription_expires</code> date already on the member's record — independent of whether an invoice has been sent. Members who have already renewed (expiry date advanced) will not receive these reminders.</p>
+      <p>Separately from the invoice, Club Hangar sends automatic reminder emails to members at <strong>30 days</strong> and <strong>7 days</strong> before their subscription expiry date. These are sent by the daily notification job and tell the member their subscription expires soon and to contact the club. They fire based on the <code>subscription_expires</code> date already on the member's record — independent of whether an invoice has been sent. Members who have already renewed (expiry date advanced) will not receive these reminders.</p>
 
       <h4 style="margin:.8rem 0 .3rem;font-size:.92rem;">Step 2 — When a payment arrives (admin or bookkeeper)</h4>
       <p>Members pay by bank transfer. The process of matching payments to members happens outside the app — you check your bank statement and reconcile manually. When you confirm a payment has arrived:</p>
@@ -602,7 +602,7 @@
       <p>All reversals are admin-only and are recorded in the booking's audit log (visible at the bottom of the booking detail). If a status button doesn't appear, the prerequisite (no payment recorded, no charge items, etc.) has not been met — the reason is usually clear from context.</p>
 
       <h3 id="book-credentials">Credentials</h3>
-      <p>ClubHangar tracks each member's pilot credentials — licences, ratings, medicals, Flight Reviews (BFR), and certificates. Credential records live on the member record under <strong>People → Members → [member] → Credentials tab</strong>. Members can also add and manage their own credentials from the mobile app — go to Profile → Credentials.</p>
+      <p>Club Hangar tracks each member's pilot credentials — licences, ratings, medicals, Flight Reviews (BFR), and certificates. Credential records live on the member record under <strong>People → Members → [member] → Credentials tab</strong>. Members can also add and manage their own credentials from the mobile app — go to Profile → Credentials.</p>
 
       <p><strong>Credential types.</strong> The system uses NZ CAA categories — these are fixed, not club-configurable:</p>
       <ul>
@@ -864,7 +864,7 @@
       </ul>
 
       <h3 id="sales-invoices">Invoices</h3>
-      <p>ClubHangar has two completely separate invoicing streams that happen to share the same invoice list — it is important to understand that they are unrelated to each other:</p>
+      <p>Club Hangar has two completely separate invoicing streams that happen to share the same invoice list — it is important to understand that they are unrelated to each other:</p>
       <ul>
         <li><strong>Subscription (renewal) invoices</strong> — issued once a year per member, for the annual membership fee. Created manually from the member's Membership tab, or in bulk via Settings → Membership. Marking one paid has a special side-effect: the system automatically advances that member's subscription expiry date to the date on the invoice. This is the only way subscription expiry moves forward.</li>
         <li><strong>Flight invoices</strong> — issued for individual completed flights. Generating a flight invoice immediately marks the booking as <strong>Completed</strong>. The invoice amount is the outstanding balance on the flight (total charge minus any prior direct payments). A $0 invoice is valid when the member has already paid in full by other means and you want to issue a formal receipt. Flight invoices have no effect on subscription expiry.</li>
@@ -926,7 +926,7 @@
       <details class="dblock">
         <summary>Printing or emailing an invoice</summary>
         <div class="dbody">
-          <p>Every invoice has a print view: Sales → Invoices → [invoice] → Print. This renders the invoice as a clean, printable page with the club's billing details, member name, line items, GST breakdown, payment instructions, and bank account number. Use this to print for post, or save as PDF (using your browser's Print → Save as PDF) and attach to an email. There is no automatic email-sending from ClubHangar — sending the invoice to the member is done manually via email or post.</p>
+          <p>Every invoice has a print view: Sales → Invoices → [invoice] → Print. This renders the invoice as a clean, printable page with the club's billing details, member name, line items, GST breakdown, payment instructions, and bank account number. Use this to print for post, or save as PDF (using your browser's Print → Save as PDF) and attach to an email. There is no automatic email-sending from Club Hangar — sending the invoice to the member is done manually via email or post.</p>
         </div>
       </details>
 
@@ -965,17 +965,17 @@
       </ul>
       <p>When a rate needs to change — for example, before running the annual bulk renewal or changing the C-Cat instructor rate — update it in the relevant place before the affected flights or invoices are generated. Changes take effect for future transactions only; past completions retain their snapshotted rates.</p>
 
-      <h3 id="sales-reconcile">Payment reconciliation (outside ClubHangar)</h3>
-      <p>ClubHangar does not process payments directly — there is no payment gateway integration. The reconciliation process is:</p>
+      <h3 id="sales-reconcile">Payment reconciliation (outside Club Hangar)</h3>
+      <p>Club Hangar does not process payments directly — there is no payment gateway integration. The reconciliation process is:</p>
       <ol>
         <li>Member pays by bank transfer, using the invoice number as the reference.</li>
         <li>Bookkeeper reviews the bank statement and matches each transfer to an invoice.</li>
         <li>Bookkeeper notifies admin of received payments.</li>
-        <li>Admin records each payment in ClubHangar: Sales → Invoices → [invoice] → Mark paid.</li>
+        <li>Admin records each payment in Club Hangar: Sales → Invoices → [invoice] → Mark paid.</li>
         <li>For subscription invoices: marking paid automatically sets the member's subscription expiry date.</li>
       </ol>
       <div class="callout info">
-        <strong>Why it works this way:</strong> Most small clubs use a single club bank account managed by a treasurer or bookkeeper. Keeping payment processing outside the app avoids PCI compliance issues and lets the bookkeeper use their existing accounting software (Xero, MYOB) for the ledger while ClubHangar tracks the membership and operational side.
+        <strong>Why it works this way:</strong> Most small clubs use a single club bank account managed by a treasurer or bookkeeper. Keeping payment processing outside the app avoids PCI compliance issues and lets the bookkeeper use their existing accounting software (Xero, MYOB) for the ledger while Club Hangar tracks the membership and operational side.
       </div>
     </div>
 
@@ -991,7 +991,7 @@
         <li><strong>Billing method</strong> — which instrument drives the flight charge calculation. If set to Hobbs, the hire fee = Hobbs hours flown × hourly rate.</li>
         <li><strong>Maintenance source</strong> — which instrument accumulates maintenance hours. This can differ from billing: you might bill members on Hobbs time but run maintenance intervals on Tacho because your maintenance manual requires it.</li>
         <li><strong>Maintenance fraction</strong> — a multiplier applied to the raw maintenance reading. If your tacho runs at 0.83 hours per Hobbs hour (common on fixed-pitch propeller aircraft), set this to 0.83 so that maintenance hours are correctly scaled rather than over- or under-counted.</li>
-        <li><strong>Initial maintenance hours</strong> — the accumulated hours already on the aircraft when it was entered into ClubHangar. The system adds all subsequent flight hours on top of this figure when tracking due-hours for maintenance items.</li>
+        <li><strong>Initial maintenance hours</strong> — the accumulated hours already on the aircraft when it was entered into Club Hangar. The system adds all subsequent flight hours on top of this figure when tracking due-hours for maintenance items.</li>
         <li><strong>Status</strong> — Online (available for hire), Offline (in maintenance, bookings blocked), Retired (permanently removed from service)</li>
         <li><strong>Available for hire</strong> — uncheck to hide the aircraft from the booking calendar without changing its status</li>
       </ul>
@@ -1079,7 +1079,7 @@
       <p>A Red maintenance item does not automatically prevent booking — it is an alert, not a lock. To prevent booking during maintenance, create a <strong>block-out</strong> (Operations → Block-outs) for the aircraft covering the maintenance period. The block-out prevents all bookings and shows on the Gantt calendar.</p>
 
       <div class="callout danger">
-        <strong>Red = grounded in practice.</strong> If an aircraft has a Red maintenance alert, it should be taken offline (set status to Offline or add a block-out) until the work is done. The system surfaces the alert but does not automatically ground the aircraft — that decision rests with the CFI or duty instructor.
+        <strong>Red = maintenance item is due or overdue.</strong> The item's due date or hours threshold has been reached and the work has not been recorded as done. The system surfaces this as an alert — it does not automatically prevent bookings. If the aircraft should be grounded, set its status to Offline or add a block-out.
       </div>
 
       <h3 id="ac-log">Logging completed maintenance work</h3>
@@ -1124,7 +1124,7 @@
       <h2>Other tools</h2>
 
       <h3 id="tools-notifications">Push notifications</h3>
-      <p>ClubHangar sends push notifications to the mobile app for key events in the booking and billing lifecycle. Members must opt in to notifications the first time they open the mobile app — a browser prompt asks for permission. Once subscribed, they receive notifications on their phone even when the app is not open.</p>
+      <p>Club Hangar sends push notifications to the mobile app for key events in the booking and billing lifecycle. Members must opt in to notifications the first time they open the mobile app — a browser prompt asks for permission. Once subscribed, they receive notifications on their phone even when the app is not open.</p>
       <p>Events that trigger notifications, and who is notified:</p>
       <table class="guide-table">
         <thead><tr><th>Event</th><th>Who is notified</th></tr></thead>

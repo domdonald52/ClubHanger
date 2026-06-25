@@ -52,14 +52,14 @@
         </form>
         <button type="button" class="cbtn-sm"
                 onclick="openEditFees({{ ae.id }}, '{{ ae.icao_code }}')">Edit fees</button>
-        <button type="button" class="cbtn-sm"
-                onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name }}', '{{ ae.notes }}', {{ ae.is_home|yesno:'true,false' }})">Edit</button>
-        <form method="post" style="display:inline;"
+        <button type="button" class="cbtn-sm cbtn-icon" title="Edit"
+                onclick="openEditAe({{ ae.id }}, '{{ ae.icao_code }}', '{{ ae.name }}', '{{ ae.notes }}', {{ ae.is_home|yesno:'true,false' }})"><i class="ti ti-pencil"></i></button>
+        <form method="post" style="display:contents;"
               data-confirm="Delete {{ ae.icao_code }} — {{ ae.name }}?">
           {% csrf_token %}
           <input type="hidden" name="action" value="delete_aerodrome">
           <input type="hidden" name="ae_id" value="{{ ae.id }}">
-          <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+          <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
         </form>
       </div>
     </div>
@@ -92,7 +92,10 @@
 <!-- Add aerodrome modal -->
 <div id="add-ae-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(500px,94vw);">
-    <h2>Add aerodrome</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Add aerodrome</h2>
+      <button type="button" class="pi-close" id="add-ae-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_aerodrome">
@@ -109,9 +112,7 @@
         <textarea name="notes" rows="2" class="finput"
                   placeholder="Agreement terms, billing cycle, contacts…" style="resize:vertical;"></textarea>
       </label>
-      <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="add-ae-cancel">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Add aerodrome</button>
       </div>
     </form>
@@ -121,7 +122,10 @@
 <!-- Edit fees modal -->
 <div id="fees-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(520px,94vw);">
-    <h2 id="fm-title">Edit fees</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 id="fm-title" style="margin:0;">Edit fees</h2>
+      <button type="button" class="pi-close" id="fm-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <p style="font-size:.8rem;color:#8a93a0;margin:-.3rem 0 .9rem;">Add, edit or remove landing fee rates for this aerodrome.</p>
     <form method="post" id="fm-form">
       {% csrf_token %}
@@ -129,9 +133,7 @@
       <input type="hidden" name="ae_id" id="fm-ae-id">
       <div id="fm-rows" style="margin-bottom:.5rem;"></div>
       <button type="button" class="cbtn-sm" id="fm-add-row" style="margin-bottom:1rem;">+ Add fee type</button>
-      <div class="modal-actions">
-        <button type="button" class="cbtn" id="fm-cancel">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Save fees</button>
       </div>
     </form>
@@ -141,7 +143,10 @@
 <!-- Edit aerodrome modal -->
 <div id="edit-ae-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(500px,94vw);">
-    <h2 id="eam-title">Edit aerodrome</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 id="eam-title" style="margin:0;">Edit aerodrome</h2>
+      <button type="button" class="pi-close" id="eam-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="edit_aerodrome">
@@ -158,9 +163,7 @@
         Home aerodrome
         <span style="font-size:.78rem;color:#8a93a0;font-weight:400;">(used for weather, METAR/TAF)</span>
       </label>
-      <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="eam-cancel">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Save</button>
       </div>
     </form>

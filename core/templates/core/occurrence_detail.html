@@ -93,7 +93,7 @@
             <input type="text" name="override_note" class="finput" required placeholder="Why is this being overridden?">
           </label>
           <button type="submit" class="cbtn-sm danger" style="margin-bottom:1px;">Confirm</button>
-          <button type="button" class="cbtn-sm" onclick="document.getElementById('override-{{ a.id }}').hidden=true" style="margin-bottom:1px;">✕ Close</button>
+          <button type="button" class="cbtn-sm" onclick="document.getElementById('override-{{ a.id }}').hidden=true" style="margin-bottom:1px;"><i class="ti ti-x"></i> Close</button>
         </form>
       </div>
       {% endif %}

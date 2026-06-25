@@ -61,7 +61,10 @@
 <!-- Create modal -->
 <div id="create-modal" hidden style="position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500;">
   <div style="background:#fff;border-radius:10px;width:min(440px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
-    <h2 style="font-size:1rem;font-weight:650;margin:0 0 1rem;">New voucher</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="font-size:1rem;font-weight:650;margin:0;">New voucher</h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('create-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="create_voucher">
@@ -88,7 +91,6 @@
         <textarea name="notes" class="finput" rows="2"></textarea>
       </label>
       <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="document.getElementById('create-modal').hidden=true">✕ Close</button>
         <button type="submit" class="cbtn primary">Create</button>
       </div>
     </form>
@@ -98,7 +100,10 @@
 <!-- Redeem modal -->
 <div id="redeem-modal" hidden style="position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500;">
   <div style="background:#fff;border-radius:10px;width:min(400px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
-    <h2 style="font-size:1rem;font-weight:650;margin:0 0 .3rem;">Redeem voucher</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="font-size:1rem;font-weight:650;margin:0;">Redeem voucher</h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('redeem-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <p id="redeem-desc" style="font-size:.85rem;color:#5b6573;margin:0 0 1rem;"></p>
     <form method="post">
       {% csrf_token %}
@@ -113,7 +118,6 @@
         </select>
       </label>
       <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="document.getElementById('redeem-modal').hidden=true">✕ Close</button>
         <button type="submit" class="cbtn primary">Redeem &amp; credit account</button>
       </div>
     </form>

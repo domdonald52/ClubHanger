@@ -34,7 +34,7 @@
       <div>
         <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.8rem;">
           <h2 class="sh2" style="margin:0;">Contact details</h2>
-          <a href="{% url 'core:manage_member_detail' club.slug instr.id %}" class="row-action-btn" data-overlay data-overlay-wide style="font-size:.78rem;">Edit in Members →</a>
+          <a href="{% url 'core:manage_member_detail' club.slug instr.id %}" class="cbtn-sm cbtn-icon" title="Edit in Members" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a>
         </div>
         <table class="info-table">
           <tr><th>Email</th><td>{{ instr.user.email|default:"—" }}</td></tr>
@@ -97,11 +97,11 @@
           </td>
           <td style="color:#8a93a0;">{{ av.notes }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;" data-confirm="Remove this window?">
+            <form method="post" style="display:contents;" data-confirm="Remove this window?">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_instructor_availability">
               <input type="hidden" name="av_id" value="{{ av.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Remove</button>
+              <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Remove"><i class="ti ti-user-minus"></i></button>
             </form>
           </td>
         </tr>
@@ -133,11 +133,11 @@
           <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
           <td style="color:#8a93a0;">{{ bo.label }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:inline;" data-confirm="Delete this block-out?">
+            <form method="post" style="display:contents;" data-confirm="Delete this block-out?">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_blockout">
               <input type="hidden" name="bo_id" value="{{ bo.id }}">
-              <button type="submit" class="cbtn-sm cbtn-danger">Delete</button>
+              <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
             </form>
           </td>
         </tr>
@@ -153,7 +153,10 @@
   <!-- Add availability window modal -->
   <div id="add-av-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(520px,95vw);">
-      <h2>Add availability window</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="margin:0;">Add availability window</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('add-av-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post">{% csrf_token %}
         <input type="hidden" name="action" value="add_instructor_availability">
         <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
@@ -193,9 +196,7 @@
         <label class="flabel" style="margin-top:.1rem;">Notes
           <input type="text" name="av_notes" class="finput" placeholder="e.g. summer roster">
         </label>
-        <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-av-modal').hidden=true">✕ Close</button>
-          <span style="flex:1"></span>
+        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
           <button type="submit" class="cbtn primary">Save window</button>
         </div>
       </form>
@@ -205,7 +206,10 @@
   <!-- Add block-out modal (instructor) -->
   <div id="add-instr-bo-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(480px,94vw);">
-      <h2>Add block-out — {{ instr.user.get_full_name }}</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 style="margin:0;">Add block-out — {{ instr.user.get_full_name }}</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('add-instr-bo-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="add_instructor_blockout">
@@ -245,9 +249,7 @@
           <label class="flabel">Start<input type="time" name="start_time" class="finput" value="08:00"></label>
           <label class="flabel">End<input type="time" name="end_time" class="finput" value="17:00"></label>
         </div>
-        <div class="modal-actions" style="margin-top:.8rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-instr-bo-modal').hidden=true">✕ Close</button>
-          <span style="flex:1"></span>
+        <div class="modal-actions" style="margin-top:.8rem;justify-content:flex-end;">
           <button type="submit" class="cbtn primary">Save block-out</button>
         </div>
       </form>

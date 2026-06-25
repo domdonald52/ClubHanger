@@ -75,7 +75,10 @@
 <!-- New sale modal -->
 <div id="new-sale-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(480px,95vw);">
-    <h2 style="margin:0 0 .9rem;font-size:1.05rem;">New sundry sale</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;font-size:1.05rem;">New sundry sale</h2>
+      <button type="button" class="pi-close" onclick="document.getElementById('new-sale-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <label class="flabel">Member
@@ -97,9 +100,7 @@
           <input type="text" name="reference" class="finput" placeholder="Receipt #, order ref…" maxlength="100">
         </label>
       </div>
-      <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="document.getElementById('new-sale-modal').hidden=true">✕ Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Record sale</button>
       </div>
     </form>
