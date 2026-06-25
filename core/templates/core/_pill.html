@@ -31,12 +31,12 @@
      data-paid="{{ p.paid|yesno:'true,false' }}"
      title="{% if p.client_name %}{{ p.client_name }} (via {{ p.member_name }}){% else %}{{ p.member_name }}{% endif %} · {{ p.start_label }}–{{ p.end_label }}{% if p.conflict %} · ⚠ {{ p.conflict_reason }}{% endif %}{% if p.decl_pending %} · Declaration pending{% endif %}{% if p.override %} · booked over block-out{% endif %}"
      style="left:{{ p.left }}px;width:{{ p.width }}px;">
-  {% if p.conflict_kind and p.status != 'departed' and p.status != 'completed' %}<div class="pill-spine {{ p.conflict_kind }}"></div>{% endif %}
+  {% if p.conflict_kind and p.status != 'departed' and p.status != 'completed' and p.status != 'returned' %}<div class="pill-spine {{ p.conflict_kind }}"></div>{% endif %}
   <div class="pill-body">
     <div class="nm">{% if p.client_name %}{{ p.client_name }}{% else %}{{ p.member_name }}{% endif %}</div>
-    <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · airborne{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
+    <div class="sub">{{ p.start_label }}–{{ p.end_label }}{% if p.status == 'departed' %} · airborne{% elif p.status == 'returned' %} · returned{% elif p.status == 'completed' %}{% if p.paid %} · completed{% else %} · returned{% endif %}{% elif p.description %} · {{ p.description }}{% elif p.flight_type_name %} · {{ p.flight_type_name }}{% endif %}</div>
   </div>
-  {% if p.status == 'departed' %}<div class="pill-wedge dep"><i class="ti ti-plane-departure" aria-hidden="true"></i></div>{% elif p.status == 'completed' and not p.paid %}<div class="pill-wedge ret"><i class="ti ti-plane-arrival" aria-hidden="true"></i></div>{% endif %}
+  {% if p.status == 'departed' %}<div class="pill-wedge dep"><i class="ti ti-plane-departure" aria-hidden="true"></i></div>{% elif p.status == 'returned' or p.status == 'completed' and not p.paid %}<div class="pill-wedge ret"><i class="ti ti-plane-arrival" aria-hidden="true"></i></div>{% endif %}
   {% if p.watcher_count %}<div class="pill-watch"><i class="ti ti-eye" aria-hidden="true"></i>{{ p.watcher_count }}</div>{% endif %}
   <div class="rs" data-resize></div>
 </div>

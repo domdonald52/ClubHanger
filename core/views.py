@@ -3644,7 +3644,7 @@ def booking_detail(request, club_slug, booking_id):
         _base = (FlightCompletion.objects
                  .filter(booking__member=booking.member, booking__club=club)
                  .exclude(booking=booking)
-                 .select_related('booking__aircraft', 'booking'))
+                 .select_related('booking__aircraft', 'booking', 'booking__flight_type'))
         other_unpaid_list = list(
             _base.filter(paid_at__isnull=True, total_charge__gt=0)
         )

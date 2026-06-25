@@ -914,29 +914,41 @@
             <div class="mp-row" style="display:none;"><input class="mp-amount" value="{{ balance_owing }}" readonly></div>
 
             {% if other_unpaid_list or other_outstanding_list %}
-            <!-- Flight reference line — only shown when collecting charges from multiple flights -->
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">
-              <span style="color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
+            <!-- Flight reference line for current booking — only shown alongside other outstanding flights -->
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem;font-weight:600;margin-bottom:.5rem;">
+              <span style="color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}{% if booking.flight_type %} · {{ booking.flight_type.name }}{% endif %}</span>
               <span style="color:#2b333d;">${{ balance_owing|currency }}</span>
             </div>
-            {% endif %}
 
-            {% if other_unpaid_list or other_outstanding_list %}
-            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin:.3rem 0 .2rem;">Also outstanding</div>
-            {% for item in other_unpaid_list %}
-            <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.25rem 0;border-bottom:1px solid #f0f2f4;">
-              <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
-              <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }}</span>
-              <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.total_charge }}" style="width:80px;"></div>
-            </div>
-            {% endfor %}
-            {% for item in other_outstanding_list %}
-            <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.25rem 0;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
-              <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
-              <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }} <span style="color:#b06800;font-size:.74rem;">(partial)</span></span>
-              <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.balance_owing }}" style="width:80px;"></div>
-            </div>
-            {% endfor %}
+            <!-- Collapsible "Also outstanding" section — one row per flight -->
+            <details id="also-outstanding-details" style="border:1px solid #e3e6ea;border-radius:7px;margin-bottom:.5rem;" open>
+              <summary style="display:flex;justify-content:space-between;align-items:center;padding:.45rem .7rem;cursor:pointer;font-size:.82rem;font-weight:600;color:#5b6573;list-style:none;user-select:none;">
+                <span style="display:flex;align-items:center;gap:.35rem;"><i class="ti ti-chevron-down" id="also-outstanding-chev" style="font-size:.7rem;transition:transform .15s;"></i>Also outstanding ({{ other_total_count }} flight{{ other_total_count|pluralize }})</span>
+                <span style="font-weight:700;color:#2b333d;">${{ other_total|currency }}</span>
+              </summary>
+              <div style="border-top:1px solid #eef1f4;padding:.35rem .7rem .4rem;">
+              {% for item in other_unpaid_list %}
+              <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.3rem 0;{% if not forloop.last or other_outstanding_list %}border-bottom:1px solid #f0f2f4;{% endif %}">
+                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
+                <div>
+                  <div style="font-size:.82rem;color:#2b333d;font-weight:500;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M Y" }}</div>
+                  {% if item.booking.flight_type %}<div style="font-size:.74rem;color:#8a93a0;">{{ item.booking.flight_type.name }}</div>{% endif %}
+                </div>
+                <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.total_charge }}" style="width:80px;"></div>
+              </div>
+              {% endfor %}
+              {% for item in other_outstanding_list %}
+              <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.3rem 0;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
+                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
+                <div>
+                  <div style="font-size:.82rem;color:#2b333d;font-weight:500;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M Y" }} <span style="color:#b06800;font-size:.74rem;font-weight:400;">(partial)</span></div>
+                  {% if item.booking.flight_type %}<div style="font-size:.74rem;color:#8a93a0;">{{ item.booking.flight_type.name }}</div>{% endif %}
+                </div>
+                <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.balance_owing }}" style="width:80px;"></div>
+              </div>
+              {% endfor %}
+              </div>
+            </details>
             {% endif %}
 
             {% if arrears_clearable %}
@@ -944,7 +956,7 @@
               <input type="checkbox" name="include_arrears" id="mp-arrears-chk" value="1" style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;">
               <input type="hidden" name="arrears_amount" id="mp-arrears-amt" value="{{ member_account.balance|floatformat:2|slice:'1:' }}">
               <label for="mp-arrears-chk" style="font-size:.82rem;color:#92400e;cursor:pointer;flex:1;">
-                Also collect <strong>${{ member_account.balance|currency|slice:'1:' }}</strong> outstanding from previous unpaid flights
+                Also collect <strong>${{ member_account.balance|currency|slice:'1:' }}</strong> account deficit (credit overdraft)
               </label>
             </div>
             {% endif %}
@@ -1160,6 +1172,16 @@
             });
 
             recalcTotal();
+
+            // Chevron rotation for also-outstanding collapsible
+            var _aod = document.getElementById('also-outstanding-details');
+            var _aoc = document.getElementById('also-outstanding-chev');
+            if (_aod && _aoc) {
+              _aoc.style.transform = _aod.open ? 'rotate(0deg)' : 'rotate(-90deg)';
+              _aod.addEventListener('toggle', function() {
+                _aoc.style.transform = _aod.open ? 'rotate(0deg)' : 'rotate(-90deg)';
+              });
+            }
           })();
           </script>
           {% endif %}{% endif %}
@@ -1246,7 +1268,7 @@
             {% if arrears_clearance_at %}
             <tr>
               <td style="padding:.3rem 0;">
-                <span style="font-weight:500;">Previous unpaid flights — balance collected</span>
+                <span style="font-weight:500;">Account deficit collected</span>
                 <span style="color:#8a93a0;margin-left:.3rem;">{{ arrears_clearance_at.get_payment_method_display }} · ✓ {{ arrears_clearance_at.created_at|date:"j M H:i" }}</span>
                 {% if arrears_flights %}
                 <details style="margin-top:.2rem;">
@@ -1313,6 +1335,8 @@
 <style>
   .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
   .back-link:hover{color:var(--banner);}
+  #also-outstanding-details>summary{list-style:none;}
+  #also-outstanding-details>summary::-webkit-details-marker{display:none;}
 
   .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;}
   .notice.ok{background:#eaf6ec;color:#216c2a;}
@@ -1321,8 +1345,8 @@
 
   .sep{color:#d0d5dd;margin:0 .2rem;}
 
-  /* Override returned chip to indigo here (base_inline.html keeps it red for the mobile bookings list) */
-  .status-chip.returned,.status-chip.status-returned{background:#eef2ff;color:#4338ca;}
+  /* base_inline.html's <style> block renders after this content block, so !important is needed to win */
+  .status-chip.returned,.status-chip.status-returned{background:#eef2ff!important;color:#4338ca!important;}
   /* status-chip colours defined in base.html */
   .warn-chip{font-size:.72rem;background:#fee2e2;color:#c0392b;padding:.1rem .4rem;border-radius:4px;margin-left:.3rem;}
 
