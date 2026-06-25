@@ -447,27 +447,11 @@ table.items tbody tr:last-child td { border-bottom: none; }
         </tr>
         {% endwith %}
         {% elif item.display_is_arrears %}
-        <tr style="background:#f9fafb;">
-          <td colspan="3" style="padding:3pt 8pt;font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;">Previous unpaid flights — cleared by this invoice</td>
-        </tr>
-        {% for af in arrears_flights %}
         <tr>
-          {% if af.flight_completion %}
-          <td style="white-space:nowrap;font-size:8.5pt;color:#6b7280;padding-left:14pt;">{{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}</td>
-          <td style="padding-left:14pt;">
-            <strong>{{ af.flight_completion.booking.aircraft.registration }}</strong>{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}
-            <br><span style="font-size:8pt;color:#9ca3af;">Aircraft hire</span>
-          </td>
-          {% else %}
-          <td style="white-space:nowrap;font-size:8.5pt;color:#6b7280;padding-left:14pt;">{{ af.disp_date|default:"—" }}</td>
-          <td style="padding-left:14pt;">
-            <strong>{{ af.disp_aircraft|default:"—" }}</strong>
-            <br><span style="font-size:8pt;color:#9ca3af;">Aircraft hire</span>
-          </td>
-          {% endif %}
-          <td class="r" style="color:#6b7280;">${{ af.amount|floatformat:2 }}</td>
+          <td style="font-size:8.5pt;color:#6b7280;">—</td>
+          <td>Account deficit (credit overdraft)</td>
+          <td class="r">${{ item.amount|currency }}</td>
         </tr>
-        {% endfor %}
         {% else %}
         <tr>
           <td style="font-size:8.5pt;color:#6b7280;">—</td>
@@ -506,6 +490,31 @@ table.items tbody tr:last-child td { border-bottom: none; }
         </tbody>
       </table>
     </div>
+
+    {% if session_payments or arrears_clearance_at %}
+    <!-- Also settled in this payment session -->
+    <div style="margin-top:1.2rem;">
+      <div style="font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.35rem;">Also settled in this session</div>
+      <table class="items" style="font-size:8.5pt;">
+        <tbody>
+          {% for sp in session_payments %}
+          <tr>
+            <td style="white-space:nowrap;color:#6b7280;">{{ sp.completion.booking.scheduled_start|date:"j M Y" }}</td>
+            <td><strong>{{ sp.completion.booking.aircraft.registration }}</strong>{% if sp.completion.booking.flight_type %} · {{ sp.completion.booking.flight_type.name }}{% endif %}</td>
+            <td class="r">${{ sp.amount|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+          {% if arrears_clearance_at %}
+          <tr>
+            <td style="color:#6b7280;">—</td>
+            <td>Account deficit (credit overdraft)</td>
+            <td class="r">${{ arrears_clearance_at.amount|floatformat:2 }}</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
 
     <!-- Footer / payment terms -->
     {% if config.payment_terms_text %}

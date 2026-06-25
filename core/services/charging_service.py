@@ -288,8 +288,7 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
                 created_by=user,
             )
             acct.apply_transaction(fp.amount, 'credit')
-        fp.paid_at = None
-        fp.save(update_fields=['paid_at'])
+        fp.delete()
 
     fc._sync_payment_cache()
     total_reversed = sum(fp.amount for fp in rows)
@@ -321,15 +320,20 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
                     created_by=user,
                 )
                 _sacct.apply_transaction(_sfp.amount, 'credit')
-            _sfp.paid_at = None
-            _sfp.save(update_fields=['paid_at'])
+            _sfp.delete()
             _sfp.completion._sync_payment_cache()
             total_reversed += _sfp.amount
             extra_count += 1
 
+    # Also clean up any pending (unpaid) allocations on this FC — they're
+    # no longer valid once the payment session is reversed.
+    pending_fps = list(fc.payments.filter(paid_at__isnull=True))
+    for _pfp in pending_fps:
+        _pfp.delete()
+
     # Reverse any arrears clearance AccountTransactions tied to this FC.
-    # Without this the account balance stays artificially credited after reversal,
-    # hiding the outstanding balance and preventing re-collection.
+    # Delete the original AT after reversing so a second reversal call can't
+    # re-reverse the same AT (which would double-debit the account).
     arrears_ats = list(
         AccountTransaction.objects.filter(
             flight_completion=fc,
@@ -352,6 +356,7 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
             created_by=user,
         )
         _at.account.apply_transaction(_at.amount, 'debit')
+        _at.delete()
 
     msg = f'Payment of ${total_reversed:.2f} reversed. Flight is now unpaid.'
     if extra_count:

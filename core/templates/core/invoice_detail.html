@@ -56,29 +56,11 @@
           </tr>
           {% endwith %}
           {% elif item.display_is_arrears %}
-          <tr style="background:#f8f9fb;">
-            <td colspan="3" style="padding:.35rem .9rem;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Previous unpaid flights — cleared by this invoice</td>
-          </tr>
-          {% for af in arrears_flights %}
           <tr style="border-bottom:1px solid #f4f6f8;">
-            {% if af.flight_completion %}
-            <td style="padding:.45rem .9rem .45rem 1.4rem;white-space:nowrap;color:#5b6573;font-size:.82rem;">{{ af.flight_completion.booking.scheduled_start|date:"j M Y" }}</td>
-            <td style="padding:.45rem .6rem .45rem 1rem;">
-              <span style="font-weight:500;">{{ af.flight_completion.booking.aircraft.registration }}</span>{% if af.flight_completion.booking.flight_type %} · {{ af.flight_completion.booking.flight_type.name }}{% endif %}
-              <br><span style="color:#8a93a0;font-size:.78rem;">Aircraft hire</span>
-            </td>
-            {% else %}
-            <td style="padding:.45rem .9rem .45rem 1.4rem;white-space:nowrap;color:#5b6573;font-size:.82rem;">{{ af.disp_date|default:"—" }}</td>
-            <td style="padding:.45rem .6rem .45rem 1rem;">
-              <span style="font-weight:500;">{{ af.disp_aircraft|default:"—" }}</span>
-              <br><span style="color:#8a93a0;font-size:.78rem;">Aircraft hire</span>
-            </td>
-            {% endif %}
-            <td style="padding:.45rem .9rem;text-align:right;color:#5b6573;">${{ af.amount|floatformat:2 }}</td>
+            <td style="padding:.5rem .9rem;color:#8a93a0;font-size:.82rem;">—</td>
+            <td style="padding:.5rem .6rem;">Account deficit (credit overdraft)</td>
+            <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ item.amount|currency }}</td>
           </tr>
-          {% empty %}
-          <tr><td colspan="3" style="padding:.4rem 1.4rem;color:#8a93a0;font-size:.8rem;font-style:italic;">No individual flight breakdown available.</td></tr>
-          {% endfor %}
           {% else %}
           <tr style="border-bottom:1px solid #f4f6f8;">
             <td style="padding:.5rem .9rem;color:#8a93a0;font-size:.82rem;">—</td>
@@ -113,6 +95,32 @@
       </table>
     </div>
   </div>
+
+  {% if session_payments or arrears_clearance_at %}
+  <div class="inv-card" style="margin-bottom:1.2rem;">
+    <div class="inv-card-head">Also settled in this session</div>
+    <div style="padding:.5rem 0;">
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
+        <tbody>
+          {% for sp in session_payments %}
+          <tr style="border-bottom:1px solid #f4f6f8;">
+            <td style="padding:.5rem .9rem;white-space:nowrap;color:#5b6573;font-size:.82rem;">{{ sp.completion.booking.scheduled_start|date:"j M Y" }}</td>
+            <td style="padding:.5rem .6rem;font-weight:500;">{{ sp.completion.booking.aircraft.registration }}{% if sp.completion.booking.flight_type %} · {{ sp.completion.booking.flight_type.name }}{% endif %}</td>
+            <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ sp.amount|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+          {% if arrears_clearance_at %}
+          <tr style="border-bottom:1px solid #f4f6f8;">
+            <td style="padding:.5rem .9rem;color:#8a93a0;font-size:.82rem;">—</td>
+            <td style="padding:.5rem .6rem;font-weight:500;color:#92400e;">Account deficit (credit overdraft)</td>
+            <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ arrears_clearance_at.amount|floatformat:2 }}</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
 
   <!-- Payments received ledger -->
   {% with inv_payments=invoice.payments.all %}

@@ -103,10 +103,10 @@
           <tr>
             <td><strong>{{ ig.name }}</strong></td>
             <td>
-              <div style="display:inline-flex;align-items:center;gap:.3rem;">
-                $<input type="number" name="ig_rate_{{ ig.id }}" value="{{ ig.hourly_rate }}"
-                        step="0.01" min="0" class="money-input"
-                        style="width:100px;padding:.35rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;text-align:right;">
+              <div class="money-wrap" style="width:130px;">
+                <span class="money-sym">$</span>
+                <input type="number" name="ig_rate_{{ ig.id }}" value="{{ ig.hourly_rate }}"
+                       step="0.01" min="0" class="money-input">
               </div>
             </td>
           </tr>
@@ -139,10 +139,10 @@
             <td><strong>{{ st.name }}</strong></td>
             <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
             <td>
-              <div style="display:inline-flex;align-items:center;gap:.3rem;">
-                $<input type="number" name="st_amount_{{ st.id }}" value="{{ st.amount }}"
-                        step="0.01" min="0" class="money-input"
-                        style="width:100px;padding:.35rem .45rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;text-align:right;">
+              <div class="money-wrap" style="width:130px;">
+                <span class="money-sym">$</span>
+                <input type="number" name="st_amount_{{ st.id }}" value="{{ st.amount }}"
+                       step="0.01" min="0" class="money-input">
               </div>
             </td>
           </tr>

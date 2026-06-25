@@ -166,11 +166,11 @@ document.addEventListener('DOMContentLoaded',function(){
           <label class="flabel">Qty
             <input type="number" name="quantity" id="bd-lf-qty" value="1" min="1" class="finput" style="width:55px;" oninput="bdCalcLfTotal()">
           </label>
-          <label class="flabel">Unit $
-            <input type="number" name="unit_amount" id="bd-lf-unit" step="0.01" class="finput" style="width:70px;" oninput="bdCalcLfTotal()">
+          <label class="flabel">Unit
+            <div class="money-wrap" style="width:90px;"><span class="money-sym">$</span><input type="number" name="unit_amount" id="bd-lf-unit" step="0.01" class="money-input" oninput="bdCalcLfTotal()"></div>
           </label>
           <label class="flabel">Total
-            <input type="number" name="amount" id="bd-lf-total" step="0.01" class="finput" style="width:70px;" required>
+            <div class="money-wrap" style="width:90px;"><span class="money-sym">$</span><input type="number" name="amount" id="bd-lf-total" step="0.01" class="money-input" required></div>
           </label>
           <button type="submit" class="btn" style="flex-shrink:0;">Add</button>
         </div>
@@ -201,7 +201,7 @@ document.addEventListener('DOMContentLoaded',function(){
             <input type="text" name="description" class="finput" required placeholder="e.g. Headset hire">
           </label>
           <label class="flabel">Amount
-            <input type="number" name="amount" step="0.01" min="0" class="finput" style="width:80px;" required>
+            <div class="money-wrap" style="width:100px;"><span class="money-sym">$</span><input type="number" name="amount" step="0.01" min="0" class="money-input" required></div>
           </label>
           <button type="submit" class="btn" style="flex-shrink:0;">Add</button>
         </div>

@@ -90,8 +90,8 @@
         <input type="text" name="description" class="finput" placeholder="e.g. Headset hire, Logbook, Map" required maxlength="200">
       </label>
       <div style="display:flex;gap:.7rem;margin-top:.75rem;">
-        <label class="flabel" style="flex:1;">Amount ($)
-          <input type="number" name="amount" class="finput" min="0.01" step="0.01" placeholder="0.00" required>
+        <label class="flabel" style="flex:1;">Amount
+          <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" class="money-input" min="0.01" step="0.01" placeholder="0.00" required></div>
         </label>
         <label class="flabel" style="flex:1;">Reference <span style="font-weight:400;color:#aaa;">(optional)</span>
           <input type="text" name="reference" class="finput" placeholder="Receipt #, order ref…" maxlength="100">

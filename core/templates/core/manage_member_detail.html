@@ -386,9 +386,8 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="raise_subscription_invoice">
         <div class="field-grid" style="margin-bottom:.75rem;">
-          <label class="flabel">Amount ($)
-            <input type="number" name="amount" step="0.01" min="0.01" class="finput"
-                   value="{{ prorata_amount|default:'' }}" placeholder="e.g. 250.00" required>
+          <label class="flabel">Amount
+            <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" step="0.01" min="0.01" class="money-input" value="{{ prorata_amount|default:'' }}" placeholder="0.00" required></div>
             {% if member.role and not member.role.annual_renewal_fee %}<span style="font-size:.75rem;color:#e65100;">No annual fee set on role — enter manually</span>{% endif %}
           </label>
           <label class="flabel">Subscription valid to
@@ -435,9 +434,7 @@
           <form method="post" style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
             {% csrf_token %}
             <input type="hidden" name="action" value="set_credit_limit">
-            <input type="number" name="credit_limit" min="0" step="0.01" placeholder="e.g. 500"
-                   value="{% if account.credit_limit is not None %}{{ account.credit_limit }}{% endif %}"
-                   class="finput" style="width:110px;margin:0;">
+            <div class="money-wrap" style="width:110px;"><span class="money-sym">$</span><input type="number" name="credit_limit" min="0" step="0.01" placeholder="500" value="{% if account.credit_limit is not None %}{{ account.credit_limit }}{% endif %}" class="money-input"></div>
             <span style="font-size:.78rem;color:#8a93a0;">Leave blank = Exempt</span>
             <button type="submit" class="btn" style="padding:.3rem .7rem;font-size:.8rem;">Save</button>
           </form>

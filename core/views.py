@@ -3641,13 +3641,35 @@ def booking_detail(request, club_slug, booking_id):
 
     # Other unpaid/partially-paid flights for this member (for payment warning)
     if fc:
+        from django.db.models import Exists as _Exists, OuterRef as _OR
+        _today = timezone.localdate()
         _base = (FlightCompletion.objects
                  .filter(booking__member=booking.member, booking__club=club)
                  .exclude(booking=booking)
                  .select_related('booking__aircraft', 'booking', 'booking__flight_type'))
-        other_unpaid_list = list(
-            _base.filter(paid_at__isnull=True, total_charge__gt=0)
+        # Exclude flights that have a current (sent, not yet overdue) invoice —
+        # those may have been paid by bank transfer pending reconciliation.
+        _has_current_invoice = _Exists(
+            Invoice.objects.filter(
+                flight_completion=_OR('pk'),
+                status='sent',
+                due_date__gte=_today,
+            )
         )
+        _unpaid_qs = _base.filter(paid_at__isnull=True, total_charge__gt=0).filter(~_has_current_invoice)
+        other_unpaid_list = list(_unpaid_qs)
+        # Annotate any that have an overdue invoice so the template can flag them
+        _overdue_inv_map = {}
+        overdue_fc_ids = [x.pk for x in other_unpaid_list]
+        if overdue_fc_ids:
+            for _inv in Invoice.objects.filter(
+                flight_completion_id__in=overdue_fc_ids,
+                status='sent',
+                due_date__lt=_today,
+            ).order_by('invoice_number'):
+                _overdue_inv_map.setdefault(_inv.flight_completion_id, _inv)
+        for _fc_item in other_unpaid_list:
+            _fc_item.overdue_invoice = _overdue_inv_map.get(_fc_item.pk)
         other_outstanding_list = list(
             _base.filter(paid_at__isnull=False).extra(where=['amount_paid < total_charge'])
         )
@@ -3749,9 +3771,7 @@ def booking_detail(request, club_slug, booking_id):
         _acct = booking.member.account
     except Exception:
         _acct = None
-    _arrears_clearable = (
-        _acct and _acct.balance < 0 and _acct.has_warning
-    )
+    _arrears_clearable = bool(_acct and _acct.balance < 0)
 
     # FlightPayments from the same batch on other FCs — for display in payments section.
     batch_session_payments = []

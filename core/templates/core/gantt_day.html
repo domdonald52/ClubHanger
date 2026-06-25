@@ -172,12 +172,7 @@
   {% endif %}
 
   <div class="legend">
-    <span><i class="dot pending"></i> Pending</span>
-    <span><i class="dot confirmed"></i> Confirmed</span>
-    <span><i class="dot departed"></i> Airborne</span>
-    <span><i class="dot returned"></i> Returned</span>
-    <span><i class="dot completed"></i> Completed</span>
-    {% if wx %}
+{% if wx %}
     <a href="{% url 'core:club_weather' club.slug %}" id="wx-pill" class="wx-pill{% if wx.stale %} wx-pill-stale{% endif %}" title="{{ wx.raw }}&#10;Click for full weather page">
       <span class="wx-pill-lbl">METAR</span>
       <span class="wx-fr-badge wx-fr-badge-{{ wx.fr_cls }}">{{ wx.flight_rules }}</span>
