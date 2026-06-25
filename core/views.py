@@ -2574,17 +2574,16 @@ def booking_detail(request, club_slug, booking_id):
                 error = result.error
 
         elif action == 'depart' and booking.status == 'confirmed' and (actor.is_admin or actor.is_instructor):
-            no_decl_reason = request.POST.get('no_declaration_reason', '').strip()
-            elig_override_reason = request.POST.get('eligibility_override_reason', '').strip()
             requires_decl = booking.flight_type.requires_declaration
             has_decl = hasattr(booking, 'declaration') and not booking.declaration.is_draft
-            # Run eligibility to check for blocks (POST-side validation mirrors the GET-side display)
             _elig = qualification_service.check_eligibility(booking) if booking.member else None
-            has_elig_blocks = _elig.has_blocks if _elig else False
-            if requires_decl and not has_decl and not no_decl_reason:
-                error = 'This flight type requires a departure declaration. Provide a reason to override.'
-            elif has_elig_blocks and not elig_override_reason:
-                error = 'One or more compliance checks failed. Provide an override reason to proceed.'
+            _has_elig_issues = _elig and (_elig.has_blocks or _elig.has_warnings)
+            _has_maint_issues = booking.aircraft and AircraftMaintenanceItem.objects.filter(
+                aircraft=booking.aircraft, urgency__in=['amber', 'red']).exists()
+            _needs_ack = _has_elig_issues or _has_maint_issues
+            acknowledged = request.POST.get('acknowledged') == '1'
+            if _needs_ack and not acknowledged:
+                error = 'Please acknowledge the checkout information before departing.'
             else:
                 fuel_rate = FuelSurchargeRate.current_rate(club, booking.aircraft)
                 _depart_vals = {
@@ -2595,10 +2594,10 @@ def booking_detail(request, club_slug, booking_id):
                 }
                 if requires_decl and not has_decl:
                     _depart_vals['departed_without_declaration'] = True
-                    _depart_vals['departed_without_declaration_reason'] = no_decl_reason
+                    _depart_vals['departed_without_declaration_reason'] = ''
                 Booking.objects.filter(pk=booking.pk).update(**_depart_vals)
                 booking.refresh_from_db()
-                audit_notes = f'Compliance override: {elig_override_reason}' if elig_override_reason else None
+                audit_notes = 'Checkout information acknowledged' if _needs_ack else None
                 _audit(booking, request.user, 'departed', notes=audit_notes)
                 SlotWatch.objects.filter(booking=booking).delete()
                 success = 'Checked out.'
@@ -3912,6 +3911,8 @@ def booking_detail(request, club_slug, booking_id):
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
         'inline_title': (
             f'{booking.member.user.get_full_name()} · {booking.aircraft.registration}'
+            + (f' · {booking.flight_type.name}' if booking.flight_type else '')
+            + (f' · {booking.instructor.get_full_name()}' if booking.instructor else '')
             + (' — Check out' if booking.status == 'confirmed' else
                ' — Check in' if booking.status == 'departed' else
                ' — Charges' if booking.status in ('returned', 'completed') else '')
@@ -6995,20 +6996,13 @@ def invoice_detail(request, club_slug, invoice_id):
     if request.method == 'POST':
         action = request.POST.get('action', '')
 
-        # Description only editable while draft; notes always editable
+        # Description only editable while draft
         _desc = request.POST.get('description', None)
-        _notes = request.POST.get('notes', None)
-        _fields = []
         if _desc is not None and invoice.status == 'draft':
             invoice.description = _desc.strip()
-            _fields.append('description')
-        if _notes is not None and invoice.status != 'void':
-            invoice.notes = _notes.strip()
-            _fields.append('notes')
-        if _fields:
-            invoice.save(update_fields=_fields)
+            invoice.save(update_fields=['description'])
 
-        if action in ('update_details', 'save_notes'):
+        if action == 'update_details':
             return redirect(_stay_url)
 
         if action == 'mark_sent' and invoice.status == 'draft':

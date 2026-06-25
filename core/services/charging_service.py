@@ -327,6 +327,32 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
             total_reversed += _sfp.amount
             extra_count += 1
 
+    # Reverse any arrears clearance AccountTransactions tied to this FC.
+    # Without this the account balance stays artificially credited after reversal,
+    # hiding the outstanding balance and preventing re-collection.
+    arrears_ats = list(
+        AccountTransaction.objects.filter(
+            flight_completion=fc,
+            transaction_type='deposit',
+            direction='credit',
+            description__startswith='Arrears clearance',
+        ).select_related('account')
+    )
+    for _at in arrears_ats:
+        AccountTransaction.objects.create(
+            account=_at.account,
+            transaction_type='adjustment',
+            direction='debit',
+            amount=_at.amount,
+            description=(
+                f'Arrears clearance reversal — {booking.aircraft.registration} '
+                f'{booking.scheduled_start.strftime("%-d %b %Y")}'
+            ),
+            flight_completion=fc,
+            created_by=user,
+        )
+        _at.account.apply_transaction(_at.amount, 'debit')
+
     msg = f'Payment of ${total_reversed:.2f} reversed. Flight is now unpaid.'
     if extra_count:
         msg += f' {extra_count} co-session payment(s) on other flights also reversed.'

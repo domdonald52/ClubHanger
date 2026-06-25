@@ -220,7 +220,7 @@
           </div>
           <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="instructor" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true" data-ghost-reason="{{ row.ghost_reason }}"{% endif %}>
             {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
-            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" data-left="{{ b.left }}" data-width="{{ b.width }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
+            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" data-left="{{ b.left }}" data-width="{{ b.width }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{{ b.label }} {{ b.start_label }}–{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
             {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
           </div>
         </div>
@@ -241,7 +241,7 @@
           </div>
           <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="aircraft" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true"{% endif %}>
             {% for tick in ticks %}<div class="gridline" style="left: {{ tick.left }}px;"></div>{% endfor %}
-            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" data-left="{{ b.left }}" data-width="{{ b.width }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{% if not b.is_hard %}⚡ Soft advisory: {% endif %}{{ b.label }} {{ b.start_label }}-{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
+            {% for b in row.bands %}<div class="band{% if not b.is_hard %} band-soft{% endif %}" data-hard="{{ b.is_hard|yesno:'true,false' }}" data-left="{{ b.left }}" data-width="{{ b.width }}" style="left: {{ b.left }}px; width: {{ b.width }}px; background: {{ b.color }};" title="{{ b.label }} {{ b.start_label }}–{{ b.end_label }}"><span>{{ b.label }}</span></div>{% endfor %}
             {% for p in row.pills %}{% include "core/_pill.html" with p=p %}{% endfor %}
           </div>
         </div>
@@ -578,6 +578,39 @@
           if (sp) sp.style.top = (2 + offset) + 'px';
         }
       }
+    });
+  })();
+
+  // ── Block-out band tooltips ──
+  (function bandTooltips() {
+    var tip = document.createElement('div');
+    tip.id = 'band-tip';
+    tip.style.cssText = 'position:fixed;z-index:9999;background:#1f2937;color:#fff;font-size:.75rem;padding:.3rem .55rem;border-radius:6px;pointer-events:none;white-space:nowrap;display:none;box-shadow:0 2px 6px rgba(0,0,0,.25);';
+    document.body.appendChild(tip);
+
+    document.querySelectorAll('.track').forEach(function(track) {
+      track.addEventListener('mousemove', function(e) {
+        var bands = track.querySelectorAll('.band');
+        if (!bands.length) { tip.style.display = 'none'; return; }
+        var rect = track.getBoundingClientRect();
+        var scale = parseFloat(track.style.transform && track.style.transform.match(/scaleX\(([^)]+)\)/) && track.style.transform.match(/scaleX\(([^)]+)\)/)[1]) || 1;
+        var xPx = (e.clientX - rect.left) / scale;
+        var found = null;
+        bands.forEach(function(band) {
+          var left = parseFloat(band.dataset.left || 0);
+          var width = parseFloat(band.dataset.width || 0);
+          if (xPx >= left && xPx <= left + width) found = band;
+        });
+        if (found && found.title) {
+          tip.textContent = found.title;
+          tip.style.display = 'block';
+          tip.style.left = (e.clientX + 12) + 'px';
+          tip.style.top  = (e.clientY - 28) + 'px';
+        } else {
+          tip.style.display = 'none';
+        }
+      });
+      track.addEventListener('mouseleave', function() { tip.style.display = 'none'; });
     });
   })();
 

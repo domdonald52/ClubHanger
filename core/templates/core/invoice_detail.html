@@ -16,7 +16,13 @@
       </div>
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+      {% if invoice.status == 'sent' and invoice.is_overdue %}
+      <span class="inv-badge inv-overdue">Overdue</span>
+      {% elif invoice.status == 'sent' %}
+      <span class="inv-badge inv-unpaid">Unpaid</span>
+      {% else %}
       <span class="inv-badge inv-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
+      {% endif %}
       <a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn">Print / PDF ↗</a>
       {% if invoice.flight_completion %}
       <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}" class="cbtn" data-overlay data-overlay-wide>View booking</a>
@@ -150,15 +156,12 @@
     {% if error %}<div class="notice err" style="margin:.9rem .9rem 0;">{{ error }}</div>{% endif %}
 
     {% if invoice.status == 'draft' %}
-    <!-- Draft: description + notes both editable; two submit buttons share one form -->
+    <!-- Draft: description editable; two submit buttons -->
     <form method="post" style="padding:.9rem;">
       {% csrf_token %}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem;">
+      <div style="margin-bottom:1rem;">
         <label class="flabel" style="margin:0;">Flight description <span style="font-weight:400;color:#8a93a0;">(shown on invoice)</span>
           <input type="text" name="description" value="{{ invoice.description }}" class="finput">
-        </label>
-        <label class="flabel" style="margin:0;">Internal notes
-          <textarea name="notes" class="finput" rows="1">{{ invoice.notes }}</textarea>
         </label>
       </div>
       <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
@@ -169,23 +172,7 @@
     </form>
 
     {% elif invoice.status == 'sent' %}
-    <!-- Sent: description locked; notes editable; payment recording separate -->
-    <div style="padding:.9rem .9rem .6rem;">
-      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">
-        Flight description <span style="font-weight:400;text-transform:none;letter-spacing:0;">— locked after issue</span>
-      </div>
-      <div style="font-size:.9rem;color:#1f2937;">{{ invoice.description|default:"—" }}</div>
-    </div>
-    <form method="post" style="padding:0 .9rem .9rem;">
-      {% csrf_token %}
-      <label class="flabel" style="margin:0;">Internal notes
-        <textarea name="notes" class="finput" rows="1">{{ invoice.notes }}</textarea>
-      </label>
-      <div style="margin-top:.5rem;">
-        <button type="submit" name="action" value="save_notes" class="cbtn" style="font-size:.82rem;" data-dirty-save>Save notes</button>
-      </div>
-    </form>
-    <div style="border-top:1px solid #f0f2f4;padding:.9rem;">
+    <div style="padding:.9rem;">
       <form method="post" id="inv-pay-form">
         {% csrf_token %}
         <div class="flabel" style="margin:0 0 .4rem;">Record payment received</div>
@@ -250,10 +237,5 @@
   .back-link:hover{color:var(--banner);}
   .inv-card{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.2rem;overflow:hidden;}
   .inv-card-head{background:#fafbfc;padding:.6rem .9rem;border-bottom:1px solid #eef1f4;font-size:.88rem;font-weight:600;}
-  .inv-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;}
-  .inv-draft{background:#f3f5f7;color:#5b6573;}
-  .inv-sent{background:#dbeafe;color:#1d4ed8;}
-  .inv-paid{background:#dcfce7;color:#166534;}
-  .inv-void{background:#fee2e2;color:#991b1b;}
 </style>
 {% endblock %}

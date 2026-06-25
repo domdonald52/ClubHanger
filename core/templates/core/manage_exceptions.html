@@ -151,7 +151,15 @@
           <td style="font-weight:600;white-space:nowrap;">{{ inv.display_number }}</td>
           <td>{% if inv.member %}<a href="{% url 'core:manage_member_detail' club.slug inv.member_id %}">{{ inv.member.user.get_full_name }}</a>{% else %}—{% endif %}</td>
           <td style="font-size:.83rem;color:#5b6573;">{{ inv.description|default:"Flight invoice" }}</td>
-          <td><span class="status-chip status-{{ inv.status }}">{{ inv.get_status_display }}</span></td>
+          <td>
+            {% if inv.status == 'sent' and inv.is_overdue %}
+            <span class="inv-badge inv-overdue">Overdue</span>
+            {% elif inv.status == 'sent' %}
+            <span class="inv-badge inv-unpaid">Unpaid</span>
+            {% else %}
+            <span class="inv-badge inv-{{ inv.status }}">{{ inv.get_status_display }}</span>
+            {% endif %}
+          </td>
           <td style="font-size:.83rem;white-space:nowrap;">{{ inv.issue_date|date:"j M Y" }}</td>
           <td style="font-size:.83rem;white-space:nowrap;{% if inv.due_date < today %}color:#c0392b;font-weight:600;{% endif %}">{{ inv.due_date|date:"j M Y" }}</td>
           <td style="text-align:right;font-weight:600;">${{ inv.total|currency }}</td>

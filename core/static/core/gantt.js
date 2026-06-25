@@ -866,6 +866,17 @@
     });
   });
 
+  // ---- right-click to watch a slot (management only) ------------------
+  if (cfg.canManage) {
+    document.querySelectorAll(".pill").forEach((pill) => {
+      pill.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openWatchModal(pill);
+      });
+    });
+  }
+
   // ---- drag + resize ---------------------------------------------------
   // Set for one animation frame after any drag so the track click-to-create
   // handler doesn't fire when the cursor lands on an empty area after a drop.

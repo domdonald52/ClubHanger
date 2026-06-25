@@ -11,71 +11,44 @@
   {% if error and booking.status != 'departed' %}<div class="notice err">{{ error }}</div>{% endif %}
   {% if success %}<div class="notice ok">{{ success }}</div>{% endif %}
 
-  <!-- Booking summary card -->
-  <div class="bcard">
-    <div class="bcard-head">
-      <div>
-        <strong>{{ booking.member.user.get_full_name }}</strong>
-        {% if booking.client %}<span class="sep">·</span><span style="color:var(--primary);font-weight:500;">{{ booking.client.name }}</span> <span style="font-size:.75rem;color:#8a93a0;">({{ booking.client.contact_type.name }})</span>{% endif %}
-        <span class="sep">·</span>{{ booking.aircraft.registration }}
-        <span class="sep">·</span>{{ booking.flight_type.name }}
-        {% if booking.instructor %}<span class="sep">·</span>{{ booking.instructor.get_full_name }}{% endif %}
-      </div>
-      <span class="status-chip status-{{ booking.display_status_key }}">{% if booking.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif booking.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif booking.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif booking.display_status_key == 'returned' %}<i class="ti ti-alert-triangle"></i> {% elif booking.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif booking.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ booking.display_status }}</span>
+  <!-- Booking info strip -->
+  <div style="background:#f8f9fb;border-radius:8px;padding:.6rem .9rem;margin-bottom:1rem;font-size:.86rem;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;">
+      <span style="font-weight:500;color:#2b333d;">{{ booking.scheduled_start|date:"D j M Y, H:i" }} – {{ booking.scheduled_end|time:"H:i" }}</span>
+      <span class="status-chip status-{{ booking.display_status_key }}" style="flex-shrink:0;">{% if booking.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif booking.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif booking.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif booking.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif booking.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif booking.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ booking.display_status }}</span>
     </div>
-    <div class="bcard-body">
-      <div class="bcard-row">
-        <span class="bl">Scheduled</span>
-        {{ booking.scheduled_start|date:"D j M Y, H:i" }} – {{ booking.scheduled_end|time:"H:i" }}
-        <span style="color:#8a93a0;font-size:.82rem;">({{ booking.scheduled_start|timesince:booking.scheduled_end }} scheduled)</span>
-      </div>
-      {% if booking.departed_at %}
-      <div class="bcard-row"><span class="bl">Checked out</span>{{ booking.departed_at|date:"H:i" }}
-        {% if booking.departed_without_declaration %}<span class="warn-chip">No declaration — {{ booking.departed_without_declaration_reason }}</span>{% endif %}
-      </div>
-      {% endif %}
-      {% if booking.arrived_at %}<div class="bcard-row"><span class="bl">Arrived</span>{{ booking.arrived_at|date:"H:i" }}</div>{% endif %}
-      {% if booking.description %}<div class="bcard-row"><span class="bl">Notes</span>{{ booking.description }}</div>{% endif %}
-      {% if booking.client %}
-      <div class="bcard-row">
-        <span class="bl">Client</span>
-        <a href="{% url 'core:contact_detail' club.slug booking.client_id %}" data-overlay data-overlay-wide style="color:var(--primary);font-weight:500;text-decoration:none;">{{ booking.client.name }}</a>
-        <span style="color:#8a93a0;font-size:.82rem;">· {{ booking.client.contact_type.name }}{% if booking.billed_to %} · billed to {{ booking.get_billed_to_display }}{% endif %}</span>
-      </div>
+    {% if booking.departed_at or booking.arrived_at or fc and fc.actual_flight_hours %}
+    <div style="color:#5b6573;margin-top:.25rem;">
+      {% if booking.departed_at %}<strong>Checked out</strong> {{ booking.departed_at|date:"H:i" }}{% endif %}
+      {% if booking.arrived_at %} · <strong>Checked in</strong> {{ booking.arrived_at|date:"H:i" }}{% endif %}
+      {% if fc and fc.actual_flight_hours %} · {{ fc.actual_flight_hours }}h billed{% endif %}
+      {% if booking.departed_at %}<span style="font-size:.78rem;margin-left:.25rem;">({{ booking.departed_at|date:"T" }})</span>{% endif %}
+      {% if booking.departed_without_declaration %}<span class="warn-chip" style="margin-left:.4rem;">No declaration{% if booking.departed_without_declaration_reason %} — {{ booking.departed_without_declaration_reason }}{% endif %}</span>{% endif %}
+    </div>
+    {% endif %}
+    {% if booking.description %}
+    <div style="color:#5b6573;margin-top:.35rem;padding-top:.35rem;border-top:1px solid #eef1f4;font-size:.84rem;">{{ booking.description }}</div>
+    {% endif %}
+    {% if has_submitted_decl or requires_decl and booking.status in 'pending confirmed' %}
+    <div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid #eef1f4;font-size:.84rem;">
+      <span style="color:#8a93a0;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.35rem;">Declaration</span>
+      {% if has_submitted_decl %}
+        <span style="color:#2a7a3b;font-weight:500;">✓ {{ booking.declaration.submitted_at|date:"j M H:i" }}</span>{% if booking.declaration.is_stale and booking.status not in 'completed' %}<span style="color:#c76c00;font-size:.82rem;margin-left:.3rem;"> · ⚠ &gt;6h ago</span>{% endif %}
+        <a href="#" onclick="openDeclOverlay('{% url 'core:booking_declaration' club.slug booking.id %}'); return false;" style="margin-left:.4rem;color:var(--primary);text-decoration:none;">View →</a>
+      {% elif booking.status in 'pending confirmed' %}
+        <span style="color:#8a93a0;">Not yet submitted</span>
       {% endif %}
     </div>
+    {% endif %}
+    {% if booking.client %}
+    <div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid #eef1f4;font-size:.84rem;">
+      <span style="color:#8a93a0;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.35rem;">Client</span>
+      <a href="{% url 'core:contact_detail' club.slug booking.client_id %}" data-overlay data-overlay-wide style="color:var(--primary);font-weight:500;text-decoration:none;">{{ booking.client.name }}</a>
+      <span style="color:#8a93a0;font-size:.82rem;margin-left:.3rem;">{{ booking.client.contact_type.name }}{% if booking.billed_to %} · billed to {{ booking.get_billed_to_display }}{% endif %}</span>
+    </div>
+    {% endif %}
   </div>
 
-  {% if actor.can_access_manage and booking.member and booking.member.user != actor.user and booking.status == 'pending' or actor.can_access_manage and booking.member and booking.member.user != actor.user and booking.status == 'confirmed' %}
-  <div style="margin-bottom:.75rem;">
-    <button type="button" id="bd-watch-btn" class="cbtn"
-            data-booking-id="{{ booking.id }}"
-            style="display:inline-flex;align-items:center;gap:.35rem;{% if is_watching %}background:var(--confirmed,#16a34a);color:#fff;border-color:var(--confirmed,#16a34a);{% endif %}">
-      <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 7.5S3.5 2 7.5 2s6.5 5.5 6.5 5.5S12.5 13 7.5 13 1 7.5 1 7.5z"/><circle cx="7.5" cy="7.5" r="2"/></svg>
-      <span id="bd-watch-label">{% if is_watching %}Watching ✓{% else %}Watch slot{% endif %}</span>
-    </button>
-  </div>
-  <script>
-  (function() {
-    var btn = document.getElementById('bd-watch-btn');
-    if (!btn) return;
-    btn.addEventListener('click', function() {
-      var bookingId = btn.dataset.bookingId;
-      fetch('/api/booking/' + bookingId + '/watch/', {method:'POST', headers:{'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value}, credentials:'same-origin'})
-        .then(function(r){ return r.json(); })
-        .then(function(data) {
-          var watching = data.watching;
-          var label = document.getElementById('bd-watch-label');
-          if (label) label.textContent = watching ? 'Watching ✓' : 'Watch slot';
-          btn.style.background = watching ? 'var(--confirmed,#16a34a)' : '';
-          btn.style.color = watching ? '#fff' : '';
-          btn.style.borderColor = watching ? 'var(--confirmed,#16a34a)' : '';
-          if (window.toast) window.toast(watching ? 'Watching this slot' : 'No longer watching', 'ok');
-        });
-    });
-  })();
-  </script>
-  {% endif %}
   {% if watchers %}
   <div style="font-size:.82rem;color:#374151;margin-bottom:.75rem;padding:.5rem .75rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
     <span style="color:#1d4ed8;">&#128065;</span> Watched by {{ watchers|length }} {{ watchers|length|pluralize:"person,people" }}:
@@ -114,129 +87,69 @@
 
   <!-- ── PENDING: Confirm ── -->
   {% if booking.status == 'pending' %}
-  <div class="section">
-    <h2 class="sh2">Action required</h2>
-    <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-      <form method="post" style="display:inline;">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="confirm">
-        <button type="submit" class="cbtn primary">Confirm booking</button>
-      </form>
-      <form method="post" style="display:inline;" data-confirm="Cancel this booking?">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="cancel_booking">
-        <button type="submit" class="cbtn cbtn-danger">Cancel booking</button>
-      </form>
-    </div>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.5rem;">
+    <form method="post" style="display:inline;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="confirm">
+      <button type="submit" class="cbtn primary">Confirm booking</button>
+    </form>
+    <form method="post" style="display:inline;" data-confirm="Cancel this booking?">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="cancel_booking">
+      <button type="submit" class="cbtn cbtn-danger">Cancel booking</button>
+    </form>
   </div>
-  {% endif %}
-
-  <!-- ── Declaration (only if submitted, or required and booking not yet completed) ── -->
-  {% if not booking.departed_without_declaration and has_submitted_decl or not booking.departed_without_declaration and requires_decl and booking.status != 'completed' %}
-  <div class="section" style="padding:.9rem 1.2rem;">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
-      <div style="font-size:.88rem;">
-        <strong>Departure declaration</strong>
-        {% if has_submitted_decl %}
-          <span style="color:#2a7a3b;margin-left:.5rem;">✓ Submitted {{ booking.declaration.submitted_at|date:"j M H:i" }}</span>
-          {% if booking.status != 'completed' and booking.declaration.is_stale %}<span style="color:#c76c00;font-size:.8rem;margin-left:.4rem;">⚠ &gt;6h ago — re-check weather before departing</span>{% endif %}
-        {% elif booking.status == 'confirmed' %}
-          <span style="color:#c76c00;margin-left:.5rem;">Not yet submitted</span>
-        {% elif booking.departed_without_declaration %}
-          <span style="color:#c0392b;margin-left:.5rem;">Departed without declaration — {{ booking.departed_without_declaration_reason }}</span>
-        {% endif %}
-      </div>
-      {% if booking.status == 'confirmed' %}
-      <button type="button" class="btn secondary" style="font-size:.82rem;"
-              onclick="openDeclOverlay('{% url 'core:booking_declaration' club.slug booking.id %}')">
-        {% if has_submitted_decl %}View / amend{% else %}Complete declaration{% endif %}
-      </button>
-      {% elif has_submitted_decl %}
-      <button type="button" class="btn secondary" style="font-size:.82rem;"
-              onclick="openDeclOverlay('{% url 'core:booking_declaration' club.slug booking.id %}')">View declaration</button>
-      {% endif %}
-    </div>
-
-    {% if has_submitted_decl %}
-    <div style="margin-top:.7rem;font-size:.85rem;display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;">
-      <div><span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Route</span><br>{{ booking.declaration.route_intentions|default:"—" }}</div>
-      <div><span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Destination</span><br>{{ booking.declaration.destination|default:"—" }}</div>
-      {% if booking.declaration.next_of_kin_name %}
-      <div><span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Next of kin</span><br>{{ booking.declaration.next_of_kin_name }} · {{ booking.declaration.next_of_kin_phone }}</div>
-      {% endif %}
-      {% with pax=booking.declaration.passengers.all %}
-      {% if pax %}
-      <div><span style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Passengers</span><br>{% for p in pax %}{{ p.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
-      {% endif %}
-      {% endwith %}
-    </div>
-    {% endif %}
-  </div>
+  <script>(function(){var m=document.querySelector('.page-overlay-modal');if(m){m.style.width='fit-content';m.style.minWidth='420px';m.style.maxWidth='96vw';}})();</script>
   {% endif %}
 
   <!-- ── CONFIRMED: Check out ── -->
   {% if booking.status == 'confirmed' %}
-  <div class="section">
-    <h2 class="sh2">Check out</h2>
+  <div style="margin-bottom:1.2rem;">
 
     {% if eligibility or departure_maint_items %}
-    <details class="readiness-box" {% if eligibility.has_blocks or eligibility.has_warnings or departure_maint_items %}open{% endif %}>
-      <summary class="readiness-summary {% if eligibility.has_blocks %}rs-red{% elif eligibility.has_warnings or departure_maint_items %}rs-amber{% else %}rs-green{% endif %}">
-        {% if eligibility.has_blocks %}✗ Compliance issues{% elif eligibility.has_warnings or departure_maint_items %}⚠ Pilot &amp; aircraft — items to review{% else %}✓ Pilot &amp; aircraft — all clear{% endif %}
-      </summary>
-      <div class="readiness-body">
-        {% if eligibility %}
-        <div class="readiness-section-lbl">Pilot — {{ booking.member.user.get_full_name }}</div>
-        <div class="eligibility-panel" style="margin-bottom:.7rem;">
-          {% for item in eligibility.items %}
-          <div class="elig-row elig-{{ item.severity }}">
-            <span class="elig-icon">{% if item.severity == 'ok' %}✓{% elif item.severity == 'warn' %}⚠{% elif item.severity == 'block' %}✗{% else %}i{% endif %}</span>
-            <span class="elig-label">{{ item.label }}</span>
-            <span class="elig-msg">{{ item.message }}</span>
-          </div>
-          {% endfor %}
+    <div class="checkout-info-box">
+      <div class="checkout-info-lbl">Checkout information</div>
+      {% if eligibility %}
+      <div class="eligibility-panel" {% if departure_maint_items %}style="margin-bottom:.7rem;"{% endif %}>
+        {% for item in eligibility.items %}
+        <div class="elig-row elig-{{ item.severity }}">
+          <span class="elig-icon">{% if item.severity == 'ok' %}✓{% elif item.severity == 'warn' %}⚠{% elif item.severity == 'block' %}✗{% else %}i{% endif %}</span>
+          <span class="elig-label">{{ item.label }}</span>
+          <span class="elig-msg">{{ item.message }}</span>
         </div>
-        {% endif %}
-        {% if departure_maint_items %}
-        <div class="readiness-section-lbl">Aircraft — {{ booking.aircraft.registration }}</div>
-        <div class="eligibility-panel">
-          {% for mi in departure_maint_items %}
-          <div class="elig-row {% if mi.urgency == 'red' %}elig-block{% else %}elig-warn{% endif %}">
-            <span class="elig-icon">{% if mi.urgency == 'red' %}✗{% else %}⚠{% endif %}</span>
-            <span class="elig-label">{{ mi.name }}</span>
-            <span class="elig-msg">{{ mi.detail }}</span>
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
+        {% endfor %}
       </div>
-    </details>
-    {% endif %}
-
-    {% if requires_decl and not has_submitted_decl %}
-    <div class="notice warn" style="margin-bottom:.8rem;">
-      This flight type requires a pre-departure declaration which has not been submitted.
+      {% endif %}
+      {% if departure_maint_items %}
+      <div class="readiness-section-lbl">Aircraft — {{ booking.aircraft.registration }}</div>
+      <div class="eligibility-panel">
+        {% for mi in departure_maint_items %}
+        <div class="elig-row {% if mi.urgency == 'red' %}elig-block{% else %}elig-warn{% endif %}">
+          <span class="elig-icon">{% if mi.urgency == 'red' %}✗{% else %}⚠{% endif %}</span>
+          <span class="elig-label">{{ mi.name }}</span>
+          <span class="elig-msg">{{ mi.detail }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
     {% endif %}
-    <form method="post" data-confirm="Check out {{ booking.aircraft.registration }} for {{ booking.member.user.get_full_name }}? This marks the flight as departed.">
+
+    {% if error %}<div class="notice err" style="margin-bottom:.8rem;">{{ error }}</div>{% endif %}
+
+    <form method="post" id="checkout-form" data-confirm="Check out {{ booking.aircraft.registration }} for {{ booking.member.user.get_full_name }}? This marks the flight as departed.">
       {% csrf_token %}
       <input type="hidden" name="action" value="depart">
-      {% if requires_decl and not has_submitted_decl %}
-      <label class="flabel" style="max-width:480px;">Override reason (required without declaration)
-        <input type="text" name="no_declaration_reason" class="finput" required
-               placeholder="e.g. Short local circuit, pilot briefed verbally">
+      {% if eligibility.has_blocks or eligibility.has_warnings or departure_maint_items %}
+      <label class="checkout-ack">
+        <input type="checkbox" name="acknowledged" id="checkout-ack" value="1">
+        I have reviewed the above and authorise departure <span class="req">*</span>
       </label>
       {% endif %}
-      {% if eligibility and eligibility.has_blocks %}
-      <label class="flabel" style="max-width:480px;">Compliance override reason <span class="req">*</span>
-        <input type="text" name="eligibility_override_reason" class="finput" required
-               placeholder="e.g. Flying with instructor, emergency crew duty…">
-      </label>
-      {% endif %}
-      <button type="submit" class="cbtn primary">Check out</button>
     </form>
-    {% if club_member.is_admin %}
-    <div style="margin-top:.7rem;padding-top:.7rem;border-top:1px solid #f0f2f4;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+
+    <div style="padding-top:.7rem;border-top:1px solid #f0f2f4;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+      {% if club_member.is_admin %}
       <form method="post" style="display:inline;" data-confirm="Undo confirmation? Flight will return to pending and the member will be notified.">
         {% csrf_token %}
         <input type="hidden" name="action" value="undo_confirm">
@@ -251,7 +164,25 @@
         <input type="hidden" name="action" value="cancel_booking">
         <button type="submit" class="cbtn cbtn-danger" style="font-size:.78rem;">Cancel booking</button>
       </form>
+      {% endif %}
+      <button type="submit" form="checkout-form" class="cbtn{% if not eligibility.has_blocks and not eligibility.has_warnings and not departure_maint_items %} primary{% endif %}" id="checkout-submit-btn"
+              {% if eligibility.has_blocks or eligibility.has_warnings or departure_maint_items %}disabled{% endif %}>Check out</button>
     </div>
+
+    {% if eligibility.has_blocks or eligibility.has_warnings or departure_maint_items %}
+    <script>
+    (function(){
+      var ack = document.getElementById('checkout-ack');
+      var btn = document.getElementById('checkout-submit-btn');
+      if (ack && btn) ack.addEventListener('change', function(){
+        btn.disabled = !this.checked;
+        btn.classList.toggle('primary', this.checked);
+      });
+    })();
+    </script>
+    {% endif %}
+
+    {% if club_member.is_admin %}
     <div id="edit-details-panel" hidden style="margin-top:.8rem;padding:.9rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
       <form method="post">
         {% csrf_token %}
@@ -353,10 +284,6 @@
         {% endif %}
       </div>
       <div id="ret-duration" style="display:none;font-size:.9rem;font-weight:700;color:#2a7a3b;margin-bottom:.5rem;"></div>
-      <label class="flabel" style="max-width:420px;margin-bottom:.7rem;">Notes (optional)
-        <input type="text" name="return_notes" class="finput" placeholder="Any observations on return…">
-      </label>
-
       <input type="hidden" name="flight_count" id="ret-flight-count" value="0">
       <input type="hidden" name="pilot_id_0" value="{{ booking.member.id }}">
       <input type="hidden" name="hours_0" id="split-h0-hidden" value="">
@@ -553,27 +480,20 @@
 
   <!-- ── RETURNED / COMPLETED: Charges ── -->
   {% if fc and booking.status == 'completed' or fc and booking.status == 'returned' %}
-  <div class="section">
-    <div class="ch-grid">
-      <!-- LEFT: charges + add-charge forms -->
-      <div>
-        <h2 class="sh2" style="margin-top:0;">
-          Charges
-          {% if fc.is_paid %}{% if fc_invoices %}<span class="paid-badge">Paid · Invoice · issued {{ fc_invoices.0.sent_at|date:"j M Y" }} · paid {{ fc.paid_at|date:"j M Y" }}</span>{% else %}<span class="paid-badge">Paid · {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M Y H:i" }}</span>{% endif %}
-          {% elif fc_invoices %}<span class="paid-badge" style="background:#d1fae5;color:#065f46;">Invoice issued · {% for inv in fc_invoices %}<a href="{% url 'core:invoice_detail' club.slug inv.id %}" style="color:#065f46;">{{ inv.display_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</span>
-          {% endif %}
-        </h2>
-
-        <!-- Meter summary row -->
-        {% if fc.actual_flight_hours %}
-        <div style="font-size:.83rem;color:#5b6573;margin-bottom:.8rem;display:flex;gap:1.2rem;flex-wrap:wrap;">
-          <span>{{ fc.actual_flight_hours }}h billed
-            ({{ booking.aircraft.get_total_time_method_display }})</span>
-          {% if fc.hobbs_start and fc.hobbs_end %}<span style="color:#8a93a0;">Hobbs {{ fc.hobbs_start }} → {{ fc.hobbs_end }}</span>{% endif %}
-          {% if fc.tacho_start and fc.tacho_end %}<span style="color:#8a93a0;">Tacho {{ fc.tacho_start }} → {{ fc.tacho_end }}</span>{% endif %}
-          {% if fc.airswitch_start and fc.airswitch_end %}<span style="color:#8a93a0;">Air switch {{ fc.airswitch_start }} → {{ fc.airswitch_end }}</span>{% endif %}
+  <div>
+        <!-- Status badge + void row -->
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.65rem;flex-wrap:wrap;">
+          <div>
+            {% if fc.is_paid %}{% if fc_invoices %}<span class="paid-badge">Invoice paid {{ fc.paid_at|date:"j M Y" }}</span>{% else %}<span class="paid-badge">Paid by {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M H:i" }}</span>{% endif %}
+            {% elif fc_invoices %}<span class="paid-badge" style="background:#d1fae5;color:#065f46;">Invoice issued · {% for inv in fc_invoices %}{{ inv.display_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+          </div>
+          {% if club_member.is_admin and not fc_invoices %}{% if not fc.amount_paid or fc.amount_paid == 0 and not fc_any_invoice_paid %}
+          <form method="post" style="display:inline;" data-confirm="Void flights? All charge items will be deleted and the booking will return to departed.">
+            {% csrf_token %}<input type="hidden" name="action" value="void_checkin">
+            <button type="submit" class="cbtn cbtn-danger" style="font-size:.78rem;">Void &amp; undo return</button>
+          </form>
+          {% endif %}{% endif %}
         </div>
-        {% endif %}
         {% if fc.departed_with_aircraft and fc.departed_with_aircraft != booking.aircraft %}
         <div class="notice warn" style="margin-bottom:.6rem;font-size:.82rem;">
           ✈ Departed in <strong>{{ fc.departed_with_aircraft.registration }}</strong> — aircraft changed to {{ booking.aircraft.registration }} mid-flight. Maintenance hours logged against {{ fc.departed_with_aircraft.registration }}.
@@ -589,17 +509,7 @@
           Outcome: <strong>{{ fc.get_outcome_display }}</strong>{% if fc.outcome_notes %} — {{ fc.outcome_notes }}{% endif %}
         </div>
         {% endif %}
-
-        {% if club_member.is_admin and not fc_invoices %}
-        <div style="margin-bottom:.75rem;">
-          {% if not fc.amount_paid or fc.amount_paid == 0 and not fc_any_invoice_paid %}
-          <form method="post" style="display:inline;" data-confirm="Void flights? All charge items will be deleted and the booking will return to departed.">
-            {% csrf_token %}<input type="hidden" name="action" value="void_checkin">
-            <button type="submit" class="cbtn cbtn-danger" style="font-size:.8rem;">Void flights &amp; undo return</button>
-          </form>
-          {% endif %}
-        </div>
-        {% endif %}
+        <div style="font-size:.95rem;font-weight:700;color:#1f2933;margin-bottom:.5rem;">Charges</div>
         <table class="ch-table">
           <tbody>
             {% if fc_segments %}
@@ -648,8 +558,8 @@
           <tfoot>
             <tr>
               <td colspan="2" class="ch-total-label" style="padding:.7rem .5rem;">Total</td>
-              <td class="ch-total-amount" style="text-align:right;padding:.7rem .5rem;">${{ total|currency }}</td>
-              <td style="padding:.7rem .5rem;"></td>
+              <td class="ch-total-amount" style="text-align:right;padding:.7rem .5rem;width:90px;">${{ total|currency }}</td>
+              <td style="padding:.7rem .5rem;width:28px;"></td>
             </tr>
           </tfoot>
         </table>
@@ -666,8 +576,8 @@
             <input type="hidden" name="unit_amount" id="lf-unit">
             <input type="hidden" name="description" id="lf-desc" value="Landing fee">
             {% if aerodromes %}
-            <div class="lf-row">
-              <label class="flabel" style="flex:2;min-width:140px;">Aerodrome
+            <div style="display:flex;flex-direction:column;gap:.5rem;">
+              <label class="flabel">Aerodrome
                 <select name="aerodrome_id" class="finput" id="lf-aerodrome" onchange="lfAerodromeChange(this)">
                   <option value="">— select —</option>
                   {% for ae in aerodromes %}
@@ -677,31 +587,33 @@
                   {% endfor %}
                 </select>
               </label>
-              <label class="flabel" id="lf-feetype-wrap" style="flex:2;min-width:130px;">Fee type
+              <label class="flabel" id="lf-feetype-wrap">Fee type
                 <select name="fee_type_id" id="lf-fee-type" class="finput" onchange="lfFeeTypeChange(this)">
                   <option value="">— select aerodrome first —</option>
                 </select>
               </label>
-              <label class="flabel" style="width:100px;">Amount
+              <label class="flabel" style="max-width:160px;">Amount
                 <div class="money-wrap"><span class="money-sym">$</span>
                   <input type="number" name="amount" id="lf-amount" step="0.01" min="0" class="finput money-input" placeholder="0.00" required onblur="fmtMoney(this)">
                 </div>
               </label>
               {% if fc_segments %}
-              <label class="flabel" style="min-width:110px;">Charge to
+              <label class="flabel">Charge to
                 <select name="segment_member_id" class="finput" style="font-size:.82rem;">
                   <option value="">All (pro-rata)</option>
                   {% for seg in fc_segments %}<option value="{{ seg.member.id }}">{{ seg.member.user.get_short_name }}</option>{% endfor %}
                 </select>
               </label>
               {% endif %}
-              <button type="submit" class="btn lf-add-btn">Add</button>
+              <div><button type="submit" class="btn lf-add-btn">Add</button></div>
             </div>
             <div id="lf-nofees-msg" class="lf-hint" hidden>No fee types configured — enter amount manually.</div>
-            <div id="lf-custom" class="lf-row" style="display:none;margin-top:.4rem;">
-              <label class="flabel" style="width:65px;">ICAO<input type="text" name="custom_icao" maxlength="4" class="finput" style="text-transform:uppercase;" placeholder="NZMS"></label>
-              <label class="flabel" style="flex:1;min-width:120px;">Name<input type="text" name="custom_name" class="finput" placeholder="e.g. Masterton"></label>
-              <label class="flabel" style="flex:2;min-width:150px;">Description<input type="text" id="lf-custom-desc" name="description" class="finput" placeholder="e.g. Full stop landing" required></label>
+            <div id="lf-custom" style="display:none;flex-direction:column;gap:.5rem;margin-top:.5rem;">
+              <div style="display:flex;gap:.5rem;">
+                <label class="flabel" style="width:85px;">ICAO<input type="text" name="custom_icao" maxlength="4" class="finput" style="text-transform:uppercase;" placeholder="NZMS"></label>
+                <label class="flabel" style="flex:1;">Name<input type="text" name="custom_name" class="finput" placeholder="e.g. Masterton"></label>
+              </div>
+              <label class="flabel">Description<input type="text" id="lf-custom-desc" name="description" class="finput" placeholder="e.g. Full stop landing" required></label>
             </div>
             {% else %}
             <p style="font-size:.85rem;color:#8a93a0;padding:.4rem 0 .2rem;">No aerodromes configured. <a href="{% url 'core:manage_aerodromes' club.slug %}" data-overlay>Configure →</a></p>
@@ -714,24 +626,24 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="add_charge">
             <input type="hidden" name="item_type" value="one_off">
-            <div class="lf-row">
-              <label class="flabel" style="flex:3;min-width:180px;">Description
+            <div style="display:flex;flex-direction:column;gap:.5rem;">
+              <label class="flabel">Description
                 <input type="text" name="description" class="finput" required placeholder="e.g. WAC chart, headset hire">
               </label>
-              <label class="flabel" style="width:100px;">Amount
+              <label class="flabel" style="max-width:160px;">Amount
                 <div class="money-wrap"><span class="money-sym">$</span>
                   <input type="number" name="amount" step="0.01" min="0" class="finput money-input" placeholder="0.00" required onblur="fmtMoney(this)">
                 </div>
               </label>
               {% if fc_segments %}
-              <label class="flabel" style="min-width:110px;">Charge to
+              <label class="flabel">Charge to
                 <select name="segment_member_id" class="finput" style="font-size:.82rem;">
                   <option value="">All (pro-rata)</option>
                   {% for seg in fc_segments %}<option value="{{ seg.member.id }}">{{ seg.member.user.get_short_name }}</option>{% endfor %}
                 </select>
               </label>
               {% endif %}
-              <button type="submit" class="btn lf-add-btn">Add</button>
+              <div><button type="submit" class="btn lf-add-btn">Add</button></div>
             </div>
           </form>
         </details>
@@ -745,18 +657,11 @@
           {% endfor %}
         </div>
         {% endif %}
-      </div><!-- /left -->
-
-      <!-- RIGHT: payment panel — hidden when invoice issued (payment tracked via invoice) -->
-      {% if not fc_invoices %}<div>
+      <!-- Payment panel — only when no invoice issued -->
+      {% if not fc_invoices %}
+      <div style="border-top:1.5px solid #e3e6ea;margin-top:1rem;padding-top:.9rem;">
+        <div style="font-size:.95rem;font-weight:700;color:#1f2933;margin-bottom:.7rem;">Payments</div>
         {% if not fc.is_paid or overpayment %}
-        <div class="ch-payment-wrap" style="margin-top:0;">
-
-          <!-- PAYMENT STATUS HEADER -->
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem;">
-            <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5b6573;">Payments</span>
-            <span style="font-size:.82rem;color:#8a93a0;">${{ total|currency }} this flight</span>
-          </div>
 
           {% if fc_payments_pending or fc_segments_pending %}
           {% if fc_segments_pending %}
@@ -765,7 +670,7 @@
                 data-confirm="Record payments from all {{ fc_segments|length }} contributors? This cannot be undone.">
             {% csrf_token %}
             <input type="hidden" name="action" value="record_segment_payments">
-            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.45rem;">
+            <div style="margin-bottom:.45rem;">
               {% if fc_segments_primary %}
               <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;">
                 <div>
@@ -840,7 +745,7 @@
                 data-confirm="Record payment from all {{ fc_payments_pending|length }} contributor{{ fc_payments_pending|length|pluralize }}? This cannot be undone.">
             {% csrf_token %}
             <input type="hidden" name="action" value="record_all_payees">
-            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
+            <div style="margin-bottom:.5rem;">
               {% for fp in fc_payments_pending %}
               <div style="padding:.5rem .7rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:.5rem;">
                 <div style="font-size:.85rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
@@ -921,21 +826,12 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="record_segment_payments">
 
-            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
-              <div style="padding:.28rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">This flight</div>
-              <div style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;background:#f0f4ff;">
-                <span style="font-size:.82rem;color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
-                <span style="font-weight:600;color:#2b333d;">${{ total|currency }}</span>
-              </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem;font-weight:600;margin-bottom:.45rem;">
+              <span style="color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
+              <span style="color:#2b333d;">${{ total|currency }}</span>
             </div>
 
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;padding:.3rem 0 .65rem;border-top:1px solid #eaecef;">
-              <span style="color:#5b6573;font-weight:600;">Total</span>
-              <span style="font-weight:700;color:#2b333d;">${{ total|currency }}</span>
-            </div>
-
-            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Who's paying</div>
-            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.45rem;">
+            <div style="margin-bottom:.45rem;">
 
               {% if fc_segments_primary %}
               <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;">
@@ -1014,38 +910,33 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="record_multi_payment">
 
-            <!-- Amounts box: this flight + optional outstanding (hidden when single flight, single payer, no arrears) -->
-            {% if other_unpaid_list or other_outstanding_list or arrears_clearable %}
-            <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.5rem;">
-              <div style="padding:.28rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">This flight</div>
-              <div class="mp-row" style="display:grid;grid-template-columns:1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if other_unpaid_list or other_outstanding_list %}border-bottom:1px solid #e3e6ea;{% endif %}background:#f0f4ff;">
-                <span style="font-size:.82rem;color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
-                <div class="money-wrap"><span class="money-sym">$</span><input type="number" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ balance_owing }}" style="width:80px;" readonly tabindex="-1"></div>
-              </div>
-              {% if other_unpaid_list or other_outstanding_list %}
-              <div style="padding:.3rem .7rem;background:#f8f9fb;border-bottom:1px solid #e3e6ea;border-top:1px solid #e3e6ea;">
-                <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Other outstanding</div>
-                <div style="font-size:.72rem;color:#adb5bd;margin-top:.1rem;">{{ booking.member.user.get_full_name }} · tick to include</div>
-              </div>
-              {% for item in other_unpaid_list %}
-              <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if not forloop.last or other_outstanding_list %}border-bottom:1px solid #f0f2f4;{% endif %}">
-                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
-                <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }}</span>
-                <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.total_charge }}" style="width:80px;"></div>
-              </div>
-              {% endfor %}
-              {% for item in other_outstanding_list %}
-              <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.45rem .7rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
-                <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
-                <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }} <span style="color:#b06800;font-size:.74rem;">(partial)</span></span>
-                <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.balance_owing }}" style="width:80px;"></div>
-              </div>
-              {% endfor %}
-              {% endif %}
-            </div>
-            {% else %}
-            {# Simple case: hidden flight amount row so JS recalcTotal() still works #}
+            <!-- This flight amount (always hidden; JS recalcTotal() reads it) -->
             <div class="mp-row" style="display:none;"><input class="mp-amount" value="{{ balance_owing }}" readonly></div>
+
+            {% if other_unpaid_list or other_outstanding_list %}
+            <!-- Flight reference line — only shown when collecting charges from multiple flights -->
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">
+              <span style="color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
+              <span style="color:#2b333d;">${{ balance_owing|currency }}</span>
+            </div>
+            {% endif %}
+
+            {% if other_unpaid_list or other_outstanding_list %}
+            <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin:.3rem 0 .2rem;">Also outstanding</div>
+            {% for item in other_unpaid_list %}
+            <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.25rem 0;border-bottom:1px solid #f0f2f4;">
+              <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
+              <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }}</span>
+              <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.total_charge }}" style="width:80px;"></div>
+            </div>
+            {% endfor %}
+            {% for item in other_outstanding_list %}
+            <div class="mp-row" style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.5rem;padding:.25rem 0;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}">
+              <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" style="accent-color:var(--primary);width:15px;height:15px;">
+              <span style="font-size:.82rem;color:#2b333d;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M" }} <span style="color:#b06800;font-size:.74rem;">(partial)</span></span>
+              <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="other_amount_{{ item.id }}" class="finput money-input mp-amount" step="0.01" min="0.01" value="{{ item.balance_owing }}" style="width:80px;"></div>
+            </div>
+            {% endfor %}
             {% endif %}
 
             {% if arrears_clearable %}
@@ -1053,13 +944,13 @@
               <input type="checkbox" name="include_arrears" id="mp-arrears-chk" value="1" style="accent-color:var(--primary);width:15px;height:15px;flex-shrink:0;">
               <input type="hidden" name="arrears_amount" id="mp-arrears-amt" value="{{ member_account.balance|floatformat:2|slice:'1:' }}">
               <label for="mp-arrears-chk" style="font-size:.82rem;color:#92400e;cursor:pointer;flex:1;">
-                Collect arrears <strong>${{ member_account.balance|currency|slice:'1:' }}</strong> — account is over credit limit
+                Also collect <strong>${{ member_account.balance|currency|slice:'1:' }}</strong> outstanding from previous unpaid flights
               </label>
             </div>
             {% endif %}
 
             {% if other_unpaid_list or other_outstanding_list or arrears_clearable %}
-            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;padding:.3rem 0 .65rem;border-top:1px solid #eaecef;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.83rem;padding:.3rem calc(28px + .5rem) .65rem 0;border-top:1px solid #eaecef;">
               <span style="color:#5b6573;font-weight:600;">Total</span>
               <span id="mp-grand-total" style="font-weight:700;color:#2b333d;">${{ balance_owing|add:other_total|currency }}</span>
             </div>
@@ -1068,12 +959,15 @@
             <span id="mp-grand-total" style="display:none;">${{ balance_owing|currency }}</span>
             {% endif %}
 
-            <!-- Who's paying -->
-            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Who's paying</div>
-            <div id="contributors-panel" style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:.45rem;">
+            <div id="contributors-panel" style="margin-bottom:.4rem;">
               <!-- Primary: booking member — amount auto-adjusted by JS -->
-              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;">
-                <span style="font-size:.85rem;font-weight:500;">{{ booking.member.user.get_full_name }}</span>
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.35rem calc(28px + .5rem) .35rem 0;border-top:1px solid #eef1f4;">
+                <div>
+                  <span style="font-size:.85rem;font-weight:500;">{{ booking.member.user.get_full_name }}</span>
+                  {% if member_account and member_account.balance > 0 %}
+                  <span style="font-size:.78rem;color:#2a7a3b;margin-left:.45rem;">${{ member_account.balance|currency }} avail</span>
+                  {% endif %}
+                </div>
                 <select name="payment_method_0" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
                   <option value="cash">Cash</option>
@@ -1087,12 +981,6 @@
                 </div>
               </div>
             </div>
-
-            {% if member_account %}
-            <p style="font-size:.78rem;color:#8a93a0;margin:0 0 .4rem;">
-              {{ booking.member.user.get_short_name }}'s balance: <strong style="color:{% if member_account.has_warning %}#c0392b{% elif member_account.balance < 0 %}#b06800{% else %}#2a7a3b{% endif %};">${{ member_account.balance|currency }}</strong>{% if member_account.credit_limit is not None %} · limit ${{ member_account.credit_limit|currency }}{% endif %}
-            </p>
-            {% endif %}
 
             <p id="split-method-note" style="font-size:.75rem;color:#8a93a0;margin:0 0 .4rem;display:none;">
               Split payments accept EFTPOS, cash, or account balance only. A receipt invoice can be generated for each contributor once payment is recorded.
@@ -1123,6 +1011,8 @@
             var primaryAmtEl = document.getElementById('contrib-amount-0');
             var payeeIdx = 0;
             var currentFlightBalance = {{ balance_owing }};
+            var primaryBalance = {% if member_account %}{{ member_account.balance }}{% else %}null{% endif %};
+            var primaryCreditLimit = {% if member_account and member_account.credit_limit is not None %}{{ member_account.credit_limit }}{% else %}0{% endif %};
             var allMembers = [{% for m in club_members %}{id:{{ m.id }},name:"{{ m.user.get_full_name|escapejs }}",overLimit:{{ m.account.has_warning|yesno:'true,false' }}}{% if not forloop.last %},{% endif %}{% endfor %}];
 
             function recalcTotal() {
@@ -1150,6 +1040,17 @@
               });
               var primaryAmt = Math.max(0, grandTotal - secondaryTotal);
               primaryAmtEl.value = primaryAmt.toFixed(2);
+              if (primaryBalance !== null) {
+                var primMeth = form.querySelector('select[name="payment_method_0"]');
+                if (primMeth && primMeth.value === 'credit') {
+                  var available = primaryBalance + primaryCreditLimit;
+                  if (primaryAmt > available + 0.005) {
+                    statusEl.textContent = 'Insufficient account balance — only $' + available.toFixed(2) + ' available via credit payment.';
+                    statusEl.style.color = '#c0392b'; statusEl.style.display = ''; submitBtn.disabled = true;
+                    return;
+                  }
+                }
+              }
               var hasPayees = !!contPanel.querySelector('.contrib-row-added');
               if (!hasPayees) { statusEl.style.display = 'none'; submitBtn.disabled = false; return; }
               if (secondaryTotal > grandTotal + 0.005) {
@@ -1168,7 +1069,7 @@
               var idx = payeeIdx;
               var row = document.createElement('div');
               row.className = 'contrib-row-added';
-              row.style.cssText = 'display:flex;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;';
+              row.style.cssText = 'display:flex;align-items:center;gap:.5rem;padding:.5rem calc(28px + .5rem) .5rem .7rem;border-top:1px solid #f0f2f4;';
               var memberWrap = document.createElement('div');
               memberWrap.style.cssText = 'flex:1;min-width:0;overflow:hidden;';
               var memberSel = document.createElement('select');
@@ -1233,6 +1134,8 @@
             }
 
             if (addBtn) addBtn.addEventListener('click', addPayee);
+            var primaryMethSel = form.querySelector('select[name="payment_method_0"]');
+            if (primaryMethSel) primaryMethSel.addEventListener('change', function() { recalcAllocation(); });
 
             form.querySelectorAll('.mp-check,.mp-amount').forEach(function(el) {
               el.addEventListener('change', recalcTotal);
@@ -1251,25 +1154,10 @@
                 h.setAttribute('data-injected-fc','1');
                 issueForm.appendChild(h);
               });
-              // Sync arrears checkbox
-              var existingArrears = issueForm.querySelector('[data-injected-arrears]');
-              if (existingArrears) existingArrears.remove();
-              if (arrearsChk && arrearsChk.checked) {
-                var ha = document.createElement('input');
-                ha.type = 'hidden'; ha.name = 'include_arrears'; ha.value = '1';
-                ha.setAttribute('data-injected-arrears','1');
-                issueForm.appendChild(ha);
-                var hamt = document.createElement('input');
-                hamt.type = 'hidden'; hamt.name = 'arrears_amount';
-                hamt.value = arrearsAmt ? arrearsAmt.value : '0';
-                hamt.setAttribute('data-injected-arrears','1');
-                issueForm.appendChild(hamt);
-              }
             }
             form.querySelectorAll('input[name="other_fc_ids"]').forEach(function(chk) {
               chk.addEventListener('change', syncIssueInvoiceFcIds);
             });
-            if (arrearsChk) arrearsChk.addEventListener('change', syncIssueInvoiceFcIds);
 
             recalcTotal();
           })();
@@ -1302,12 +1190,11 @@
           </details>
           {% endif %}
 
-        </div>
         {% endif %}
 
         <!-- Invoice / receipts panel — unified per-contributor view -->
         {% if fc_payments_paid or not fc.is_paid %}
-        <div style="margin-top:.7rem;padding:.7rem 1rem;border:1px solid #e3e6ea;border-radius:8px;background:#fafbfc;">
+        <div style="margin-top:.7rem;border-top:1px solid #eef1f4;padding-top:.7rem;">
           {% if fc_payments_paid %}
           {# Paid: per-contributor rows with Reverse + Receipt #}
           <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;margin:0 0 .4rem;">Payments received</p>
@@ -1319,11 +1206,8 @@
               <td style="padding:.3rem 0;">
                 <span style="font-weight:500;">{{ fp.member.user.get_full_name }}</span>
                 <span style="color:#8a93a0;margin-left:.3rem;">{{ fp.get_method_display }} · ✓ {{ fp.paid_at|date:"j M H:i" }}</span>
-              </td>
-              <td style="text-align:right;white-space:nowrap;padding:.3rem 0 .3rem .75rem;font-variant-numeric:tabular-nums;">${{ fp.amount|floatformat:2 }}</td>
-              <td style="text-align:right;white-space:nowrap;padding:.3rem 0 .3rem .4rem;">
                 {% if actor.is_admin and not fp_inv or actor.is_admin and fp_inv.status == 'void' %}
-                <form method="post" data-confirm="Reverse ${{ fp.amount|floatformat:2 }} payment from {{ fp.member.user.get_full_name }}?" style="margin:0;display:inline;">
+                <form method="post" data-confirm="Reverse ${{ fp.amount|floatformat:2 }} payment from {{ fp.member.user.get_full_name }}?" style="margin:0;display:inline;margin-left:.4rem;">
                   {% csrf_token %}
                   <input type="hidden" name="action" value="reverse_payment">
                   <input type="hidden" name="payment_id" value="{{ fp.id }}">
@@ -1331,10 +1215,10 @@
                 </form>
                 {% endif %}
                 {% if fp_inv and fp_inv.status != 'void' %}
-                <a href="{% url 'core:invoice_print' club.slug fp_inv.id %}" target="_blank" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;display:inline-block;"
+                <a href="{% url 'core:invoice_print' club.slug fp_inv.id %}" target="_blank" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;display:inline-block;margin-left:.25rem;"
                    onclick="window.open(this.href,'_blank');return false;">Receipt</a>
                 {% else %}
-                <form id="receipt-form-{{ forloop.counter }}" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}" style="margin:0;display:inline;">
+                <form id="receipt-form-{{ forloop.counter }}" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}" style="margin:0;display:inline;margin-left:.25rem;">
                   {% csrf_token %}
                   <input type="hidden" name="for_member_id" value="{{ fp.member.id }}">
                   <button type="button" class="cbtn" style="font-size:.72rem;padding:.15rem .45rem;"
@@ -1342,6 +1226,8 @@
                 </form>
                 {% endif %}
               </td>
+              <td style="text-align:right;white-space:nowrap;padding:.3rem .5rem .3rem .75rem;font-variant-numeric:tabular-nums;width:90px;">${{ fp.amount|floatformat:2 }}</td>
+              <td style="width:28px;"></td>
             </tr>
             {% endwith %}
             {% endfor %}
@@ -1353,19 +1239,19 @@
                 <span style="font-weight:500;white-space:nowrap;">{{ sp.completion.booking.aircraft.registration }} · {{ sp.completion.booking.scheduled_start|date:"j M Y" }}</span>
                 <span style="color:#8a93a0;margin-left:.3rem;">{{ sp.get_method_display }} · ✓ {{ sp.paid_at|date:"j M H:i" }}</span>
               </td>
-              <td style="text-align:right;white-space:nowrap;padding:.3rem 0 .3rem .75rem;font-variant-numeric:tabular-nums;">${{ sp.amount|floatformat:2 }}</td>
-              <td></td>
+              <td style="text-align:right;white-space:nowrap;padding:.3rem .5rem .3rem .75rem;font-variant-numeric:tabular-nums;width:90px;">${{ sp.amount|floatformat:2 }}</td>
+              <td style="width:28px;"></td>
             </tr>
             {% endfor %}
             {% if arrears_clearance_at %}
             <tr>
               <td style="padding:.3rem 0;">
-                <span style="font-weight:500;">Arrears clearance — account balance restored</span>
+                <span style="font-weight:500;">Previous unpaid flights — balance collected</span>
                 <span style="color:#8a93a0;margin-left:.3rem;">{{ arrears_clearance_at.get_payment_method_display }} · ✓ {{ arrears_clearance_at.created_at|date:"j M H:i" }}</span>
                 {% if arrears_flights %}
                 <details style="margin-top:.2rem;">
                   <summary style="font-size:.72rem;color:#8a93a0;cursor:pointer;list-style:none;display:flex;align-items:center;gap:.25rem;">
-                    <span style="font-size:.6rem;">▶</span> Show {{ arrears_flights|length }} flight{{ arrears_flights|length|pluralize }} covered
+                    <span style="font-size:.6rem;">▶</span> {{ arrears_flights|length }} previous flight{{ arrears_flights|length|pluralize }}
                   </summary>
                   <div style="margin-top:.3rem;padding:.3rem .5rem;background:#f8f9fa;border-radius:.35rem;display:flex;flex-direction:column;gap:.15rem;">
                     {% for af in arrears_flights %}
@@ -1378,17 +1264,17 @@
                 </details>
                 {% endif %}
               </td>
-              <td style="text-align:right;white-space:nowrap;padding:.3rem 0 .3rem .75rem;font-variant-numeric:tabular-nums;">${{ arrears_clearance_at.amount|floatformat:2 }}</td>
-              <td></td>
+              <td style="text-align:right;white-space:nowrap;padding:.3rem .5rem .3rem .75rem;font-variant-numeric:tabular-nums;width:90px;">${{ arrears_clearance_at.amount|floatformat:2 }}</td>
+              <td style="width:28px;"></td>
             </tr>
             {% endif %}
             {% endif %}
             </tbody>
             <tfoot>
               <tr>
-                <td class="ch-total-label" style="padding:.65rem 0;border-top:2px solid #e3e6ea;">Total received</td>
-                <td class="ch-total-amount" style="text-align:right;padding:.65rem 0 .65rem .75rem;border-top:2px solid #e3e6ea;color:{% if fc.is_paid %}#2a7a3b{% else %}#b06800{% endif %};">${{ batch_session_total|currency }}</td>
-                <td style="border-top:2px solid #e3e6ea;padding:.65rem 0 .65rem .4rem;text-align:right;font-size:.78rem;font-weight:500;white-space:nowrap;color:#2a7a3b;">{% if fc.is_paid %}✓ Paid in full{% endif %}</td>
+                <td class="ch-total-label" style="padding:.65rem 0;border-top:2px solid #e3e6ea;">Total received{% if fc.is_paid %} <span style="font-size:.78rem;font-weight:500;color:#2a7a3b;">✓ Paid in full</span>{% endif %}</td>
+                <td class="ch-total-amount" style="text-align:right;padding:.65rem .5rem .65rem .75rem;width:90px;border-top:2px solid #e3e6ea;color:{% if fc.is_paid %}#2a7a3b{% else %}#b06800{% endif %};">${{ batch_session_total|currency }}</td>
+                <td style="width:28px;border-top:2px solid #e3e6ea;"></td>
               </tr>
             </tfoot>
           </table>
@@ -1403,12 +1289,12 @@
           <details id="invoice-instead-section">
             <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
             <div style="margin-top:.4rem;">
-              <p style="font-size:.78rem;color:#8a93a0;margin:0 0 .5rem;">Invoices are issued to {{ booking.member.user.get_full_name }} (the booking member) for the full outstanding amount. Individual contributors pay their share directly to {{ booking.member.user.first_name }}.</p>
+              <p style="font-size:.78rem;color:#8a93a0;margin:0 0 .5rem;">Note: invoices cover flight charges only. Account deficits must be cleared separately by direct payment.{% if fc_segments %} Individual contributors pay their share directly to {{ booking.member.user.first_name }}.{% endif %}</p>
               {% if total %}
               <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}">
                 {% csrf_token %}
                 <button type="button" class="cbtn" style="font-size:.8rem;"
-                  onclick="(function(){var arChk=document.getElementById('mp-arrears-chk');var arAmt=document.getElementById('mp-arrears-amt');var base='Issue invoice to {{ booking.member.user.get_full_name|escapejs }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}';var msg=base+(arChk&&arChk.checked&&arAmt?' plus arrears $'+arAmt.value:'')+'. The member will be notified and the flight will be marked Completed.';window.showAppConfirm(msg,function(){if(window.markOverlayChanged)window.markOverlayChanged();var n='inv_'+Date.now();var w=window.open('',n);document.getElementById('issue-invoice-form').target=n;document.getElementById('issue-invoice-form').submit();var _pt=setInterval(function(){if(w&&w.closed){clearInterval(_pt);if(window.reloadPageOverlay)window.reloadPageOverlay();if(window.softReloadPage)window.softReloadPage();}},600);});})();">Issue invoice</button>
+                  onclick="(function(){var arChk=document.getElementById('mp-arrears-chk');var arAmt=document.getElementById('mp-arrears-amt');var base='Issue invoice to {{ booking.member.user.get_full_name|escapejs }}{% if other_unpaid_list or other_outstanding_list %} covering this flight and selected outstanding charges{% else %} for ${{ balance_owing|floatformat:2 }}{% endif %}';var msg=base+'. The member will be notified and the flight will be marked Completed.';window.showAppConfirm(msg,function(){if(window.markOverlayChanged)window.markOverlayChanged();var n='inv_'+Date.now();var w=window.open('',n);document.getElementById('issue-invoice-form').target=n;document.getElementById('issue-invoice-form').submit();var _pt=setInterval(function(){if(w&&w.closed){clearInterval(_pt);if(window.reloadPageOverlay)window.reloadPageOverlay();if(window.softReloadPage)window.softReloadPage();}},600);});})();">Issue invoice</button>
               </form>
               {% else %}
               <span class="cbtn" style="font-size:.8rem;opacity:.45;cursor:not-allowed;" title="No charges — add charge items first">Issue invoice</span>
@@ -1418,9 +1304,7 @@
           {% endif %}
         </div>
         {% endif %}
-      </div>{% endif %}<!-- /right -->
-    </div><!-- /ch-grid -->
-
+      </div>{% endif %}<!-- /payment panel -->
   </div>
   {% endif %}
 
@@ -1435,13 +1319,10 @@
   .notice.err{background:#fff0f0;color:#c0392b;}
   .notice.warn{background:#fff8e6;color:#7a5800;}
 
-  .bcard{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.4rem;}
-  .bcard-head{background:#fafbfc;padding:.65rem 1rem;border-bottom:1px solid #eef1f4;display:flex;align-items:center;justify-content:space-between;gap:.6rem;font-size:.92rem;flex-wrap:wrap;}
-  .bcard-body{padding:.75rem 1rem;font-size:.88rem;}
-  .bcard-row{display:flex;gap:.5rem;align-items:baseline;margin-bottom:.35rem;}
-  .bl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;min-width:75px;flex-shrink:0;}
   .sep{color:#d0d5dd;margin:0 .2rem;}
 
+  /* Override returned chip to indigo here (base_inline.html keeps it red for the mobile bookings list) */
+  .status-chip.returned,.status-chip.status-returned{background:#eef2ff;color:#4338ca;}
   /* status-chip colours defined in base.html */
   .warn-chip{font-size:.72rem;background:#fee2e2;color:#c0392b;padding:.1rem .4rem;border-radius:4px;margin-left:.3rem;}
 
@@ -1453,20 +1334,15 @@
   .elig-icon{font-size:.8rem;font-weight:700;flex-shrink:0;width:14px;text-align:center;}
   .elig-label{font-weight:600;flex-shrink:0;min-width:90px;color:#2b333d;}
   .elig-msg{color:#5b6573;}
-  .elig-ok{background:#f6fbf7;}.elig-ok .elig-icon{color:#2a7a3b;}.elig-ok .elig-msg{color:#2a7a3b;}
-  .elig-warn{background:#fffbf0;}.elig-warn .elig-icon{color:#9a6700;}.elig-warn .elig-msg{color:#7a5800;}
-  .elig-block{background:#fff5f5;}.elig-block .elig-icon{color:#c0392b;}.elig-block .elig-msg{color:#c0392b;}
+  .elig-ok{background:#f6fbf7;}.elig-ok .elig-icon{color:#2a7a3b;}.elig-ok .elig-msg{color:#5b6573;}
+  .elig-warn{background:#fffdf0;}.elig-warn .elig-icon{color:#9a6700;}.elig-warn .elig-msg{color:#5b6573;}
+  .elig-block{background:#f8f9fb;}.elig-block .elig-icon{color:#c0392b;}.elig-block .elig-msg{color:#5b6573;}
   .elig-info{background:#f8f9fa;}.elig-info .elig-icon{color:#8a93a0;}.elig-info .elig-msg{color:#6b7280;}
-  .readiness-box{border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:1rem;}
-  .readiness-summary{list-style:none;padding:.45rem .8rem;font-size:.83rem;font-weight:650;cursor:pointer;user-select:none;}
-  .readiness-summary::-webkit-details-marker{display:none;}
-  .readiness-summary::before{content:'▶ ';font-size:.65rem;margin-right:.3rem;vertical-align:middle;}
-  details.readiness-box[open] .readiness-summary::before{content:'▼ ';}
-  .rs-green{background:#f0faf2;color:#1e6e32;border-bottom:none;}
-  .rs-amber{background:#fffbf0;color:#7a5800;border-bottom:1px solid #f0e5c0;}
-  .rs-red{background:#fff5f5;color:#9b1c1c;border-bottom:1px solid #fca5a5;}
-  .readiness-body{padding:.75rem .85rem .6rem;}
   .readiness-section-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;margin-bottom:.3rem;}
+  .checkout-info-box{border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:1rem;padding:.7rem .85rem .5rem;}
+  .checkout-info-lbl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin-bottom:.5rem;}
+  .checkout-ack{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#374151;margin:.5rem 0 .75rem;cursor:pointer;}
+  .checkout-ack input[type=checkbox]{width:15px;height:15px;cursor:pointer;flex-shrink:0;}
   .sh2{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 .9rem;}
 
   .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
@@ -1476,7 +1352,7 @@
   .ch-table tfoot td{border-top:2px solid #e3e6ea;border-bottom:none;}
   .del-btn{background:none;border:none;color:#c0392b;cursor:pointer;font-size:1rem;line-height:1;padding:0 .3rem;}
 
-  .paid-badge{font-size:.75rem;font-weight:500;color:#2a7a3b;background:#e6f4ea;padding:.2rem .6rem;border-radius:10px;margin-left:.6rem;}
+  .paid-badge{font-size:.75rem;font-weight:500;color:#2a7a3b;background:#e6f4ea;padding:.2rem .6rem;border-radius:10px;}
 
   .add-wrap{flex-shrink:0;}
   .add-wrap[open]{flex-basis:100%;border:1px solid #e3e6ea;border-radius:7px;background:#fafbfc;}
@@ -1490,11 +1366,8 @@
   .ch-total-row{display:flex;align-items:center;justify-content:space-between;padding:.7rem .5rem;border-top:2px solid #e3e6ea;margin-top:.6rem;}
   .ch-total-label{font-size:.88rem;font-weight:600;color:#5b6573;}
   .ch-total-amount{font-size:1.15rem;font-weight:700;color:#1f2933;}
-  .ch-payment-wrap{margin-top:.9rem;padding:.9rem 1rem;background:#f8f9fb;border-radius:8px;border:1px solid #e3e6ea;}
-
   /* Two-column grid layouts */
   .ci-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
-  .ch-grid{display:grid;grid-template-columns:1fr;gap:1.4rem;align-items:start;margin-top:.4rem;}
   @media(max-width:700px){.ci-grid{grid-template-columns:1fr;}}
 
   .decl-overlay{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:150;}
