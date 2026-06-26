@@ -187,6 +187,17 @@
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="change_details">
+        <div class="fgrid" style="margin-bottom:.5rem;">
+          <label class="flabel">Date
+            <input type="date" name="sched_date" class="finput" value="{{ booking.scheduled_start|date:'Y-m-d' }}">
+          </label>
+          <label class="flabel">Start time
+            <input type="time" name="sched_start" class="finput" value="{{ booking.scheduled_start|time:'H:i' }}">
+          </label>
+          <label class="flabel">End time
+            <input type="time" name="sched_end" class="finput" value="{{ booking.scheduled_end|time:'H:i' }}">
+          </label>
+        </div>
         <div class="fgrid">
           <label class="flabel">Instructor
             <select name="instructor_id" class="finput">

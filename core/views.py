@@ -2623,6 +2623,9 @@ def booking_detail(request, club_slug, booking_id):
             new_instr_id = request.POST.get('instructor_id', '').strip()
             new_ac_id    = request.POST.get('aircraft_id', '').strip()
             new_desc     = request.POST.get('description', booking.description or '').strip()
+            sched_date   = request.POST.get('sched_date', '').strip()
+            sched_start  = request.POST.get('sched_start', '').strip()
+            sched_end    = request.POST.get('sched_end', '').strip()
             changed = []
             old_instructor = booking.instructor
             if new_instr_id == '__none__':
@@ -2642,11 +2645,44 @@ def booking_detail(request, club_slug, booking_id):
             if new_desc != (booking.description or ''):
                 booking.description = new_desc
                 changed.append('description')
-            if changed:
+            if sched_date and sched_start and sched_end:
+                from datetime import datetime as _dt
+                try:
+                    _d = _dt.strptime(sched_date, '%Y-%m-%d').date()
+                    _s = _dt.strptime(sched_start, '%H:%M').time()
+                    _e = _dt.strptime(sched_end, '%H:%M').time()
+                    new_start = timezone.make_aware(_dt.combine(_d, _s))
+                    new_end   = timezone.make_aware(_dt.combine(_d, _e))
+                    if new_end <= new_start:
+                        error = 'End time must be after start time.'
+                    elif new_start != booking.scheduled_start or new_end != booking.scheduled_end:
+                        ac_clash = Booking.objects.filter(
+                            club=club, aircraft=booking.aircraft,
+                            status__in=['pending', 'confirmed', 'departed'],
+                            scheduled_start__lt=new_end, scheduled_end__gt=new_start,
+                        ).exclude(pk=booking.pk).exists()
+                        instr_clash = booking.instructor and Booking.objects.filter(
+                            club=club, instructor=booking.instructor,
+                            status__in=['pending', 'confirmed', 'departed'],
+                            scheduled_start__lt=new_end, scheduled_end__gt=new_start,
+                        ).exclude(pk=booking.pk).exists()
+                        if ac_clash:
+                            error = 'New time slot conflicts with another booking for this aircraft.'
+                        elif instr_clash:
+                            error = 'New time slot conflicts with another booking for this instructor.'
+                        else:
+                            booking.scheduled_start = new_start
+                            booking.scheduled_end   = new_end
+                            changed.append('time')
+                except ValueError:
+                    error = 'Invalid date or time format.'
+            if not error and changed:
                 Booking.objects.filter(pk=booking.pk).update(
                     instructor=booking.instructor,
                     aircraft=booking.aircraft,
                     description=booking.description,
+                    scheduled_start=booking.scheduled_start,
+                    scheduled_end=booking.scheduled_end,
                 )
                 booking.refresh_from_db()
                 _audit(booking, request.user, 'edited', notes=', '.join(changed) + ' updated')
