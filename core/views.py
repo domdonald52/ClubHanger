@@ -2286,7 +2286,7 @@ def manage_bookings(request, club_slug):
         windows = _av_windows.get(uid, [])
         if not windows:
             return False  # no schedule declared = assumed available (per model)
-        bdate = booking.scheduled_start.date()
+        bdate = timezone.localtime(booking.scheduled_start).date()
         return not any(w.applies_on(bdate) for w in windows)
 
     if request.method == 'POST':
@@ -3871,19 +3871,39 @@ def booking_detail(request, club_slug, booking_id):
         ).exclude(pk=booking.pk).values_list('instructor_id', flat=True)
     ) - _confirmed_conflict_ids
 
+    _rostered = list(
+        ClubMember.objects.filter(club=club, is_on_instructor_roster=True)
+        .select_related('user').order_by('user__last_name')
+    )
+    _bdate = timezone.localtime(booking.scheduled_start).date()
+
+    from .models import InstructorAvailability as _IAv
+    _bd_av_wins = {}  # user_id -> [InstructorAvailability]
+    for _av in _IAv.objects.filter(club_member__club=club).select_related('club_member'):
+        _bd_av_wins.setdefault(_av.club_member.user_id, []).append(_av)
+
     def _instr_avail(member):
         uid = member.user_id
         if uid in _confirmed_conflict_ids:
             return 'red'
         if uid in _pending_conflict_ids:
             return 'orange'
+        wins = _bd_av_wins.get(uid, [])
+        if wins and not any(w.applies_on(_bdate) for w in wins):
+            return 'unavailable'
         return 'green'
 
-    _rostered = list(
-        ClubMember.objects.filter(club=club, is_on_instructor_roster=True)
-        .select_related('user').order_by('user__last_name')
-    )
+    _rostered_by_uid = {_m.user_id: _m for _m in _rostered}
     rostered_instructors = [(_m, _instr_avail(_m)) for _m in _rostered]
+    _rostered_user_ids = set(_rostered_by_uid)
+    booking_instructor_off_roster = False
+    if booking.instructor_id is not None:
+        if booking.instructor_id not in _rostered_user_ids:
+            booking_instructor_off_roster = True
+        else:
+            _wins = _bd_av_wins.get(booking.instructor_id, [])
+            if _wins and not any(w.applies_on(_bdate) for w in _wins):
+                booking_instructor_off_roster = True
 
     ctx = {
         'club': club, 'club_member': actor, 'actor': actor, 'is_instructor': actor.is_instructor,
@@ -3936,6 +3956,7 @@ def booking_detail(request, club_slug, booking_id):
         'prev_airswitch_end': prev_airswitch_end,
         'checkin_rates_json': checkin_rates_json,
         'rostered_instructors': rostered_instructors,
+        'booking_instructor_off_roster': booking_instructor_off_roster,
         'online_aircraft': Aircraft.objects.filter(club=club, status='online').order_by('registration'),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
         'inline_title': (
@@ -4620,8 +4641,8 @@ def app_flight_log(request, club_slug):
     total_hrs = sum(e['hours'] for e in filtered)
     dual_hrs  = sum(e['hours'] for e in filtered if e['dual'])
     solo_hrs  = sum(e['hours'] for e in filtered if not e['dual'])
-    if_hrs    = sum(e['if_sim'] + e['if_act'] for e in filtered)
-    night_hrs = sum(e['night'] for e in filtered)
+    if_hrs    = sum((e['if_sim'] or 0) + (e['if_act'] or 0) for e in filtered)
+    night_hrs = sum(e['night'] or 0 for e in filtered)
 
     paginator = Paginator(filtered, 30)
     page_obj  = paginator.get_page(request.GET.get('page', 1))
@@ -4799,7 +4820,7 @@ def my_profile(request, club_slug):
         ('instructor_booking_upcoming', 'New booking assigned — within 10 days',         True),
         ('maintenance_alert',           'Maintenance alert (amber/red items)',            True),
         ('lapsed_credentials',          'Member has lapsed credentials — flight today',   True),
-        ('slot_released',               'Slot released by another member (opt-in)',       False),
+        ('slot_released',               'Watched slots released',                         False),
         ('payment_reminder',            'Account balance reminder',                        True),
         ('invoice_sent',                'Invoice issued to me',                            True),
     ]
@@ -8672,8 +8693,8 @@ def manage_exceptions(request, club_slug):
             return False
         windows = _av_wins.get(uid, [])
         if not windows:
-            return True  # no schedule = not available
-        return not any(w.applies_on(booking.scheduled_start.date()) for w in windows)
+            return False  # no schedule declared = assumed always available (per model)
+        return not any(w.applies_on(timezone.localtime(booking.scheduled_start).date()) for w in windows)
 
     # 2. Booking conflicts (future non-cancelled bookings with a flagged issue)
     from django.db.models import Exists as _Exists, OuterRef as _OuterRef
@@ -11562,6 +11583,15 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
     from .permissions import check_booking_block
     bb_blocked, bb_msg = check_booking_block(actor, get_config(club))
 
+    # Data for the inline new-booking sheet
+    _hire_ac = list(
+        Aircraft.objects
+        .filter(club=club, status='online', is_available_for_hire=True)
+        .select_related('aircraft_type')
+        .order_by('registration')
+    )
+    _flight_types = list(FlightType.objects.filter(club=club).order_by('name'))
+
     return render(request, 'core/app/schedule.html', {
         'club': club, 'club_member': actor,
         'selected': selected,
@@ -11580,6 +11610,9 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
         'instructor_bars': instructor_bars,
         'booking_blocked': bb_blocked,
         'booking_block_msg': bb_msg,
+        'nb_aircraft': _hire_ac,
+        'nb_flight_types': _flight_types,
+        'nb_instructors': _roster,
     })
 
 
@@ -11736,7 +11769,7 @@ def app_notification_settings(request, club_slug):
         ('subscription_expiring', 'Subscription expiring',                    True),
         ('payment_reminder',      'Account balance reminder',                 True),
         ('invoice_sent',          'Invoice / receipt sent to me',             True),
-        ('slot_released',         'Slot freed up by another member (opt-in)', False),
+        ('slot_released',         'Watched slots released',                   False),
     ]
     if actor.is_instructor:
         _raw_toggles += [
@@ -12174,6 +12207,195 @@ def app_book_availability(request, club_slug):
         'all_aircraft': all_aircraft,
         'prev_date': prev_d,
         'next_date': next_d,
+    })
+
+
+def app_book_find(request, club_slug):
+    """
+    Multi-day slot finder: shows available slots for the next 14 days at a glance.
+    Solo mode: any aircraft free. Dual mode: aircraft AND ≥1 instructor both free.
+    """
+    from datetime import date as _d, timedelta as _td, datetime as _fdt, time as _ft
+    from collections import defaultdict
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+
+    today = timezone.localdate()
+    mode  = request.GET.get('mode', 'solo')
+    if mode not in ('solo', 'dual'):
+        mode = 'solo'
+
+    from .permissions import check_booking_block
+    _config = get_config(club)
+    booking_blocked, booking_block_msg = check_booking_block(actor, _config)
+
+    # Aircraft (online, for hire, respecting type ratings)
+    from .models import MemberCredential
+    rated_type_ids = set(
+        MemberCredential.objects
+        .filter(member=actor.user, credential_type__code='type')
+        .values_list('aircraft_type_id', flat=True)
+    )
+    rated_type_ids.discard(None)
+    ac_qs = (Aircraft.objects
+             .filter(club=club, status='online', is_available_for_hire=True)
+             .select_related('aircraft_type')
+             .order_by('registration'))
+    if rated_type_ids:
+        ac_qs = ac_qs.filter(aircraft_type_id__in=rated_type_ids)
+    all_aircraft = list(ac_qs)
+
+    # Instructors for dual mode (with availability windows for accurate filtering)
+    instructors = []
+    if mode == 'dual':
+        instructors = list(
+            ClubMember.objects
+            .filter(club=club, is_on_instructor_roster=True)
+            .select_related('user')
+            .prefetch_related('availability_windows')
+            .order_by('user__last_name')
+        )
+
+    # Slot specs from ClubConfig
+    from .models import ClubConfig as _CC
+    _cfg = _CC.objects.filter(club=club).first()
+    _slot_specs = _cfg.parsed_booking_slots() if _cfg else []
+    if not _slot_specs:
+        _dur = _cfg.default_booking_duration if _cfg else 90
+        _iv  = _cfg.time_slot_interval       if _cfg else 30
+        _ds  = (_cfg.operating_hours_start.hour * 60 + _cfg.operating_hours_start.minute) if _cfg else 7 * 60
+        _de  = (_cfg.operating_hours_end.hour   * 60 + _cfg.operating_hours_end.minute)   if _cfg else 21 * 60
+        _s = _ds
+        while _s + _dur <= _de:
+            _e = _s + _dur
+            _slot_specs.append((
+                '{:02d}:{:02d}'.format(_s // 60, _s % 60),
+                '{:02d}:{:02d}'.format(_e // 60, _e % 60),
+                _s // 60, _s % 60, _e // 60, _e % 60,
+            ))
+            _s += _iv
+
+    # Load all bookings for the 14-day window in one query
+    end_date = today + _td(days=14)
+
+    # Block-outs for dual mode — load once, filter per day in the slot loop
+    _find_bos = []
+    if mode == 'dual':
+        from .models import BlockOut as _FindBO
+        from django.db.models import Q as _FindQ
+        _find_bos = list(
+            _FindBO.objects.filter(club=club).filter(
+                _FindQ(recurrence__in=['daily', 'weekly']) |
+                _FindQ(recurrence='one_off', date__gte=today, date__lt=end_date)
+            ).prefetch_related('instructors')
+        )
+
+    all_bookings = list(
+        Booking.objects
+        .filter(club=club, scheduled_start__date__gte=today, scheduled_start__date__lt=end_date)
+        .exclude(status='cancelled')
+        .select_related('aircraft')
+    )
+    bookings_by_date = defaultdict(list)
+    for bk in all_bookings:
+        bookings_by_date[timezone.localtime(bk.scheduled_start).date()].append(bk)
+
+    now_local = timezone.localtime(timezone.now())
+
+    def _overlaps(bk, sh, sm, eh, em):
+        loc_s = timezone.localtime(bk.scheduled_start)
+        loc_e = timezone.localtime(bk.scheduled_end)
+        bk_s  = loc_s.hour * 60 + loc_s.minute
+        bk_e  = loc_e.hour * 60 + loc_e.minute
+        return bk_s < eh * 60 + em and bk_e > sh * 60 + sm
+
+    days = []
+    for i in range(14):
+        d = today + _td(days=i)
+        day_bks = bookings_by_date[d]
+        now_min = now_local.hour * 60 + now_local.minute if d == today else -1
+
+        # Pre-compute per-day values for dual instructor check
+        _day_bos = []
+        _day_s_dt = _day_e_dt = None
+        if mode == 'dual':
+            _day_s_dt = timezone.make_aware(_fdt.combine(d, _ft(7, 0)))
+            _day_e_dt = timezone.make_aware(_fdt.combine(d, _ft(20, 0)))
+            _day_bos  = [bo for bo in _find_bos if bo.applies_on(d)]
+
+        available = []
+        for start_str, end_str, sh, sm, eh, em in _slot_specs:
+            if d == today and sh * 60 + sm <= now_min:
+                continue
+
+            free_ac = [
+                ac for ac in all_aircraft
+                if not any(_overlaps(bk, sh, sm, eh, em) for bk in day_bks if bk.aircraft_id == ac.id)
+            ]
+            if not free_ac:
+                continue
+
+            if mode == 'dual':
+                _slot_s_dt = timezone.make_aware(_fdt.combine(d, _ft(sh, sm)))
+                free_instr = []
+                for inst in instructors:
+                    # Availability windows — if any defined, slot must fall within one
+                    wins = list(inst.availability_windows.all())
+                    if wins:
+                        on_roster = False
+                        for w in wins:
+                            iv = w.interval_on(d, _day_s_dt, _day_e_dt)
+                            if iv and iv[0] <= _slot_s_dt < iv[1]:
+                                on_roster = True
+                                break
+                        if not on_roster:
+                            continue
+                    # Block-outs
+                    blocked = False
+                    for bo in _day_bos:
+                        if not bo.affects_instructor(inst.user):
+                            continue
+                        biv = bo.interval_on(d)
+                        if biv and biv[0] <= _slot_s_dt < biv[1]:
+                            blocked = True
+                            break
+                    if blocked:
+                        continue
+                    # Existing bookings
+                    if any(_overlaps(bk, sh, sm, eh, em) for bk in day_bks if bk.instructor_id == inst.user_id):
+                        continue
+                    free_instr.append(inst)
+                if not free_instr:
+                    continue
+                available.append({
+                    'start': start_str, 'end': end_str,
+                    'ac_regs': [ac.registration for ac in free_ac],
+                    'sole_ac_id': free_ac[0].id if len(free_ac) == 1 else None,
+                    'instr_count': len(free_instr),
+                })
+            else:
+                available.append({
+                    'start': start_str, 'end': end_str,
+                    'ac_regs': [ac.registration for ac in free_ac],
+                    'sole_ac_id': free_ac[0].id if len(free_ac) == 1 else None,
+                })
+
+        days.append({
+            'date': d,
+            'date_str': d.isoformat(),
+            'label': 'Today' if d == today else d.strftime('%-d %b'),
+            'weekday': d.strftime('%a') if d != today else '',
+            'slots': available,
+        })
+
+    return render(request, 'core/app/book_find.html', {
+        'club': club, 'club_member': actor,
+        'mode': mode,
+        'days': days,
+        'today': today,
+        'booking_blocked': booking_blocked,
+        'booking_block_msg': booking_block_msg,
     })
 
 

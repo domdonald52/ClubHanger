@@ -6,7 +6,7 @@
   <div class="page-hdr">
     <h1 class="page-h1">Bookings</h1>
     <div class="page-actions">
-      <a href="{% url 'core:gantt_day' club.slug %}" class="cbtn-add">+ New booking</a>
+      <a href="{% url 'core:gantt_day' club.slug %}?book=1" class="cbtn primary">+ New booking</a>
     </div>
   </div>
 
@@ -93,6 +93,7 @@
         <th><input type="checkbox" id="select-all-attn" title="Select all"></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=member&dir={% if sort == 'member' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'member' %}sort-active{% endif %}">Member{% if sort == 'member' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=aircraft&dir={% if sort == 'aircraft' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if sort == 'aircraft' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th style="white-space:nowrap;">Type</th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=instructor&dir={% if sort == 'instructor' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'instructor' %}sort-active{% endif %}">Instructor{% if sort == 'instructor' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date &amp; time{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
@@ -105,6 +106,7 @@
           <td><input type="checkbox" name="booking_ids" value="{{ b.id }}" class="row-check" data-status="{{ b.status }}"></td>
           <td style="white-space:nowrap;">{% if b.member and b.member.user %}{% if b.member.avatar %}<img src="{{ b.member.avatar.url }}" class="avatar-xs">{% else %}<span class="avatar-xs avatar-default"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg></span>{% endif %}<a href="{% url 'core:manage_member_detail' club.slug b.member.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings#contact" style="color:inherit;text-decoration:none;border-bottom:1px dotted #adb5bd;" data-overlay data-overlay-wide>{{ b.member.user.get_full_name }}</a>{% else %}—{% endif %}</td>
           <td style="white-space:nowrap;">{{ b.aircraft.registration|default:"—" }}</td>
+          <td style="white-space:nowrap;color:var(--text-2);font-size:.82rem;">{{ b.flight_type.is_solo|yesno:"Solo,Dual" }}</td>
           <td style="white-space:nowrap;">{{ b.instructor.get_full_name|default:"—" }}</td>
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}–{{ b.scheduled_end|time:"H:i" }}</td>
           <td style="white-space:nowrap;">
@@ -138,6 +140,7 @@
           <th><input type="checkbox" id="select-all-list" title="Select all"></th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=member&dir={% if sort == 'member' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'member' %}sort-active{% endif %}">Member{% if sort == 'member' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=aircraft&dir={% if sort == 'aircraft' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if sort == 'aircraft' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+          <th style="white-space:nowrap;">Type</th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=instructor&dir={% if sort == 'instructor' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'instructor' %}sort-active{% endif %}">Instructor{% if sort == 'instructor' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date &amp; time{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
@@ -151,6 +154,7 @@
           <td><input type="checkbox" name="booking_ids" value="{{ b.id }}" class="row-check" data-status="{{ b.status }}"></td>
           <td style="white-space:nowrap;">{% if b.member and b.member.user %}{% if b.member.avatar %}<img src="{{ b.member.avatar.url }}" class="avatar-xs">{% else %}<span class="avatar-xs avatar-default"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg></span>{% endif %}<a href="{% url 'core:manage_member_detail' club.slug b.member.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings#contact" style="color:inherit;text-decoration:none;border-bottom:1px dotted #adb5bd;" data-overlay data-overlay-wide>{{ b.member.user.get_full_name }}</a>{% else %}—{% endif %}</td>
           <td style="white-space:nowrap;">{{ b.aircraft.registration|default:"—" }}</td>
+          <td style="white-space:nowrap;color:var(--text-2);font-size:.82rem;">{{ b.flight_type.is_solo|yesno:"Solo,Dual" }}</td>
           <td style="white-space:nowrap;">{{ b.instructor.get_full_name|default:"—" }}</td>
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}–{{ b.scheduled_end|time:"H:i" }}</td>
           <td style="white-space:nowrap;">

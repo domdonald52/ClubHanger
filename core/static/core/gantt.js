@@ -1199,7 +1199,8 @@
     }
     function closeBoModal() { boModal.hidden = true; }
 
-    document.getElementById("btn-blockout").addEventListener("click", openBoModal);
+    const _btnBlockout = document.getElementById("btn-blockout");
+    if (_btnBlockout) _btnBlockout.addEventListener("click", openBoModal);
     document.getElementById("bo-cancel").addEventListener("click", closeBoModal);
     boModal.addEventListener("click", (e) => { if (e.target === boModal) closeBoModal(); });
 

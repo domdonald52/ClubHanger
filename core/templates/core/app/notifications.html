@@ -14,8 +14,8 @@
 {% if notifications %}
 <div class="app-list" id="notif-list" style="margin:0 .75rem;">
   {% for notif in notifications %}
-  <div class="notif-row app-list-row" data-id="{{ notif.id }}" style="align-items:flex-start;gap:.65rem;position:relative;overflow:hidden;transition:transform .22s,opacity .22s,max-height .22s;{% if not notif.is_read %}background:#f0f4ff;{% endif %}">
-    <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;background:{% if not notif.is_read %}var(--primary){% else %}#e5e7eb{% endif %};"></div>
+  <div class="notif-row app-list-row" data-id="{{ notif.id }}" style="align-items:flex-start;gap:.65rem;position:relative;overflow:hidden;transition:transform .22s,opacity .22s,max-height .22s;{% if not notif.is_read %}background:color-mix(in srgb,var(--primary) 7%,var(--surface));{% endif %}">
+    <div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;background:{% if not notif.is_read %}var(--primary){% else %}var(--border){% endif %};"></div>
     <div class="app-list-main" style="flex:1;min-width:0;">
       <div class="app-list-title" style="font-size:.85rem;">{{ notif.subject }}</div>
       {% if notif.body %}<div class="app-list-sub" style="margin-top:.1rem;">{{ notif.body }}</div>{% endif %}
@@ -66,10 +66,10 @@ function dismiss(row) {
 }
 
 function clearAll() {
-  document.getElementById('clear-all-confirm').hidden = false;
+  document.getElementById('clear-all-confirm').style.display = 'flex';
 }
 function doClearAll() {
-  document.getElementById('clear-all-confirm').hidden = true;
+  document.getElementById('clear-all-confirm').style.display = 'none';
   var rows = document.querySelectorAll('.notif-row');
   rows.forEach(function(r) { r.style.opacity = '0'; });
   fetch(DISMISS_URL, {
@@ -92,6 +92,9 @@ function checkEmpty() {
       list.parentNode.insertBefore(msg, list);
       list.remove();
     }
+    // Hide Clear all button from app bar
+    var clearBtn = document.querySelector('.app-bar button[onclick^="clearAll"]');
+    if (clearBtn) clearBtn.style.display = 'none';
   }
 }
 
@@ -131,12 +134,12 @@ document.querySelectorAll('.notif-row').forEach(function(row) {
 });
 </script>
 
-<div id="clear-all-confirm" hidden style="position:fixed;bottom:0;left:0;right:0;z-index:900;background:var(--surface);border-top:1px solid var(--border);padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.65rem;box-shadow:0 -4px 20px rgba(0,0,0,.15);">
+<div id="clear-all-confirm" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:900;background:var(--surface);border-top:1px solid var(--border);padding:1rem 1.25rem;flex-direction:column;gap:.65rem;box-shadow:0 -4px 20px rgba(0,0,0,.15);">
   <p style="margin:0;font-size:.9rem;font-weight:600;color:var(--text-1);">Clear all notifications?</p>
   <p style="margin:0;font-size:.8rem;color:var(--text-3);">This cannot be undone.</p>
   <div style="display:flex;gap:.6rem;">
-    <button onclick="doClearAll()" style="flex:1;padding:.6rem;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:.87rem;font-weight:600;cursor:pointer;">Clear all</button>
-    <button onclick="document.getElementById('clear-all-confirm').hidden=true" style="flex:1;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-1);font-size:.87rem;font-weight:600;cursor:pointer;">Cancel</button>
+    <button onclick="doClearAll()" style="flex:1;padding:.6rem;border-radius:8px;border:none;background:var(--alert);color:var(--alert-text);font-size:.87rem;font-weight:600;cursor:pointer;">Clear all</button>
+    <button onclick="document.getElementById('clear-all-confirm').style.display='none'" style="flex:1;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-1);font-size:.87rem;font-weight:600;cursor:pointer;">Cancel</button>
   </div>
 </div>
 {% endblock %}

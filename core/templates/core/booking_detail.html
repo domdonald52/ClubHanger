@@ -150,6 +150,11 @@
 
     <div style="padding-top:.7rem;border-top:1px solid var(--border-subtle);display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
       {% if club_member.is_admin %}
+      <form method="post" style="display:inline;" data-confirm="Cancel this confirmed booking?">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="cancel_booking">
+        <button type="submit" class="cbtn cbtn-danger" style="font-size:.78rem;">Cancel booking</button>
+      </form>
       <form method="post" style="display:inline;" data-confirm="Undo confirmation? Flight will return to pending and the member will be notified.">
         {% csrf_token %}
         <input type="hidden" name="action" value="undo_confirm">
@@ -159,11 +164,6 @@
               onclick="document.getElementById('edit-details-panel').hidden=!document.getElementById('edit-details-panel').hidden">
         Change instructor / aircraft
       </button>
-      <form method="post" style="display:inline;" data-confirm="Cancel this confirmed booking?">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="cancel_booking">
-        <button type="submit" class="cbtn cbtn-danger" style="font-size:.78rem;">Cancel booking</button>
-      </form>
       {% endif %}
       <button type="submit" form="checkout-form" class="cbtn{% if not eligibility.has_blocks and not eligibility.has_warnings and not departure_maint_items %} primary{% endif %}" id="checkout-submit-btn"
               {% if eligibility.has_blocks or eligibility.has_warnings or departure_maint_items %}disabled{% endif %}>Check out</button>
@@ -190,10 +190,10 @@
         <div class="fgrid">
           <label class="flabel">Instructor
             <select name="instructor_id" class="finput">
-              <option value="">— keep {{ booking.instructor.get_full_name|default:"none" }} —</option>
+              <option value="">{% if booking_instructor_off_roster %}✗ {{ booking.instructor.get_full_name }} · off roster (current){% else %}— keep {{ booking.instructor.get_full_name|default:"none" }} —{% endif %}</option>
               <option value="__none__">— remove instructor —</option>
               {% for instr, avail in rostered_instructors %}
-              <option value="{{ instr.user.id }}" {% if instr.user == booking.instructor %}selected{% endif %}>{% if avail == 'red' %}✗{% elif avail == 'orange' %}!{% else %}✓{% endif %} {{ instr.user.get_full_name }}{% if avail == 'red' %} · conflict{% elif avail == 'orange' %} · pending conflict{% endif %}</option>
+              <option value="{{ instr.user.id }}" {% if instr.user == booking.instructor %}selected{% endif %}>{% if avail == 'red' %}✗{% elif avail == 'orange' %}!{% elif avail == 'unavailable' %}~{% else %}✓{% endif %} {{ instr.user.get_full_name }}{% if avail == 'red' %} · conflict{% elif avail == 'orange' %} · pending conflict{% elif avail == 'unavailable' %} · off roster{% endif %}</option>
               {% endfor %}
             </select>
           </label>
@@ -211,8 +211,6 @@
         </label>
         <div style="margin-top:.7rem;display:flex;gap:.5rem;">
           <button type="submit" class="btn" style="font-size:.82rem;">Save</button>
-          <button type="button" class="cbtn" style="font-size:.82rem;"
-                  onclick="document.getElementById('edit-details-panel').hidden=true">Close</button>
         </div>
       </form>
     </div>

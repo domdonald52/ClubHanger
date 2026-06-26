@@ -141,10 +141,9 @@ def theme(request):
                     )
                     _n += sum(
                         1 for _, _uid, _start in _instr_bks
-                        if _uid in _roster_uids and (
-                            not _av_by_user.get(_uid) or
-                            not any(w.applies_on(_start.date()) for w in _av_by_user[_uid])
-                        )
+                        if _uid in _roster_uids
+                        and _av_by_user.get(_uid)
+                        and not any(w.applies_on(_tz.localtime(_start).date()) for w in _av_by_user[_uid])
                     )
                     # Maintenance items (amber/red)
                     _n += AircraftMaintenanceItem.objects.filter(

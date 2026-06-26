@@ -805,11 +805,11 @@
           <td style="color:var(--text-3);">{{ at.aircraft.count }}</td>
           <td style="color:var(--text-3);">{{ at.type_ratings.count }}</td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditAircraftType({{ at.id }},'{{ at.name }}','{{ at.icao_designator }}')">Edit</button>
+            <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="openEditAircraftType({{ at.id }},'{{ at.name }}','{{ at.icao_designator }}')"><i class="ti ti-pencil"></i></button>
             <form method="post" style="display:inline;" data-confirm="Delete {{ at.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_aircraft_type">
               <input type="hidden" name="at_id" value="{{ at.id }}">
-              <button type="submit" class="cbtn sm danger">Delete</button>
+              <button type="submit" class="cbtn-sm cbtn-icon cbtn-danger" title="Delete"><i class="ti ti-trash"></i></button>
             </form>
           </td>
         </tr>
@@ -858,12 +858,12 @@
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditOccType({{ ot.id }},'{{ ot.name }}','{{ ot.description }}')">Edit</button>
+            <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="openEditOccType({{ ot.id }},'{{ ot.name }}','{{ ot.description }}')"><i class="ti ti-pencil"></i></button>
             {% if not ot.reports.exists %}
             <form method="post" style="display:inline;" data-confirm="Delete {{ ot.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_occurrence_type">
               <input type="hidden" name="ot_id" value="{{ ot.id }}">
-              <button type="submit" class="cbtn sm danger">Delete</button>
+              <button type="submit" class="cbtn-sm cbtn-icon cbtn-danger" title="Delete"><i class="ti ti-trash"></i></button>
             </form>
             {% else %}
             <span style="font-size:.72rem;color:var(--text-3);cursor:default;" title="Cannot delete — reports exist using this type. Deactivate it instead.">Has reports</span>
@@ -945,12 +945,12 @@
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditCType({{ ctype.id }},'{{ ctype.name }}')">Edit</button>
+            <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="openEditCType({{ ctype.id }},'{{ ctype.name }}')"><i class="ti ti-pencil"></i></button>
             {% if not ctype.contacts.exists %}
             <form method="post" style="display:inline;" data-confirm="Delete {{ ctype.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_contact_type">
               <input type="hidden" name="ct_id" value="{{ ctype.id }}">
-              <button type="submit" class="cbtn sm danger">Delete</button>
+              <button type="submit" class="cbtn-sm cbtn-icon cbtn-danger" title="Delete"><i class="ti ti-trash"></i></button>
             </form>
             {% endif %}
           </td>
@@ -1026,11 +1026,11 @@
             </form>
           </td>
           <td style="text-align:right;white-space:nowrap;">
-            <button type="button" class="cbtn sm" onclick="openEditVType({{ vt.id }},'{{ vt.name }}','{{ vt.default_value }}','{{ vt.description }}',{{ vt.sort_order }})">Edit</button>
+            <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="openEditVType({{ vt.id }},'{{ vt.name }}','{{ vt.default_value }}','{{ vt.description }}',{{ vt.sort_order }})"><i class="ti ti-pencil"></i></button>
             <form method="post" style="display:inline;" data-confirm="Delete {{ vt.name }}?">
               {% csrf_token %}<input type="hidden" name="action" value="delete_voucher_type">
               <input type="hidden" name="vt_id" value="{{ vt.id }}">
-              <button type="submit" class="cbtn sm danger">Delete</button>
+              <button type="submit" class="cbtn-sm cbtn-icon cbtn-danger" title="Delete"><i class="ti ti-trash"></i></button>
             </form>
           </td>
         </tr>

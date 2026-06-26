@@ -19,7 +19,7 @@
   .dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem}
   .dot.pending{background:color-mix(in srgb,var(--primary) 35%,var(--pill-mix-base))}.dot.confirmed{background:color-mix(in srgb,var(--primary) 55%,var(--pill-mix-base))}.dot.departed{background:color-mix(in srgb,var(--primary) 60%,var(--pill-mix-base))}.dot.returned{background:color-mix(in srgb,var(--primary) 50%,var(--pill-mix-base))}.dot.completed{background:#b4b2a9}
   .grid-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
-  .grid{width:100%;position:relative;}
+  .grid{width:100%;position:relative;overflow:clip;}
   .grid-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border-subtle)}
   .grid-row:last-child{border-bottom:0}
   .row-label{flex:0 0 {{ label_w }}px;width:{{ label_w }}px;padding:.35rem .55rem;font-size:.76rem;font-weight:550;color:var(--text-1);background:var(--surface-2);border-right:1px solid var(--border);position:sticky;left:0;z-index:3;display:flex;align-items:center;gap:.2rem;flex-wrap:nowrap;overflow:hidden;}
@@ -63,7 +63,7 @@
   .bo-badge.hard{color:var(--danger)}
   .bo-badge.soft{color:var(--accent)}
   .band span{position:absolute;top:2px;left:4px;font-size:.6rem;font-weight:600;color:var(--text-1);opacity:.9;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
-  .track.bookable{cursor:crosshair}
+  .track.bookable{cursor:pointer}
   /* Lifecycle ramp — single primary hue at varying intensities */
   .pill{position:absolute;top:4px;height:36px;border-radius:5px;overflow:hidden;cursor:grab;user-select:none;box-sizing:border-box;z-index:5;display:flex;align-items:stretch;box-shadow:0 1px 2px rgba(16,24,40,.12);}
   .pill:active{cursor:grabbing}
@@ -187,6 +187,7 @@
     {% if can_manage or can_book %}
     <div class="cal-actions">
       <button type="button" class="cbtn" id="cal-find-slot"><i class="ti ti-clock"></i> Find slot</button>
+      {% if can_manage %}<button type="button" class="cbtn" id="btn-blockout"><i class="ti ti-ban"></i> Block-out</button>{% endif %}
       <button type="button" class="cbtn primary" id="cal-new-booking"><i class="ti ti-plus"></i> New booking</button>
     </div>
     {% endif %}

@@ -16,17 +16,17 @@
 .occ-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-bottom:.35rem; display:block; }
 .occ-input, .occ-select, .occ-textarea {
   display:block; width:100%; padding:.75rem .9rem;
-  border:1.5px solid #d5d9e0; border-radius:10px;
-  font-size:.9rem; background:#fff; color:var(--text-1);
+  border:1.5px solid var(--input-border); border-radius:10px;
+  font-size:.9rem; background:var(--surface); color:var(--text-1);
   -webkit-appearance:none;
 }
 .occ-input:focus, .occ-select:focus, .occ-textarea:focus { outline:none; border-color:var(--primary); }
 .occ-textarea { min-height:100px; resize:vertical; }
-.occ-check { display:flex; align-items:center; gap:.6rem; padding:.75rem .9rem; background:#fff; border:1.5px solid #d5d9e0; border-radius:10px; cursor:pointer; }
+.occ-check { display:flex; align-items:center; gap:.6rem; padding:.75rem .9rem; background:var(--surface); border:1.5px solid var(--input-border); border-radius:10px; cursor:pointer; }
 .occ-check input { width:18px; height:18px; accent-color:var(--primary); flex-shrink:0; }
 .occ-check-label { font-size:.88rem; color:var(--text-2); }
-.error-banner { background:var(--danger-bg); color:#b91c1c; border-radius:10px; padding:.75rem 1rem; margin:.75rem; font-size:.85rem; }
-.success-banner { background:#dcfce7; color:var(--success-text); border-radius:10px; padding:.75rem 1rem; margin:.75rem; font-size:.85rem; font-weight:600; }
+.error-banner { background:var(--danger-bg); color:var(--danger-text); border-radius:10px; padding:.75rem 1rem; margin:.75rem; font-size:.85rem; }
+.success-banner { background:var(--success-bg); color:var(--success-text); border-radius:10px; padding:.75rem 1rem; margin:.75rem; font-size:.85rem; font-weight:600; }
 </style>
 {% endblock %}
 

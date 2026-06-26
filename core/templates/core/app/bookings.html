@@ -51,8 +51,8 @@
 <div class="app-section gap-sm"><span class="app-section-title">Recent flights</span></div>
 <div class="app-list">
   {% for b in past %}
-  <div class="app-list-row">
-    <div style="width:38px;height:38px;border-radius:10px;background:#f4f6f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:var(--text-3);">
+  <div class="app-list-row" style="opacity:.68;">
+    <div style="width:38px;height:38px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:var(--text-3);">
       {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
     </div>
     <div class="app-list-main">
@@ -66,6 +66,11 @@
 </div>
 {% endif %}
 <div class="gap-md"></div>
+
+<!-- FAB: new booking -->
+<a href="{% url 'core:app_book_find' club.slug %}" title="New booking" style="background:var(--primary);color:#fff;position:fixed;right:1rem;bottom:calc(74px + var(--safe-bottom));width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.25);text-decoration:none;z-index:40;">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+</a>
 
 <!-- ── Booking detail sheet ── -->
 <div id="bk-sheet-back" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:300;" onclick="closeBookingSheet()"></div>
@@ -99,16 +104,16 @@
 
   <!-- Declaration prompt — solo flights that require one -->
   <div id="bk-decl-section" style="display:none;margin-bottom:.9rem;">
-    <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:.75rem .9rem;margin-bottom:.6rem;">
-      <div style="font-size:.82rem;font-weight:600;color:#9a3412;margin-bottom:.2rem;">⚠ Pre-departure declaration required</div>
-      <div style="font-size:.78rem;color:#c2410c;">Complete your declaration before this flight can depart.</div>
+    <div style="background:var(--warning-bg);border:1px solid color-mix(in srgb,var(--warning) 35%,var(--border));border-radius:10px;padding:.75rem .9rem;margin-bottom:.6rem;">
+      <div style="font-size:.82rem;font-weight:600;color:var(--warning-text);margin-bottom:.2rem;">⚠ Pre-departure declaration required</div>
+      <div style="font-size:.78rem;color:var(--warning-text);opacity:.85;">Complete your declaration before this flight can depart.</div>
     </div>
     <a id="bk-decl-link" href="#" class="app-btn" style="display:block;text-align:center;">Complete declaration →</a>
   </div>
 
   <div id="bk-cancel-section" style="display:none;">
     <div style="font-size:.82rem;font-weight:600;color:var(--text-1);margin-bottom:.45rem;">Cancellation reason</div>
-    <select id="bk-cancel-reason" style="display:block;width:100%;padding:.5rem .6rem;border:1px solid var(--input-border);border-radius:9px;font-size:.86rem;background:var(--surface);margin-bottom:.7rem;">
+    <select id="bk-cancel-reason" style="display:block;width:100%;padding:.5rem .6rem;border:1px solid var(--input-border);border-radius:9px;font-size:.86rem;background:var(--surface);color:var(--text-1);margin-bottom:.7rem;">
       <option value="no_longer_required">No longer required</option>
       <option value="scheduling_conflict">Scheduling conflict</option>
       <option value="weather">Weather</option>

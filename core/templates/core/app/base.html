@@ -26,51 +26,87 @@
     --primary: {{ theme.primary|default:'#2f7dd1' }};
     --accent:  {{ theme.accent|default:'#e8943a' }};
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    /* Surfaces */
     --bg:            #f4f6f9;
     --surface:       #ffffff;
     --surface-2:     #f8f9fb;
     --surface-3:     #f3f5f7;
+    /* Text */
     --text-1:        #1f2933;
     --text-2:        #5b6573;
     --text-3:        #8a93a0;
+    /* Borders */
     --border:        #e3e6ea;
     --border-subtle: #f0f2f4;
+    --input-border:  #d1d5db;
+    /* Semantic */
     --alert:         #e03131;
     --alert-text:    #fff;
+    --success:       #16a34a;
     --success-bg:    #dcfce7;
     --success-text:  #216c2a;
+    --warning:       #d97706;
+    --warning-bg:    #fffbeb;
+    --warning-text:  #92400e;
+    --danger:        #dc2626;
     --danger-bg:     #fee2e2;
     --danger-text:   #991b1b;
     --info-bg:       #eff6ff;
     --info-text:     #1d4ed8;
+    /* Elevation */
+    --shadow-card:     0 1px 4px rgba(0,0,0,.07);
+    --shadow-elevated: 0 4px 18px rgba(0,0,0,.13);
+    --modal-backdrop:  rgba(16,24,40,.55);
   }
   body.dark-mode {
-    --bg: #0d1117; --surface: #161b22; --surface-2: #1c2128; --surface-3: #22272e;
-    --text-1: #e6edf3; --text-2: #8b949e; --text-3: #6e7681;
-    --border: #30363d; --border-subtle: #21262d;
-    --alert: #f85149; --success-bg: rgba(46,160,67,.15); --success-text: #3fb950;
+    color-scheme: dark; /* tells Safari to render native controls (select, input) in dark mode */
+    --bg:            #0d1117;
+    --surface:       #161b22;
+    --surface-2:     #1c2128;
+    --surface-3:     #22272e;
+    --text-1:        #e6edf3;
+    --text-2:        #8b949e;
+    --text-3:        #6e7681;
+    --border:        #30363d;
+    --border-subtle: #21262d;
+    --input-border:  #374151;
+    --alert:         #f85149;
+    --success:       #3fb950;
+    --success-bg:    rgba(46,160,67,.15);
+    --success-text:  #3fb950;
+    --warning:       #f59e0b;
+    --warning-bg:    rgba(245,158,11,.12);
+    --warning-text:  #fcd34d;
+    --danger:        #f87171;
+    --danger-bg:     rgba(248,81,73,.12);
+    --danger-text:   #fca5a5;
+    --shadow-card:     0 1px 6px rgba(0,0,0,.45);
+    --shadow-elevated: 0 4px 22px rgba(0,0,0,.55);
+    --modal-backdrop:  rgba(0,0,0,.72);
   }
+
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text-1); -webkit-tap-highlight-color: transparent; }
 
-  /* ── Top bar ── */
+  /* ── Top app bar ── */
   .app-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 50;
     height: calc(52px + env(safe-area-inset-top, 0px));
     background: var(--banner);
     color: #fff;
-    display: flex; align-items: flex-end; gap: .6rem;
-    padding: 0 1rem calc(8px);
+    display: flex; align-items: flex-end; gap: .5rem;
+    padding: 0 .85rem calc(8px);
     padding-top: env(safe-area-inset-top, 0px);
+    box-shadow: 0 1px 0 rgba(0,0,0,.22);
   }
-  .app-bar-title { font-size: .95rem; font-weight: 650; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .app-bar-action { background: none; border: none; color: #fff; padding: .3rem; cursor: pointer; display: flex; align-items: center; opacity: .85; }
-  .app-bar-action:hover { opacity: 1; }
+  .app-bar-title { font-size: .92rem; font-weight: 650; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app-bar-action { background: none; border: none; color: #fff; padding: .3rem; cursor: pointer; display: flex; align-items: center; opacity: .8; text-decoration: none; transition: opacity .12s; }
+  .app-bar-action:hover, .app-bar-action:active { opacity: 1; }
 
   /* ── Bottom nav ── */
   .app-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
-    height: calc(56px + var(--safe-bottom));
+    height: calc(58px + var(--safe-bottom));
     background: var(--surface);
     border-top: 1px solid var(--border);
     display: flex;
@@ -78,49 +114,51 @@
   }
   .app-nav-item {
     flex: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 3px;
+    justify-content: center; gap: 2px;
     text-decoration: none; color: var(--text-3);
-    font-size: .62rem; font-weight: 500;
-    padding: .4rem 0;
+    font-size: .6rem; font-weight: 600; letter-spacing: .01em;
+    padding: .35rem 0;
     position: relative;
     transition: color .15s;
   }
   .app-nav-item.active { color: var(--primary); }
-  .app-nav-item svg { flex-shrink: 0; }
+  .app-nav-icon { font-size: 22px; line-height: 1; }
   .app-nav-badge {
-    position: absolute; top: 6px; right: calc(50% - 14px);
+    position: absolute; top: 5px; right: calc(50% - 16px);
     background: var(--alert); color: var(--alert-text);
     font-size: .55rem; font-weight: 700;
-    min-width: 14px; height: 14px;
-    border-radius: 7px; padding: 0 3px;
+    min-width: 15px; height: 15px;
+    border-radius: 8px; padding: 0 3px;
     display: flex; align-items: center; justify-content: center;
-    line-height: 1;
+    line-height: 1; border: 1.5px solid var(--surface);
   }
 
   /* ── Page body ── */
   .app-body {
     padding-top: calc(52px + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(56px + var(--safe-bottom));
+    padding-bottom: calc(58px + var(--safe-bottom));
     min-height: 100%;
     min-height: max(100%, 100lvh); /* iOS Safari: force pages scrollable so toolbar collapses */
     overflow-y: auto;
+    background: var(--bg); /* explicit bg: iOS Safari overflow containers don't inherit from body */
   }
 
   /* ── Cards ── */
   .app-card {
-    background: var(--surface); border-radius: 14px;
-    box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    background: var(--surface);
+    border-radius: 14px;
+    box-shadow: var(--shadow-card);
     padding: 1rem;
     margin: .75rem;
   }
-  .app-card-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: .6rem; }
+  .app-card-title { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); margin-bottom: .55rem; }
 
   /* ── Section header ── */
   .app-section { padding: .75rem .75rem .25rem; }
-  .app-section-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
+  .app-section-title { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); }
 
   /* ── List rows ── */
-  .app-list { background: var(--surface); border-radius: 14px; overflow: hidden; margin: 0 .75rem; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+  .app-list { background: var(--surface); border-radius: 14px; overflow: hidden; margin: 0 .75rem; box-shadow: var(--shadow-card); }
   .app-list-row {
     display: flex; align-items: center; gap: .75rem;
     padding: .85rem 1rem;
@@ -131,48 +169,48 @@
   .app-list-row:last-child { border-bottom: none; }
   .app-list-row:active { background: var(--surface-2); }
   .app-list-main { flex: 1; min-width: 0; }
-  .app-list-title { font-size: .9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .app-list-sub { font-size: .78rem; color: var(--text-3); margin-top: .1rem; }
+  .app-list-title { font-size: .88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-list-sub { font-size: .76rem; color: var(--text-3); margin-top: .1rem; }
   .app-list-right { font-size: .8rem; color: var(--text-3); flex-shrink: 0; }
-  .app-list-chev { color: #c8cdd4; flex-shrink: 0; }
+  .app-list-chev { color: var(--border); flex-shrink: 0; }
 
   /* ── Status pills ── */
-  .st-pill { display: inline-block; font-size: .65rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
-  .st-pill .ti { font-size: .72rem; vertical-align: -.05em; }
-  .st-pending   { background: #fffbeb; color: #92400e; }
-  .st-confirmed { background: #ecfdf5; color: #166534; }
-  .st-departed  { background: #eff6ff; color: #1e40af; }
-  .st-completed { background: #f3f5f7; color: #5b6573; }
+  .st-pill { display: inline-flex; align-items: center; gap: .2rem; font-size: .63rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
+  .st-pill .ti { font-size: .72rem; }
+  .st-pending   { background: color-mix(in srgb,var(--primary) 12%,var(--surface)); color: var(--primary); border: 1px solid color-mix(in srgb,var(--primary) 25%,var(--border)); }
+  .st-confirmed { background: color-mix(in srgb,var(--primary) 28%,var(--surface)); color: var(--primary); border: 1px solid color-mix(in srgb,var(--primary) 48%,var(--border)); }
+  .st-departed  { background: var(--primary); color: #fff; border: 1px solid transparent; }
+  .st-completed { background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border); }
 
-  /* ── Booking list row — lifecycle left border + date badge ── */
-  .bk-pending   { border-left: 3px dashed color-mix(in srgb, var(--primary) 50%, #fff); }
-  .bk-confirmed { border-left: 3px solid color-mix(in srgb, var(--primary) 65%, #fff); }
-  .bk-departed  { border-left: 3px solid var(--primary); background: color-mix(in srgb, var(--primary) 5%, var(--bg)); }
-  .bk-completed { border-left: 3px solid #b4b2a9; }
+  /* ── Booking list rows — lifecycle left border + date badge ── */
+  .bk-pending   { border-left: 3px solid color-mix(in srgb,var(--primary) 40%,var(--border)); }
+  .bk-confirmed { border-left: 3px solid color-mix(in srgb,var(--primary) 65%,var(--border)); }
+  .bk-departed  { border-left: 3px solid var(--primary); background: color-mix(in srgb,var(--primary) 6%,var(--bg)); }
+  .bk-completed { border-left: 3px solid var(--border); }
   .bk-date-badge {
     width: 38px; height: 38px; border-radius: 10px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     flex-shrink: 0; font-size: .8rem; font-weight: 700; line-height: 1.15; text-align: center;
   }
-  .bk-pending .bk-date-badge   { background: color-mix(in srgb, var(--primary) 15%, #fff); color: color-mix(in srgb, var(--primary) 55%, #000); }
-  .bk-confirmed .bk-date-badge { background: color-mix(in srgb, var(--primary) 32%, #fff); color: color-mix(in srgb, var(--primary) 55%, #000); }
+  .bk-pending .bk-date-badge   { background: color-mix(in srgb,var(--primary) 12%,var(--surface)); color: var(--primary); }
+  .bk-confirmed .bk-date-badge { background: color-mix(in srgb,var(--primary) 28%,var(--surface)); color: var(--primary); }
   .bk-departed .bk-date-badge  { background: var(--primary); color: #fff; }
-  .bk-completed .bk-date-badge { background: var(--bg); color: var(--text-3); }
+  .bk-completed .bk-date-badge { background: var(--surface-2); color: var(--text-3); }
 
   /* ── Buttons ── */
   .app-btn {
     display: block; width: 100%;
     background: var(--primary); color: #fff;
     border: none; border-radius: 12px;
-    padding: .85rem; font-size: .95rem; font-weight: 600;
+    padding: .85rem; font-size: .95rem; font-weight: 650;
     text-align: center; cursor: pointer; text-decoration: none;
     transition: filter .15s;
   }
-  .app-btn:active { filter: brightness(.92); }
+  .app-btn:active { filter: brightness(.9); }
   .app-btn.secondary {
-    background: color-mix(in srgb, var(--primary) 10%, #fff);
+    background: color-mix(in srgb,var(--primary) 10%,var(--surface));
     color: var(--primary);
-    border: 1.5px solid color-mix(in srgb, var(--primary) 30%, #fff);
+    border: 1.5px solid color-mix(in srgb,var(--primary) 25%,var(--border));
   }
   .app-btn-sm {
     display: inline-flex; align-items: center; gap: .3rem;
@@ -193,12 +231,6 @@
   .gap-xs { margin-top: .4rem; }
   .gap-sm { margin-top: .75rem; }
   .gap-md { margin-top: 1.25rem; }
-
-  /* ── Dark mode ── */
-  /* CSS variable overrides are set in :root body.dark-mode block at the top of this style block */
-  body.dark-mode .app-card { box-shadow: 0 1px 4px rgba(0,0,0,.35); }
-  body.dark-mode .app-list { box-shadow: 0 1px 4px rgba(0,0,0,.35); }
-  body.dark-mode .app-btn.secondary { background: var(--surface-2); color: var(--primary); border-color: var(--border); }
 </style>
 {% block extra_style %}{% endblock %}
 </head>
@@ -207,33 +239,32 @@
 <header class="app-bar">
   {% block app_bar_brand %}
   {% if theme.logo %}
-  <img src="{{ theme.logo.url }}" alt="{{ club.name }}" fetchpriority="high" style="flex-shrink:0;max-height:30px;height:auto;width:auto;max-width:100px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.4rem;">
+  <img src="{{ theme.logo.url }}" alt="{{ club.name }}" fetchpriority="high" style="flex-shrink:0;max-height:28px;height:auto;width:auto;max-width:90px;object-fit:contain;opacity:.9;pointer-events:none;">
   {% else %}
-  <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="Club Hangar" style="flex-shrink:0;height:22px;width:22px;object-fit:contain;pointer-events:none;margin-right:.4rem;">
+  <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="" style="flex-shrink:0;height:20px;width:20px;object-fit:contain;pointer-events:none;">
   {% endif %}
-  <span style="font-size:.82rem;font-weight:700;color:#fff;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;flex-shrink:1;">{{ club.name }}</span>
   {% endblock %}
   {% block app_bar %}
-  <span class="app-bar-title">{% block page_title %}Club Hangar{% endblock %}</span>
+  <span class="app-bar-title">{% block page_title %}{% endblock %}</span>
   {% endblock %}
   {% block app_bar_right %}
-  <a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" style="position:relative;padding:.3rem .1rem .3rem .4rem;" title="Notifications">
+  <a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" style="position:relative;" title="Notifications">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    {% if unread_notifications_count %}<span style="position:absolute;top:5px;right:5px;width:7px;height:7px;background:var(--alert);border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}
+    {% if unread_notifications_count %}<span style="position:absolute;top:4px;right:4px;width:7px;height:7px;background:var(--alert);border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}
   </a>
-  <button class="app-bar-action" onclick="appSignOutConfirm()" title="Sign out" style="padding:.3rem .2rem .3rem .4rem;">
+  <button class="app-bar-action" onclick="appSignOutConfirm()" title="Sign out">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
   </button>
   {% endblock %}
 </header>
 
-<!-- Sign-out confirmation overlay -->
-<div id="signout-overlay" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.5);z-index:500;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:16px;padding:1.4rem 1.2rem;margin:1.2rem;max-width:320px;width:100%;">
-    <div style="font-size:1rem;font-weight:700;margin-bottom:.4rem;">Sign out?</div>
-    <div style="font-size:.86rem;color:#6b7280;margin-bottom:1.1rem;">You'll need to sign in again to access the app.</div>
+<!-- Sign-out confirmation dialog -->
+<div id="signout-overlay" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:18px;padding:1.5rem 1.25rem;margin:1.2rem;max-width:320px;width:100%;box-shadow:var(--shadow-elevated);">
+    <div style="font-size:1rem;font-weight:700;color:var(--text-1);margin-bottom:.35rem;">Sign out?</div>
+    <div style="font-size:.86rem;color:var(--text-2);margin-bottom:1.2rem;line-height:1.5;">You'll need to sign in again to access the app.</div>
     <div style="display:flex;gap:.6rem;">
-      <button onclick="document.getElementById('signout-overlay').style.display='none'" style="flex:1;padding:.75rem;border:1.5px solid #dde1e8;border-radius:10px;background:#fff;font-size:.9rem;font-weight:600;cursor:pointer;color:#374151;">Cancel</button>
+      <button onclick="document.getElementById('signout-overlay').style.display='none'" style="flex:1;padding:.75rem;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text-1);">Cancel</button>
       <form method="post" action="{% url 'logout' %}" style="flex:1;">{% csrf_token %}<input type="hidden" name="next" value="/"><button type="submit" style="width:100%;padding:.75rem;border:none;border-radius:10px;background:var(--alert);color:var(--alert-text);font-size:.9rem;font-weight:600;cursor:pointer;">Sign out</button></form>
     </div>
   </div>
@@ -247,39 +278,30 @@
 <nav class="app-nav">
   <a href="{% url 'core:app_home' club.slug %}"
      class="app-nav-item {% if request.resolver_match.url_name == 'app_home' %}active{% endif %}">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-    </svg>
-    Home
+    <i class="ti ti-home-2 app-nav-icon"></i>
+    <span>Home</span>
   </a>
   <a href="{% url 'core:app_schedule' club.slug %}"
      class="app-nav-item {% if 'app_schedule' in request.resolver_match.url_name %}active{% endif %}">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-    </svg>
-    Schedule
+    <i class="ti ti-calendar-event app-nav-icon"></i>
+    <span>Schedule</span>
   </a>
   <a href="{% url 'core:app_bookings' club.slug %}"
      class="app-nav-item {% if request.resolver_match.url_name == 'app_bookings' %}active{% endif %}">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-    </svg>
-    Bookings
+    <i class="ti ti-notes app-nav-icon"></i>
+    <span>Bookings</span>
     {% if pending_count %}<span class="app-nav-badge">{{ pending_count }}</span>{% endif %}
   </a>
   <a href="{% url 'core:app_account' club.slug %}"
      class="app-nav-item {% if request.resolver_match.url_name == 'app_account' %}active{% endif %}">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-    </svg>
-    Account
+    <i class="ti ti-wallet app-nav-icon"></i>
+    <span>Account</span>
+    {% if invoice_count or flight_count %}<span class="app-nav-badge" style="min-width:8px;width:8px;height:8px;padding:0;font-size:0;top:5px;right:calc(50% - 17px);"></span>{% endif %}
   </a>
   <a href="{% url 'core:app_profile' club.slug %}"
      class="app-nav-item {% if request.resolver_match.url_name in 'app_profile app_profile_edit app_credential_add' %}active{% endif %}">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-    </svg>
-    Profile
+    <i class="ti ti-user-circle app-nav-icon"></i>
+    <span>Profile</span>
   </a>
 </nav>
 

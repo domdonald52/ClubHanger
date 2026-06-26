@@ -9,7 +9,7 @@
 
 {% block extra_style %}
 <style>
-  .g-card{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.07);padding:1rem 1.1rem;margin:.75rem;}
+  .g-card{background:var(--surface);border-radius:14px;box-shadow:var(--shadow-card);padding:1rem 1.1rem;margin:.75rem;}
   .g-card h2{font-size:.95rem;font-weight:700;color:var(--text-1);margin:0 0 .4rem;display:flex;align-items:center;gap:.5rem;}
   .g-card p{font-size:.85rem;line-height:1.6;color:var(--text-2);margin:.3rem 0 .55rem;}
   .g-card p:last-child{margin-bottom:0;}
@@ -18,7 +18,7 @@
   .g-intro{padding:1rem 1.1rem .2rem;}
   .g-intro h1{font-size:1.2rem;font-weight:780;margin:0 0 .35rem;}
   .g-intro p{font-size:.86rem;color:var(--text-2);line-height:1.6;margin:0;}
-  .g-chip{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:color-mix(in srgb,var(--primary) 12%,#fff);color:var(--primary);font-size:.8rem;flex-shrink:0;}
+  .g-chip{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);font-size:.8rem;flex-shrink:0;}
   .g-step{display:flex;gap:.55rem;align-items:flex-start;margin:.4rem 0;}
   .g-step .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--primary);color:#fff;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:.05rem;}
   .g-step span{font-size:.85rem;line-height:1.55;color:var(--text-2);}

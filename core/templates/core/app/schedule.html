@@ -47,12 +47,12 @@
   /* ── Aircraft header strip ── */
   .ac-header-wrap {
     display: flex;
-    background: #fff;
+    background: var(--surface);
     border-bottom:1px solid var(--border);
     flex-shrink: 0;
     overflow: hidden;
   }
-  .time-corner { width: 44px; flex-shrink: 0; border-right: 1px solid #e3e6ea; }
+  .time-corner { width: 44px; flex-shrink: 0; border-right: 1px solid var(--border); }
   .ac-headers-scroll { display: flex; overflow: hidden; flex: 1; }
   .ac-head-cell {
     min-width: 110px; flex-shrink: 0;
@@ -60,7 +60,7 @@
     text-align: center;
     font-size: .72rem; font-weight: 700;
     color:var(--text-1);
-    border-right: 1px solid #f0f2f4;
+    border-right: 1px solid var(--border-subtle);
   }
   .ac-head-cell span { display: block; font-size: .6rem; font-weight: 400; color:var(--text-3); }
 
@@ -68,14 +68,14 @@
   .instr-head-strip {
     display: flex;
     flex-shrink: 0;
-    border-right: 2px solid #e3e6ea;
-    background: #fff;
+    border-right: 2px solid var(--border);
+    background: var(--surface);
   }
   .instr-head-cell {
     width: 16px; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     padding: .25rem 0;
-    border-right: 1px solid #f0f2f4;
+    border-right: 1px solid var(--border-subtle);
   }
   .instr-head-cell:last-child { border-right: none; }
 
@@ -92,13 +92,13 @@
   .time-axis {
     width: 44px; flex-shrink: 0;
     position: sticky; left: 0; z-index: 10;
-    background: #fff;
-    border-right: 1px solid #e3e6ea;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
   }
   .time-axis-inner { position: relative; height: {{ tl_height }}px; }
   .hour-lbl {
     position: absolute; right: 6px;
-    font-size: .6rem; color: #9aa3ad;
+    font-size: .6rem; color: var(--text-3);
     transform: translateY(-50%);
     white-space: nowrap;
   }
@@ -110,14 +110,14 @@
     position: sticky;
     left: 44px;
     z-index: 9;
-    background: #fafbfc;
-    border-right: 2px solid #e3e6ea;
+    background: var(--surface-2);
+    border-right: 2px solid var(--border);
   }
   .instr-col {
     width: 16px; flex-shrink: 0;
     position: relative;
     height: {{ tl_height }}px;
-    border-right: 1px solid #f0f2f4;
+    border-right: 1px solid var(--border-subtle);
   }
   .instr-col:last-child { border-right: none; }
   .instr-bar {
@@ -132,22 +132,22 @@
   .ac-col {
     min-width: 110px; flex-shrink: 0;
     position: relative;
-    border-right: 1px solid #e8eaed;
+    border-right: 1px solid var(--border-subtle);
     height: {{ tl_height }}px;
     background-image:
       repeating-linear-gradient(
         to bottom,
         transparent 0px,
         transparent {{ px_per_hr|add:"-1" }}px,
-        #d1d5db {{ px_per_hr|add:"-1" }}px,
-        #d1d5db {{ px_per_hr }}px
+        var(--border) {{ px_per_hr|add:"-1" }}px,
+        var(--border) {{ px_per_hr }}px
       ),
       repeating-linear-gradient(
         to bottom,
         transparent 0px,
         transparent calc({{ px_per_hr }}px / 2 - 1px),
-        #e8eaed calc({{ px_per_hr }}px / 2 - 1px),
-        #e8eaed calc({{ px_per_hr }}px / 2)
+        var(--border-subtle) calc({{ px_per_hr }}px / 2 - 1px),
+        var(--border-subtle) calc({{ px_per_hr }}px / 2)
       );
   }
 
@@ -163,30 +163,31 @@
     transition: filter .1s;
   }
   .bk:active { filter: brightness(.88); }
+  /* Left-edge accent stripe — state at a glance */
+  .bk::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    border-radius: 7px 0 0 7px;
+    background: rgba(255,255,255,.3);
+  }
+  .bk-confirmed::before { background: rgba(255,255,255,.7); }
+  .bk-departed::before  { background: rgba(255,255,255,1); }
   /* Text colour by lifecycle state */
-  .bk-pending,
-  .bk-confirmed  { color: color-mix(in srgb, var(--primary) 50%, #000); }
-  .bk-departed   { color: #fff; }
-  .bk-completed  { color: #555; }
+  .bk-pending   { color: color-mix(in srgb, var(--primary) 50%, #000); opacity: .8; }
+  .bk-confirmed { color: color-mix(in srgb, var(--primary) 50%, #000); }
+  .bk-departed  { color: #fff; }
+  .bk-completed { color: var(--text-2); filter: saturate(.5); }
   .bk.mine { outline: 2px solid rgba(255,255,255,.8); outline-offset: -3px; }
   .bk-departed.mine { outline-color: #fff; }
-  .bk-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bk-name { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 14px; }
   .bk-time { opacity: .85; font-size: .62rem; }
   .bk-sub  { opacity: .75; font-size: .6rem; }
-  /* Right-side wedge for airborne/returned — mirrors Gantt pill wedge */
-  .bk-departed::after,
-  .bk-completed::after {
-    content: '';
-    position: absolute; right: 0; top: 0; bottom: 0; width: 24px;
-    clip-path: polygon(38% 0, 100% 0, 100% 100%, 38% 100%);
-    background: color-mix(in srgb, var(--primary) 30%, #000);
-    pointer-events: none; z-index: 1;
-  }
-  .bk-wedge-icon {
-    position: absolute; right: 3px; bottom: 4px;
-    font-size: 10px; color: #fff; line-height: 1;
+  /* Status icon — top-right corner, replaces the horizontal-Gantt wedge */
+  .bk-status-icon {
+    position: absolute; top: 3px; right: 5px;
+    font-size: 11px; color: rgba(255,255,255,.85); line-height: 1;
     pointer-events: none; z-index: 2;
   }
+  .bk-completed .bk-status-icon { color: var(--text-3); }
 
   /* ── Bottom nav override for schedule page ── */
   .app-nav { z-index: 20; }
@@ -210,7 +211,7 @@
   .fab:active { filter: brightness(.9); transform: scale(.95); }
   .fab-cal {
     right: calc(1rem + 52px + .6rem);
-    background: #fff;
+    background: var(--surface);
     color: var(--primary);
     box-shadow: 0 2px 8px rgba(0,0,0,.18);
   }
@@ -220,10 +221,10 @@
 
   /* ── Full block-out ── */
   .blockout-banner {
-    background: #f3f4f6; border-bottom: 1px solid #d1d5db;
+    background: var(--surface-2); border-bottom: 1px solid var(--border);
     padding: .55rem 1rem;
     display: flex; align-items: center; gap: .5rem;
-    font-size: .8rem; font-weight: 600; color: #6b7280;
+    font-size: .8rem; font-weight: 600; color: var(--text-2);
     flex-shrink: 0;
   }
   .schedule-greyed { opacity: .3; pointer-events: none; filter: grayscale(.7); }
@@ -326,7 +327,9 @@
         <div class="bk-time">{{ blk.time }}</div>
         {% if blk.solo %}<div class="bk-sub">Solo</div>
         {% elif blk.instructor %}<div class="bk-sub">{{ blk.instructor }}</div>{% endif %}
-        {% if blk.status == 'departed' %}<i class="ti ti-plane-departure bk-wedge-icon" aria-hidden="true"></i>{% elif blk.status == 'completed' %}<i class="ti ti-plane-arrival bk-wedge-icon" aria-hidden="true"></i>{% endif %}
+        {% if blk.status == 'departed' %}<i class="ti ti-plane-departure bk-status-icon" aria-hidden="true"></i>
+        {% elif blk.status == 'completed' %}<i class="ti ti-plane-arrival bk-status-icon" aria-hidden="true"></i>
+        {% elif blk.status == 'pending' %}<i class="ti ti-clock-hour-4 bk-status-icon" aria-hidden="true"></i>{% endif %}
       </div>
       {% endfor %}
     </div>
@@ -347,41 +350,73 @@
 <!-- FAB: new booking -->
 {% if booking_blocked %}
 <button class="fab" title="Booking unavailable" onclick="document.getElementById('bb-sheet').style.display=''" style="background:#9ca3af;cursor:default;">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
 </button>
 <!-- Booking block notice sheet -->
-<div id="bb-sheet" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);" onclick="this.style.display='none'">
-  <div style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:18px 18px 0 0;padding:1.3rem 1.2rem calc(2rem + var(--safe-bottom));" onclick="event.stopPropagation()">
-    <div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto 1rem;"></div>
+<div id="bb-sheet" style="display:none;position:fixed;inset:0;z-index:200;background:var(--modal-backdrop);" onclick="this.style.display='none'">
+  <div style="position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:18px 18px 0 0;padding:1.3rem 1.2rem calc(2rem + var(--safe-bottom));" onclick="event.stopPropagation()">
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 1rem;"></div>
     <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <span style="font-size:.95rem;font-weight:700;color:var(--text-1);">Booking unavailable</span>
     </div>
-    <p style="font-size:.87rem;color:#4b5563;line-height:1.55;margin:0;">{{ booking_block_msg }}</p>
+    <p style="font-size:.87rem;color:var(--text-2);line-height:1.55;margin:0;">{{ booking_block_msg }}</p>
   </div>
 </div>
 {% else %}
-<a href="{% url 'core:app_book' club.slug %}" class="fab" title="Book a flight">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+<a href="{% url 'core:app_book_find' club.slug %}" class="fab" title="Find a slot">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
 </a>
 {% endif %}
 
-<!-- Long-press booking sheet -->
-<div id="lp-sheet" style="display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.35);" onclick="document.getElementById('lp-sheet').style.display='none'">
-  <div id="lp-sheet-card" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:18px 18px 0 0;padding:1.1rem 1rem calc(1.5rem + var(--safe-bottom));touch-action:none;" onclick="event.stopPropagation()">
-    <div id="lp-handle" style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto .9rem;cursor:grab;"></div>
-    <div id="lp-title" style="font-size:.82rem;font-weight:600;color:var(--text-3);text-align:center;margin-bottom:1rem;"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
-      <a id="lp-solo" href="#" class="app-btn" style="text-align:center;">Solo</a>
-      <a id="lp-dual" href="#" class="app-btn" style="text-align:center;background:var(--banner);">Dual</a>
+<!-- Long-press / new-booking sheet -->
+<div id="lp-sheet" style="display:none;position:fixed;inset:0;z-index:150;background:var(--modal-backdrop);" onclick="closeLpSheet()">
+  <div id="lp-sheet-card" style="position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:18px 18px 0 0;padding:1.1rem 1rem calc(1.8rem + var(--safe-bottom));touch-action:none;max-height:88vh;overflow-y:auto;" onclick="event.stopPropagation()">
+    <div id="lp-handle" style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto .8rem;cursor:grab;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;">
+      <div id="lp-title" style="font-size:.9rem;font-weight:700;color:var(--text-1);"></div>
+      <button onclick="closeLpSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;color:var(--text-3);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
+    <!-- Mode toggle -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.9rem;">
+      <button type="button" id="lp-solo-btn" class="app-btn" onclick="setLpMode('solo')" style="text-align:center;padding:.65rem;">Solo</button>
+      <button type="button" id="lp-dual-btn" class="app-btn secondary" onclick="setLpMode('dual')" style="text-align:center;padding:.65rem;">Dual</button>
+    </div>
+    <!-- Flight type -->
+    <div style="margin-bottom:.7rem;">
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.28rem;">Flight type</div>
+      <select id="lp-ft" style="display:block;width:100%;padding:.55rem .7rem;border:1.5px solid var(--input-border);border-radius:10px;font-size:.88rem;background:var(--surface);color:var(--text-1);">
+        {% for ft in nb_flight_types %}
+        <option value="{{ ft.id }}" data-solo="{{ ft.is_solo|yesno:'1,0' }}" data-dual="{{ ft.is_training|yesno:'1,0' }}">{{ ft.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <!-- Instructor (dual only) -->
+    <div id="lp-instr-wrap" style="display:none;margin-bottom:.7rem;">
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.28rem;">Instructor</div>
+      <select id="lp-instr" style="display:block;width:100%;padding:.55rem .7rem;border:1.5px solid var(--input-border);border-radius:10px;font-size:.88rem;background:var(--surface);color:var(--text-1);">
+        <option value="">— Select instructor —</option>
+        {% for instr in nb_instructors %}
+        <option value="{{ instr.id }}">{{ instr.user.get_full_name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <!-- Note -->
+    <div style="margin-bottom:.9rem;">
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.28rem;">Note <span style="font-weight:400;">(optional)</span></div>
+      <textarea id="lp-note" style="display:block;width:100%;padding:.55rem .7rem;border:1.5px solid var(--input-border);border-radius:10px;font-size:.88rem;background:var(--surface);color:var(--text-1);min-height:60px;resize:none;" placeholder="e.g. circuit training, nav exercise…"></textarea>
+    </div>
+    <button type="button" id="lp-submit" onclick="submitLpBooking()" class="app-btn">Request booking</button>
+    <div id="lp-error" style="display:none;margin-top:.6rem;font-size:.82rem;color:var(--alert);text-align:center;"></div>
   </div>
 </div>
 
 <!-- Booking detail bottom sheet -->
-<div id="bk-sheet" style="display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.4);" onclick="closeBkSheet()">
-  <div id="bk-sheet-card" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:18px 18px 0 0;padding:1.1rem 1.1rem calc(1.8rem + var(--safe-bottom));touch-action:none;" onclick="event.stopPropagation()">
-    <div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto .9rem;"></div>
+<div id="bk-sheet" style="display:none;position:fixed;inset:0;z-index:150;background:var(--modal-backdrop);" onclick="closeBkSheet()">
+  <div id="bk-sheet-card" style="position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:18px 18px 0 0;padding:1.1rem 1.1rem calc(1.8rem + var(--safe-bottom));touch-action:none;" onclick="event.stopPropagation()">
+    <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto .9rem;"></div>
     <!-- member + aircraft header -->
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.9rem;">
       <div>
@@ -391,9 +426,9 @@
       <span id="bks-badge" style="font-size:.72rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:.15rem;"></span>
     </div>
     <!-- own booking notice -->
-    <div id="bks-own-notice" style="display:none;font-size:.85rem;color:#4b5563;background:#f3f4f6;border-radius:9px;padding:.65rem .85rem;margin-bottom:.9rem;line-height:1.45;"></div>
+    <div id="bks-own-notice" style="display:none;font-size:.85rem;color:var(--text-2);background:var(--surface-2);border-radius:9px;padding:.65rem .85rem;margin-bottom:.9rem;line-height:1.45;"></div>
     <!-- watch button (other members' active bookings) -->
-    <button id="bks-watch-btn" onclick="toggleWatch()" style="display:none;width:100%;padding:.75rem;border-radius:11px;border:1.5px solid var(--banner);background:#fff;color:var(--banner);font-size:.95rem;font-weight:600;cursor:pointer;transition:background .15s,color .15s;">Watch this slot</button>
+    <button id="bks-watch-btn" onclick="toggleWatch()" style="display:none;width:100%;padding:.75rem;border-radius:11px;border:1.5px solid var(--primary);background:var(--surface);color:var(--primary);font-size:.95rem;font-weight:600;cursor:pointer;transition:background .15s,color .15s;">Watch this slot</button>
     <!-- my bookings link -->
     <a id="bks-view-link" href="{% url 'core:app_bookings' club.slug %}" style="display:none;width:100%;padding:.75rem;border-radius:11px;background:var(--banner);color:#fff;font-size:.95rem;font-weight:600;text-align:center;text-decoration:none;box-sizing:border-box;margin-top:.5rem;">View my bookings →</a>
   </div>
@@ -493,13 +528,37 @@ if (outer && heads) {
     _col = null; _state = 'idle';
   }
 
+  function showPastToast() {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;bottom:calc(80px + var(--safe-bottom));left:50%;transform:translateX(-50%);' +
+      'background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:.5rem .9rem;' +
+      'font-size:.82rem;font-weight:600;color:var(--text-2);z-index:200;white-space:nowrap;' +
+      'box-shadow:0 3px 12px rgba(0,0,0,.2);pointer-events:none;';
+    el.textContent = "Can’t book in the past";
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2000);
+  }
+
   function showSheet() {
+    // Guard: prevent booking in the past (compare local date to avoid UTC-offset errors)
+    const now = new Date();
+    const yy = now.getFullYear(), mm = String(now.getMonth()+1).padStart(2,'0'), dd = String(now.getDate()).padStart(2,'0');
+    if (SELECTED === yy + '-' + mm + '-' + dd) {
+      const parts = _startTime.split(':').map(Number);
+      if (parts[0] * 60 + parts[1] <= now.getHours() * 60 + now.getMinutes()) {
+        cancel();
+        showPastToast();
+        return;
+      }
+    }
     if (_preview) { _preview.remove(); _preview = null; }
+    window._lpState = { acId: _col.dataset.acId, start: _startTime, end: _endTime, confirmUrl: CONFIRM_URL, selected: SELECTED, mode: 'solo' };
     document.getElementById('lp-title').textContent = _col.dataset.acReg + ' · ' + _startTime + '–' + _endTime;
-    const base = CONFIRM_URL + '?date=' + SELECTED + '&ac=' + _col.dataset.acId
-               + '&start=' + _startTime + '&end=' + _endTime;
-    document.getElementById('lp-solo').href = base + '&mode=solo';
-    document.getElementById('lp-dual').href = base + '&mode=dual';
+    document.getElementById('lp-note').value = '';
+    document.getElementById('lp-error').style.display = 'none';
+    document.getElementById('lp-submit').disabled = false;
+    document.getElementById('lp-submit').textContent = 'Request booking';
+    setLpMode('solo');
     document.getElementById('lp-sheet').style.display = '';
     _col = null; _state = 'idle';
   }
@@ -542,6 +601,95 @@ if (outer && heads) {
   cols.addEventListener('touchcancel', cancel, {passive: true});
   cols.addEventListener('contextmenu', e => e.preventDefault());
 })();
+
+// ── New-booking sheet form logic ─────────────────────────────────────────
+function closeLpSheet() {
+  document.getElementById('lp-sheet').style.display = 'none';
+  document.getElementById('lp-submit').disabled = false;
+  document.getElementById('lp-submit').textContent = 'Request booking';
+}
+
+function setLpMode(mode) {
+  if (window._lpState) window._lpState.mode = mode;
+  document.getElementById('lp-instr-wrap').style.display = mode === 'dual' ? '' : 'none';
+  document.getElementById('lp-solo-btn').className = 'app-btn' + (mode === 'solo' ? '' : ' secondary');
+  document.getElementById('lp-dual-btn').className = 'app-btn' + (mode === 'dual' ? '' : ' secondary');
+  document.getElementById('lp-solo-btn').style.padding = '.65rem';
+  document.getElementById('lp-dual-btn').style.padding = '.65rem';
+  const ft = document.getElementById('lp-ft');
+  let firstVisible = null;
+  Array.from(ft.options).forEach(function(opt) {
+    const show = mode === 'solo' ? opt.dataset.solo !== '0' : opt.dataset.dual !== '0';
+    opt.style.display = show ? '' : 'none';
+    if (show && !firstVisible) firstVisible = opt;
+  });
+  if (firstVisible && (!ft.value || ft.options[ft.selectedIndex].style.display === 'none')) {
+    ft.value = firstVisible.value;
+  }
+}
+
+function submitLpBooking() {
+  const st = window._lpState || {};
+  const mode = st.mode || 'solo';
+  const errEl = document.getElementById('lp-error');
+  if (mode === 'dual' && !document.getElementById('lp-instr').value) {
+    errEl.textContent = 'Please select an instructor.';
+    errEl.style.display = '';
+    return;
+  }
+  const btn = document.getElementById('lp-submit');
+  const csrf = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1] || '';
+  btn.disabled = true;
+  btn.textContent = 'Requesting…';
+  errEl.style.display = 'none';
+  const body = new URLSearchParams({
+    csrfmiddlewaretoken: csrf,
+    mode: mode,
+    date: st.selected || '',
+    start: st.start || '',
+    end: st.end || '',
+    ac_id: st.acId || '',
+    flight_type: document.getElementById('lp-ft').value,
+    instructor: document.getElementById('lp-instr').value,
+    note: document.getElementById('lp-note').value,
+  });
+  fetch(st.confirmUrl || '', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded' },
+    credentials: 'same-origin',
+    body: body.toString(),
+  }).then(function(r) {
+    if (r.redirected && r.url.indexOf('/bookings') !== -1) {
+      closeLpSheet();
+      showLpToast('Booking requested ✓', true);
+    } else {
+      return r.text().then(function(html) {
+        const m = html.match(/class="error-banner"[^>]*>([\s\S]*?)<\/div>/);
+        const txt = m ? m[1].replace(/<[^>]+>/g, '').trim() : 'Please check your details.';
+        errEl.textContent = txt;
+        errEl.style.display = '';
+        btn.disabled = false;
+        btn.textContent = 'Request booking';
+      });
+    }
+  }).catch(function() {
+    errEl.textContent = 'Connection error — please try again.';
+    errEl.style.display = '';
+    btn.disabled = false;
+    btn.textContent = 'Request booking';
+  });
+}
+
+function showLpToast(msg, ok) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;bottom:calc(80px + var(--safe-bottom));left:50%;transform:translateX(-50%);' +
+    'background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:.5rem .9rem;' +
+    'font-size:.82rem;font-weight:600;color:' + (ok ? 'var(--success)' : 'var(--alert)') + ';z-index:400;white-space:nowrap;' +
+    'box-shadow:0 3px 12px rgba(0,0,0,.2);pointer-events:none;';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(function() { el.remove(); }, 2500);
+}
 
 // Swipe-down to dismiss booking sheet
 (function() {
@@ -676,12 +824,14 @@ function _updateWatchBtn() {
   const btn = document.getElementById('bks-watch-btn');
   if (_bkWatched) {
     btn.textContent = 'Watching ✓  (tap to stop)';
-    btn.style.background = 'var(--banner)';
+    btn.style.background = 'var(--primary)';
     btn.style.color = '#fff';
+    btn.style.borderColor = 'var(--primary)';
   } else {
     btn.textContent = 'Watch this slot';
-    btn.style.background = '#fff';
-    btn.style.color = 'var(--banner)';
+    btn.style.background = 'var(--surface)';
+    btn.style.color = 'var(--primary)';
+    btn.style.borderColor = 'var(--primary)';
   }
 }
 

@@ -15,8 +15,8 @@
 .pf-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-bottom:.3rem; display:block; }
 .pf-input {
   display:block; width:100%; padding:.75rem .9rem;
-  border:1.5px solid #d5d9e0; border-radius:10px;
-  font-size:.9rem; background:#fff; color:var(--text-1);
+  border:1.5px solid var(--input-border); border-radius:10px;
+  font-size:.9rem; background:var(--surface); color:var(--text-1);
 }
 .pf-input:focus { outline:none; border-color:var(--primary); }
 .pf-section-title { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); padding:.9rem .75rem .3rem; }
@@ -29,22 +29,22 @@
 
   <!-- Photo -->
   <div class="pf-section-title" style="padding-top:.4rem;">Photo</div>
-  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;padding:.75rem;background:#f5f7fa;border-radius:12px;">
+  <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;padding:.75rem;background:var(--bg);border-radius:12px;">
     {% if club_member.avatar %}
-    <img src="{{ club_member.avatar.url }}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e8eaed;">
+    <img src="{{ club_member.avatar.url }}" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid var(--border);">
     {% else %}
     <div style="width:64px;height:64px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;flex-shrink:0;">
       {{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}
     </div>
     {% endif %}
     <div style="flex:1;min-width:0;">
-      <label style="display:flex;align-items:center;gap:.5rem;padding:.55rem .8rem;background:#fff;border:1.5px solid #d5d9e0;border-radius:10px;cursor:pointer;font-size:.84rem;font-weight:600;color:var(--text-2);">
+      <label style="display:flex;align-items:center;gap:.5rem;padding:.55rem .8rem;background:var(--surface);border:1.5px solid var(--input-border);border-radius:10px;cursor:pointer;font-size:.84rem;font-weight:600;color:var(--text-2);">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         {% if club_member.avatar %}Change photo{% else %}Add photo{% endif %}
         <input type="file" name="avatar" accept="image/*" style="display:none;" onchange="this.closest('form').submit()">
       </label>
       {% if club_member.avatar %}
-      <button type="submit" name="action" value="remove_avatar" style="display:flex;align-items:center;gap:.4rem;margin-top:.4rem;padding:.45rem .8rem;background:none;border:1.5px solid #fca5a5;border-radius:10px;cursor:pointer;font-size:.82rem;font-weight:600;color:#e03131;width:100%;">
+      <button type="submit" name="action" value="remove_avatar" style="display:flex;align-items:center;gap:.4rem;margin-top:.4rem;padding:.45rem .8rem;background:none;border:1.5px solid var(--danger-bg);border-radius:10px;cursor:pointer;font-size:.82rem;font-weight:600;color:var(--alert);width:100%;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         Remove photo
       </button>

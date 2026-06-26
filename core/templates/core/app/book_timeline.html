@@ -7,7 +7,7 @@
 /* ── Week strip ── */
 .week-strip {
   display:flex; overflow-x:auto; gap:0;
-  background:#fff; border-bottom:1px solid #e8eaed;
+  background:var(--surface); border-bottom:1px solid var(--border);
   padding:.35rem .5rem;
   scrollbar-width:none;
 }
@@ -24,11 +24,11 @@
 .wday.selected .wday-num { color:#fff; }
 
 /* ── Aircraft filter chips ── */
-.ac-filter { display:flex; overflow-x:auto; gap:.4rem; padding:.55rem .75rem; background:#f4f6f9; border-bottom:1px solid #e8eaed; scrollbar-width:none; }
+.ac-filter { display:flex; overflow-x:auto; gap:.4rem; padding:.55rem .75rem; background:var(--bg); border-bottom:1px solid var(--border); scrollbar-width:none; }
 .ac-filter::-webkit-scrollbar { display:none; }
 .ac-chip {
-  flex-shrink:0; padding:.3rem .7rem; border-radius:20px; border:1.5px solid #d5d9e0;
-  background:#fff; font-size:.78rem; font-weight:600; color:#4b5563; cursor:pointer;
+  flex-shrink:0; padding:.3rem .7rem; border-radius:20px; border:1.5px solid var(--input-border);
+  background:var(--surface); font-size:.78rem; font-weight:600; color:var(--text-2); cursor:pointer;
   text-decoration:none; white-space:nowrap; transition:all .12s;
 }
 .ac-chip.active { background:var(--primary); border-color:var(--primary); color:#fff; }
@@ -42,22 +42,22 @@
 /* ── Header strip (aircraft names) ── */
 .tl-header-wrap {
   display:flex; position:sticky; top:0; z-index:10;
-  background:#fff; border-bottom:1px solid #dde1e6;
+  background:var(--surface); border-bottom:1px solid var(--border);
   overflow:hidden;
 }
-.tl-time-corner { width:44px; flex-shrink:0; background:#fff; border-right:1px solid #e8eaed; }
+.tl-time-corner { width:44px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border); }
 .tl-headers-scroll { display:flex; overflow:hidden; flex:1; }
 .tl-ac-head {
   min-width:110px; flex:1; padding:.4rem .3rem;
   text-align:center; font-size:.72rem; font-weight:700; color:var(--text-2);
-  border-right:1px solid #f0f2f4; background:#fff;
+  border-right:1px solid var(--border-subtle); background:var(--surface);
 }
 
 /* ── Main grid ── */
 .tl-main { display:flex; }
 .tl-time-axis {
   width:44px; flex-shrink:0; position:sticky; left:0; z-index:9;
-  background:#fff; border-right:1px solid #e8eaed;
+  background:var(--surface); border-right:1px solid var(--border);
 }
 .tl-time-label {
   position:absolute; right:5px; font-size:.6rem; color:var(--text-3); font-weight:500;
@@ -65,16 +65,16 @@
 }
 .tl-cols { display:flex; flex:1; }
 .tl-col {
-  min-width:110px; flex:1; position:relative; border-right:1px solid #f0f2f4;
+  min-width:110px; flex:1; position:relative; border-right:1px solid var(--border-subtle);
   cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
 
 /* ── Hour grid lines ── */
 .tl-hour-line {
-  position:absolute; left:0; right:0; border-top:1px solid #e8eaed; pointer-events:none;
+  position:absolute; left:0; right:0; border-top:1px solid var(--border); pointer-events:none;
 }
 .tl-half-line {
-  position:absolute; left:0; right:0; border-top:1px dashed #f0f2f4; pointer-events:none;
+  position:absolute; left:0; right:0; border-top:1px dashed var(--border-subtle); pointer-events:none;
 }
 
 /* ── Out of hours shade ── (below DAY_END handled by not rendering) */
@@ -109,7 +109,7 @@
 /* ── Slot confirm bottom sheet ── */
 .slot-sheet {
   position:fixed; bottom:calc(56px + var(--safe-bottom)); left:0; right:0;
-  background:#fff; border-top:1px solid var(--border);
+  background:var(--surface); border-top:1px solid var(--border);
   padding:.85rem 1rem;
   display:none; z-index:30;
   box-shadow:0 -4px 16px rgba(0,0,0,.1);

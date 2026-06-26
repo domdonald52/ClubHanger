@@ -101,6 +101,8 @@
       <thead><tr>
         <th><a href="?tab=conflicts{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cf_sort=member&cf_dir={% if cf_sort == 'member' and cf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cf_sort == 'member' %}sort-active{% endif %}">Member{% if cf_sort == 'member' %} <span class="sort-arrow">{% if cf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?tab=conflicts{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cf_sort=aircraft&cf_dir={% if cf_sort == 'aircraft' and cf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cf_sort == 'aircraft' %}sort-active{% endif %}">Aircraft{% if cf_sort == 'aircraft' %} <span class="sort-arrow">{% if cf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th style="white-space:nowrap;">Type</th>
+        <th style="white-space:nowrap;">Instructor</th>
         <th><a href="?tab=conflicts{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cf_sort=date&cf_dir={% if cf_sort == 'date' and cf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cf_sort == 'date' %}sort-active{% endif %}">Scheduled{% if cf_sort == 'date' %} <span class="sort-arrow">{% if cf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?tab=conflicts{% if exc_base_qs %}&{{ exc_base_qs }}{% endif %}&cf_sort=status&cf_dir={% if cf_sort == 'status' and cf_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if cf_sort == 'status' %}sort-active{% endif %}">Status{% if cf_sort == 'status' %} <span class="sort-arrow">{% if cf_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th>Issue</th><th></th>
@@ -110,6 +112,8 @@
         <tr>
           <td><a href="{% url 'core:manage_member_detail' club.slug row.b.member_id %}">{{ row.b.member.user.get_full_name }}</a></td>
           <td>{{ row.b.aircraft.registration }}</td>
+          <td style="color:var(--text-2);font-size:.82rem;">{{ row.b.flight_type.is_solo|yesno:"Solo,Dual" }}</td>
+          <td style="white-space:nowrap;">{{ row.b.instructor.get_full_name|default:"—" }}</td>
           <td>{{ row.b.scheduled_start|date:"j M Y H:i" }}</td>
           <td><span class="status-chip status-{{ row.b.display_status_key }}">{{ row.b.display_status }}</span></td>
           <td>{% for label in row.labels %}<span class="exc-issue-tag">{{ label }}</span>{% endfor %}</td>

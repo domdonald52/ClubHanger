@@ -7,44 +7,44 @@
   <a href="{% url 'core:app_profile' club.slug %}" class="app-btn-sm" style="font-size:.78rem;padding:.3rem .7rem;">← Profile</a>
 </div>
 {% if saved %}
-<div style="background:#dcfce7;color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Special hours saved.</div>
+<div style="background:var(--success-bg);color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Special hours saved.</div>
 {% endif %}
 
 <!-- Year filter -->
 {% if years %}
 <div style="padding:0 .9rem .5rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;">
-  <a href="?" style="font-size:.78rem;padding:.25rem .65rem;border-radius:20px;border:1.5px solid {% if not year_param %}var(--primary){% else %}#e3e6ea{% endif %};background:{% if not year_param %}color-mix(in srgb,var(--primary) 10%,#fff){% else %}#fff{% endif %};color:{% if not year_param %}var(--primary){% else %}#5b6573{% endif %};text-decoration:none;font-weight:{% if not year_param %}700{% else %}500{% endif %};">All time</a>
+  <a href="?" style="font-size:.78rem;padding:.25rem .65rem;border-radius:20px;border:1.5px solid {% if not year_param %}var(--primary){% else %}var(--border){% endif %};background:{% if not year_param %}color-mix(in srgb,var(--primary) 10%,var(--surface)){% else %}var(--surface){% endif %};color:{% if not year_param %}var(--primary){% else %}var(--text-2){% endif %};text-decoration:none;font-weight:{% if not year_param %}700{% else %}500{% endif %};">All time</a>
   {% for yr in years %}
-  <a href="?year={{ yr }}" style="font-size:.78rem;padding:.25rem .65rem;border-radius:20px;border:1.5px solid {% if year_param == yr|stringformat:'s' %}var(--primary){% else %}#e3e6ea{% endif %};background:{% if year_param == yr|stringformat:'s' %}color-mix(in srgb,var(--primary) 10%,#fff){% else %}#fff{% endif %};color:{% if year_param == yr|stringformat:'s' %}var(--primary){% else %}#5b6573{% endif %};text-decoration:none;font-weight:{% if year_param == yr|stringformat:'s' %}700{% else %}500{% endif %};">{{ yr }}</a>
+  <a href="?year={{ yr }}" style="font-size:.78rem;padding:.25rem .65rem;border-radius:20px;border:1.5px solid {% if year_param == yr|stringformat:'s' %}var(--primary){% else %}var(--border){% endif %};background:{% if year_param == yr|stringformat:'s' %}color-mix(in srgb,var(--primary) 10%,var(--surface)){% else %}var(--surface){% endif %};color:{% if year_param == yr|stringformat:'s' %}var(--primary){% else %}var(--text-2){% endif %};text-decoration:none;font-weight:{% if year_param == yr|stringformat:'s' %}700{% else %}500{% endif %};">{{ yr }}</a>
   {% endfor %}
 </div>
 {% endif %}
 
 <!-- Summary stats -->
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.45rem;padding:.1rem .9rem .6rem;">
-  <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:.7rem .4rem;text-align:center;">
-    <div style="font-size:1.25rem;font-weight:780;color:#1a2332;line-height:1;">{{ total_hrs|floatformat:1 }}</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.7rem .4rem;text-align:center;">
+    <div style="font-size:1.25rem;font-weight:780;color:var(--text-1);line-height:1;">{{ total_hrs|floatformat:1 }}</div>
     <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-top:2px;">Total</div>
   </div>
-  <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:.7rem .4rem;text-align:center;">
-    <div style="font-size:1.25rem;font-weight:780;color:#1a2332;line-height:1;">{{ dual_hrs|floatformat:1 }}</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.7rem .4rem;text-align:center;">
+    <div style="font-size:1.25rem;font-weight:780;color:var(--text-1);line-height:1;">{{ dual_hrs|floatformat:1 }}</div>
     <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-top:2px;">Dual</div>
   </div>
-  <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:.7rem .4rem;text-align:center;">
-    <div style="font-size:1.25rem;font-weight:780;color:#1a2332;line-height:1;">{{ solo_hrs|floatformat:1 }}</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.7rem .4rem;text-align:center;">
+    <div style="font-size:1.25rem;font-weight:780;color:var(--text-1);line-height:1;">{{ solo_hrs|floatformat:1 }}</div>
     <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-top:2px;">Solo / P1</div>
   </div>
 </div>
 {% if if_hrs > 0 or night_hrs > 0 %}
 <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.45rem;padding:0 .9rem .7rem;">
   {% if if_hrs > 0 %}
-  <div style="background:#f0f4ff;border:1px solid #c7d4f5;border-radius:12px;padding:.6rem .4rem;text-align:center;">
-    <div style="font-size:1.1rem;font-weight:780;color:#2563eb;line-height:1;">{{ if_hrs|floatformat:1 }}</div>
+  <div style="background:color-mix(in srgb,var(--primary) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:12px;padding:.6rem .4rem;text-align:center;">
+    <div style="font-size:1.1rem;font-weight:780;color:var(--primary);line-height:1;">{{ if_hrs|floatformat:1 }}</div>
     <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-top:2px;">I/F (sim + actual)</div>
   </div>
   {% endif %}
   {% if night_hrs > 0 %}
-  <div style="background:#f5f0ff;border:1px solid #d8c4f5;border-radius:12px;padding:.6rem .4rem;text-align:center;">
+  <div style="background:color-mix(in srgb,#7c3aed 10%,var(--surface));border:1px solid color-mix(in srgb,#7c3aed 30%,var(--border));border-radius:12px;padding:.6rem .4rem;text-align:center;">
     <div style="font-size:1.1rem;font-weight:780;color:#7c3aed;line-height:1;">{{ night_hrs|floatformat:1 }}</div>
     <div style="font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-top:2px;">Night</div>
   </div>
@@ -57,14 +57,14 @@
 <div style="padding:.2rem .9rem .9rem;">
   <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin-bottom:.4rem;">
     Flights
-    {% if page_obj.paginator.num_pages > 1 %}<span style="font-weight:500;color:#c8cdd4;margin-left:.3rem;">· page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% endif %}
+    {% if page_obj.paginator.num_pages > 1 %}<span style="font-weight:500;color:var(--text-3);margin-left:.3rem;">· page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>{% endif %}
   </div>
   {% for entry in page_obj %}
-  <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:.75rem .85rem;margin-bottom:.5rem;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem .85rem;margin-bottom:.5rem;">
     <!-- Header row -->
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;">
       <div style="min-width:0;">
-        <div style="font-size:.92rem;font-weight:700;color:#1a2332;">{{ entry.date|date:"j M Y" }}</div>
+        <div style="font-size:.92rem;font-weight:700;color:var(--text-1);">{{ entry.date|date:"j M Y" }}</div>
         <div style="font-size:.78rem;color:var(--text-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
           {{ entry.aircraft|default:"—" }}
           {% if entry.flight_type %} · {{ entry.flight_type }}{% endif %}
@@ -72,7 +72,7 @@
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-size:.95rem;font-weight:700;color:#1a2332;">{{ entry.hours|floatformat:1 }}</div>
+        <div style="font-size:.95rem;font-weight:700;color:var(--text-1);">{{ entry.hours|floatformat:1 }}</div>
         <div style="font-size:.68rem;color:var(--text-3);">hrs{% if entry.is_split %} · split{% endif %}</div>
       </div>
     </div>
@@ -80,11 +80,11 @@
     <!-- Special hours pills (if any recorded) -->
     {% if entry.if_sim or entry.if_act or entry.night or entry.low or entry.ta %}
     <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.45rem;">
-      {% if entry.if_sim %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:#e8f0fe;color:#1a56db;">I/F sim {{ entry.if_sim|floatformat:1 }}h</span>{% endif %}
-      {% if entry.if_act %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:#e8f0fe;color:#1a56db;">I/F actual {{ entry.if_act|floatformat:1 }}h</span>{% endif %}
-      {% if entry.night %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:#f5f0ff;color:#7c3aed;">Night {{ entry.night|floatformat:1 }}h</span>{% endif %}
-      {% if entry.low %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:#fff3e0;color:#b45309;">Low {{ entry.low|floatformat:1 }}h</span>{% endif %}
-      {% if entry.ta %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:#f0fdf4;color:var(--success-text);">TA {{ entry.ta|floatformat:1 }}h</span>{% endif %}
+      {% if entry.if_sim %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);">I/F sim {{ entry.if_sim|floatformat:1 }}h</span>{% endif %}
+      {% if entry.if_act %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);">I/F actual {{ entry.if_act|floatformat:1 }}h</span>{% endif %}
+      {% if entry.night %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:color-mix(in srgb,#7c3aed 12%,var(--surface));color:#7c3aed;">Night {{ entry.night|floatformat:1 }}h</span>{% endif %}
+      {% if entry.low %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:var(--warning-bg);color:var(--warning-text);">Low {{ entry.low|floatformat:1 }}h</span>{% endif %}
+      {% if entry.ta %}<span style="font-size:.68rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;background:var(--success-bg);color:var(--success-text);">TA {{ entry.ta|floatformat:1 }}h</span>{% endif %}
     </div>
     {% endif %}
 
@@ -102,27 +102,27 @@
           <label style="font-size:.72rem;font-weight:600;color:var(--text-2);display:flex;flex-direction:column;gap:.2rem;">
             I/F simulated
             <input type="number" name="time_if_simulated" step="0.1" min="0" value="{{ entry.if_sim|default:'' }}"
-                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid #d1d5db;border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;">
+                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid var(--input-border);border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;background:var(--surface);color:var(--text-1);">
           </label>
           <label style="font-size:.72rem;font-weight:600;color:var(--text-2);display:flex;flex-direction:column;gap:.2rem;">
             I/F actual
             <input type="number" name="time_if_actual" step="0.1" min="0" value="{{ entry.if_act|default:'' }}"
-                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid #d1d5db;border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;">
+                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid var(--input-border);border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;background:var(--surface);color:var(--text-1);">
           </label>
           <label style="font-size:.72rem;font-weight:600;color:var(--text-2);display:flex;flex-direction:column;gap:.2rem;">
             Night
             <input type="number" name="time_night" step="0.1" min="0" value="{{ entry.night|default:'' }}"
-                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid #d1d5db;border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;">
+                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid var(--input-border);border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;background:var(--surface);color:var(--text-1);">
           </label>
           <label style="font-size:.72rem;font-weight:600;color:var(--text-2);display:flex;flex-direction:column;gap:.2rem;">
             Low flying
             <input type="number" name="time_low_flying" step="0.1" min="0" value="{{ entry.low|default:'' }}"
-                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid #d1d5db;border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;">
+                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid var(--input-border);border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;background:var(--surface);color:var(--text-1);">
           </label>
           <label style="font-size:.72rem;font-weight:600;color:var(--text-2);display:flex;flex-direction:column;gap:.2rem;">
             Terrain awareness
             <input type="number" name="time_terrain_awareness" step="0.1" min="0" value="{{ entry.ta|default:'' }}"
-                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid #d1d5db;border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;">
+                   placeholder="0.0" style="padding:.3rem .45rem;border:1.5px solid var(--input-border);border-radius:6px;font-size:.82rem;width:100%;box-sizing:border-box;background:var(--surface);color:var(--text-1);">
           </label>
         </div>
         <button type="submit" class="app-btn" style="font-size:.78rem;padding:.35rem .8rem;">Save</button>
