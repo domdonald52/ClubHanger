@@ -91,8 +91,8 @@
         <hr class="dash-kpi-hr">
         <div class="dash-kpi-row-lbl">By category</div>
         {% for cat in dash_top_categories %}
-        <div class="dash-kpi-sub" style="display:flex;justify-content:space-between;font-size:.78rem;color:#5b6573;margin-top:.15rem;">
-          <span>{{ cat.name }}</span><span style="font-weight:600;color:#1f2933;">{{ cat.count }}</span>
+        <div class="dash-kpi-sub" style="display:flex;justify-content:space-between;font-size:.78rem;color:var(--text-2);margin-top:.15rem;">
+          <span>{{ cat.name }}</span><span style="font-weight:600;color:var(--text-1);">{{ cat.count }}</span>
         </div>
         {% endfor %}
         {% endif %}
@@ -104,9 +104,9 @@
     <div style="display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap;margin-bottom:1rem;">
       {% if available_fys|length > 1 %}
       <div style="display:flex;align-items:center;gap:.5rem;">
-        <span style="font-size:.8rem;color:#8a93a0;">Financial year:</span>
+        <span style="font-size:.8rem;color:var(--text-3);">Financial year:</span>
         <select id="fy-select" onchange="window.location.href='?fy='+this.value+'&leased={{ leased_filter }}{% if selected_month_str %}&month={{ selected_month_str }}{% endif %}#dashboard'"
-                style="font-size:.82rem;padding:.25rem .5rem;border:1px solid #d0d4db;border-radius:6px;background:#fff;cursor:pointer;">
+                style="font-size:.82rem;padding:.25rem .5rem;border:1px solid var(--input-border);border-radius:6px;background:var(--surface);cursor:pointer;">
           {% for yr, lbl in available_fys %}
           <option value="{{ yr }}" {% if yr == fy_year %}selected{% endif %}>{{ lbl }}</option>
           {% endfor %}
@@ -114,7 +114,7 @@
       </div>
       {% endif %}
       <div style="display:flex;align-items:center;gap:.5rem;">
-        <span style="font-size:.8rem;color:#8a93a0;">Hours filter:</span>
+        <span style="font-size:.8rem;color:var(--text-3);">Hours filter:</span>
         <div class="seg-ctrl">
           <a href="?fy={{ fy_year }}&leased=all#dashboard"    class="seg-btn {% if leased_filter == 'all' %}active{% endif %}">All</a>
           <a href="?fy={{ fy_year }}&leased=owned#dashboard"  class="seg-btn {% if leased_filter == 'owned' %}active{% endif %}">Owned</a>
@@ -133,7 +133,7 @@
         {% if datasets != "[]" %}
         <canvas id="dash-hours-chart" height="150"></canvas>
         {% else %}
-        <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
+        <p style="font-size:.85rem;color:var(--text-3);margin:0;">No flight data for this period.</p>
         {% endif %}
       </div>
       <div class="dash-card">
@@ -155,7 +155,7 @@
         {% if instr_datasets != "[]" %}
         <canvas id="dash-instr-chart" height="150"></canvas>
         {% else %}
-        <p style="font-size:.85rem;color:#8a93a0;margin:0;">No dual flights recorded in this period.</p>
+        <p style="font-size:.85rem;color:var(--text-3);margin:0;">No dual flights recorded in this period.</p>
         {% endif %}
       </div>
       <div class="dash-card">
@@ -173,23 +173,23 @@
         <h2 class="dash-card-h">Top aircraft by hours <span class="dash-period">· {{ fy_label }}</span></h2>
         {% if top_aircraft_dash %}
         <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
-          <thead><tr style="border-bottom:1px solid #e3e6ea;">
-            <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Aircraft</th>
-            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
-            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Hours</th>
+          <thead><tr style="border-bottom:1px solid var(--border);">
+            <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Aircraft</th>
+            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Flights</th>
+            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Hours</th>
           </tr></thead>
           <tbody>
             {% for row in top_aircraft_dash %}
-            <tr style="border-bottom:1px solid #f4f6f8;">
+            <tr style="border-bottom:1px solid var(--border-subtle);">
               <td style="padding:.4rem .5rem;font-weight:600;">{{ row.reg }}</td>
-              <td style="padding:.4rem .5rem;text-align:right;color:#5b6573;">{{ row.count }}</td>
+              <td style="padding:.4rem .5rem;text-align:right;color:var(--text-2);">{{ row.count }}</td>
               <td style="padding:.4rem .5rem;text-align:right;">{{ row.hours }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
         {% else %}
-        <p style="font-size:.85rem;color:#8a93a0;margin:0;">No data.</p>
+        <p style="font-size:.85rem;color:var(--text-3);margin:0;">No data.</p>
         {% endif %}
       </div>
       {% if dash_has_budget %}
@@ -205,23 +205,23 @@
         <h2 class="dash-card-h">Top members by hours</h2>
         {% if top_members_dash %}
         <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
-          <thead><tr style="border-bottom:1px solid #e3e6ea;">
-            <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Member</th>
-            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
-            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Hours</th>
+          <thead><tr style="border-bottom:1px solid var(--border);">
+            <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Member</th>
+            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Flights</th>
+            <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Hours</th>
           </tr></thead>
           <tbody>
             {% for row in top_members_dash %}
-            <tr style="border-bottom:1px solid #f4f6f8;">
+            <tr style="border-bottom:1px solid var(--border-subtle);">
               <td style="padding:.4rem .5rem;">{{ row.name }}</td>
-              <td style="padding:.4rem .5rem;text-align:right;color:#5b6573;">{{ row.flight_count }}</td>
+              <td style="padding:.4rem .5rem;text-align:right;color:var(--text-2);">{{ row.flight_count }}</td>
               <td style="padding:.4rem .5rem;text-align:right;font-weight:600;">{{ row.total_hours }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
         {% else %}
-        <p style="font-size:.85rem;color:#8a93a0;margin:0;">No data.</p>
+        <p style="font-size:.85rem;color:var(--text-3);margin:0;">No data.</p>
         {% endif %}
       </div>
       {% endif %}
@@ -287,7 +287,7 @@
 
   <!-- ── MEMBERS tab ── -->
   <div id="tab-members" class="stab-panel">
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;margin-bottom:.6rem;">
         <h2 style="font-size:.95rem;font-weight:650;margin:0;">Member activity
           <span class="dash-period">· {% if member_filter_label %}{{ member_filter_label }}{% else %}{{ fy_label }}{% endif %}</span>
@@ -295,14 +295,14 @@
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
           {% if available_fys|length > 1 %}
           <select onchange="window.location.href='?fy='+this.value+'&leased={{ leased_filter }}#members'"
-                  style="font-size:.82rem;padding:.25rem .5rem;border:1px solid #d0d4db;border-radius:6px;background:#fff;cursor:pointer;">
+                  style="font-size:.82rem;padding:.25rem .5rem;border:1px solid var(--input-border);border-radius:6px;background:var(--surface);cursor:pointer;">
             {% for yr, lbl in available_fys %}
             <option value="{{ yr }}" {% if yr == fy_year %}selected{% endif %}>{{ lbl }}</option>
             {% endfor %}
           </select>
           {% endif %}
           <select onchange="let v=this.value; window.location.href='?fy={{ fy_year }}&leased={{ leased_filter }}'+(v?'&month='+v:'')+'#members'"
-                  style="font-size:.82rem;padding:.25rem .5rem;border:1px solid #d0d4db;border-radius:6px;background:#fff;cursor:pointer;">
+                  style="font-size:.82rem;padding:.25rem .5rem;border:1px solid var(--input-border);border-radius:6px;background:var(--surface);cursor:pointer;">
             <option value="">All months</option>
             {% for val, lbl in fy_months %}
             <option value="{{ val }}" {% if val == selected_month_str %}selected{% endif %}>{{ lbl }}</option>
@@ -310,40 +310,40 @@
           </select>
         </div>
       </div>
-      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Flight hours and booking counts for the selected period.</p>
+      <p style="font-size:.82rem;color:var(--text-3);margin:0 0 1rem;">Flight hours and booking counts for the selected period.</p>
       {% if member_rows %}
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
         <thead>
-          <tr style="border-bottom:2px solid #e3e6ea;">
-            <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Member</th>
-            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Flights</th>
-            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Hours</th>
-            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Solo</th>
-            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Dual</th>
+          <tr style="border-bottom:2px solid var(--border);">
+            <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Member</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Flights</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Hours</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Solo</th>
+            <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Dual</th>
           </tr>
         </thead>
         <tbody>
           {% for row in member_rows %}
-          <tr style="border-bottom:1px solid #f0f2f4;">
+          <tr style="border-bottom:1px solid var(--border-subtle);">
             <td style="padding:.5rem .6rem;">{{ row.name }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{{ row.flight_count }}</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:var(--text-2);">{{ row.flight_count }}</td>
             <td style="padding:.5rem .6rem;text-align:right;font-weight:600;">{{ row.total_hours }}</td>
-            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{% if row.solo_hours %}{{ row.solo_hours }}{% endif %}</td>
-            <td style="padding:.5rem .6rem;text-align:right;color:#5b6573;">{% if row.dual_hours %}{{ row.dual_hours }}{% endif %}</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:var(--text-2);">{% if row.solo_hours %}{{ row.solo_hours }}{% endif %}</td>
+            <td style="padding:.5rem .6rem;text-align:right;color:var(--text-2);">{% if row.dual_hours %}{{ row.dual_hours }}{% endif %}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       {% else %}
-      <p style="font-size:.85rem;color:#8a93a0;margin:0;">No flight data for this period.</p>
+      <p style="font-size:.85rem;color:var(--text-3);margin:0;">No flight data for this period.</p>
       {% endif %}
     </div>
   </div>
 
   <!-- ── ASK AI tab ── -->
   <div id="tab-ask" class="stab-panel">
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
-      <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1.2rem;">Ask questions in plain English — e.g. "Which aircraft flew the most hours this year?" or "How much revenue did we collect last month?"</p>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;">
+      <p style="font-size:.82rem;color:var(--text-3);margin:0 0 1.2rem;">Ask questions in plain English — e.g. "Which aircraft flew the most hours this year?" or "How much revenue did we collect last month?"</p>
 
       <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
         <input type="text" id="ai-question" placeholder="Ask a question…"
@@ -359,10 +359,10 @@
       </div>
 
       <div id="ai-response" style="display:none;">
-        <div id="ai-answer" style="background:#f8f9fa;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;font-size:.88rem;line-height:1.6;white-space:pre-wrap;"></div>
+        <div id="ai-answer" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:1rem;font-size:.88rem;line-height:1.6;white-space:pre-wrap;"></div>
       </div>
-      <div id="ai-loading" style="display:none;font-size:.85rem;color:#8a93a0;">Thinking…</div>
-      <div id="ai-error" style="display:none;font-size:.85rem;color:#c0392b;"></div>
+      <div id="ai-loading" style="display:none;font-size:.85rem;color:var(--text-3);">Thinking…</div>
+      <div id="ai-error" style="display:none;font-size:.85rem;color:var(--danger);"></div>
     </div>
   </div>
 
@@ -377,8 +377,8 @@
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:.8rem;">
       {% for stat in occ_stats %}
       <a href="{{ stat.3 }}" style="text-decoration:none;">
-        <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;" onmouseover="this.style.borderColor='#c0481c'" onmouseout="this.style.borderColor='#e3e6ea'">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">{{ stat.0 }}</div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;" onmouseover="this.style.borderColor='#c0481c'" onmouseout="this.style.borderColor='#e3e6ea'">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.25rem;">{{ stat.0 }}</div>
           <div style="font-size:1.5rem;font-weight:750;color:{{ stat.2 }};">{{ stat.1 }}</div>
         </div>
       </a>
@@ -388,32 +388,32 @@
     <!-- Actions + safety risk stats -->
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-bottom:1.4rem;">
       <a href="{{ occ_actions_url }}" style="text-decoration:none;">
-        <div style="background:#fff;border:1px solid {% if occ_open_actions_count %}#fca5a5{% else %}#e3e6ea{% endif %};background:{% if occ_open_actions_count %}#fff8f8{% else %}#fff{% endif %};border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Open actions</div>
-          <div style="font-size:1.5rem;font-weight:750;color:{% if occ_open_actions_count %}#c0392b{% else %}#1a1f2e{% endif %};">{{ occ_open_actions_count }}</div>
+        <div class="{% if occ_open_actions_count %}dash-kpi dash-kpi-warn{% else %}dash-kpi{% endif %}">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.25rem;">Open actions</div>
+          <div style="font-size:1.5rem;font-weight:750;color:{% if occ_open_actions_count %}var(--danger){% else %}var(--text-1){% endif %};">{{ occ_open_actions_count }}</div>
         </div>
       </a>
       <a href="{{ occ_actions_url }}" style="text-decoration:none;">
-        <div style="background:#fff;border:1px solid {% if occ_safety_risk_open_actions %}#fca5a5{% else %}#e3e6ea{% endif %};background:{% if occ_safety_risk_open_actions %}#fff8f8{% else %}#fff{% endif %};border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Safety-risk actions open</div>
-          <div style="font-size:1.5rem;font-weight:750;color:{% if occ_safety_risk_open_actions %}#c0392b{% else %}#1a1f2e{% endif %};">{{ occ_safety_risk_open_actions }}</div>
+        <div class="{% if occ_safety_risk_open_actions %}dash-kpi dash-kpi-warn{% else %}dash-kpi{% endif %}">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.25rem;">Safety-risk actions open</div>
+          <div style="font-size:1.5rem;font-weight:750;color:{% if occ_safety_risk_open_actions %}var(--danger){% else %}var(--text-1){% endif %};">{{ occ_safety_risk_open_actions }}</div>
         </div>
       </a>
       <a href="{% url 'core:occurrence_list' club.slug %}?safety_risk=1" style="text-decoration:none;">
-        <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;transition:border-color .15s;" onmouseover="this.style.borderColor='#c0481c'" onmouseout="this.style.borderColor='#e3e6ea'">
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Safety-risk events</div>
+        <div class="dash-kpi" onmouseover="this.style.borderColor=getComputedStyle(this).getPropertyValue('--primary')" onmouseout="this.style.borderColor=''">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.25rem;">Safety-risk events</div>
           <div style="font-size:1.5rem;font-weight:750;color:#e67e22;">{{ occ_safety_risk_total }}</div>
         </div>
       </a>
       {% if occ_top_owner %}
-      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;">
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Most actions (open)</div>
-        <div style="font-size:1.1rem;font-weight:700;color:#1a1f2e;line-height:1.2;margin-bottom:.15rem;">{{ occ_top_owner.name }}</div>
-        <div style="font-size:.78rem;color:#8a93a0;">{{ occ_top_owner.count }} open action{{ occ_top_owner.count|pluralize }}</div>
+      <div class="dash-kpi">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.25rem;">Most actions (open)</div>
+        <div style="font-size:1.1rem;font-weight:700;color:var(--text-1);line-height:1.2;margin-bottom:.15rem;">{{ occ_top_owner.name }}</div>
+        <div style="font-size:.78rem;color:var(--text-3);">{{ occ_top_owner.count }} open action{{ occ_top_owner.count|pluralize }}</div>
       </div>
       {% else %}
-      <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.8rem 1rem;">
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;">Most actions (open)</div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.8rem 1rem;">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.25rem;">Most actions (open)</div>
         <div style="font-size:1.1rem;font-weight:700;color:#c0c8d4;">—</div>
       </div>
       {% endif %}
@@ -447,7 +447,7 @@
       {% endif %}
     </div>
     {% else %}
-    <div style="padding:3rem;text-align:center;color:#8a93a0;font-size:.88rem;">No occurrence reports on file.</div>
+    <div style="padding:3rem;text-align:center;color:var(--text-3);font-size:.88rem;">No occurrence reports on file.</div>
     {% endif %}
 
     <div style="font-size:.82rem;margin-top:.5rem;display:flex;gap:.6rem;flex-wrap:wrap;">
@@ -458,45 +458,53 @@
 
   <!-- ── ANALYTICS tab (drag-and-drop concept demo) ── -->
   <div id="tab-analytics" class="stab-panel">
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.5rem;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.5rem;">
 
       <!-- Filter row -->
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.8rem;margin-bottom:1.1rem;">
-        <p style="font-size:.82rem;color:#5b6573;margin:0;flex:1;min-width:180px;">Drag dimensions and metrics to build a pivot report against all completed flights.</p>
+        <p style="font-size:.82rem;color:var(--text-2);margin:0;flex:1;min-width:180px;">Drag dimensions and metrics to build a pivot report against all completed flights.</p>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-          <label style="font-size:.78rem;color:#8a93a0;display:flex;align-items:center;gap:.3rem;">From
+          <label style="font-size:.78rem;color:var(--text-3);display:flex;align-items:center;gap:.3rem;">From
             <input type="date" id="piv-from" class="finput" style="width:130px;padding:.3rem .5rem;font-size:.82rem;">
           </label>
-          <label style="font-size:.78rem;color:#8a93a0;display:flex;align-items:center;gap:.3rem;">To
+          <label style="font-size:.78rem;color:var(--text-3);display:flex;align-items:center;gap:.3rem;">To
             <input type="date" id="piv-to" class="finput" style="width:130px;padding:.3rem .5rem;font-size:.82rem;">
           </label>
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:190px 1fr;gap:1.2rem;align-items:start;">
+      <div style="display:grid;grid-template-columns:240px 1fr;gap:1.2rem;align-items:start;">
 
         <!-- Field palette -->
         <div>
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Dimensions</div>
-          <div style="display:flex;flex-direction:column;gap:.3rem;margin-bottom:.8rem;">
-            <div class="analytics-field" draggable="true" data-field="aircraft"     data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Aircraft</div>
-            <div class="analytics-field" draggable="true" data-field="aircraft_type" data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> A/C type</div>
-            <div class="analytics-field" draggable="true" data-field="flight_type"  data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Flight type</div>
-            <div class="analytics-field" draggable="true" data-field="member"       data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Member</div>
-            <div class="analytics-field" draggable="true" data-field="instructor"   data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Instructor</div>
-            <div class="analytics-field" draggable="true" data-field="month"        data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Month</div>
-            <div class="analytics-field" draggable="true" data-field="quarter"      data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Quarter</div>
-            <div class="analytics-field" draggable="true" data-field="year"         data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Year</div>
-            <div class="analytics-field" draggable="true" data-field="outcome"      data-kind="dim" style="padding:.32rem .6rem;background:#f3f5f7;border:1px solid #e3e6ea;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;"><span style="opacity:.35;">⠿</span> Outcome</div>
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.35rem;">Dimensions</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem;margin-bottom:.8rem;">
+            <div class="analytics-field" draggable="true" data-field="aircraft"      data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Aircraft</div>
+            <div class="analytics-field" draggable="true" data-field="aircraft_type" data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> A/C type</div>
+            <div class="analytics-field" draggable="true" data-field="flight_type"   data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Flight type</div>
+            <div class="analytics-field" draggable="true" data-field="booking_kind"  data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Kind</div>
+            <div class="analytics-field" draggable="true" data-field="member"        data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Member</div>
+            <div class="analytics-field" draggable="true" data-field="member_role"   data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Role</div>
+            <div class="analytics-field" draggable="true" data-field="instructor"    data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Instructor</div>
+            <div class="analytics-field" draggable="true" data-field="outcome"       data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Outcome</div>
+            <div class="analytics-field" draggable="true" data-field="month"         data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Month</div>
+            <div class="analytics-field" draggable="true" data-field="quarter"       data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Quarter</div>
+            <div class="analytics-field" draggable="true" data-field="week"          data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Week</div>
+            <div class="analytics-field" draggable="true" data-field="year"          data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Year</div>
+            <div class="analytics-field" draggable="true" data-field="day_of_week"   data-kind="dim" style="padding:.28rem .45rem;background:var(--surface-3);border:1px solid var(--border);border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;"><span style="opacity:.35;flex-shrink:0;">⠿</span> Day of week</div>
           </div>
-          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Metrics</div>
-          <div style="display:flex;flex-direction:column;gap:.3rem;">
-            <div class="analytics-field" draggable="true" data-field="hours"       data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Hours</div>
-            <div class="analytics-field" draggable="true" data-field="charge"      data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Charge ($)</div>
-            <div class="analytics-field" draggable="true" data-field="paid"        data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Paid ($)</div>
-            <div class="analytics-field" draggable="true" data-field="outstanding" data-kind="metric" data-default-agg="sum" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Outstanding ($)</div>
-            <div class="analytics-field" draggable="true" data-field="flights"          data-kind="metric" data-default-agg="count" style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Flights</div>
-            <div class="analytics-field" draggable="true" data-field="budgeted_hours"  data-kind="metric" data-default-agg="sum"   style="padding:.32rem .6rem;background:#eef3ff;border:1px solid #c7d8ff;border-radius:6px;font-size:.82rem;cursor:grab;display:flex;align-items:center;gap:.35rem;color:#2c4bad;"><span style="opacity:.45;">⠿</span> Budgeted hrs</div>
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.35rem;">Metrics</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.3rem;">
+            <div class="analytics-field" draggable="true" data-field="hours"            data-kind="metric" data-default-agg="sum"   style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Hours</div>
+            <div class="analytics-field" draggable="true" data-field="avg_hrs"          data-kind="metric" data-default-agg="avg"   style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Avg hrs</div>
+            <div class="analytics-field" draggable="true" data-field="charge"           data-kind="metric" data-default-agg="sum"   style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Charge ($)</div>
+            <div class="analytics-field" draggable="true" data-field="avg_charge_per_hr" data-kind="metric" data-default-agg="avg"  style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Avg $/hr</div>
+            <div class="analytics-field" draggable="true" data-field="paid"             data-kind="metric" data-default-agg="sum"   style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Paid ($)</div>
+            <div class="analytics-field" draggable="true" data-field="outstanding"      data-kind="metric" data-default-agg="sum"   style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Outstanding</div>
+            <div class="analytics-field" draggable="true" data-field="flights"          data-kind="metric" data-default-agg="count" style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Flights</div>
+            <div class="analytics-field" draggable="true" data-field="budgeted_hours"   data-kind="metric" data-default-agg="sum"   style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Budgeted hrs</div>
+            <div class="analytics-field" draggable="true" data-field="landing_fees"     data-kind="metric" data-default-agg="sum"   style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Landing fees</div>
+            <div class="analytics-field" draggable="true" data-field="sundry_charges"   data-kind="metric" data-default-agg="sum"   style="padding:.28rem .45rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:6px;font-size:.78rem;cursor:grab;display:flex;align-items:center;gap:.3rem;color:var(--primary);white-space:nowrap;overflow:hidden;"><span style="opacity:.45;flex-shrink:0;">⠿</span> Sundry ($)</div>
           </div>
         </div>
 
@@ -504,14 +512,14 @@
         <div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:1rem;">
             <div>
-              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Group by (rows)</div>
+              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.35rem;">Group by (rows)</div>
               <div class="drop-zone" id="drop-rows" data-zone="rows"
-                   style="min-height:64px;border:2px dashed #d6dae0;border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;" title="Drop dimension fields here"></div>
+                   style="min-height:64px;border:2px dashed var(--border);border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;" title="Drop dimension fields here"></div>
             </div>
             <div>
-              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.35rem;">Values</div>
+              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.35rem;">Values</div>
               <div class="drop-zone" id="drop-values" data-zone="values"
-                   style="min-height:64px;border:2px dashed #d6dae0;border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;" title="Drop metric fields here"></div>
+                   style="min-height:64px;border:2px dashed var(--border);border-radius:8px;padding:.5rem;display:flex;flex-wrap:wrap;gap:.3rem;align-content:flex-start;" title="Drop metric fields here"></div>
             </div>
           </div>
 
@@ -519,8 +527,8 @@
             <button onclick="runPivot()" class="cbtn primary">Build report</button>
             <button onclick="clearPivot()" class="cbtn">Clear</button>
             <button id="piv-export-btn" onclick="exportPivotCSV()" class="cbtn" hidden>Export CSV</button>
-            <span id="piv-loading" hidden style="font-size:.82rem;color:#8a93a0;">Loading…</span>
-            <span id="piv-count" style="font-size:.78rem;color:#8a93a0;"></span>
+            <span id="piv-loading" hidden style="font-size:.82rem;color:var(--text-3);">Loading…</span>
+            <span id="piv-count" style="font-size:.78rem;color:var(--text-3);"></span>
           </div>
 
           <div id="analytics-result" style="display:none;">
@@ -540,28 +548,43 @@
 @media(max-width:1100px){.dash-grid-5{grid-template-columns:repeat(3,1fr);}}
 @media(max-width:900px){.dash-grid-4,.dash-grid-5{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:700px){.dash-grid-5,.dash-grid-4,.dash-grid-3,.dash-grid-2{grid-template-columns:1fr;}}
-.dash-kpi{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.55rem .8rem;}
-.dash-kpi-warn{border-color:#fca5a5;background:#fff8f8;}
-.dash-kpi-good{border-color:#86efac;background:#f0fdf4;}
-.dash-kpi-sect{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#c0c8d4;margin-bottom:.2rem;}
-.dash-kpi-lbl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.1rem;}
-.dash-kpi-val{font-size:1.25rem;font-weight:700;color:#1f2933;line-height:1;margin-bottom:.1rem;}
-.dash-kpi-unit{font-size:.85rem;font-weight:400;color:#5b6573;margin-left:.1rem;}
-.dash-kpi-sub{font-size:.72rem;color:#8a93a0;line-height:1.4;}
-.dash-kpi-hr{border:none;border-top:1px solid #edeef1;margin:.35rem 0;}
-.dash-kpi-row-lbl{font-size:.68rem;color:#8a93a0;margin-bottom:.02rem;text-transform:uppercase;letter-spacing:.04em;}
-.dash-kpi-row-val{font-size:.95rem;font-weight:700;color:#1f2933;line-height:1.1;margin-bottom:.03rem;}
-.dash-kpi-warn-val{color:#c0392b;}
-.dash-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:.85rem 1rem;}
+.dash-kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.55rem .8rem;}
+.dash-kpi-warn{border-color:var(--danger-border);background:var(--danger-bg);}
+.dash-kpi-good{border-color:var(--success-border);background:var(--success-bg);}
+.dash-kpi-sect{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin-bottom:.2rem;}
+.dash-kpi-lbl{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.1rem;}
+.dash-kpi-val{font-size:1.25rem;font-weight:700;color:var(--text-1);line-height:1;margin-bottom:.1rem;}
+.dash-kpi-unit{font-size:.85rem;font-weight:400;color:var(--text-2);margin-left:.1rem;}
+.dash-kpi-sub{font-size:.72rem;color:var(--text-3);line-height:1.4;}
+.dash-kpi-hr{border:none;border-top:1px solid var(--border-subtle);margin:.35rem 0;}
+.dash-kpi-row-lbl{font-size:.68rem;color:var(--text-3);margin-bottom:.02rem;text-transform:uppercase;letter-spacing:.04em;}
+.dash-kpi-row-val{font-size:.95rem;font-weight:700;color:var(--text-1);line-height:1.1;margin-bottom:.03rem;}
+.dash-kpi-warn-val{color:var(--danger);}
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.85rem 1rem;}
 .dash-card-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;}
-.dash-card-h{font-size:.85rem;font-weight:650;margin:0;color:#1f2933;}
-.dash-period{font-weight:400;color:#b8c0cc;font-size:.85em;}
+.dash-card-h{font-size:.85rem;font-weight:650;margin:0;color:var(--text-1);}
+.dash-period{font-weight:400;color:var(--text-3);font-size:.85em;}
 /* Chart pop-out modal */
 .chart-modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center;padding:1.5rem;}
-.chart-modal-box{background:#fff;border-radius:12px;padding:1.4rem 1.5rem 1.2rem;width:100%;max-width:900px;max-height:90vh;overflow:auto;box-shadow:0 8px 40px rgba(0,0,0,.2);}
+.chart-modal-box{background:var(--surface);border-radius:12px;padding:1.4rem 1.5rem 1.2rem;width:100%;max-width:900px;max-height:90vh;overflow:auto;box-shadow:var(--shadow-modal);}
 .hist-toggle.active{background:var(--primary);color:#fff;border-color:var(--primary);}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  if (!document.body.classList.contains('dark-mode')) return;
+  var s = getComputedStyle(document.documentElement);
+  var text3 = s.getPropertyValue('--text-3').trim() || '#6e7681';
+  var border = s.getPropertyValue('--border').trim() || '#30363d';
+  Chart.defaults.color = text3;
+  Chart.defaults.borderColor = border;
+  Chart.defaults.plugins.legend.labels.color = text3;
+  Chart.defaults.scale.ticks = Chart.defaults.scale.ticks || {};
+  Chart.defaults.scale.ticks.color = text3;
+  Chart.defaults.scale.grid = Chart.defaults.scale.grid || {};
+  Chart.defaults.scale.grid.color = border;
+})();
+</script>
 <script>
 // ── Report tabs ──────────────────────────────────────────────────────────────
 (function(){
@@ -1018,7 +1041,7 @@ const _stackedOpts = {
     const aggs = valChips.map(e=>(e.querySelector('[data-agg]')?.value || 'sum'));
 
     if (!rows.length || !vals.length) {
-      alert('Drop at least one dimension into "Group by" and one metric into "Values".');
+      window.toast('Drop at least one dimension into "Group by" and one metric into "Values".', 'err');
       return;
     }
     document.getElementById('piv-loading').hidden = false;
@@ -1039,7 +1062,7 @@ const _stackedOpts = {
       .then(r => r.json())
       .then(data => {
         document.getElementById('piv-loading').hidden = true;
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { window.toast(data.error, 'err'); return; }
         _pivotData = data;
         renderPivot(data);
         document.getElementById('piv-count').textContent = data.count + ' row' + (data.count===1?'':'s');
@@ -1047,7 +1070,7 @@ const _stackedOpts = {
       })
       .catch(err => {
         document.getElementById('piv-loading').hidden = true;
-        alert('Error: ' + err);
+        window.toast('Error: ' + err, 'err');
       });
   };
 
@@ -1062,20 +1085,20 @@ const _stackedOpts = {
     };
 
     let html = `<table style="width:100%;border-collapse:collapse;font-size:.84rem;">`;
-    html += `<thead><tr style="border-bottom:2px solid #e3e6ea;">`;
+    html += `<thead><tr style="border-bottom:2px solid var(--border);">`;
     data.headers.forEach((h,i) => {
       html += `<th style="padding:.4rem .6rem;text-align:${i >= nDims ? 'right':'left'};font-weight:600;white-space:nowrap;">${h}</th>`;
     });
     html += `</tr></thead><tbody>`;
     data.rows.forEach(row => {
-      html += `<tr style="border-bottom:1px solid #f0f2f4;">`;
+      html += `<tr style="border-bottom:1px solid var(--border-subtle);">`;
       row.forEach((v, i) => {
         html += `<td style="padding:.45rem .6rem;${i >= nDims ? 'text-align:right;font-variant-numeric:tabular-nums;' : ''}">${fmt(v,i)}</td>`;
       });
       html += `</tr>`;
     });
     // Totals row
-    html += `<tr style="border-top:2px solid #e3e6ea;font-weight:600;background:#f8f9fb;">`;
+    html += `<tr style="border-top:2px solid #e3e6ea;font-weight:600;background:var(--surface-2);">`;
     data.totals.forEach((v,i) => {
       html += `<td style="padding:.45rem .6rem;${i >= nDims ? 'text-align:right;font-variant-numeric:tabular-nums;' : ''}">${fmt(v,i)}</td>`;
     });

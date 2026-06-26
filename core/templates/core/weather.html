@@ -8,7 +8,7 @@
     <div>
       <h1 style="margin:0;">Weather</h1>
       {% if home_ae %}
-      <p style="margin:.2rem 0 0;font-size:.85rem;color:#8a93a0;">Home aerodrome: <strong>{{ home_ae.icao_code }}</strong> — {{ home_ae.name }}</p>
+      <p style="margin:.2rem 0 0;font-size:.85rem;color:var(--text-3);">Home aerodrome: <strong>{{ home_ae.icao_code }}</strong> — {{ home_ae.name }}</p>
       {% endif %}
     </div>
     {% if home_ae and not metar_err %}
@@ -32,7 +32,7 @@
         {% endif %}
       </div>
       {% if metar_err %}
-      <div style="padding:1rem;font-size:.85rem;color:#8a93a0;">{{ metar_err }}</div>
+      <div style="padding:1rem;font-size:.85rem;color:var(--text-3);">{{ metar_err }}</div>
       {% else %}
       <div class="wx-raw">{{ metar_data.raw }}</div>
       <div class="wx-decoded">
@@ -98,7 +98,7 @@
         <span>{% if home_ae %}{{ home_ae.icao_code }} · {% endif %}TAF</span>
       </div>
       {% if taf_err %}
-      <div style="padding:1rem;font-size:.85rem;color:#8a93a0;">{{ taf_err }}</div>
+      <div style="padding:1rem;font-size:.85rem;color:var(--text-3);">{{ taf_err }}</div>
       {% else %}
       <div class="wx-raw">{{ taf_data.raw }}</div>
       {% if taf_data.forecast %}
@@ -111,12 +111,12 @@
             <span class="wx-fr wx-fr-{{ period.flight_rules|lower }}" style="font-size:.7rem;padding:.1rem .35rem;">{{ period.flight_rules }}</span>
             {% endif %}
             {% if period.start_local %}
-            <span style="font-size:.75rem;color:#8a93a0;">
+            <span style="font-size:.75rem;color:var(--text-3);">
               {{ period.start_local|date:"D H:i T" }}{% if period.end_local %} – {{ period.end_local|date:"H:i" }}{% endif %}
             </span>
             {% endif %}
           </div>
-          <div style="font-size:.8rem;color:#1f2933;padding-left:.5rem;">
+          <div style="font-size:.8rem;color:var(--text-1);padding-left:.5rem;">
             {% with wd=period.wind_direction ws=period.wind_speed wg=period.wind_gust %}
             {% if ws %}{% if wd %}{{ wd.repr }}°/{% endif %}{{ ws.value }} kt{% if wg %} G{{ wg.value }}{% endif %}{% endif %}
             {% if period.visibility %}{% if ws %} · {% endif %}{{ period.visibility.repr }}{% endif %}
@@ -184,7 +184,7 @@
     {% endfor %}
   </div>
   {% else %}
-  <div style="padding:2.5rem 1rem;text-align:center;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;">
+  <div style="padding:2.5rem 1rem;text-align:center;border:2px dashed var(--border);border-radius:10px;color:var(--text-3);">
     <p style="margin:.5rem 0;font-size:.9rem;">No webcams configured yet.</p>
   </div>
   {% endif %}
@@ -204,13 +204,13 @@
       <label class="flabel">Name
         <input type="text" name="name" class="finput" required placeholder="e.g. Remutaka Pass">
       </label>
-      <label class="flabel" style="margin-top:.6rem;">Page URL <span style="font-weight:400;color:#8a93a0;">(used for Open ↗ button)</span>
+      <label class="flabel" style="margin-top:.6rem;">Page URL <span style="font-weight:400;color:var(--text-3);">(used for Open ↗ button)</span>
         <input type="url" name="url" class="finput" required placeholder="https://…">
       </label>
-      <label class="flabel" style="margin-top:.6rem;">Embed code <span style="font-weight:400;color:#8a93a0;">(optional — paste iframe code to embed live view)</span>
+      <label class="flabel" style="margin-top:.6rem;">Embed code <span style="font-weight:400;color:var(--text-3);">(optional — paste iframe code to embed live view)</span>
         <textarea name="embed_code" class="finput" rows="3" placeholder="&lt;iframe src=&quot;https://…&quot;&gt;&lt;/iframe&gt;" style="font-family:monospace;font-size:.78rem;resize:vertical;"></textarea>
       </label>
-      <label class="flabel" style="margin-top:.6rem;">Description <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+      <label class="flabel" style="margin-top:.6rem;">Description <span style="font-weight:400;color:var(--text-3);">(optional)</span>
         <input type="text" name="description" class="finput" placeholder="e.g. Remutaka Pass — east approach">
       </label>
       <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
@@ -224,7 +224,7 @@
 <div id="remove-wc-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(400px,95vw);">
     <h2>Remove webcam</h2>
-    <p style="margin:.4rem 0 1.2rem;color:#4a5568;font-size:.9rem;">Remove <strong id="rwc-name"></strong>? This cannot be undone.</p>
+    <p style="margin:.4rem 0 1.2rem;color:var(--text-2);font-size:.9rem;">Remove <strong id="rwc-name"></strong>? This cannot be undone.</p>
     <form method="post" id="remove-wc-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="delete_webcam">
@@ -255,7 +255,7 @@
       <label class="flabel" style="margin-top:.6rem;">Page URL
         <input type="url" name="url" id="ewc-url" class="finput" required>
       </label>
-      <label class="flabel" style="margin-top:.6rem;">Embed code <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+      <label class="flabel" style="margin-top:.6rem;">Embed code <span style="font-weight:400;color:var(--text-3);">(optional)</span>
         <textarea name="embed_code" id="ewc-embed" class="finput" rows="3" style="font-family:monospace;font-size:.78rem;resize:vertical;"></textarea>
       </label>
       <label class="flabel" style="margin-top:.6rem;">Description
@@ -271,45 +271,47 @@
 <style>
   /* Flight rules badges */
   .wx-fr{font-size:.75rem;font-weight:700;padding:.2rem .5rem;border-radius:10px;letter-spacing:.03em;}
-  .wx-fr-vfr{background:#dcfce7;color:#166534;}
-  .wx-fr-mvfr{background:#dbeafe;color:#1d4ed8;}
-  .wx-fr-ifr{background:#fee2e2;color:#991b1b;}
+  .wx-fr-vfr{background:#dcfce7;color:var(--success-text);}
+  .wx-fr-mvfr{background:var(--info-bg);color:var(--info-text);}
+  .wx-fr-ifr{background:var(--danger-bg);color:var(--danger-text);}
   .wx-fr-lifr{background:#f3e8ff;color:#6b21a8;}
+  body.dark-mode .wx-fr-vfr{background:rgba(46,160,67,.2);color:#3fb950;}
+  body.dark-mode .wx-fr-lifr{background:rgba(138,43,226,.15);color:#b47ee8;}
 
   /* METAR / TAF cards */
-  .wx-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
-  .wx-card-head{display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;background:#fafbfc;border-bottom:1px solid #eef1f4;font-size:.85rem;font-weight:650;}
-  .wx-raw{font-family:monospace;font-size:.78rem;padding:.7rem .9rem;background:#f7f9fb;border-bottom:1px solid #eef1f4;color:#2b333d;line-height:1.5;word-break:break-all;}
+  .wx-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+  .wx-card-head{display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;background:var(--surface-2);border-bottom:1px solid var(--border-subtle);font-size:.85rem;font-weight:650;}
+  .wx-raw{font-family:monospace;font-size:.78rem;padding:.7rem .9rem;background:var(--surface-2);border-bottom:1px solid var(--border-subtle);color:var(--text-2);line-height:1.5;word-break:break-all;}
   .wx-decoded{padding:.6rem .9rem;flex:1;}
-  .wx-row{display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid #f4f6f8;font-size:.84rem;}
+  .wx-row{display:flex;gap:.5rem;padding:.22rem 0;border-bottom:1px solid var(--border-subtle);font-size:.84rem;}
   .wx-row:last-child{border-bottom:none;}
-  .wx-lbl{color:#8a93a0;min-width:90px;flex-shrink:0;}
-  .wx-val{color:#1f2933;font-weight:500;}
-  .wx-footer{padding:.5rem .9rem;font-size:.76rem;color:#8a93a0;border-top:1px solid #eef1f4;margin-top:auto;}
+  .wx-lbl{color:var(--text-3);min-width:90px;flex-shrink:0;}
+  .wx-val{color:var(--text-1);font-weight:500;}
+  .wx-footer{padding:.5rem .9rem;font-size:.76rem;color:var(--text-3);border-top:1px solid var(--border-subtle);margin-top:auto;}
   .wx-age-stale{color:#d97706;}
   .wx-age-old{color:#dc2626;font-weight:600;}
-  .wx-notice{background:#fef3cd;border:1px solid #fde68a;border-radius:8px;padding:.8rem 1rem;font-size:.85rem;color:#7c5000;margin-bottom:1.4rem;}
+  .wx-notice{background:var(--warning-bg);border:1px solid var(--warning-border);border-radius:8px;padding:.8rem 1rem;font-size:.85rem;color:var(--warning-text);margin-bottom:1.4rem;}
 
   /* TAF periods */
-  .wx-taf-period{padding:.4rem 0;border-bottom:1px solid #f4f6f8;}
+  .wx-taf-period{padding:.4rem 0;border-bottom:1px solid var(--border-subtle);}
   .wx-taf-period:last-child{border-bottom:none;}
-  .wx-taf-type{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;background:#f3f5f7;padding:.1rem .35rem;border-radius:4px;}
+  .wx-taf-type{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);background:var(--surface-3);padding:.1rem .35rem;border-radius:4px;}
 
   /* Webcam grid */
   .wc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;margin-bottom:2rem;}
-  .wc-card{background:#fff;border:1px solid #e3e6ea;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
-  .wc-img-wrap{position:relative;background:#f3f5f7;aspect-ratio:16/9;overflow:hidden;}
+  .wc-card{background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+  .wc-img-wrap{position:relative;background:var(--surface-3);aspect-ratio:16/9;overflow:hidden;}
   .wc-img{width:100%;height:100%;object-fit:cover;display:block;}
-  .wc-img-fallback{display:none;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;height:100%;color:#8a93a0;font-size:.78rem;}
+  .wc-img-fallback{display:none;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;height:100%;color:var(--text-3);font-size:.78rem;}
   .wc-img-wrap.wc-img-fail .wc-img{display:none;}
   .wc-img-wrap.wc-img-fail .wc-img-fallback{display:flex;}
   .wc-embed{width:100%;height:100%;overflow:hidden;}
   .wc-embed iframe{width:100%;height:100%;border:none;display:block;}
-  .wc-refresh{position:absolute;top:.4rem;right:.4rem;background:rgba(255,255,255,.8);border:1px solid #e3e6ea;border-radius:5px;padding:.2rem .4rem;font-size:.78rem;cursor:pointer;color:#5b6573;}
+  .wc-refresh{position:absolute;top:.4rem;right:.4rem;background:rgba(255,255,255,.8);border:1px solid var(--border);border-radius:5px;padding:.2rem .4rem;font-size:.78rem;cursor:pointer;color:var(--text-2);}
   .wc-refresh:hover{background:#fff;}
   .wc-body{padding:.7rem .9rem;flex:1;display:flex;flex-direction:column;gap:.3rem;}
   .wc-name{font-weight:600;font-size:.88rem;}
-  .wc-desc{font-size:.78rem;color:#8a93a0;flex:1;}
+  .wc-desc{font-size:.78rem;color:var(--text-3);flex:1;}
   .wc-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem;}
 
   @media(max-width:700px){

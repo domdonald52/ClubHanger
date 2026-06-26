@@ -12,13 +12,13 @@
   {% if success %}<div class="notice ok">{{ success }}</div>{% endif %}
 
   <!-- Booking info strip -->
-  <div style="background:#f8f9fb;border-radius:8px;padding:.6rem .9rem;margin-bottom:1rem;font-size:.86rem;">
+  <div style="background:var(--surface-2);border-radius:8px;padding:.6rem .9rem;margin-bottom:1rem;font-size:.86rem;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;">
-      <span style="font-weight:500;color:#2b333d;">{{ booking.scheduled_start|date:"D j M Y, H:i" }} – {{ booking.scheduled_end|time:"H:i" }}</span>
+      <span class="bk-time">{{ booking.scheduled_start|date:"D j M Y, H:i" }} – {{ booking.scheduled_end|time:"H:i" }}</span>
       <span class="status-chip status-{{ booking.display_status_key }}" style="flex-shrink:0;">{% if booking.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif booking.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif booking.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif booking.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif booking.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif booking.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ booking.display_status }}</span>
     </div>
     {% if booking.departed_at or booking.arrived_at or fc and fc.actual_flight_hours %}
-    <div style="color:#5b6573;margin-top:.25rem;">
+    <div style="color:var(--text-2);margin-top:.25rem;">
       {% if booking.departed_at %}<strong>Checked out</strong> {{ booking.departed_at|date:"H:i" }}{% endif %}
       {% if booking.arrived_at %} · <strong>Checked in</strong> {{ booking.arrived_at|date:"H:i" }}{% endif %}
       {% if fc and fc.actual_flight_hours %} · {{ fc.actual_flight_hours }}h billed{% endif %}
@@ -27,31 +27,31 @@
     </div>
     {% endif %}
     {% if booking.description %}
-    <div style="color:#5b6573;margin-top:.35rem;padding-top:.35rem;border-top:1px solid #eef1f4;font-size:.84rem;">{{ booking.description }}</div>
+    <div style="color:var(--text-2);margin-top:.35rem;padding-top:.35rem;border-top:1px solid var(--border);font-size:.84rem;">{{ booking.description }}</div>
     {% endif %}
     {% if has_submitted_decl or requires_decl and booking.status in 'pending confirmed' %}
-    <div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid #eef1f4;font-size:.84rem;">
-      <span style="color:#8a93a0;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.35rem;">Declaration</span>
+    <div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid var(--border);font-size:.84rem;">
+      <span style="color:var(--text-3);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.35rem;">Declaration</span>
       {% if has_submitted_decl %}
-        <span style="color:#2a7a3b;font-weight:500;">✓ {{ booking.declaration.submitted_at|date:"j M H:i" }}</span>{% if booking.declaration.is_stale and booking.status not in 'completed' %}<span style="color:#c76c00;font-size:.82rem;margin-left:.3rem;"> · ⚠ &gt;6h ago</span>{% endif %}
+        <span style="color:var(--success);font-weight:500;">✓ {{ booking.declaration.submitted_at|date:"j M H:i" }}</span>{% if booking.declaration.is_stale and booking.status not in 'completed' %}<span style="color:var(--warning-text);font-size:.82rem;margin-left:.3rem;"> · ⚠ &gt;6h ago</span>{% endif %}
         <a href="#" onclick="openDeclOverlay('{% url 'core:booking_declaration' club.slug booking.id %}'); return false;" style="margin-left:.4rem;color:var(--primary);text-decoration:none;">View →</a>
       {% elif booking.status in 'pending confirmed' %}
-        <span style="color:#8a93a0;">Not yet submitted</span>
+        <span style="color:var(--text-3);">Not yet submitted</span>
       {% endif %}
     </div>
     {% endif %}
     {% if booking.client %}
-    <div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid #eef1f4;font-size:.84rem;">
-      <span style="color:#8a93a0;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.35rem;">Client</span>
+    <div style="margin-top:.35rem;padding-top:.35rem;border-top:1px solid var(--border);font-size:.84rem;">
+      <span style="color:var(--text-3);font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:.35rem;">Client</span>
       <a href="{% url 'core:contact_detail' club.slug booking.client_id %}" data-overlay data-overlay-wide style="color:var(--primary);font-weight:500;text-decoration:none;">{{ booking.client.name }}</a>
-      <span style="color:#8a93a0;font-size:.82rem;margin-left:.3rem;">{{ booking.client.contact_type.name }}{% if booking.billed_to %} · billed to {{ booking.get_billed_to_display }}{% endif %}</span>
+      <span style="color:var(--text-3);font-size:.82rem;margin-left:.3rem;">{{ booking.client.contact_type.name }}{% if booking.billed_to %} · billed to {{ booking.get_billed_to_display }}{% endif %}</span>
     </div>
     {% endif %}
   </div>
 
   {% if watchers %}
-  <div style="font-size:.82rem;color:#374151;margin-bottom:.75rem;padding:.5rem .75rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;">
-    <span style="color:#1d4ed8;">&#128065;</span> Watched by {{ watchers|length }} {{ watchers|length|pluralize:"person,people" }}:
+  <div style="font-size:.82rem;color:var(--text-2);margin-bottom:.75rem;padding:.5rem .75rem;background:var(--info-bg);border:1px solid var(--info-border);border-radius:8px;">
+    <span style="color:var(--info-text);">&#128065;</span> Watched by {{ watchers|length }} {{ watchers|length|pluralize:"person,people" }}:
     {% for w in watchers %}<strong>{{ w.club_member.user.get_full_name }}</strong>{% if not forloop.last %}, {% endif %}{% endfor %}
   </div>
   {% endif %}
@@ -59,7 +59,7 @@
   {% if actor.can_access_manage and booking.status == 'pending' and not booking.member or actor.can_access_manage and booking.status == 'pending' and booking.client %}
   <details style="margin-bottom:.8rem;">
     <summary class="cbtn-sm" style="cursor:pointer;list-style:none;display:inline-block;">{% if booking.client %}Change client{% else %}+ Assign non-member client{% endif %}</summary>
-    <div style="margin-top:.5rem;padding:.75rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;max-width:480px;">
+    <div style="margin-top:.5rem;padding:.75rem;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;max-width:480px;">
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="set_client">
@@ -148,7 +148,7 @@
       {% endif %}
     </form>
 
-    <div style="padding-top:.7rem;border-top:1px solid #f0f2f4;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+    <div style="padding-top:.7rem;border-top:1px solid var(--border-subtle);display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
       {% if club_member.is_admin %}
       <form method="post" style="display:inline;" data-confirm="Undo confirmation? Flight will return to pending and the member will be notified.">
         {% csrf_token %}
@@ -183,7 +183,7 @@
     {% endif %}
 
     {% if club_member.is_admin %}
-    <div id="edit-details-panel" hidden style="margin-top:.8rem;padding:.9rem;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;">
+    <div id="edit-details-panel" hidden style="margin-top:.8rem;padding:.9rem;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;">
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="change_details">
@@ -212,7 +212,7 @@
         <div style="margin-top:.7rem;display:flex;gap:.5rem;">
           <button type="submit" class="btn" style="font-size:.82rem;">Save</button>
           <button type="button" class="cbtn" style="font-size:.82rem;"
-                  onclick="document.getElementById('edit-details-panel').hidden=true"><i class="ti ti-x"></i> Close</button>
+                  onclick="document.getElementById('edit-details-panel').hidden=true">Close</button>
         </div>
       </form>
     </div>
@@ -223,7 +223,7 @@
   <!-- ── DEPARTED: Return aircraft ── -->
   {% if booking.status == 'departed' or booking.status == 'returned' and not fc %}
   <div class="section">
-    <h2 class="sh2">Return aircraft{% if booking.status == 'returned' %} <span style="font-size:.75rem;font-weight:400;color:#c0392b;">(incomplete — please re-log this flight)</span>{% endif %}</h2>
+    <h2 class="sh2">Return aircraft{% if booking.status == 'returned' %} <span style="font-size:.75rem;font-weight:400;color:var(--danger);">(incomplete — please re-log this flight)</span>{% endif %}</h2>
     <form method="post" id="checkin-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="return_aircraft">
@@ -231,10 +231,10 @@
         {% if booking.aircraft.records_hobbs %}
         <div style="display:flex;gap:.5rem;align-items:flex-start;">
           <label class="flabel">Hobbs at departure
-            {% if not prev_hobbs_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
+            {% if not prev_hobbs_end %}<span style="font-size:.72rem;color:var(--warning-text);font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
             {% if prev_hobbs_end %}
             <input type="hidden" id="dep-hobbs" value="{{ prev_hobbs_end }}">
-            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:#5b6573;">{{ prev_hobbs_end }}</div>
+            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:var(--text-2);">{{ prev_hobbs_end }}</div>
             {% else %}
             <input type="number" id="dep-hobbs" step="0.1" class="finput" style="width:110px;" value="">
             {% endif %}
@@ -248,10 +248,10 @@
         {% if booking.aircraft.records_tacho %}
         <div style="display:flex;gap:.5rem;align-items:flex-start;">
           <label class="flabel">Tacho at departure
-            {% if not prev_tacho_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
+            {% if not prev_tacho_end %}<span style="font-size:.72rem;color:var(--warning-text);font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
             {% if prev_tacho_end %}
             <input type="hidden" id="dep-tacho" value="{{ prev_tacho_end }}">
-            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:#5b6573;">{{ prev_tacho_end }}</div>
+            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:var(--text-2);">{{ prev_tacho_end }}</div>
             {% else %}
             <input type="number" id="dep-tacho" step="0.01" class="finput" style="width:110px;" value="">
             {% endif %}
@@ -265,10 +265,10 @@
         {% if booking.aircraft.records_airswitch %}
         <div style="display:flex;gap:.5rem;align-items:flex-start;">
           <label class="flabel">Air switch at departure
-            {% if not prev_airswitch_end %}<span style="font-size:.72rem;color:#92400e;font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
+            {% if not prev_airswitch_end %}<span style="font-size:.72rem;color:var(--warning-text);font-weight:400;">No prior reading — enter from logbook</span>{% endif %}
             {% if prev_airswitch_end %}
             <input type="hidden" id="dep-airswitch" value="{{ prev_airswitch_end }}">
-            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:#5b6573;">{{ prev_airswitch_end }}</div>
+            <div style="width:110px;height:2.1rem;display:flex;align-items:center;padding:0 .5rem;font-size:.9rem;font-weight:600;color:var(--text-2);">{{ prev_airswitch_end }}</div>
             {% else %}
             <input type="number" id="dep-airswitch" step="0.1" class="finput" style="width:110px;" value="">
             {% endif %}
@@ -280,10 +280,10 @@
         </div>
         {% endif %}
         {% if not booking.aircraft.records_hobbs and not booking.aircraft.records_tacho and not booking.aircraft.records_airswitch %}
-        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0;">No meter readings configured for this aircraft.</p>
+        <p style="font-size:.82rem;color:var(--text-3);margin:.2rem 0;">No meter readings configured for this aircraft.</p>
         {% endif %}
       </div>
-      <div id="ret-duration" style="display:none;font-size:.9rem;font-weight:700;color:#2a7a3b;margin-bottom:.5rem;"></div>
+      <div id="ret-duration" style="display:none;font-size:.9rem;font-weight:700;color:var(--success);margin-bottom:.5rem;"></div>
       <input type="hidden" name="flight_count" id="ret-flight-count" value="0">
       <input type="hidden" name="pilot_id_0" value="{{ booking.member.id }}">
       <input type="hidden" name="hours_0" id="split-h0-hidden" value="">
@@ -294,10 +294,10 @@
         <!-- Row 0: booking member, auto-calculated hours -->
         <div style="display:flex;gap:.5rem;align-items:flex-end;margin-bottom:.35rem;">
           <div class="flabel" style="flex:1;margin-bottom:0;">Pilot
-            <input type="text" class="finput" value="{{ booking.member.user.get_full_name }}" readonly style="background:#f0f4ff;cursor:default;">
+            <input type="text" class="finput" value="{{ booking.member.user.get_full_name }}" readonly style="cursor:default;">
           </div>
           <label class="flabel" style="width:100px;margin-bottom:0;">Hours
-            <input type="number" id="split-h0-disp" class="finput" step="0.01" readonly tabindex="-1" style="background:#f0f4ff;cursor:default;">
+            <input type="number" id="split-h0-disp" class="finput" step="0.01" readonly tabindex="-1" style="cursor:default;">
           </label>
           <div style="width:38px;"></div>
         </div>
@@ -408,15 +408,15 @@
         if (extraCount === 0) {
           matchMsg.innerHTML = '';
         } else if (rem !== null && rem < -0.005) {
-          matchMsg.innerHTML = '<span style="color:#c0392b;">⚠ Split hours exceed booking duration by ' + Math.abs(rem).toFixed(2) + 'h</span>';
+          matchMsg.innerHTML = '<span style="color:var(--danger);">⚠ Split hours exceed booking duration by ' + Math.abs(rem).toFixed(2) + 'h</span>';
         } else {
           var allFilled = true;
           extraRows.querySelectorAll('.split-extra-hrs').forEach(function(inp) {
             if (!inp.value || parseFloat(inp.value) <= 0) allFilled = false;
           });
           matchMsg.innerHTML = (allFilled && rem !== null && rem >= -0.005)
-            ? '<span style="color:#2a7a3b;">✓ Hours match booking duration</span>'
-            : '<span style="color:#8a93a0;">Enter hours for each split pilot</span>';
+            ? '<span style="color:var(--success);">✓ Hours match booking duration</span>'
+            : '<span style="color:var(--text-3);">Enter hours for each split pilot</span>';
         }
       }
 
@@ -485,7 +485,7 @@
         <div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.65rem;flex-wrap:wrap;">
           <div>
             {% if fc.is_paid %}{% if fc_invoices %}<span class="paid-badge">Invoice paid {{ fc.paid_at|date:"j M Y" }}</span>{% else %}<span class="paid-badge">Paid by {{ fc.get_payment_method_display }} · {{ fc.paid_at|date:"j M H:i" }}</span>{% endif %}
-            {% elif fc_invoices %}<span class="paid-badge" style="background:#d1fae5;color:#065f46;">Invoice issued · {% for inv in fc_invoices %}{{ inv.display_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
+            {% elif fc_invoices %}<span class="paid-badge" style="background:var(--success-bg);color:var(--success-text);">Invoice issued · {% for inv in fc_invoices %}{{ inv.display_number }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>{% endif %}
           </div>
           {% if club_member.is_admin and not fc_invoices %}{% if not fc.amount_paid or fc.amount_paid == 0 and not fc_any_invoice_paid %}
           <form method="post" style="display:inline;" data-confirm="Void flights? All charge items will be deleted and the booking will return to departed.">
@@ -500,7 +500,7 @@
         </div>
         {% endif %}
         {% if fc.departed_with_instructor and fc.departed_with_instructor != booking.instructor %}
-        <div class="notice" style="margin-bottom:.6rem;font-size:.82rem;background:#f0f4ff;border-color:#c7d4f5;color:#2b333d;">
+        <div class="notice" style="margin-bottom:.6rem;font-size:.82rem;background:var(--info-bg);border-color:var(--info-border);color:var(--info-text);">
           Departed with instructor <strong>{{ fc.departed_with_instructor.get_full_name }}</strong> — instructor changed to {{ booking.instructor.get_full_name|default:"none" }} mid-flight.
         </div>
         {% endif %}
@@ -514,20 +514,20 @@
           <strong>Charge waived</strong> — {{ fc.waive_reason }}
         </div>
         {% endif %}
-        <div style="font-size:.95rem;font-weight:700;color:#1f2933;margin-bottom:.5rem;">Charges</div>
+        <div style="font-size:.95rem;font-weight:700;color:var(--text-1);margin-bottom:.5rem;">Charges</div>
         <table class="ch-table">
           <tbody>
             {% if fc_segments %}
               {% for seg in fc_segments %}
-              <tr style="background:#f4f6f8;">
-                <td style="font-size:.83rem;font-weight:600;color:#2b333d;padding:.35rem .5rem;">{{ seg.member.user.get_full_name }}</td>
-                <td style="font-size:.78rem;color:#8a93a0;padding:.35rem .5rem;white-space:nowrap;">{{ seg.hours }}h</td>
+              <tr style="background:var(--surface-2);">
+                <td style="font-size:.83rem;font-weight:600;color:var(--text-1);padding:.35rem .5rem;">{{ seg.member.user.get_full_name }}</td>
+                <td style="font-size:.78rem;color:var(--text-3);padding:.35rem .5rem;white-space:nowrap;">{{ seg.hours }}h</td>
                 <td style="text-align:right;font-weight:700;padding:.35rem .5rem;">${{ seg.charge_total|currency }}</td>
                 <td style="width:28px;"></td>
               </tr>
               {% for item in seg.segment_charges %}
               <tr>
-                <td style="color:#8a93a0;font-size:.78rem;padding-left:.9rem;white-space:nowrap;">{% if item.item_type == 'one_off' %}Sundry{% endif %}</td>
+                <td style="color:var(--text-3);font-size:.78rem;padding-left:.9rem;white-space:nowrap;">{% if item.item_type == 'one_off' %}Sundry{% endif %}</td>
                 <td style="font-size:.82rem;">{{ item.description }}</td>
                 <td style="text-align:right;">${{ item.amount|currency }}</td>
                 <td style="width:28px;">{% if not fc.is_paid and not fc_invoices and item.item_type == 'landing' or not fc.is_paid and not fc_invoices and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
@@ -536,12 +536,12 @@
               {% endfor %}
               {% if charge_items %}
               <tr>
-                <td colspan="4" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5b6573;background:#f4f6f8;padding:.35rem .5rem;border-bottom:none;">Pro-rated charges</td>
+                <td colspan="4" style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-2);background:var(--surface-2);padding:.35rem .5rem;border-bottom:none;">Pro-rated charges</td>
               </tr>
               {% endif %}
               {% for item in charge_items %}
               <tr>
-                <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">{% if item.item_type == 'one_off' %}Sundry{% endif %}</td>
+                <td style="color:var(--text-3);font-size:.78rem;white-space:nowrap;">{% if item.item_type == 'one_off' %}Sundry{% endif %}</td>
                 <td style="font-size:.82rem;">{{ item.description }}</td>
                 <td style="text-align:right;">${{ item.amount|currency }}</td>
                 <td style="width:28px;">{% if not fc.is_paid and not fc_invoices and item.item_type == 'landing' or not fc.is_paid and not fc_invoices and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
@@ -551,7 +551,7 @@
             {% for item in charge_items %}
             <tr>
               {% if item.item_type == 'one_off' %}
-              <td style="color:#8a93a0;font-size:.78rem;white-space:nowrap;">Sundry</td>
+              <td style="color:var(--text-3);font-size:.78rem;white-space:nowrap;">Sundry</td>
               <td style="font-size:.82rem;">{{ item.description }}</td>
               {% else %}
               <td colspan="2" style="font-size:.82rem;padding:.38rem .5rem;">{{ item.description }}</td>
@@ -560,7 +560,7 @@
               <td style="width:28px;">{% if not fc.is_paid and not fc_invoices and item.item_type == 'landing' or not fc.is_paid and not fc_invoices and item.item_type == 'one_off' %}<form method="post" style="display:inline;" data-confirm="Remove this charge?">{% csrf_token %}<input type="hidden" name="action" value="delete_charge"><input type="hidden" name="item_id" value="{{ item.id }}"><button type="submit" class="del-btn">×</button></form>{% endif %}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" style="color:#8a93a0;font-size:.85rem;padding:.6rem;">No charges added yet.</td></tr>
+            <tr><td colspan="4" style="color:var(--text-3);font-size:.85rem;padding:.6rem;">No charges added yet.</td></tr>
             {% endfor %}
             {% endif %}
           </tbody>
@@ -625,7 +625,7 @@
               <label class="flabel">Description<input type="text" id="lf-custom-desc" name="description" class="finput" placeholder="e.g. Full stop landing" required></label>
             </div>
             {% else %}
-            <p style="font-size:.85rem;color:#8a93a0;padding:.4rem 0 .2rem;">No aerodromes configured. <a href="{% url 'core:manage_aerodromes' club.slug %}" data-overlay>Configure →</a></p>
+            <p style="font-size:.85rem;color:var(--text-3);padding:.4rem 0 .2rem;">No aerodromes configured. <a href="{% url 'core:manage_aerodromes' club.slug %}" data-overlay>Configure →</a></p>
             {% endif %}
           </form>
         </details>
@@ -669,7 +669,7 @@
       <!-- Payment panel — only when no invoice issued -->
       {% if not fc_invoices %}
       <div style="margin-top:1rem;">
-        <div style="font-size:.95rem;font-weight:700;color:#1f2933;margin-bottom:.7rem;">Outstanding Charges</div>
+        <div style="font-size:.95rem;font-weight:700;color:var(--text-1);margin-bottom:.7rem;">Outstanding Charges</div>
         {% if not fc.is_paid or overpayment %}
 
           {% if fc_payments_pending or fc_segments_pending %}
@@ -685,7 +685,7 @@
                 <div>
                   <input type="hidden" name="segment_member_0" value="{{ fc_segments_primary.member.id }}">
                   <div style="font-size:.85rem;font-weight:500;">{{ fc_segments_primary.member.user.get_full_name }}</div>
-                  <div style="font-size:.74rem;color:#8a93a0;">${{ fc_segments_primary.charge_total|currency }} hire</div>
+                  <div style="font-size:.74rem;color:var(--text-3);">${{ fc_segments_primary.charge_total|currency }} hire</div>
                 </div>
                 <select name="segment_method_0" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
@@ -695,17 +695,17 @@
                 <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
                   <input type="number" id="seg-primary-amt" name="segment_amount_0"
                          step="0.01" min="0" class="finput money-input"
-                         style="width:80px;background:#f0f4ff;" tabindex="-1"
+                         style="width:80px;" tabindex="-1"
                          value="{{ fc_segments_primary.suggested_payment }}" readonly>
                 </div>
               </div>
               {% endif %}
               {% for seg in fc_segments_secondary %}
-              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;">
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid var(--border);">
                 <div>
                   <input type="hidden" name="segment_member_{{ forloop.counter }}" value="{{ seg.member.id }}">
                   <div style="font-size:.85rem;font-weight:500;">{{ seg.member.user.get_full_name }}</div>
-                  <div style="font-size:.74rem;color:#8a93a0;">${{ seg.charge_total|currency }} hire</div>
+                  <div style="font-size:.74rem;color:var(--text-3);">${{ seg.charge_total|currency }} hire</div>
                 </div>
                 <select name="segment_method_{{ forloop.counter }}" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
@@ -720,7 +720,7 @@
               </div>
               {% endfor %}
             </div>
-            <p id="mp-alloc-status" style="font-size:.78rem;color:#c0392b;margin:0 0 .4rem;display:none;"></p>
+            <p id="mp-alloc-status" style="font-size:.78rem;color:var(--danger);margin:0 0 .4rem;display:none;"></p>
             <button type="submit" id="mp-submit-btn" class="btn">Record all payments</button>
           </form>
           <script>
@@ -756,10 +756,10 @@
             <input type="hidden" name="action" value="record_all_payees">
             <div style="margin-bottom:.5rem;">
               {% for fp in fc_payments_pending %}
-              <div style="padding:.5rem .7rem;{% if not forloop.last %}border-bottom:1px solid #f0f2f4;{% endif %}display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:.5rem;">
+              <div style="padding:.5rem .7rem;{% if not forloop.last %}border-bottom:1px solid var(--border-subtle);{% endif %}display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:.5rem;">
                 <div style="font-size:.85rem;font-weight:500;">{{ fp.member.user.get_full_name }}</div>
                 {% if fp.flight_invoice and fp.flight_invoice.status != 'void' %}
-                <span style="font-size:.77rem;color:#8a93a0;grid-column:2/-1;">Via invoice {{ fp.flight_invoice.display_number }}</span>
+                <span style="font-size:.77rem;color:var(--text-3);grid-column:2/-1;">Via invoice {{ fp.flight_invoice.display_number }}</span>
                 {% else %}
                 <select name="method_{{ fp.id }}" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos"{% if fp.method == "eftpos" %} selected{% endif %}>EFTPOS</option>
@@ -780,7 +780,7 @@
               </div>
               {% endfor %}
             </div>
-            <p id="ra-status" style="font-size:.78rem;color:#c0392b;margin:0 0 .4rem;display:none;"></p>
+            <p id="ra-status" style="font-size:.78rem;color:var(--danger);margin:0 0 .4rem;display:none;"></p>
             <button type="submit" id="ra-submit-btn" class="btn">Record all payments</button>
           </form>
           <script>
@@ -820,15 +820,15 @@
           </script>
           {% endif %}
           {% if not fc.is_paid %}
-          <p style="font-size:.77rem;color:#8a93a0;margin:.5rem 0 .3rem;">${{ balance_owing|currency }} remaining on this flight</p>
+          <p style="font-size:.77rem;color:var(--text-3);margin:.5rem 0 .3rem;">${{ balance_owing|currency }} remaining on this flight</p>
           {% endif %}
 
           {% elif not fc.is_paid %}
           {% if fc_invoices and not fc.is_paid %}
           <!-- Invoice(s) exist — direct to invoice(s) for payment -->
-          <div class="notice" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;margin-bottom:.5rem;">
+          <div class="notice" style="background:var(--info-bg);border-color:var(--info-border);color:var(--info-text);margin-bottom:.5rem;">
             Payment is via invoice — record payment against the invoice, not the booking.
-            {% for inv in fc_invoices %}<a href="{% url 'core:invoice_detail' club.slug inv.id %}" style="color:#1e40af;">{{ inv.display_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+            {% for inv in fc_invoices %}<a href="{% url 'core:invoice_detail' club.slug inv.id %}" style="color:var(--info-text);">{{ inv.display_number }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
           </div>
           {% elif fc_segments %}
           <!-- Split flight — unified contributors panel, pre-populated from segments -->
@@ -837,8 +837,8 @@
             <input type="hidden" name="action" value="record_segment_payments">
 
             <div style="display:flex;justify-content:space-between;align-items:center;font-size:.85rem;font-weight:600;margin-bottom:.45rem;">
-              <span style="color:#2b333d;">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
-              <span style="color:#2b333d;">${{ total|currency }}</span>
+              <span style="color:var(--text-1);">{{ booking.aircraft.registration }} · {{ booking.scheduled_start|date:"j M" }}</span>
+              <span style="color:var(--text-1);">${{ total|currency }}</span>
             </div>
 
             <div style="margin-bottom:.45rem;">
@@ -848,7 +848,7 @@
                 <div>
                   <input type="hidden" name="segment_member_0" value="{{ fc_segments_primary.member.id }}">
                   <div style="font-size:.85rem;font-weight:500;">{{ fc_segments_primary.member.user.get_full_name }}</div>
-                  <div style="font-size:.74rem;color:#8a93a0;">${{ fc_segments_primary.charge_total|currency }} hire</div>
+                  <div style="font-size:.74rem;color:var(--text-3);">${{ fc_segments_primary.charge_total|currency }} hire</div>
                 </div>
                 <select name="segment_method_0" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
@@ -858,18 +858,18 @@
                 <div class="money-wrap" style="margin-top:0;"><span class="money-sym">$</span>
                   <input type="number" id="seg-primary-amt" name="segment_amount_0"
                          step="0.01" min="0" class="finput money-input"
-                         style="width:80px;background:#f0f4ff;" tabindex="-1"
+                         style="width:80px;" tabindex="-1"
                          value="{{ fc_segments_primary.suggested_payment }}" readonly>
                 </div>
               </div>
               {% endif %}
 
               {% for seg in fc_segments_secondary %}
-              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid #f0f2f4;">
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.5rem;padding:.5rem .7rem;border-top:1px solid var(--border);">
                 <div>
                   <input type="hidden" name="segment_member_{{ forloop.counter }}" value="{{ seg.member.id }}">
                   <div style="font-size:.85rem;font-weight:500;">{{ seg.member.user.get_full_name }}</div>
-                  <div style="font-size:.74rem;color:#8a93a0;">${{ seg.charge_total|currency }} hire</div>
+                  <div style="font-size:.74rem;color:var(--text-3);">${{ seg.charge_total|currency }} hire</div>
                 </div>
                 <select name="segment_method_{{ forloop.counter }}" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
                   <option value="eftpos">EFTPOS</option>
@@ -887,7 +887,7 @@
 
             </div>
 
-            <p id="mp-alloc-status" style="font-size:.78rem;color:#c0392b;margin:0 0 .4rem;display:none;"></p>
+            <p id="mp-alloc-status" style="font-size:.78rem;color:var(--danger);margin:0 0 .4rem;display:none;"></p>
             <button type="submit" id="mp-submit-btn" class="btn">Record payments</button>
           </form>
           <script>
@@ -933,7 +933,7 @@
                   </td>
                   <td style="font-size:.85rem;">
                     <span style="font-weight:500;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M Y" }}{% if item.booking.flight_type %} · {{ item.booking.flight_type.name }}{% endif %}</span>
-                    {% if item.overdue_invoice %}<div style="font-size:.74rem;color:#b06800;margin-top:.1rem;">Invoice overdue · {{ item.overdue_invoice.display_number }}</div>{% endif %}
+                    {% if item.overdue_invoice %}<div style="font-size:.74rem;color:var(--warning-text);margin-top:.1rem;">Invoice overdue · {{ item.overdue_invoice.display_number }}</div>{% endif %}
                   </td>
                   <td style="text-align:right;width:90px;font-variant-numeric:tabular-nums;"><input type="hidden" name="other_amount_{{ item.id }}" class="mp-amount" value="{{ item.total_charge }}">${{ item.total_charge|currency }}</td>
                   <td style="width:28px;"></td>
@@ -944,7 +944,7 @@
                   <td style="width:24px;padding:.38rem .2rem .38rem .5rem;vertical-align:middle;">
                     <input type="checkbox" name="other_fc_ids" value="{{ item.id }}" class="mp-check" checked style="accent-color:var(--primary);width:15px;height:15px;display:block;">
                   </td>
-                  <td style="font-size:.85rem;font-weight:500;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M Y" }}{% if item.booking.flight_type %} · {{ item.booking.flight_type.name }}{% endif %} <span style="color:#b06800;font-size:.78rem;font-weight:400;">(partial)</span></td>
+                  <td style="font-size:.85rem;font-weight:500;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M Y" }}{% if item.booking.flight_type %} · {{ item.booking.flight_type.name }}{% endif %} <span style="color:var(--warning-text);font-size:.78rem;font-weight:400;">(partial)</span></td>
                   <td style="text-align:right;width:90px;font-variant-numeric:tabular-nums;"><input type="hidden" name="other_amount_{{ item.id }}" class="mp-amount" value="{{ item.balance_owing }}">${{ item.balance_owing|currency }}</td>
                   <td style="width:28px;"></td>
                 </tr>
@@ -955,8 +955,8 @@
                     <input type="checkbox" name="include_arrears" id="mp-arrears-chk" value="1" checked style="accent-color:var(--primary);width:15px;height:15px;display:block;">
                     <input type="hidden" name="arrears_amount" id="mp-arrears-amt" value="{{ member_account.balance|floatformat:2|slice:'1:' }}">
                   </td>
-                  <td style="font-size:.85rem;"><label for="mp-arrears-chk" style="font-weight:500;cursor:pointer;color:#92400e;">Account deficit (credit overdraft)</label></td>
-                  <td style="text-align:right;font-weight:700;color:#92400e;width:90px;font-variant-numeric:tabular-nums;">${{ member_account.balance|currency|slice:'1:' }}</td>
+                  <td style="font-size:.85rem;"><label for="mp-arrears-chk" style="font-weight:500;cursor:pointer;color:var(--warning-text);">Account deficit (credit overdraft)</label></td>
+                  <td style="text-align:right;font-weight:700;color:var(--warning-text);width:90px;font-variant-numeric:tabular-nums;">${{ member_account.balance|currency|slice:'1:' }}</td>
                   <td style="width:28px;"></td>
                 </tr>
                 {% endif %}
@@ -964,7 +964,7 @@
               <tfoot>
                 <tr>
                   <td colspan="2" class="ch-total-label" style="padding:.5rem .5rem;font-size:.83rem;">Total</td>
-                  <td id="mp-outstanding-subtotal" style="text-align:right;padding:.5rem .5rem;width:90px;font-size:.9rem;font-weight:700;color:#2b333d;">${{ other_total|currency }}</td>
+                  <td id="mp-outstanding-subtotal" style="text-align:right;padding:.5rem .5rem;width:90px;font-size:.9rem;font-weight:700;color:var(--text-1);">${{ other_total|currency }}</td>
                   <td style="width:28px;"></td>
                 </tr>
               </tfoot>
@@ -977,14 +977,14 @@
             <span id="mp-grand-total" style="display:none;">${{ balance_owing|currency }}</span>
             {% endif %}
 
-            <div style="font-size:.95rem;font-weight:700;color:#1f2933;margin:.8rem 0 .5rem;">Payees</div>
+            <div style="font-size:.95rem;font-weight:700;color:var(--text-1);margin:.8rem 0 .5rem;">Payees</div>
             <div id="contributors-panel">
               <!-- Primary: booking member — amount auto-adjusted by JS -->
-              <div style="display:grid;grid-template-columns:1fr auto auto 28px;align-items:center;gap:.5rem;padding:.4rem 0;border-top:1px solid #eef1f4;">
+              <div style="display:grid;grid-template-columns:1fr auto auto 28px;align-items:center;gap:.5rem;padding:.4rem 0;border-top:1px solid var(--border);">
                 <div>
                   <span style="font-size:.85rem;font-weight:500;">{{ booking.member.user.get_full_name }}</span>
                   {% if member_account and member_account.balance > 0 %}
-                  <span style="font-size:.78rem;color:#2a7a3b;margin-left:.45rem;">${{ member_account.balance|currency }} avail</span>
+                  <span style="font-size:.78rem;color:var(--success);margin-left:.45rem;">${{ member_account.balance|currency }} avail</span>
                   {% endif %}
                 </div>
                 <select name="payment_method_0" class="finput" style="font-size:.82rem;padding:.3rem .5rem;width:auto;">
@@ -993,12 +993,12 @@
                   <option value="credit">Account balance</option>
                 </select>
                 <input type="hidden" id="contrib-amount-0" name="contributor_amount_0" value="{{ balance_owing|add:other_total }}">
-                <span id="contrib-amount-0-pill" style="display:inline-block;background:#e8f4ed;color:#1a6b3a;font-weight:700;font-size:.9rem;padding:.3rem .75rem;border-radius:20px;white-space:nowrap;">${{ balance_owing|add:other_total|floatformat:2 }}</span>
+                <span id="contrib-amount-0-pill" style="display:inline-block;background:var(--success-bg);color:var(--success-text);font-weight:700;font-size:.9rem;padding:.3rem .75rem;border-radius:20px;white-space:nowrap;">${{ balance_owing|add:other_total|floatformat:2 }}</span>
                 <div></div>
               </div>
             </div>
 
-            <p id="split-method-note" style="font-size:.75rem;color:#8a93a0;margin:0 0 .4rem;display:none;">
+            <p id="split-method-note" style="font-size:.75rem;color:var(--text-3);margin:0 0 .4rem;display:none;">
               Split payments accept EFTPOS, cash, or account balance only. A receipt invoice can be generated for each contributor once payment is recorded.
             </p>
             <p id="mp-alloc-status" style="font-size:.78rem;margin:0 0 .4rem;display:none;"></p>
@@ -1093,7 +1093,7 @@
               var idx = payeeIdx;
               var row = document.createElement('div');
               row.className = 'contrib-row-added';
-              row.style.cssText = 'display:grid;grid-template-columns:1fr auto auto 28px;align-items:center;gap:.5rem;padding:.4rem 0;border-top:1px solid #f0f2f4;';
+              row.style.cssText = 'display:grid;grid-template-columns:1fr auto auto 28px;align-items:center;gap:.5rem;padding:.4rem 0;border-top:1px solid var(--border-subtle);';
               var memberWrap = document.createElement('div');
               memberWrap.style.cssText = 'min-width:0;overflow:hidden;';
               var memberSel = document.createElement('select');
@@ -1193,7 +1193,7 @@
             <strong>Overpayment ${{ overpayment|currency }}</strong> — ${{ fc.amount_paid|currency }} collected, ${{ total|currency }} charged.
           </div>
           <details style="margin-top:.4rem;">
-            <summary style="font-size:.82rem;cursor:pointer;color:#5b6573;">Issue refund</summary>
+            <summary style="font-size:.82rem;cursor:pointer;color:var(--text-2);">Issue refund</summary>
             <form method="post" style="margin-top:.5rem;">
               {% csrf_token %}
               <input type="hidden" name="action" value="record_refund">
@@ -1218,18 +1218,18 @@
 
         <!-- Invoice / receipts panel — unified per-contributor view -->
         {% if fc_payments_paid or not fc.is_paid %}
-        <div style="margin-top:.7rem;border-top:1px solid #eef1f4;padding-top:.7rem;">
+        <div style="margin-top:.7rem;border-top:1px solid var(--border);padding-top:.7rem;">
           {% if fc_payments_paid %}
           {# Paid: per-contributor rows with Reverse + Receipt #}
-          <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#5b6573;margin:0 0 .4rem;">Payments received</p>
+          <p style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);margin:0 0 .4rem;">Payments received</p>
           <table style="width:100%;border-collapse:collapse;font-size:.8rem;">
             <tbody>
             {% for fp in fc_payments_paid %}
             {% with fp_inv=fc_invoice_by_member|dict_get:fp.member_id %}
-            <tr style="border-bottom:1px solid #f0f2f4;">
+            <tr style="border-bottom:1px solid var(--border-subtle);">
               <td style="padding:.3rem 0;">
                 <span style="font-weight:500;">{{ fp.member.user.get_full_name }}</span>
-                <span style="color:#8a93a0;margin-left:.3rem;">{{ fp.get_method_display }} · ✓ {{ fp.paid_at|date:"j M H:i" }}</span>
+                <span style="color:var(--text-3);margin-left:.3rem;">{{ fp.get_method_display }} · ✓ {{ fp.paid_at|date:"j M H:i" }}</span>
                 {% if actor.is_admin and not fp_inv or actor.is_admin and fp_inv.status == 'void' %}
                 {% if fp.member_id == booking.member_id and batch_session_payments or fp.member_id == booking.member_id and arrears_clearance_at %}
                 <form method="post" data-confirm="Reverse {{ fp.member.user.get_short_name }}'s full payment session (${{ batch_session_total|floatformat:2 }} total)? This will also reverse all charges shown under 'Also settled in this session'. This cannot be undone." style="margin:0;display:inline;margin-left:.4rem;">
@@ -1260,12 +1260,12 @@
             {% endwith %}
             {% endfor %}
             {% if batch_session_payments or arrears_clearance_at %}
-            <tr><td colspan="3" style="padding:.25rem 0 .1rem;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#adb5bd;">Also settled in this session</td></tr>
+            <tr><td colspan="3" style="padding:.25rem 0 .1rem;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);">Also settled in this session</td></tr>
             {% for sp in batch_session_payments %}
-            <tr style="border-bottom:1px solid #f0f2f4;">
+            <tr style="border-bottom:1px solid var(--border-subtle);">
               <td style="padding:.3rem 0;">
                 <span style="font-weight:500;white-space:nowrap;">{{ sp.completion.booking.aircraft.registration }} · {{ sp.completion.booking.scheduled_start|date:"j M Y" }}</span>
-                <span style="color:#8a93a0;margin-left:.3rem;">{{ sp.get_method_display }} · ✓ {{ sp.paid_at|date:"j M H:i" }}</span>
+                <span style="color:var(--text-3);margin-left:.3rem;">{{ sp.get_method_display }} · ✓ {{ sp.paid_at|date:"j M H:i" }}</span>
               </td>
               <td style="text-align:right;white-space:nowrap;padding:.3rem .5rem .3rem .75rem;font-variant-numeric:tabular-nums;width:90px;">${{ sp.amount|floatformat:2 }}</td>
               <td style="width:28px;"></td>
@@ -1275,7 +1275,7 @@
             <tr>
               <td style="padding:.3rem 0;">
                 <span style="font-weight:500;">Account deficit collected</span>
-                <span style="color:#8a93a0;margin-left:.3rem;">{{ arrears_clearance_at.get_payment_method_display }} · ✓ {{ arrears_clearance_at.created_at|date:"j M H:i" }}</span>
+                <span style="color:var(--text-3);margin-left:.3rem;">{{ arrears_clearance_at.get_payment_method_display }} · ✓ {{ arrears_clearance_at.created_at|date:"j M H:i" }}</span>
               </td>
               <td style="text-align:right;white-space:nowrap;padding:.3rem .5rem .3rem .75rem;font-variant-numeric:tabular-nums;width:90px;">${{ arrears_clearance_at.amount|floatformat:2 }}</td>
               <td style="width:28px;"></td>
@@ -1285,24 +1285,24 @@
             </tbody>
             <tfoot>
               <tr>
-                <td class="ch-total-label" style="padding:.65rem 0;border-top:2px solid #e3e6ea;">Total received{% if fc.is_paid %} <span style="font-size:.78rem;font-weight:500;color:#2a7a3b;">✓ Paid in full</span>{% endif %}</td>
-                <td class="ch-total-amount" style="text-align:right;padding:.65rem .5rem .65rem .75rem;width:90px;border-top:2px solid #e3e6ea;color:{% if fc.is_paid %}#2a7a3b{% else %}#b06800{% endif %};">${{ batch_session_total|currency }}</td>
+                <td class="ch-total-label" style="padding:.65rem 0;border-top:2px solid #e3e6ea;">Total received{% if fc.is_paid %} <span style="font-size:.78rem;font-weight:500;color:var(--success);">✓ Paid in full</span>{% endif %}</td>
+                <td class="ch-total-amount" style="text-align:right;padding:.65rem .5rem .65rem .75rem;width:90px;border-top:2px solid #e3e6ea;color:{% if fc.is_paid %}var(--success){% else %}var(--warning-text){% endif %};">${{ batch_session_total|currency }}</td>
                 <td style="width:28px;border-top:2px solid #e3e6ea;"></td>
               </tr>
             </tfoot>
           </table>
           {% if not fc.is_paid and balance_owing %}
-          <div style="text-align:right;font-size:.73rem;color:#b06800;margin-top:.1rem;">${{ balance_owing|currency }} of ${{ total|currency }} remaining</div>
+          <div style="text-align:right;font-size:.73rem;color:var(--warning-text);margin-top:.1rem;">${{ balance_owing|currency }} of ${{ total|currency }} remaining</div>
           {% endif %}
           {% if fc.is_paid and actor.is_admin and not fc_invoice_by_member %}
-          <p style="font-size:.76rem;color:#8a93a0;margin:.5rem 0 0;">To add a missed charge: Reverse the payment, add the charge, then re-record payment.</p>
+          <p style="font-size:.76rem;color:var(--text-3);margin:.5rem 0 0;">To add a missed charge: Reverse the payment, add the charge, then re-record payment.</p>
           {% endif %}
           {% else %}
           {# Not yet paid — invoice instead option #}
           <details id="invoice-instead-section">
-            <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;">Invoice instead of direct payment?</summary>
+            <summary style="font-size:.8rem;color:var(--text-3);cursor:pointer;">Invoice instead of direct payment?</summary>
             <div style="margin-top:.4rem;">
-              <p style="font-size:.78rem;color:#8a93a0;margin:0 0 .5rem;">Note: invoices cover flight charges only. Account deficits must be cleared separately by direct payment.{% if fc_segments %} Individual contributors pay their share directly to {{ booking.member.user.first_name }}.{% endif %}</p>
+              <p style="font-size:.78rem;color:var(--text-3);margin:0 0 .5rem;">Note: invoices cover flight charges only. Account deficits must be cleared separately by direct payment.{% if fc_segments %} Individual contributors pay their share directly to {{ booking.member.user.first_name }}.{% endif %}</p>
               {% if total %}
               <form id="issue-invoice-form" method="post" action="{% url 'core:generate_invoice' club.slug booking.id %}">
                 {% csrf_token %}
@@ -1320,15 +1320,15 @@
       </div>{% endif %}<!-- /payment panel -->
 
       {% if club_member.is_admin and fc %}
-      <div style="border-top:1px solid #eef1f4;margin-top:.8rem;padding-top:.6rem;display:flex;flex-direction:column;gap:.3rem;">
+      <div style="border-top:1px solid var(--border);margin-top:.8rem;padding-top:.6rem;display:flex;flex-direction:column;gap:.3rem;">
 
         {% if not fc.charge_waived and not fc.amount_paid %}
         <details>
-          <summary style="font-size:.78rem;cursor:pointer;color:#8a93a0;user-select:none;">Waive charge</summary>
+          <summary style="font-size:.78rem;cursor:pointer;color:var(--text-3);user-select:none;">Waive charge</summary>
           <form method="post" style="margin-top:.6rem;" data-confirm="Waive the full charge for this flight? This cannot be undone and all charge items will be deleted.">
             {% csrf_token %}
             <input type="hidden" name="action" value="waive_charge">
-            <p style="font-size:.76rem;color:#8a93a0;margin:0 0 .6rem;">Use for aborted flights or aircraft faults where the club decides not to charge. Meter readings remain unchanged.</p>
+            <p style="font-size:.76rem;color:var(--text-3);margin:0 0 .6rem;">Use for aborted flights or aircraft faults where the club decides not to charge. Meter readings remain unchanged.</p>
             <label class="flabel">Reason <span class="req">*</span>
               <input type="text" name="waive_reason" class="finput" placeholder="e.g. Aircraft fault — engine rough after start, flight aborted" required>
             </label>
@@ -1346,74 +1346,72 @@
 </div>
 
 <style>
-  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:var(--text-3);text-decoration:none;margin-bottom:1rem;}
   .back-link:hover{color:var(--banner);}
 
   .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;}
-  .notice.ok{background:#eaf6ec;color:#216c2a;}
-  .notice.err{background:#fff0f0;color:#c0392b;}
-  .notice.warn{background:#fff8e6;color:#7a5800;}
+  .notice.ok{background:var(--success-bg);color:var(--success-text);}
+  .notice.err{background:var(--danger-bg);color:var(--danger);}
+  .notice.warn{background:var(--warning-bg);color:var(--warning-text);}
 
   .sep{color:#d0d5dd;margin:0 .2rem;}
 
   /* base_inline.html's <style> block renders after this content block, so !important is needed to win */
   .status-chip.returned,.status-chip.status-returned{background:#eef2ff!important;color:#4338ca!important;}
   /* status-chip colours defined in base.html */
-  .warn-chip{font-size:.72rem;background:#fee2e2;color:#c0392b;padding:.1rem .4rem;border-radius:4px;margin-left:.3rem;}
+  .warn-chip{font-size:.72rem;background:var(--danger-bg);color:var(--danger);padding:.1rem .4rem;border-radius:4px;margin-left:.3rem;}
 
-  .section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;}
+  .section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;}
 
-  .eligibility-panel{border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:1rem;font-size:.84rem;}
-  .elig-row{display:flex;align-items:baseline;gap:.5rem;padding:.38rem .7rem;border-bottom:1px solid #f1f3f5;}
+  .eligibility-panel{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1rem;font-size:.84rem;}
+  .elig-row{display:flex;align-items:baseline;gap:.5rem;padding:.38rem .7rem;border-bottom:1px solid var(--border-subtle);}
   .elig-row:last-child{border-bottom:none;}
   .elig-icon{font-size:.8rem;font-weight:700;flex-shrink:0;width:14px;text-align:center;}
-  .elig-label{font-weight:600;flex-shrink:0;min-width:90px;color:#2b333d;}
-  .elig-msg{color:#5b6573;}
-  .elig-ok{background:#f6fbf7;}.elig-ok .elig-icon{color:#2a7a3b;}.elig-ok .elig-msg{color:#5b6573;}
-  .elig-warn{background:#fffdf0;}.elig-warn .elig-icon{color:#9a6700;}.elig-warn .elig-msg{color:#5b6573;}
-  .elig-block{background:#f8f9fb;}.elig-block .elig-icon{color:#c0392b;}.elig-block .elig-msg{color:#5b6573;}
-  .elig-info{background:#f8f9fa;}.elig-info .elig-icon{color:#8a93a0;}.elig-info .elig-msg{color:#6b7280;}
-  .readiness-section-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8a93a0;margin-bottom:.3rem;}
-  .checkout-info-box{border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;margin-bottom:1rem;padding:.7rem .85rem .5rem;}
-  .checkout-info-lbl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin-bottom:.5rem;}
-  .checkout-ack{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:#374151;margin:.5rem 0 .75rem;cursor:pointer;}
+  .elig-label{font-weight:600;flex-shrink:0;min-width:90px;color:var(--text-1);}
+  .elig-msg{color:var(--text-2);}
+  .elig-ok{background:var(--success-bg);}.elig-ok .elig-icon{color:var(--success);}.elig-ok .elig-msg{color:var(--text-2);}
+  .elig-warn{background:var(--warning-bg);}.elig-warn .elig-icon{color:var(--warning-text);}.elig-warn .elig-msg{color:var(--text-2);}
+  .elig-block{background:var(--surface-2);}.elig-block .elig-icon{color:var(--danger);}.elig-block .elig-msg{color:var(--text-2);}
+  .elig-info{background:var(--surface-2);}.elig-info .elig-icon{color:var(--text-3);}.elig-info .elig-msg{color:var(--text-3);}
+  .readiness-section-lbl{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:.3rem;}
+  .checkout-info-box{border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:1rem;padding:.7rem .85rem .5rem;}
+  .checkout-info-lbl{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:.5rem;}
+  .checkout-ack{display:flex;align-items:center;gap:.5rem;font-size:.85rem;color:var(--text-2);margin:.5rem 0 .75rem;cursor:pointer;}
   .checkout-ack input[type=checkbox]{width:15px;height:15px;cursor:pointer;flex-shrink:0;}
-  .sh2{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 .9rem;}
-
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .sh2{font-size:.95rem;font-weight:650;color:var(--text-1);margin:0 0 .9rem;}
 
   .ch-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:.7rem;}
-  .ch-table td{padding:.38rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ch-table td{padding:.38rem .5rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .ch-table tfoot td{border-top:2px solid #e3e6ea;border-bottom:none;}
-  .del-btn{background:none;border:none;color:#c0392b;cursor:pointer;font-size:1rem;line-height:1;padding:0 .3rem;}
+  .del-btn{background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;line-height:1;padding:0 .3rem;}
 
-  .paid-badge{font-size:.75rem;font-weight:500;color:#2a7a3b;background:#e6f4ea;padding:.2rem .6rem;border-radius:10px;}
+  .paid-badge{font-size:.75rem;font-weight:500;color:var(--success);background:var(--success-bg);padding:.2rem .6rem;border-radius:10px;}
 
   .add-wrap{flex-shrink:0;}
-  .add-wrap[open]{flex-basis:100%;border:1px solid #e3e6ea;border-radius:7px;background:#fafbfc;}
+  .add-wrap[open]{flex-basis:100%;border:1px solid var(--border);border-radius:7px;background:var(--surface-2);}
   .add-toggle{cursor:pointer;font-size:.78rem;color:var(--primary);font-weight:600;list-style:none;padding:.2rem .55rem;border:1px solid var(--primary);border-radius:5px;display:inline-flex;align-items:center;}
   .add-toggle::-webkit-details-marker{display:none;}
-  .add-wrap[open] .add-toggle{display:block;border:none;border-bottom:1px solid #e3e6ea;border-radius:0;padding:.35rem .7rem;margin-bottom:.2rem;}
+  .add-wrap[open] .add-toggle{display:block;border:none;border-bottom:1px solid var(--border);border-radius:0;padding:.35rem .7rem;margin-bottom:.2rem;}
   .lf-row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;}
   .lf-add-btn{flex-shrink:0;padding:.42rem .75rem;margin-bottom:.6rem;}
-  .lf-hint{font-size:.8rem;color:#8a93a0;margin:.3rem .7rem .1rem;font-style:italic;}
+  .lf-hint{font-size:.8rem;color:var(--text-3);margin:.3rem .7rem .1rem;font-style:italic;}
 
   .ch-total-row{display:flex;align-items:center;justify-content:space-between;padding:.7rem .5rem;border-top:2px solid #e3e6ea;margin-top:.6rem;}
-  .ch-total-label{font-size:.88rem;font-weight:600;color:#5b6573;}
-  .ch-total-amount{font-size:1.15rem;font-weight:700;color:#1f2933;}
+  .ch-total-label{font-size:.88rem;font-weight:600;color:var(--text-2);}
+  .ch-total-amount{font-size:1.15rem;font-weight:700;color:var(--text-1);}
   /* Two-column grid layouts */
   .ci-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;align-items:start;}
   @media(max-width:700px){.ci-grid{grid-template-columns:1fr;}}
 
-  .decl-overlay{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:150;}
+  .decl-overlay{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:150;}
   .decl-overlay[hidden]{display:none;}
-  .decl-modal{background:#fff;border-radius:12px;width:min(740px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(16,24,40,.25);}
+  .decl-modal{background:var(--surface);border-radius:12px;width:min(740px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 12px 40px rgba(16,24,40,.25);}
 </style>
 
 <!-- Declaration overlay -->
 <div id="decl-overlay" class="decl-overlay" hidden>
   <div class="decl-modal" id="decl-modal-body">
-    <p style="color:#8a93a0;padding:2rem;text-align:center;">Loading…</p>
+    <p style="color:var(--text-3);padding:2rem;text-align:center;">Loading…</p>
   </div>
 </div>
 
@@ -1516,7 +1514,7 @@ window.lfFeeTypeChange = function lfFeeTypeChange(sel) {
 
   window.openDeclOverlay = function(url) {
     overlay.hidden = false;
-    body.innerHTML = '<p style="color:#8a93a0;padding:2rem;text-align:center;">Loading…</p>';
+    body.innerHTML = '<p style="color:var(--text-3);padding:2rem;text-align:center;">Loading…</p>';
     loadDecl(url);
   };
 
@@ -1531,7 +1529,7 @@ window.lfFeeTypeChange = function lfFeeTypeChange(sel) {
       });
       attachDeclForms(url);
     } catch(e) {
-      body.innerHTML = '<p style="color:#c0392b;padding:2rem;text-align:center;">Could not load declaration.</p>';
+      body.innerHTML = '<p style="color:var(--danger);padding:2rem;text-align:center;">Could not load declaration.</p>';
     }
   }
 
@@ -1598,13 +1596,13 @@ if (new URLSearchParams(location.search).get('edit') === '1') {
     var diff = Math.round((sum - flightTotal) * 100) / 100;
     var fmt = function(n) { return n.toFixed(2); };
     if (Math.abs(diff) < 0.01) {
-      label.style.color = '#2a7a3b';
+      label.style.color = 'var(--success)';
       label.textContent = 'Allocations total $' + fmt(sum) + ' — matches flight total ✓';
     } else if (diff > 0) {
-      label.style.color = '#c0392b';
+      label.style.color = 'var(--danger)';
       label.textContent = 'Over-allocated by $' + fmt(diff) + ' (flight total $' + fmt(flightTotal) + ')';
     } else {
-      label.style.color = '#b06800';
+      label.style.color = 'var(--warning-text)';
       label.textContent = '$' + fmt(-diff) + ' unallocated (flight total $' + fmt(flightTotal) + ')';
     }
   }

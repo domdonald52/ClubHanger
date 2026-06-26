@@ -2,10 +2,12 @@
 {% block title %}Vouchers · {{ club.name }}{% endblock %}
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1rem;">Sales</h1>
+  <div class="page-hdr">
+    <h1 class="page-h1">Sales</h1>
+  </div>
   {% include "core/_sales_tabs.html" with active_tab="vouchers" %}
 
-  <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1rem;">Redeeming a voucher credits the member's account. Vouchers can only be used once.</p>
+  <p style="font-size:.82rem;color:var(--text-3);margin:0 0 1rem;">Redeeming a voucher credits the member's account. Vouchers can only be used once.</p>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
     <div>
     <div style="display:flex;gap:.6rem;align-items:center;">
@@ -20,20 +22,20 @@
 
   <table style="width:100%;border-collapse:collapse;font-size:.88rem;">
     <thead>
-      <tr style="border-bottom:2px solid #e3e6ea;">
-        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Code</th>
-        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Description</th>
-        <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Value</th>
-        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Status</th>
-        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Redeemed by</th>
+      <tr style="border-bottom:2px solid var(--border);">
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Code</th>
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Description</th>
+        <th style="padding:.4rem .6rem;text-align:right;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Value</th>
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Status</th>
+        <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Redeemed by</th>
         <th style="padding:.4rem .6rem;"></th>
       </tr>
     </thead>
     <tbody>
       {% for v in vouchers %}
-      <tr style="border-bottom:1px solid #f0f2f4;">
+      <tr style="border-bottom:1px solid var(--border-subtle);">
         <td style="padding:.55rem .6rem;font-family:monospace;font-size:.9rem;font-weight:600;">{{ v.code }}</td>
-        <td style="padding:.55rem .6rem;color:#5b6573;font-size:.85rem;">{{ v.description|default:"—" }}</td>
+        <td style="padding:.55rem .6rem;color:var(--text-2);font-size:.85rem;">{{ v.description|default:"—" }}</td>
         <td style="padding:.55rem .6rem;text-align:right;font-weight:600;">${{ v.value|currency }}</td>
         <td style="padding:.55rem .6rem;">
           {% if v.is_redeemed %}
@@ -52,15 +54,15 @@
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="6" style="padding:2rem;text-align:center;color:#8a93a0;font-size:.88rem;">No vouchers found.</td></tr>
+      <tr><td colspan="6" style="padding:2rem;text-align:center;color:var(--text-3);font-size:.88rem;">No vouchers found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
 
 <!-- Create modal -->
-<div id="create-modal" hidden style="position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500;">
-  <div style="background:#fff;border-radius:10px;width:min(440px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
+<div id="create-modal" hidden style="position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:500;">
+  <div style="background:var(--surface);border-radius:10px;width:min(440px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
       <h2 style="font-size:1rem;font-weight:650;margin:0;">New voucher</h2>
       <button type="button" class="pi-close" onclick="document.getElementById('create-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
@@ -69,7 +71,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="create_voucher">
       {% if voucher_types %}
-      <label class="flabel">Type <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(auto-fills value &amp; description)</span>
+      <label class="flabel">Type <span style="font-size:.78rem;font-weight:400;color:var(--text-3);">(auto-fills value &amp; description)</span>
         <select id="vtype-select" class="finput" onchange="applyVoucherType(this)">
           <option value="">— custom / no type —</option>
           {% for vt in voucher_types %}
@@ -78,16 +80,16 @@
         </select>
       </label>
       {% endif %}
-      <label class="flabel">Code <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(unique, will be uppercased)</span>
+      <label class="flabel">Code <span style="font-size:.78rem;font-weight:400;color:var(--text-3);">(unique, will be uppercased)</span>
         <input type="text" name="code" class="finput" required placeholder="e.g. HARB24-001">
       </label>
       <label class="flabel">Value ($)
         <input type="number" name="value" id="voucher-value" class="finput" min="0" step="0.01" required placeholder="e.g. 250.00">
       </label>
-      <label class="flabel">Description <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(optional)</span>
+      <label class="flabel">Description <span style="font-size:.78rem;font-weight:400;color:var(--text-3);">(optional)</span>
         <input type="text" name="description" id="voucher-desc" class="finput" placeholder="e.g. Harbour Circuit Trial Flight">
       </label>
-      <label class="flabel">Notes <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">(internal)</span>
+      <label class="flabel">Notes <span style="font-size:.78rem;font-weight:400;color:var(--text-3);">(internal)</span>
         <textarea name="notes" class="finput" rows="2"></textarea>
       </label>
       <div style="display:flex;gap:.6rem;justify-content:flex-end;margin-top:1rem;">
@@ -98,13 +100,13 @@
 </div>
 
 <!-- Redeem modal -->
-<div id="redeem-modal" hidden style="position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500;">
-  <div style="background:#fff;border-radius:10px;width:min(400px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
+<div id="redeem-modal" hidden style="position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:500;">
+  <div style="background:var(--surface);border-radius:10px;width:min(400px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
       <h2 style="font-size:1rem;font-weight:650;margin:0;">Redeem voucher</h2>
       <button type="button" class="pi-close" onclick="document.getElementById('redeem-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
-    <p id="redeem-desc" style="font-size:.85rem;color:#5b6573;margin:0 0 1rem;"></p>
+    <p id="redeem-desc" style="font-size:.85rem;color:var(--text-2);margin:0 0 1rem;"></p>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="redeem_voucher">

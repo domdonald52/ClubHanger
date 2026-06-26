@@ -11,7 +11,7 @@
 
   <div style="display:flex;align-items:baseline;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;">
     <h1 style="margin:0;">{{ contact.name }}</h1>
-    <span style="font-size:.82rem;color:#8a93a0;">{% if contact.contact_type %}{{ contact.contact_type.name }}{% endif %}{% if contact.is_organisation %} · <span style="font-weight:600;color:#1a56db;">Organisation</span>{% endif %}</span>
+    <span style="font-size:.82rem;color:var(--text-3);">{% if contact.contact_type %}{{ contact.contact_type.name }}{% endif %}{% if contact.is_organisation %} · <span style="font-weight:600;color:#1a56db;">Organisation</span>{% endif %}</span>
   </div>
 
   {% if error %}<div class="notice err" style="margin-bottom:1rem;">{{ error }}</div>{% endif %}
@@ -24,7 +24,7 @@
 
   <div class="stab-bar" data-managed="1">
     <button class="stab-btn" data-tab="details">Details</button>
-    <button class="stab-btn" data-tab="bookings">Flights <span style="font-size:.75rem;color:#8a93a0;">({{ bookings|length }})</span></button>
+    <button class="stab-btn" data-tab="bookings">Flights <span style="font-size:.75rem;color:var(--text-3);">({{ bookings|length }})</span></button>
   </div>
 
   <!-- Details tab -->
@@ -84,7 +84,7 @@
         <tr>
           <td style="white-space:nowrap;font-size:.84rem;">{{ b.scheduled_start|date:"j M Y" }}</td>
           <td>{{ b.aircraft.registration }}</td>
-          <td style="font-size:.82rem;color:#5b6573;">{{ b.flight_type.name }}</td>
+          <td style="font-size:.82rem;color:var(--text-2);">{{ b.flight_type.name }}</td>
           <td style="font-size:.82rem;">{{ b.member.user.get_full_name }}</td>
           <td><span class="status-chip status-{{ b.display_status_key }}">{{ b.display_status }}</span></td>
           <td><a href="{% url 'core:booking_detail' club.slug b.id %}" class="cbtn-sm cbtn-icon" title="View booking" data-overlay><i class="ti ti-eye"></i></a></td>
@@ -93,7 +93,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.88rem;padding:.5rem 0;">No flights recorded for this contact.</p>
+    <p style="color:var(--text-3);font-size:.88rem;padding:.5rem 0;">No flights recorded for this contact.</p>
     {% endif %}
   </div>
 
@@ -107,7 +107,7 @@
       <h2 style="margin:0;font-size:1.05rem;">Convert to member</h2>
       <button type="button" class="pi-close" onclick="document.getElementById('convert-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
-    <p style="font-size:.84rem;color:#5b6573;margin:0 0 .9rem;">
+    <p style="font-size:.84rem;color:var(--text-2);margin:0 0 .9rem;">
       Creates a member account for {{ contact.name }}.
     </p>
     <form method="post">

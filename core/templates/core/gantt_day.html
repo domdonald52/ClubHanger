@@ -6,63 +6,64 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
 <style>
   html,body{overflow-x:hidden}
-  .cal-wrap{font-feature-settings:"tnum";max-width:none;color:#1f2933;overflow-x:hidden}
+  main{max-width:none}
+  .cal-wrap{font-feature-settings:"tnum";max-width:none;color:var(--text-1);overflow-x:hidden}
   .cal-head{display:flex;justify-content:space-between;align-items:center;gap:1rem;margin-bottom:.5rem;flex-wrap:wrap;background:transparent}
   .cal-date{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
   .cal-date h1{margin:0;font-size:1.35rem;font-weight:650;letter-spacing:-.01em;color:var(--banner);min-width:11ch}
   .cal-nav{display:flex;gap:.4rem;align-items:center}
   .cal-nav .cbtn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;padding:0 .6rem;line-height:1;}
-  .cdate{height:38px;padding:0 .6rem;border:1px solid #d6dae0;border-radius:8px;font-size:.9rem;font-family:inherit;color:#1f2933;background:#fff;cursor:pointer}
-  .legend{display:flex;gap:.7rem 1.2rem;align-items:center;font-size:.8rem;color:#5b6573;margin:.25rem 0 .75rem;flex-wrap:wrap;}
-  .legend .hint{margin-left:auto;color:#8a93a0}
+  .cdate{height:2.15rem;padding:0 .6rem;border:1px solid var(--input-border);border-radius:var(--radius-md);font-size:.85rem;font-family:inherit;color:var(--text-1);background:var(--surface);cursor:pointer}
+  .legend{display:flex;gap:.7rem 1.2rem;align-items:center;font-size:.8rem;color:var(--text-2);margin:.25rem 0 .75rem;flex-wrap:wrap;}
+  .legend .hint{margin-left:auto;color:var(--text-3)}
   .dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem}
-  .dot.pending{background:color-mix(in srgb,var(--primary) 35%,#fff)}.dot.confirmed{background:color-mix(in srgb,var(--primary) 55%,#fff)}.dot.departed{background:color-mix(in srgb,var(--primary) 60%,#fff)}.dot.returned{background:color-mix(in srgb,var(--primary) 50%,#fff)}.dot.completed{background:#b4b2a9}
-  .grid-scroll{overflow-x:auto;border:1px solid #e3e6ea;border-radius:10px;background:#fff}
+  .dot.pending{background:color-mix(in srgb,var(--primary) 35%,var(--pill-mix-base))}.dot.confirmed{background:color-mix(in srgb,var(--primary) 55%,var(--pill-mix-base))}.dot.departed{background:color-mix(in srgb,var(--primary) 60%,var(--pill-mix-base))}.dot.returned{background:color-mix(in srgb,var(--primary) 50%,var(--pill-mix-base))}.dot.completed{background:#b4b2a9}
+  .grid-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--surface)}
   .grid{width:100%;position:relative;}
-  .grid-row{display:flex;align-items:stretch;border-bottom:1px solid #eef1f4}
+  .grid-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border-subtle)}
   .grid-row:last-child{border-bottom:0}
-  .row-label{flex:0 0 {{ label_w }}px;width:{{ label_w }}px;padding:.35rem .55rem;font-size:.76rem;font-weight:550;color:#2b333d;background:#fafbfc;border-right:1px solid #e3e6ea;position:sticky;left:0;z-index:3;display:flex;align-items:center;gap:.2rem;flex-wrap:nowrap;overflow:hidden;}
+  .row-label{flex:0 0 {{ label_w }}px;width:{{ label_w }}px;padding:.35rem .55rem;font-size:.76rem;font-weight:550;color:var(--text-1);background:var(--surface-2);border-right:1px solid var(--border);position:sticky;left:0;z-index:3;display:flex;align-items:center;gap:.2rem;flex-wrap:nowrap;overflow:hidden;}
   .row-label.me{color:var(--primary)}
   .row-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;}
   /* Instructor rows: subtle left accent */
   .row-label-instructor{border-left:3px solid color-mix(in srgb, var(--primary) 35%, transparent)}
   /* Aircraft rows: neutral left accent */
-  .row-label-aircraft{border-left:3px solid #d6dae0}
+  .row-label-aircraft{border-left:3px solid var(--border)}
   /* Ghost rows — inactive or off-roster with residual bookings */
-  .row-label.ghost{background:#f7f7f7;color:#adb5bd;font-style:italic}
-  .row-label.ghost .row-name{text-decoration:line-through;text-decoration-color:#ccc}
+  .row-label.ghost{background:var(--surface-3);color:var(--text-3);font-style:italic}
+  .row-label.ghost .row-name{text-decoration:line-through;text-decoration-color:var(--border)}
   .row-label[data-detail-url]{cursor:pointer;}
-  .row-label[data-detail-url]:hover{background:#eef1f5;}
-  .ghost-badge{font-size:.6rem;font-weight:600;background:#fee2e2;color:#c0392b;border-radius:4px;padding:.05rem .3rem;white-space:nowrap;flex-shrink:0;}
+  .row-label[data-detail-url]:hover{background:var(--surface-3);}
+  .ghost-badge{font-size:.6rem;font-weight:600;background:var(--danger-bg);color:var(--danger);border-radius:4px;padding:.05rem .3rem;white-space:nowrap;flex-shrink:0;}
   .track-ghost{opacity:.75}
   /* Section dividers — grid-row style so the background spans the full scrollable width */
-  .section-row{display:flex;align-items:stretch;border-bottom:1px solid #e3e6ea;}
-  .section-cell{flex:0 0 {{ label_w }}px;width:{{ label_w }}px;display:flex;align-items:center;padding:.3rem .65rem;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;position:sticky;left:0;z-index:3;border-right:1px solid #e3e6ea;}
+  .section-row{display:flex;align-items:stretch;border-bottom:1px solid var(--border);}
+  .section-cell{flex:0 0 {{ label_w }}px;width:{{ label_w }}px;display:flex;align-items:center;padding:.3rem .65rem;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;position:sticky;left:0;z-index:3;border-right:1px solid var(--border);}
   .section-track{position:relative;flex:1;min-width:var(--track-width);}
-  .section-instructors.section-row{border-top:2px solid color-mix(in srgb, var(--primary) 35%, #e3e6ea);}
-  .section-instructors .section-cell{background:color-mix(in srgb, var(--primary) 7%, #f5f7fc);color:var(--primary);}
-  .section-instructors .section-track{background:color-mix(in srgb, var(--primary) 3%, #f8f9fb);}
-  .section-aircraft.section-row{border-top:3px solid #b8bec8;margin-top:3px;}
-  .section-aircraft .section-cell{background:#eaecf0;color:#3d4650;}
-  .section-aircraft .section-track{background:#eceff3;}
+  .section-instructors.section-row{border-top:2px solid color-mix(in srgb, var(--primary) 35%, var(--border));}
+  .section-instructors .section-cell{background:color-mix(in srgb, var(--primary) 7%, var(--surface));color:var(--primary);}
+  .section-instructors .section-track{background:color-mix(in srgb, var(--primary) 3%, var(--surface));}
+  .section-aircraft.section-row{border-top:2px solid color-mix(in srgb, var(--primary) 35%, var(--border));}
+  .section-aircraft .section-cell{background:color-mix(in srgb, var(--primary) 7%, var(--surface));color:var(--primary);}
+  .section-aircraft .section-track{background:color-mix(in srgb, var(--primary) 3%, var(--surface));}
   .track{position:relative;height:44px;width:max(var(--track-width),100%);flex:1;min-width:var(--track-width);background:linear-gradient(to right,var(--atypical) 0,var(--atypical) {{ typical_start_px }}px,transparent {{ typical_start_px }}px,transparent {{ typical_end_px }}px,var(--atypical) {{ typical_end_px }}px,var(--atypical) 100%)}
   .axis .track{height:26px}
-  .axis .row-label{background:#fff}
-  .tick{position:absolute;top:0;height:26px;border-left:1px solid #eef1f4}
-  .tick span{position:absolute;top:6px;left:4px;font-size:.63rem;color:#8a93a0;white-space:nowrap}
-  .gridline{position:absolute;top:0;bottom:0;border-left:1px solid #f1f3f5;pointer-events:none}
+  .axis .row-label{background:var(--surface)}
+  .tick{position:absolute;top:0;height:26px;border-left:1px solid var(--border-subtle)}
+  .tick span{position:absolute;top:6px;left:4px;font-size:.63rem;color:var(--text-3);white-space:nowrap}
+  .gridline{position:absolute;top:0;bottom:0;border-left:1px solid var(--border-subtle);pointer-events:none}
   #now-overlay{position:absolute;top:0;bottom:0;width:1px;background:#e03131;z-index:2;pointer-events:none;}
   #now-overlay::before{content:'';position:absolute;top:17px;left:-5px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #e03131;}
   .band{position:absolute;top:0;bottom:0;opacity:.28;z-index:1;pointer-events:none;border-left:1px solid rgba(0,0,0,.15);border-right:1px solid rgba(0,0,0,.15)}
   .band-soft{opacity:.14;border-left:2px dashed rgba(0,0,0,.2);border-right:2px dashed rgba(0,0,0,.2)}
   .roster-badge{font-size:.65rem;flex-shrink:0}
   .roster-badge.on{color:#2f9e44}
-  .roster-badge.off{color:#adb5bd}
+  .roster-badge.off{color:var(--text-3)}
   .bo-badge{font-size:.68rem;flex-shrink:0}
-  .bo-badge.hard{color:#c0392b}
+  .bo-badge.hard{color:var(--danger)}
   .bo-badge.soft{color:#e67e22}
-  .band span{position:absolute;top:2px;left:4px;font-size:.6rem;font-weight:600;color:#1f2933;opacity:.9;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
-  .track.bookable{cursor:copy}
+  .band span{position:absolute;top:2px;left:4px;font-size:.6rem;font-weight:600;color:var(--text-1);opacity:.9;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+  .track.bookable{cursor:crosshair}
   /* Lifecycle ramp — single primary hue at varying intensities */
   .pill{position:absolute;top:4px;height:36px;border-radius:5px;overflow:hidden;cursor:grab;user-select:none;box-sizing:border-box;z-index:5;display:flex;align-items:stretch;box-shadow:0 1px 2px rgba(16,24,40,.12);}
   .pill:active{cursor:grabbing}
@@ -95,61 +96,63 @@
   .pill.shake{animation:pill-shake .35s ease;cursor:not-allowed;}
   .track.drag-over{outline:2px solid var(--primary);outline-offset:-2px}
   .pill.invalid{outline:2px solid #ffd43b;outline-offset:-2px}
-  .pill.override{box-shadow:0 0 0 2px #fff,0 0 0 4px #845ef7}
+  .pill.override{box-shadow:0 0 0 2px var(--surface),0 0 0 4px #845ef7}
   .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize;z-index:6;}
   /* Overlapping pills on the same track — half-height stacked pair */
   .pill.stagger{height:18px;}
   .pill.stagger .sub,.pill.stagger .pill-wedge{display:none;}
   .preview{position:absolute;top:4px;height:36px;border-radius:5px;border:2px dashed var(--primary);background:color-mix(in srgb, var(--primary) 15%, transparent);z-index:6;pointer-events:none}
   .preview span{position:absolute;top:11px;left:8px;font-size:.72rem;color:var(--primary);font-weight:600}
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:500}
+  .modal-back{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:500}
   [hidden]{display:none!important}
   .modal-back[hidden]{display:none}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;width:min(460px,92vw);box-shadow:0 12px 40px rgba(16,24,40,.25)}
+  .modal{background:var(--surface);border-radius:12px;padding:1.25rem 1.35rem;width:min(460px,92vw);box-shadow:var(--shadow-modal)}
   .modal.small{width:min(360px,90vw)}
   .modal-hdr{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.9rem;}
   .modal-hdr h2{margin:0;font-size:1.05rem;flex:1}
-  .modal-x{background:none;border:1px solid #d6dae0;border-radius:6px;padding:.25rem .6rem;cursor:pointer;font-size:.8rem;color:#5b6573;flex-shrink:0;line-height:1.5;}
-  .modal-x:hover{background:#f3f5f7;}
-  .modal label{display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem}
-  .modal input,.modal select{width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box}
+  .modal-x{background:none;border:1px solid var(--input-border);border-radius:6px;padding:.25rem .6rem;cursor:pointer;font-size:.8rem;color:var(--text-2);flex-shrink:0;line-height:1.5;}
+  .modal-x:hover{background:var(--surface-3);}
+  .modal label{display:block;font-size:.78rem;color:var(--text-2);margin-bottom:.7rem}
+  .modal input,.modal select{width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid var(--input-border);border-radius:7px;font-size:.9rem;box-sizing:border-box;background:var(--surface-2);color:var(--text-1);}
   .modal .two{display:flex;gap:.7rem}.modal .two label{flex:1}
   .modal-actions{display:flex;align-items:center;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;justify-content:flex-end;}
   .modal-actions .cbtn{white-space:nowrap;padding:.38rem .65rem;}
   /* Detail overlay */
   .detail-overlay-modal{width:min(1100px,96vw);max-height:92vh;overflow-y:auto;padding:0;border-radius:10px;}
-  /* Weather pill */
-  .wx-pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:500;padding:.2rem .65rem;border-radius:10px;text-decoration:none;margin-left:auto;white-space:nowrap;cursor:pointer;background:color-mix(in srgb,var(--banner) 12%,#fff);color:color-mix(in srgb,var(--banner) 80%,#1f2933);border:1px solid color-mix(in srgb,var(--banner) 28%,#e3e6ea);}
-  .wx-pill:hover{background:color-mix(in srgb,var(--banner) 18%,#fff);}
+  /* Weather pill — aviation green */
+  .wx-pill{display:inline-flex;align-items:center;gap:.4rem;font-size:.75rem;font-weight:500;padding:.2rem .65rem;border-radius:10px;text-decoration:none;margin-left:auto;white-space:nowrap;cursor:pointer;background:rgba(22,163,74,.06);color:#16a34a;border:1px solid rgba(22,163,74,.28);}
+  .wx-pill:hover{background:rgba(22,163,74,.11);}
   .wx-pill-lbl{font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;opacity:.65;}
   .wx-fr-badge{font-size:.68rem;font-weight:700;padding:.1rem .32rem;border-radius:5px;}
-  .wx-fr-badge-vfr{background:#dcfce7;color:#166534;}
-  .wx-fr-badge-mvfr{background:#dbeafe;color:#1d4ed8;}
-  .wx-fr-badge-ifr{background:#fee2e2;color:#991b1b;}
+  .wx-fr-badge-vfr{background:#dcfce7;color:var(--success-text);}
+  .wx-fr-badge-mvfr{background:var(--info-bg);color:var(--info-text);}
+  .wx-fr-badge-ifr{background:var(--danger-bg);color:var(--danger-text);}
   .wx-fr-badge-lifr{background:#f3e8ff;color:#6b21a8;}
   .wx-pill-stale{opacity:.7;}
   .wx-pill-age{font-weight:400;opacity:.7;}
+  /* ── Dark mode overrides ── */
+  body.dark-mode .dot.completed{background:#4d4a42}
+  body.dark-mode .pill.pending{background:color-mix(in srgb,var(--primary) 28%,#161b22);border:1.5px dashed color-mix(in srgb,var(--primary) 55%,#30363d);color:color-mix(in srgb,var(--primary) 85%,#e6edf3);}
+  body.dark-mode .pill.confirmed{background:color-mix(in srgb,var(--primary) 52%,#161b22);border:1px solid color-mix(in srgb,var(--primary) 65%,#30363d);color:#e6edf3;}
+  body.dark-mode .pill.departed{background:color-mix(in srgb,var(--primary) 88%,#0d1117);border:1px solid color-mix(in srgb,var(--primary) 92%,#30363d);color:#fff;}
+  body.dark-mode .pill.returned{background:color-mix(in srgb,var(--primary) 88%,#0d1117);border:1px solid color-mix(in srgb,var(--primary) 92%,#30363d);color:#fff;cursor:pointer;}
+  body.dark-mode .pill.completed{background:color-mix(in srgb,var(--primary) 72%,#0d1117);border:1px solid color-mix(in srgb,var(--primary) 78%,#30363d);color:#fff;cursor:pointer;}
+  body.dark-mode .pill.completed.paid{background:#22272e;border:1px solid #30363d;color:#8b949e;cursor:pointer;}
+  body.dark-mode .wx-fr-badge-vfr{background:rgba(46,160,67,.2);color:#3fb950;}
+  body.dark-mode .wx-fr-badge-lifr{background:rgba(138,43,226,.15);color:#b47ee8;}
+  body.dark-mode .wx-pill{background:rgba(63,185,80,.08);color:#3fb950;border:1px solid rgba(63,185,80,.3);}
+  body.dark-mode .wx-pill:hover{background:rgba(63,185,80,.14);}
+  /* Cal header actions */
+  .cal-actions{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="cal-wrap">
-  <div class="cal-head">
-    <div class="cal-date">
-      <div class="cal-nav">
-        <a class="cbtn" href="{% url 'core:gantt_day' club.slug %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}">Today</a>
-        <a class="cbtn" href="{% url 'core:gantt_day_date' club.slug prev_date.year prev_date.month prev_date.day %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}" title="Previous day">‹</a>
-        <input type="date" id="cal-datepick" class="cdate" value="{{ selected_date|date:'Y-m-d' }}">
-        <a class="cbtn" href="{% url 'core:gantt_day_date' club.slug next_date.year next_date.month next_date.day %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}" title="Next day">›</a>
-      </div>
-      <h1 id="cal-title">{{ selected_date|date:"l, j F Y" }}</h1>
-    </div>
-  </div>
-
   {% if announcements_today %}
   <div style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:.65rem;">
     {% for ann in announcements_today %}
-    <div style="border-left:4px solid {{ ann.color }};background:{{ ann.bg }};border-radius:8px;padding:.6rem .9rem;display:flex;align-items:flex-start;gap:.75rem;">
+    <div style="border-left:4px solid {{ ann.color }};background:color-mix(in srgb,{{ ann.color }} 8%,var(--surface-2));border-radius:8px;padding:.6rem .9rem;display:flex;align-items:flex-start;gap:.75rem;">
       {% if ann.type == 'safety' %}
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ ann.color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:.1rem;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       {% elif ann.type == 'event' or ann.type == 'flyaway' %}
@@ -160,16 +163,34 @@
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.2rem;">
           <span style="font-size:.68rem;font-weight:700;padding:.15rem .42rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
-          {% if ann.event_date %}<span style="font-size:.75rem;color:#6b7280;">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
+          {% if ann.event_date %}<span style="font-size:.75rem;color:var(--text-3);">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
           {% if ann.is_pinned %}<svg width="12" height="12" viewBox="0 0 24 24" fill="{{ ann.color }}" stroke="none" title="Pinned"><path d="M16 2a1 1 0 0 0-1 1v1H9V3a1 1 0 0 0-2 0v1a3 3 0 0 0-3 3v1l-1 1v2h7v7l1 2 1-2v-7h7v-2l-1-1V7a3 3 0 0 0-3-3V3a1 1 0 0 0-1-1z"/></svg>{% endif %}
         </div>
-        <div style="font-size:.88rem;font-weight:650;color:#1f2933;">{{ ann.title }}</div>
-        {% if ann.body %}<div style="font-size:.8rem;color:#4a5568;margin-top:.2rem;line-height:1.45;">{{ ann.body|linebreaksbr }}</div>{% endif %}
+        <div style="font-size:.88rem;font-weight:650;color:var(--text-1);">{{ ann.title }}</div>
+        {% if ann.body %}<div style="font-size:.8rem;color:var(--text-2);margin-top:.2rem;line-height:1.45;">{{ ann.body|linebreaksbr }}</div>{% endif %}
       </div>
     </div>
     {% endfor %}
   </div>
   {% endif %}
+
+  <div class="cal-head">
+    <div class="cal-date">
+      <div class="cal-nav">
+        <a class="cbtn" href="{% url 'core:gantt_day' club.slug %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}">Today</a>
+        <a class="cbtn" href="{% url 'core:gantt_day_date' club.slug prev_date.year prev_date.month prev_date.day %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}" title="Previous day">‹</a>
+        <input type="date" id="cal-datepick" class="cdate" value="{{ selected_date|date:'Y-m-d' }}">
+        <a class="cbtn" href="{% url 'core:gantt_day_date' club.slug next_date.year next_date.month next_date.day %}{% if zoom_param %}?zoom={{ zoom_param }}{% endif %}" title="Next day">›</a>
+      </div>
+      <h1 id="cal-title">{{ selected_date|date:"l, j F Y" }}</h1>
+    </div>
+    {% if can_manage or can_book %}
+    <div class="cal-actions">
+      <button type="button" class="cbtn" id="cal-find-slot"><i class="ti ti-clock"></i> Find slot</button>
+      <button type="button" class="cbtn primary" id="cal-new-booking"><i class="ti ti-plus"></i> New booking</button>
+    </div>
+    {% endif %}
+  </div>
 
   <div class="legend">
 {% if wx %}
@@ -177,7 +198,7 @@
       <span class="wx-pill-lbl">METAR</span>
       <span class="wx-fr-badge wx-fr-badge-{{ wx.fr_cls }}">{{ wx.flight_rules }}</span>
       <span>{{ wx.icao }}{% if wx.wind %} · {{ wx.wind }}{% endif %}{% if wx.qnh %} · {{ wx.qnh }}{% endif %}</span>
-      {% if wx.age_str %}<span class="wx-pill-age">· {{ wx.age_str }}{% if wx.very_stale %} ⚠{% endif %}</span>{% endif %}
+      {% if wx.age_str %}<span class="wx-pill-age">issued {{ wx.age_str }} ago{% if wx.very_stale %} ⚠{% endif %}</span>{% endif %}
     </a>
     {% endif %}
     {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
@@ -263,12 +284,12 @@
     </div>
     <div id="bo-aircraft-row" hidden>
       <label>Aircraft (hold Ctrl/⌘ for multiple)
-        <select id="bo-aircraft" multiple style="width:100%;height:80px;margin-top:.25rem;border:1px solid #d6dae0;border-radius:7px;font-size:.88rem;"></select>
+        <select id="bo-aircraft" multiple style="width:100%;height:80px;margin-top:.25rem;border:1px solid var(--input-border);border-radius:7px;font-size:.88rem;"></select>
       </label>
     </div>
     <div id="bo-instructor-row" hidden>
       <label>Instructor(s)
-        <select id="bo-instructor" multiple style="width:100%;height:80px;margin-top:.25rem;border:1px solid #d6dae0;border-radius:7px;font-size:.88rem;"></select>
+        <select id="bo-instructor" multiple style="width:100%;height:80px;margin-top:.25rem;border:1px solid var(--input-border);border-radius:7px;font-size:.88rem;"></select>
       </label>
     </div>
     <div class="two">
@@ -292,7 +313,7 @@
         </label>
       </div>
     </div>
-    <label style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">
+    <label style="display:flex;align-items:center;gap:.5rem;font-size:.78rem;color:var(--text-2);margin-bottom:.7rem;">
       <input type="checkbox" id="bo-allday" checked> All day
     </label>
     <div id="bo-time-row" class="two" hidden>
@@ -301,7 +322,7 @@
     </div>
     <label>Label (optional)<input type="text" id="bo-label" placeholder="e.g. 100-hr check ZK-TAW"></label>
     <div class="modal-actions">
-      <button class="cbtn" id="bo-cancel" type="button"><i class="ti ti-x"></i> Close</button>
+      <button class="cbtn" id="bo-cancel" type="button">Close</button>
       <span style="flex:1"></span>
       <button class="cbtn primary" id="bo-save" type="button">Add block-out</button>
     </div>
@@ -313,7 +334,7 @@
   <div class="modal">
     <div class="modal-hdr">
       <h2 id="modal-title">New booking</h2>
-      <button class="modal-x" id="m-cancel" type="button"><i class="ti ti-x"></i> Close</button>
+      <button class="modal-x" id="m-cancel" type="button">✕</button>
     </div>
     <div id="m-conflict-notice" hidden style="margin-bottom:.5rem;"></div>
 
@@ -322,11 +343,11 @@
       <input type="hidden" id="m-booking-id">
       <label><span id="m-member-lbl">Member</span>
         <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;">
-          <span id="m-member-display" style="flex:1;font-size:.88rem;padding:.4rem .55rem;border:1px solid #d6dae0;border-radius:7px;background:#f9fafb;color:#8a93a0;display:flex;align-items:center;min-height:2.1rem;cursor:pointer;" title="Click to search members">— select member —</span>
+          <span id="m-member-display" style="flex:1;font-size:.88rem;padding:.4rem .55rem;border:1px solid var(--input-border);border-radius:7px;background:var(--surface-2);color:var(--text-3);display:flex;align-items:center;min-height:2.1rem;cursor:pointer;" title="Click to search members">— select member —</span>
         </div>
         <select id="m-member" hidden></select>
       </label>
-      <div id="m-member-notice" style="display:none;font-size:.78rem;background:#fff8e1;border-left:3px solid #f59e0b;padding:.4rem .6rem;border-radius:4px;margin:-.3rem 0 .4rem;color:#92400e;"></div>
+      <div id="m-member-notice" style="display:none;font-size:.78rem;background:var(--warning-bg);border-left:3px solid #f59e0b;padding:.4rem .6rem;border-radius:4px;margin:-.3rem 0 .4rem;color:var(--warning-text);"></div>
       <label>Flight type<select id="m-flight-type"></select></label>
       {% if can_manage %}
       <label id="m-client-label" hidden>Contact (trial flight, Young Eagles, etc.)
@@ -348,7 +369,7 @@
         <label>Aircraft<select id="m-aircraft"></select></label>
         <label id="m-instructor-label">Instructor<select id="m-instructor"><option value="">— none —</option></select></label>
       </div>
-      <div id="m-instructor-conflict" hidden style="background:#fff8e6;border:1px solid #fcd34d;border-radius:6px;padding:.4rem .65rem;font-size:.8rem;color:#92400e;margin-top:-.3rem;">
+      <div id="m-instructor-conflict" hidden style="background:#fff8e6;border:1px solid #fcd34d;border-radius:6px;padding:.4rem .65rem;font-size:.8rem;color:var(--warning-text);margin-top:-.3rem;">
         ⚠ This instructor already has a booking at this time
       </div>
       <div class="two">
@@ -373,26 +394,26 @@
       <h2>New contact</h2>
       <button class="modal-x" id="qc-close" type="button">✕</button>
     </div>
-    <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Name <span style="color:#c0392b;">*</span>
+    <label style="display:block;font-size:.78rem;color:var(--text-2);margin-bottom:.7rem;">Name <span style="color:var(--danger);">*</span>
       <input type="text" id="qc-name" placeholder="Full name" autocomplete="off"
-             style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+             style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid var(--input-border);border-radius:7px;font-size:.9rem;box-sizing:border-box;">
     </label>
-    <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Type
-      <select id="qc-type" style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+    <label style="display:block;font-size:.78rem;color:var(--text-2);margin-bottom:.7rem;">Type
+      <select id="qc-type" style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid var(--input-border);border-radius:7px;font-size:.9rem;box-sizing:border-box;">
         <option value="">— select —</option>
       </select>
     </label>
     <div class="two">
-      <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Email
+      <label style="display:block;font-size:.78rem;color:var(--text-2);margin-bottom:.7rem;">Email
         <input type="email" id="qc-email" placeholder="optional"
-               style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+               style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid var(--input-border);border-radius:7px;font-size:.9rem;box-sizing:border-box;">
       </label>
-      <label style="display:block;font-size:.78rem;color:#5b6573;margin-bottom:.7rem;">Phone
+      <label style="display:block;font-size:.78rem;color:var(--text-2);margin-bottom:.7rem;">Phone
         <input type="text" id="qc-phone" placeholder="optional"
-               style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+               style="display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid var(--input-border);border-radius:7px;font-size:.9rem;box-sizing:border-box;">
       </label>
     </div>
-    <div id="qc-error" hidden style="margin-bottom:.6rem;padding:.4rem .65rem;background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;font-size:.82rem;color:#7f1d1d;"></div>
+    <div id="qc-error" hidden style="margin-bottom:.6rem;padding:.4rem .65rem;background:var(--danger-bg);border:1px solid #fca5a5;border-radius:6px;font-size:.82rem;color:#7f1d1d;"></div>
     <div class="modal-actions">
       <button class="cbtn" id="qc-cancel" type="button">Cancel</button>
       <button class="cbtn primary" id="qc-save" type="button">Create contact</button>
@@ -409,8 +430,8 @@
       <button class="modal-x" id="fm-close" type="button">✕</button>
     </div>
     <input type="text" id="fm-search" placeholder="Search by name…" autocomplete="off"
-           style="display:block;width:100%;margin-bottom:.6rem;padding:.45rem .55rem;border:1px solid #d6dae0;border-radius:7px;font-size:.9rem;box-sizing:border-box;">
-    <div id="fm-list" style="max-height:300px;overflow-y:auto;border:1px solid #e3e6ea;border-radius:7px;"></div>
+           style="display:block;width:100%;margin-bottom:.6rem;padding:.45rem .55rem;border:1px solid var(--input-border);border-radius:7px;font-size:.9rem;box-sizing:border-box;">
+    <div id="fm-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:7px;"></div>
     <div class="modal-actions" style="margin-top:.7rem;">
       <button class="cbtn" id="fm-cancel" type="button">Cancel</button>
       <button class="cbtn primary" id="fm-apply" type="button" disabled>Select member</button>
@@ -422,12 +443,12 @@
 <div id="watch-modal" class="modal-back" hidden>
   <div class="modal small">
     <h2 id="wm-title" style="margin-bottom:.35rem;">Booking</h2>
-    <p id="wm-detail" style="font-size:.83rem;color:#5b6573;margin:0 0 1.1rem;"></p>
-    <p style="font-size:.83rem;color:#5b6573;margin:0 0 1rem;">
+    <p id="wm-detail" style="font-size:.83rem;color:var(--text-2);margin:0 0 1.1rem;"></p>
+    <p style="font-size:.83rem;color:var(--text-2);margin:0 0 1rem;">
       Watch this slot to get an alert if it's released for others to take.
     </p>
     <div class="modal-actions">
-      <button class="cbtn" id="wm-close" type="button"><i class="ti ti-x"></i> Close</button>
+      <button class="cbtn" id="wm-close" type="button">Close</button>
       <span style="flex:1"></span>
       <button class="cbtn primary" id="wm-watch" type="button"
               style="display:inline-flex;align-items:center;gap:.35rem;">
@@ -457,7 +478,7 @@
         <input type="text" id="cancel-reason-other" class="finput" style="margin-top:.3rem;" placeholder="Describe the reason…" maxlength="200">
       </label>
     </div>
-    <label style="display:block;font-size:.85rem;cursor:pointer;padding:.55rem .7rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:7px;margin-bottom:1.1rem;">
+    <label style="display:block;font-size:.85rem;cursor:pointer;padding:.55rem .7rem;background:#f5f7fa;border:1px solid var(--border);border-radius:7px;margin-bottom:1.1rem;">
       <input type="checkbox" id="cancel-release-check" style="width:auto;margin-right:.45rem;vertical-align:middle;">
       Send a slot alert to interested members
     </label>
@@ -521,12 +542,12 @@
 <div id="detail-overlay" class="modal-back" hidden style="z-index:510;">
   <div class="modal detail-overlay-modal" id="detail-overlay-modal">
     <div id="detail-overlay-body">
-      <p style="color:#8a93a0;padding:2rem;text-align:center;">Loading…</p>
+      <p style="color:var(--text-3);padding:2rem;text-align:center;">Loading…</p>
     </div>
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}?v=14"></script>
+<script src="{% static 'core/gantt.js' %}?v=24"></script>
 <script>
 (function() {
   // Unify all row labels to the width of the longest one.
@@ -648,9 +669,9 @@
     const avail = _gridScroll.clientWidth - labelW - 4;
     if (avail <= 0) return;
     const minW  = _totalMins * _MIN_PX;
-    const target = Math.max(minW, Math.min(_naturalW, avail));
+    const target = Math.max(minW, avail);
     _curScale = target / _naturalW;
-    const doScale = _curScale < 0.999;
+    const doScale = Math.abs(_curScale - 1) > 0.001;
     document.querySelectorAll('.track').forEach(function(t) {
       t.style.transform = doScale ? ('scaleX(' + _curScale.toFixed(5) + ')') : '';
       t.style.transformOrigin = '0 0';
@@ -682,30 +703,42 @@
   }
 })();
 </script>
+<script>
+(function() {
+  var findSlotBtn = document.getElementById('cal-find-slot');
+  if (findSlotBtn) findSlotBtn.addEventListener('click', function() {
+    if (window.openPageOverlay) window.openPageOverlay('{% url 'core:availability_search' club.slug %}');
+  });
+  var newBookingBtn = document.getElementById('cal-new-booking');
+  if (newBookingBtn) newBookingBtn.addEventListener('click', function() {
+    if (window.openNewBooking) {
+      window.openNewBooking();
+    } else if (window.toast) {
+      window.toast('Booking module not loaded — try refreshing', 'err');
+    }
+  });
+})();
+</script>
 
-<!-- ── ADS-B right-click context menu ── -->
-<div id="pill-ctx" style="display:none;position:fixed;z-index:800;background:#fff;border:1px solid #e3e6ea;border-radius:8px;box-shadow:0 4px 16px rgba(16,24,40,.18);min-width:160px;overflow:hidden;">
-  <div id="pill-ctx-detail" style="padding:.5rem .9rem;font-size:.84rem;cursor:pointer;display:flex;align-items:center;gap:.5rem;">
-    📋 View details
-  </div>
-  <div id="pill-ctx-track" style="padding:.5rem .9rem;font-size:.84rem;cursor:pointer;border-top:1px solid #f0f2f4;display:flex;align-items:center;gap:.5rem;">
-    ✈ <span id="pill-ctx-label">Track aircraft</span>
-  </div>
+<!-- ── Right-click context menu ── -->
+<div id="pill-ctx" style="display:none;position:fixed;z-index:800;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(16,24,40,.18);min-width:175px;overflow:hidden;">
+  <div id="pill-ctx-primary" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;font-weight:600;"></div>
+  <div id="pill-ctx-track" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;border-top:1px solid var(--border-subtle);"><i class="ti ti-radar" style="opacity:.45;font-size:.9rem;"></i> <span id="pill-ctx-label">Track aircraft</span></div>
 </div>
 
 <!-- ADS-B slide-in panel -->
-<div id="adsb-track-panel" style="display:none;position:fixed;top:52px;right:0;width:340px;bottom:0;background:#fff;border-left:1px solid #e3e6ea;z-index:700;flex-direction:column;box-shadow:-4px 0 16px rgba(16,24,40,.1);">
+<div id="adsb-track-panel" style="display:none;position:fixed;top:52px;right:0;width:340px;bottom:0;background:var(--surface);border-left:1px solid var(--border);z-index:700;flex-direction:column;box-shadow:-4px 0 16px rgba(16,24,40,.1);">
   <!-- Resize handle -->
   <div id="adsb-resize-handle" style="position:absolute;left:-5px;top:0;bottom:0;width:10px;cursor:ew-resize;z-index:10;display:flex;align-items:center;justify-content:center;">
     <div style="width:3px;height:40px;border-radius:2px;background:#d6dae0;pointer-events:none;"></div>
   </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid #eef1f4;background:#fafbfc;flex-shrink:0;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid var(--border-subtle);background:var(--surface-2);flex-shrink:0;">
     <span id="adsb-panel-title" style="font-size:.88rem;font-weight:650;"></span>
-    <button onclick="closeAdsbPanel()" style="background:none;border:none;cursor:pointer;font-size:1rem;color:#8a93a0;line-height:1;">✕</button>
+    <button onclick="closeAdsbPanel()" style="background:none;border:none;cursor:pointer;font-size:1rem;color:var(--text-3);line-height:1;">✕</button>
   </div>
-  <div id="adsb-panel-status" style="font-size:.8rem;color:#8a93a0;padding:.5rem 1rem;flex-shrink:0;"></div>
+  <div id="adsb-panel-status" style="font-size:.8rem;color:var(--text-3);padding:.5rem 1rem;flex-shrink:0;"></div>
   <div id="adsb-panel-map" style="flex:1;"></div>
-  <div id="adsb-panel-info" style="font-size:.78rem;color:#5b6573;padding:.5rem 1rem;border-top:1px solid #f0f2f4;flex-shrink:0;min-height:1.8rem;"></div>
+  <div id="adsb-panel-info" style="font-size:.78rem;color:var(--text-2);padding:.5rem 1rem;border-top:1px solid var(--border-subtle);flex-shrink:0;min-height:1.8rem;"></div>
 </div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9/dist/leaflet.css">
@@ -717,35 +750,60 @@
   let adsbMap, adsbMarker, adsbTimer;
   let activePill = null;
 
+  const STATUS_ACTIONS = {
+    'pending':   { icon: 'ti-pencil',           label: 'Edit booking' },
+    'confirmed': { icon: 'ti-plane-departure',   label: 'Check out flight' },
+    'departed':  { icon: 'ti-plane-arrival',     label: 'Record return' },
+    'returned':  { icon: 'ti-receipt',           label: 'View charges' },
+    'completed': { icon: 'ti-file-description',  label: 'View booking' },
+    'cancelled': { icon: 'ti-file-description',  label: 'View booking' },
+  };
+
   document.addEventListener('contextmenu', e => {
     const pill = e.target.closest('.pill');
     if (!pill) return;
     e.preventDefault();
     activePill = pill;
+
+    const status = pill.dataset.status || '';
+    const action = STATUS_ACTIONS[status];
+    const primary = document.getElementById('pill-ctx-primary');
+    const trackEl = document.getElementById('pill-ctx-track');
+
+    if (action) {
+      primary.innerHTML = `<i class="ti ${action.icon}" style="opacity:.5;font-size:.9rem;"></i> ${action.label}`;
+      primary.style.display = 'flex';
+    } else {
+      primary.style.display = 'none';
+    }
+
     const reg = pill.dataset.registration || 'aircraft';
     document.getElementById('pill-ctx-label').textContent = `Track ${reg} live`;
-    document.getElementById('pill-ctx-track').style.display = pill.dataset.status === 'departed' ? '' : 'none';
+    trackEl.style.display = status === 'departed' ? 'flex' : 'none';
+
     ctx.style.display = 'block';
-    ctx.style.left = Math.min(e.clientX, window.innerWidth - 175) + 'px';
-    ctx.style.top = Math.min(e.clientY, window.innerHeight - 95) + 'px';
+    ctx.style.left = Math.min(e.clientX, window.innerWidth - 190) + 'px';
+    ctx.style.top = Math.min(e.clientY, window.innerHeight - 120) + 'px';
   });
+
   document.addEventListener('click', e => { if (!ctx.contains(e.target)) ctx.style.display = 'none'; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { ctx.style.display = 'none'; closeAdsbPanel(); }});
 
-  document.getElementById('pill-ctx-detail').addEventListener('click', () => {
+  function openBookingDetail() {
     ctx.style.display = 'none';
     if (!activePill) return;
     const base = "{% url 'core:booking_detail' club.slug 0 %}";
     const url = base.replace('/0/', '/' + activePill.dataset.id + '/');
     if (window.openPageOverlay) window.openPageOverlay(url);
     else window.location.href = url;
-  });
+  }
+  document.getElementById('pill-ctx-primary').addEventListener('click', openBookingDetail);
   document.getElementById('pill-ctx-track').addEventListener('click', () => {
     ctx.style.display = 'none';
     if (!activePill) return;
     const acId = activePill.dataset.aircraftId;
     const reg  = activePill.dataset.registration || 'Aircraft';
-    const acEntry = (AIRCRAFT || []).find(a => String(a.id) === String(acId));
+    const acEntry = (typeof AIRCRAFT !== 'undefined' ? AIRCRAFT : []).find(a => String(a.id) === String(acId));
     const iconType = acEntry ? acEntry.icon : 'high_wing';
     openAdsbPanel(acId, reg, iconType);
   });
@@ -820,11 +878,6 @@
     adsbTimer = setInterval(poll, 10000);  // 10s — OpenSky anonymous rate limit
   }
 
-  ['pill-ctx-detail','pill-ctx-track'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('mouseenter', () => el.style.background = '#f0f4ff');
-    el.addEventListener('mouseleave', () => el.style.background = '');
-  });
 
   // ── Panel resize handle ───────────────────────────────────────────────────
   const handle = document.getElementById('adsb-resize-handle');
@@ -864,8 +917,8 @@
       var fr = (d.flight_rules || '').toLowerCase();
       var age = d.age_minutes;
       var ageStr = age == null ? '' :
-        age < 60 ? age + 'min' :
-        Math.floor(age/60) + 'h' + (age%60 ? (age%60)+'m' : '');
+        age < 60 ? age + ' min' :
+        Math.floor(age/60) + 'h' + (age%60 ? ' ' + (age%60)+'m' : '');
       var wind = '';
       if (d.wind_dir && d.wind_speed) wind = d.wind_dir + '/' + d.wind_speed + 'kt';
       else if (d.wind_speed) wind = d.wind_speed + 'kt';
@@ -876,7 +929,7 @@
         '<span class="wx-pill-lbl">METAR</span>' +
         '<span class="wx-fr-badge wx-fr-badge-' + fr + '">' + d.flight_rules + '</span>' +
         '<span>' + parts + '</span>' +
-        (ageStr ? '<span class="wx-pill-age">· ' + ageStr + (age >= 120 ? ' ⚠' : '') + '</span>' : '');
+        (ageStr ? '<span class="wx-pill-age">issued ' + ageStr + ' ago' + (age >= 120 ? ' ⚠' : '') + '</span>' : '');
       pill.title = d.raw + '\nClick for full weather page';
     })
     .catch(function(){});

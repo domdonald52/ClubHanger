@@ -3,23 +3,23 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1rem;">Sales</h1>
+  <div class="page-hdr">
+    <h1 class="page-h1">Sales <span class="page-h1-sub">Charge members for non-flight items</span></h1>
+    <div class="page-actions">
+      <button type="button" class="cbtn-add" onclick="document.getElementById('new-sale-modal').hidden=false">+ New sale</button>
+    </div>
+  </div>
   {% include "core/_sales_tabs.html" with active_tab="sundry" %}
 
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;">
-    <p style="font-size:.82rem;color:#8a93a0;margin:0;">Charge a member for non-flight items (equipment, maps, fees, etc.). Each sale debits the member's account.</p>
-    <button type="button" class="cbtn-add" onclick="document.getElementById('new-sale-modal').hidden=false">+ New sale</button>
-  </div>
-
-  <form method="get" style="margin-bottom:.8rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-    <input type="text" name="q" value="{{ q_sales }}" class="finput" style="max-width:280px;margin:0;"
+  <form method="get" class="list-toolbar">
+    <input type="text" name="q" value="{{ q_sales }}" class="search-input"
            placeholder="Search member, description, reference…" autocomplete="off">
     {% if q_sales %}
     <a href="?" class="cbtn" style="white-space:nowrap;">Clear</a>
     {% else %}
     <button type="submit" class="cbtn">Search</button>
     {% endif %}
-    <span style="font-size:.82rem;color:#8a93a0;margin-left:.2rem;">
+    <span style="font-size:.82rem;color:var(--text-3);margin-left:.2rem;">
       {{ sales_page.paginator.count }} total{% if q_sales %} matching{% endif %}
       {% if sales_page.paginator.num_pages > 1 %} · page {{ sales_page.number }} of {{ sales_page.paginator.num_pages }}{% endif %}
     </span>
@@ -40,10 +40,10 @@
       <tr>
         <td><a href="{% url 'core:manage_member_detail' club.slug tx.account.club_member_id %}">{{ tx.account.club_member.user.get_full_name }}</a></td>
         <td style="font-size:.85rem;">{{ tx.description }}</td>
-        <td style="font-size:.82rem;color:#8a93a0;">{{ tx.reference|default:"—" }}</td>
-        <td style="font-size:.83rem;white-space:nowrap;color:#8a93a0;">{{ tx.created_at|date:"j M Y" }}</td>
+        <td style="font-size:.82rem;color:var(--text-3);">{{ tx.reference|default:"—" }}</td>
+        <td style="font-size:.83rem;white-space:nowrap;color:var(--text-3);">{{ tx.created_at|date:"j M Y" }}</td>
         <td style="text-align:right;font-weight:600;">${{ tx.amount|currency }}</td>
-        <td style="font-size:.82rem;color:#8a93a0;">{{ tx.created_by.get_full_name }}</td>
+        <td style="font-size:.82rem;color:var(--text-3);">{{ tx.created_by.get_full_name }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -59,7 +59,7 @@
       {% elif n == 1 or n == sales_page.paginator.num_pages or n >= sales_page.number|add:"-2" and n <= sales_page.number|add:"2" %}
       <a href="?{% if q_sales %}q={{ q_sales }}&{% endif %}page={{ n }}" class="cbtn">{{ n }}</a>
       {% elif n == sales_page.number|add:"-3" or n == sales_page.number|add:"3" %}
-      <span style="font-size:.82rem;color:#8a93a0;">…</span>
+      <span style="font-size:.82rem;color:var(--text-3);">…</span>
       {% endif %}
     {% endfor %}
     {% if sales_page.has_next %}
@@ -68,7 +68,7 @@
   </div>
   {% endif %}
   {% else %}
-  <p style="color:#8a93a0;font-size:.9rem;padding:.5rem 0;">No sundry sales recorded yet.</p>
+  <p style="color:var(--text-3);font-size:.9rem;padding:.5rem 0;">No sundry sales recorded yet.</p>
   {% endif %}
 </div>
 
@@ -108,14 +108,13 @@
 </div>
 
 <style>
-  .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .sh2{font-size:1rem;font-weight:650;color:var(--text-1);}
+  .modal-back{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
+  .modal{background:var(--surface);border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
   .modal-actions{display:flex;align-items:center;gap:.5rem;}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.2rem;}
-  .finput{display:block;width:100%;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.2rem;}
 </style>
 
 <script>

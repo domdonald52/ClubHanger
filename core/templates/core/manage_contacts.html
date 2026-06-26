@@ -3,15 +3,16 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.25rem;flex-wrap:wrap;">
-    <h1>Contacts</h1>
-    <button type="button" class="cbtn-add" onclick="document.getElementById('add-contact-modal').hidden=false">+ Add contact</button>
+  <div class="page-hdr">
+    <h1 class="page-h1">Contacts <span class="page-h1-sub">Non-member clients — trial flights, Young Eagles, commercial</span></h1>
+    <div class="page-actions">
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-contact-modal').hidden=false">+ Add contact</button>
+    </div>
   </div>
-  <p style="font-size:.82rem;color:#8a93a0;margin:0 0 1.2rem;">Non-member clients — trial flights, Young Eagles, commercial clients. Never appear in the member register.</p>
 
-  <form method="get" style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1.2rem;">
+  <form method="get" class="list-toolbar">
     <input type="text" name="q" value="{{ f_q }}" placeholder="Search name, org, email…"
-           class="finput" style="width:220px;" oninput="this.form.submit()">
+           class="search-input" oninput="this.form.submit()">
     <select name="type" onchange="this.form.submit()" class="finput" style="width:180px;">
       <option value="">All types</option>
       {% for ct in contact_types %}
@@ -37,15 +38,15 @@
           <span style="font-weight:500;">{{ c.name }}</span>
           {% if c.converted_to_member %}
             <a href="{% url 'core:manage_member_detail' club.slug c.converted_to_member_id %}" data-overlay data-overlay-wide
-               style="display:inline-block;margin-left:.4rem;font-size:.72rem;font-weight:600;color:#216c2a;background:#eaf6ec;border:1px solid #a3d9a5;border-radius:10px;padding:.08rem .4rem;text-decoration:none;" title="Converted to member">✓ Member</a>
+               style="display:inline-block;margin-left:.4rem;font-size:.72rem;font-weight:600;color:var(--success-text);background:var(--success-bg);border:1px solid #a3d9a5;border-radius:10px;padding:.08rem .4rem;text-decoration:none;" title="Converted to member">✓ Member</a>
           {% endif %}
         </td>
-        <td style="color:#5b6573;">
+        <td style="color:var(--text-2);">
           {% if c.contact_type %}{{ c.contact_type.name }}{% else %}<span style="color:#bbb;">—</span>{% endif %}
           {% if c.is_organisation %}<span style="font-size:.72rem;font-weight:600;padding:.08rem .35rem;background:#e8f0fe;color:#1a56db;border-radius:4px;margin-left:.25rem;">Org</span>{% endif %}
         </td>
-        <td style="color:#8a93a0;">{{ c.organisation|default:"—" }}</td>
-        <td style="color:#8a93a0;">{{ c.phone|default:"—" }}</td>
+        <td style="color:var(--text-3);">{{ c.organisation|default:"—" }}</td>
+        <td style="color:var(--text-3);">{{ c.phone|default:"—" }}</td>
         <td style="text-align:right;">
           <a href="{% url 'core:contact_detail' club.slug c.id %}" class="cbtn-sm cbtn-icon" title="Manage contact" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a>
         </td>
@@ -55,13 +56,13 @@
   </table>
   {% if contacts_page.paginator.num_pages > 1 %}
   <div style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.85rem;flex-wrap:wrap;">
-    <span style="color:#8a93a0;">Page {{ contacts_page.number }} of {{ contacts_page.paginator.num_pages }} &nbsp;({{ total_count }} records)</span>
+    <span style="color:var(--text-3);">Page {{ contacts_page.number }} of {{ contacts_page.paginator.num_pages }} &nbsp;({{ total_count }} records)</span>
     {% if contacts_page.has_previous %}<a href="?{{ filter_qs }}&page={{ contacts_page.previous_page_number }}" class="cbtn-sm">‹ Prev</a>{% endif %}
     {% if contacts_page.has_next %}<a href="?{{ filter_qs }}&page={{ contacts_page.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
   </div>
   {% endif %}
   {% else %}
-  <p style="color:#8a93a0;font-size:.88rem;padding:.5rem 0;">
+  <p style="color:var(--text-3);font-size:.88rem;padding:.5rem 0;">
     {% if f_q or f_type %}No contacts match your filter.{% else %}No contacts yet.{% endif %}
   </p>
   {% endif %}
@@ -105,7 +106,7 @@
         <textarea name="notes" class="finput" rows="2"></textarea>
       </label>
       <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.9rem;">
-        <button type="button" class="cbtn" onclick="document.getElementById('add-contact-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="document.getElementById('add-contact-modal').hidden=true">Close</button>
         <button type="submit" class="cbtn primary">Add contact</button>
       </div>
     </form>

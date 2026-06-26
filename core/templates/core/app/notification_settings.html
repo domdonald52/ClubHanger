@@ -10,7 +10,7 @@
 
 {% block content %}
 {% if saved %}
-<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Settings saved.</div>
+<div style="background:#dcfce7;color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Settings saved.</div>
 {% endif %}
 <div class="gap-sm"></div>
 
@@ -20,8 +20,8 @@
   <div class="app-section gap-sm"><span class="app-section-title">Notify me about</span></div>
   <div class="app-card" style="padding:0;">
     {% for toggle in notification_toggle_fields %}
-    <label style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid #f0f2f4;cursor:pointer;">
-      <span style="flex:1;font-size:.88rem;color:#1f2937;">{{ toggle.label }}</span>
+    <label style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);cursor:pointer;">
+      <span style="flex:1;font-size:.88rem;color:var(--text-1);">{{ toggle.label }}</span>
       <div class="toggle-wrap">
         <input type="checkbox" name="{{ toggle.field }}" id="id_{{ toggle.field }}" {% if toggle.enabled %}checked{% endif %} class="toggle-input" onchange="document.getElementById('pref-form').submit()">
         <span class="toggle-track"><span class="toggle-thumb"></span></span>
@@ -33,10 +33,10 @@
   <div class="gap-sm"></div>
   <div class="app-section gap-sm"><span class="app-section-title">Push notifications</span></div>
   <div class="app-card">
-    <div style="font-size:.84rem;color:#374151;margin-bottom:.75rem;">Receive notifications even when the app is closed.</div>
-    <div id="push-status" style="font-size:.78rem;color:#6b7280;margin-bottom:.75rem;"></div>
+    <div style="font-size:.84rem;color:var(--text-2);margin-bottom:.75rem;">Receive notifications even when the app is closed.</div>
+    <div id="push-status" style="font-size:.78rem;color:var(--text-3);margin-bottom:.75rem;"></div>
     <button type="button" id="push-btn" class="app-btn" style="width:100%;">Enable push notifications</button>
-    <div id="push-msg" style="font-size:.78rem;color:#6b7280;margin-top:.5rem;display:none;"></div>
+    <div id="push-msg" style="font-size:.78rem;color:var(--text-3);margin-top:.5rem;display:none;"></div>
   </div>
 
 </form>

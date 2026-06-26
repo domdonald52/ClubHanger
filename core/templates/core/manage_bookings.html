@@ -3,12 +3,17 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1200px;">
-  <h1 style="margin-bottom:1.2rem;">Bookings</h1>
+  <div class="page-hdr">
+    <h1 class="page-h1">Bookings</h1>
+    <div class="page-actions">
+      <a href="{% url 'core:gantt_day' club.slug %}" class="cbtn-add">+ New booking</a>
+    </div>
+  </div>
 
   <!-- Shared filter bar (aircraft + instructor always visible; more filters in All bookings tab) -->
   <form method="get" id="filter-form">
     <input type="hidden" name="tab" value="{{ tab }}">
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">
+    <div class="list-toolbar">
 
       <select name="aircraft" class="finput" style="width:auto;" onchange="this.form.submit()">
         <option value="">All aircraft</option>
@@ -36,16 +41,16 @@
 
       {% if tab == 'all' %}
       <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0;">
-        <label for="date_from" style="font-size:.78rem;font-weight:600;color:#5b6573;white-space:nowrap;">From</label>
+        <label for="date_from" style="font-size:.78rem;font-weight:600;color:var(--text-2);white-space:nowrap;">From</label>
         <input type="date" id="date_from" name="date_from" value="{{ f_date_from }}" class="finput" style="width:auto;" onchange="syncDates(); this.form.submit()">
-        <span style="color:#8a93a0;">–</span>
-        <label for="date_to" style="font-size:.78rem;font-weight:600;color:#5b6573;white-space:nowrap;">To</label>
+        <span style="color:var(--text-3);">–</span>
+        <label for="date_to" style="font-size:.78rem;font-weight:600;color:var(--text-2);white-space:nowrap;">To</label>
         <input type="date" id="date_to" name="date_to" value="{{ f_date_to }}" class="finput" style="width:auto;" onchange="syncDates(); this.form.submit()">
       </div>
       {% endif %}
 
       {% if f_aircraft or f_instructor or f_status or f_date_from or f_date_to %}
-      <a href="?tab={{ tab }}" style="font-size:.8rem;color:#8a93a0;align-self:center;">Clear filters</a>
+      <a href="?tab={{ tab }}" style="font-size:.8rem;color:var(--text-3);align-self:center;">Clear filters</a>
       {% endif %}
     </div>
   </form>
@@ -60,7 +65,7 @@
   <form method="post" id="bulk-form">
     {% csrf_token %}
     <div class="bulk-bar" id="bulk-bar" style="display:none;">
-      <span id="bulk-count" style="font-size:.83rem;color:#5b6573;"></span>
+      <span id="bulk-count" style="font-size:.83rem;color:var(--text-2);"></span>
       <button type="submit" name="action" value="confirm" class="cbtn-add">✓ Confirm pending</button>
       <button type="submit" name="action" value="cancel" class="cbtn danger" onclick="var b=this;showAppConfirm('Cancel selected bookings?',function(){b.form.requestSubmit(b);});return false;">Cancel selected</button>
       <span style="display:flex;align-items:center;gap:.3rem;">
@@ -81,7 +86,7 @@
 
     {% if tab == 'active' %}
     <!-- ── ACTIVE BOOKINGS TAB ── -->
-    <p style="font-size:.8rem;color:#8a93a0;margin:0 0 .8rem;">Departed flights awaiting return &middot; returned flights with outstanding charges &middot; confirmed and pending bookings in the next 7 days.</p>
+    <p style="font-size:.8rem;color:var(--text-3);margin:0 0 .8rem;">Departed flights awaiting return &middot; returned flights with outstanding charges &middot; confirmed and pending bookings in the next 7 days.</p>
     {% if attention_data %}
     <table class="bk-table">
       <thead><tr>
@@ -91,18 +96,19 @@
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=instructor&dir={% if sort == 'instructor' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'instructor' %}sort-active{% endif %}">Instructor{% if sort == 'instructor' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date &amp; time{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
-        <th style="width:1%;white-space:nowrap;">Issues</th><th style="width:1%;"></th>
+        <th style="width:1%;"></th>
       </tr></thead>
       <tbody>
         {% for item in attention_data %}{% with b=item.b %}
         <tr class="{% if item.reasons %}row-conflict{% endif %}" data-member="{% if b.member and b.member.user %}{{ b.member.user.get_full_name|lower }}{% endif %}">
           <td><input type="checkbox" name="booking_ids" value="{{ b.id }}" class="row-check" data-status="{{ b.status }}"></td>
-          <td>{% if b.member and b.member.user %}{% if b.member.avatar %}<img src="{{ b.member.avatar.url }}" class="avatar-xs">{% else %}<span class="avatar-xs avatar-default"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg></span>{% endif %}<a href="{% url 'core:manage_member_detail' club.slug b.member.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings#contact" style="color:inherit;text-decoration:none;border-bottom:1px dotted #adb5bd;" data-overlay data-overlay-wide>{{ b.member.user.get_full_name }}</a>{% else %}—{% endif %}</td>
-          <td>{{ b.aircraft.registration|default:"—" }}</td>
-          <td>{{ b.instructor.get_full_name|default:"—" }}</td>
+          <td style="white-space:nowrap;">{% if b.member and b.member.user %}{% if b.member.avatar %}<img src="{{ b.member.avatar.url }}" class="avatar-xs">{% else %}<span class="avatar-xs avatar-default"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg></span>{% endif %}<a href="{% url 'core:manage_member_detail' club.slug b.member.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings#contact" style="color:inherit;text-decoration:none;border-bottom:1px dotted #adb5bd;" data-overlay data-overlay-wide>{{ b.member.user.get_full_name }}</a>{% else %}—{% endif %}</td>
+          <td style="white-space:nowrap;">{{ b.aircraft.registration|default:"—" }}</td>
+          <td style="white-space:nowrap;">{{ b.instructor.get_full_name|default:"—" }}</td>
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}–{{ b.scheduled_end|time:"H:i" }}</td>
-          <td><span class="status-chip {{ b.display_status_key }}">{% if b.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif b.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif b.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif b.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif b.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ b.display_status }}</span></td>
-          <td style="white-space:nowrap;">{% for r in item.reasons %}<span class="reason-chip">{{ r }}</span>{% endfor %}</td>
+          <td style="white-space:nowrap;">
+            <span class="status-chip {{ b.display_status_key }}">{% if b.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif b.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif b.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif b.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif b.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ b.display_status }}</span>{% for r in item.reasons %} <span class="reason-chip">{{ r }}</span>{% endfor %}
+          </td>
           <td style="text-align:right;white-space:nowrap;">
             {% if b.display_status_key == 'returned' %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn row-action-returned" data-overlay data-overlay-wide>Charges →</a>
             {% else %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="cbtn-sm cbtn-icon" title="View booking" data-overlay data-overlay-wide><i class="ti ti-eye"></i></a>{% endif %}
@@ -112,13 +118,13 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;padding:.6rem 0;font-size:.88rem;text-align:center;">No active bookings.</p>
+    <p style="color:var(--text-3);padding:.6rem 0;font-size:.88rem;text-align:center;">No active bookings.</p>
     {% endif %}
 
     {% else %}
     <!-- ── ALL BOOKINGS TAB ── -->
     {% if using_default_window %}
-    <div style="font-size:.8rem;color:#8a93a0;margin-bottom:.6rem;">
+    <div style="font-size:.8rem;color:var(--text-3);margin-bottom:.6rem;">
       Showing active bookings + completed in the last 30 days.
       <a href="?tab=all&all_history=1" style="color:var(--primary);">Show full history</a>
     </div>
@@ -133,19 +139,20 @@
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=instructor&dir={% if sort == 'instructor' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'instructor' %}sort-active{% endif %}">Instructor{% if sort == 'instructor' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date &amp; time{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
-          <th style="width:1%;white-space:nowrap;">Issues</th><th style="width:1%;"></th>
+          <th style="width:1%;"></th>
         </tr>
       </thead>
       <tbody>
         {% for item in bookings_page %}{% with b=item.b %}
         <tr class="{% if item.reasons %}row-conflict{% endif %}" data-member="{% if b.member and b.member.user %}{{ b.member.user.get_full_name|lower }}{% endif %}">
           <td><input type="checkbox" name="booking_ids" value="{{ b.id }}" class="row-check" data-status="{{ b.status }}"></td>
-          <td>{% if b.member and b.member.user %}{% if b.member.avatar %}<img src="{{ b.member.avatar.url }}" class="avatar-xs">{% else %}<span class="avatar-xs avatar-default"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg></span>{% endif %}<a href="{% url 'core:manage_member_detail' club.slug b.member.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings#contact" style="color:inherit;text-decoration:none;border-bottom:1px dotted #adb5bd;" data-overlay data-overlay-wide>{{ b.member.user.get_full_name }}</a>{% else %}—{% endif %}</td>
-          <td>{{ b.aircraft.registration|default:"—" }}</td>
-          <td>{{ b.instructor.get_full_name|default:"—" }}</td>
+          <td style="white-space:nowrap;">{% if b.member and b.member.user %}{% if b.member.avatar %}<img src="{{ b.member.avatar.url }}" class="avatar-xs">{% else %}<span class="avatar-xs avatar-default"><svg viewBox="0 0 16 16" fill="currentColor"><circle cx="8" cy="6" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg></span>{% endif %}<a href="{% url 'core:manage_member_detail' club.slug b.member.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings#contact" style="color:inherit;text-decoration:none;border-bottom:1px dotted #adb5bd;" data-overlay data-overlay-wide>{{ b.member.user.get_full_name }}</a>{% else %}—{% endif %}</td>
+          <td style="white-space:nowrap;">{{ b.aircraft.registration|default:"—" }}</td>
+          <td style="white-space:nowrap;">{{ b.instructor.get_full_name|default:"—" }}</td>
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}–{{ b.scheduled_end|time:"H:i" }}</td>
-          <td><span class="status-chip {{ b.display_status_key }}">{% if b.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif b.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif b.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif b.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif b.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ b.display_status }}</span></td>
-          <td style="white-space:nowrap;">{% for r in item.reasons %}<span class="reason-chip">{{ r }}</span>{% endfor %}</td>
+          <td style="white-space:nowrap;">
+            <span class="status-chip {{ b.display_status_key }}">{% if b.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif b.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif b.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif b.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif b.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ b.display_status }}</span>{% for r in item.reasons %} <span class="reason-chip">{{ r }}</span>{% endfor %}
+          </td>
           <td style="text-align:right;white-space:nowrap;">
             {% if b.display_status_key == 'returned' %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn row-action-returned" data-overlay data-overlay-wide>Charges →</a>
             {% else %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="cbtn-sm cbtn-icon" title="View booking" data-overlay data-overlay-wide><i class="ti ti-eye"></i></a>{% endif %}
@@ -156,13 +163,13 @@
     </table>
     {% if bookings_page.paginator.num_pages > 1 %}
     <div style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.85rem;flex-wrap:wrap;">
-      <span style="color:#8a93a0;">Page {{ bookings_page.number }} of {{ bookings_page.paginator.num_pages }} &nbsp;({{ bookings_page.paginator.count }} records)</span>
+      <span style="color:var(--text-3);">Page {{ bookings_page.number }} of {{ bookings_page.paginator.num_pages }} &nbsp;({{ bookings_page.paginator.count }} records)</span>
       {% if bookings_page.has_previous %}<a href="?{{ filter_qs }}&page={{ bookings_page.previous_page_number }}" class="cbtn-sm">‹ Prev</a>{% endif %}
       {% if bookings_page.has_next %}<a href="?{{ filter_qs }}&page={{ bookings_page.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
     </div>
     {% endif %}
     {% else %}
-    <p style="color:#8a93a0;padding:2rem 0;text-align:center;">No bookings match the current filters.</p>
+    <p style="color:var(--text-3);padding:2rem 0;text-align:center;">No bookings match the current filters.</p>
     {% endif %}
     {% endif %}
 
@@ -170,16 +177,13 @@
 </div>
 
 <style>
-  .bulk-bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;background:#f8f9fa;border:1px solid #e3e6ea;border-radius:8px;padding:.5rem .75rem;margin-bottom:.75rem;}
+  .bulk-bar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;background:#f8f9fa;border:1px solid var(--border);border-radius:8px;padding:.5rem .75rem;margin-bottom:.75rem;}
   .bk-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-  .bk-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .bk-table td{padding:.55rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .bk-table td{padding:.55rem .6rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .bk-table tr:last-child td{border-bottom:0;}
-  .status-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
   .avatar-xs{width:24px;height:24px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:.3rem;}
   span.avatar-xs{display:inline-flex;align-items:center;justify-content:center;background:#e8f0fb;color:var(--primary);}
   span.avatar-xs svg{width:14px;height:14px;}
-  .finput{padding:.38rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.85rem;font-family:inherit;}
 </style>
 
 <script>

@@ -7,25 +7,25 @@
   #live-map{width:100%;height:100%;}
 
   /* Side panel */
-  #map-panel{position:absolute;top:1rem;right:1rem;z-index:1000;background:#fff;border-radius:10px;
+  #map-panel{position:absolute;top:1rem;right:1rem;z-index:1000;background:var(--surface);border-radius:10px;
     box-shadow:0 2px 14px rgba(0,0,0,.18);width:210px;max-height:calc(100vh - 130px);overflow-y:auto;
     display:flex;flex-direction:column;}
   .mp-hd{background:var(--banner);color:#fff;padding:.55rem .85rem;border-radius:10px 10px 0 0;
     font-size:.8rem;font-weight:650;display:flex;align-items:center;gap:.45rem;flex-shrink:0;}
   .mp-body{padding:.5rem .7rem;flex:1;overflow-y:auto;}
-  .ac-row{border-bottom:1px solid #f0f2f4;padding:.4rem 0;}
+  .ac-row{border-bottom:1px solid var(--border-subtle);padding:.4rem 0;}
   .ac-row:last-child{border-bottom:none;}
-  .ac-reg{font-size:.82rem;font-weight:700;color:#1f2933;}
-  .ac-sub{font-size:.72rem;color:#8a93a0;}
-  .ac-pilot{font-size:.74rem;color:#5b6573;margin-top:.1rem;}
-  .ac-pos{font-size:.7rem;color:#5b6573;font-family:monospace;margin-top:.1rem;}
+  .ac-reg{font-size:.82rem;font-weight:700;color:var(--text-1);}
+  .ac-sub{font-size:.72rem;color:var(--text-3);}
+  .ac-pilot{font-size:.74rem;color:var(--text-2);margin-top:.1rem;}
+  .ac-pos{font-size:.7rem;color:var(--text-2);font-family:monospace;margin-top:.1rem;}
   .ac-nofound{font-size:.7rem;color:#b0b8c1;font-style:italic;margin-top:.1rem;}
   .mp-empty{font-size:.78rem;color:#b0b8c1;text-align:center;padding:.5rem 0;}
 
   /* Refresh badge */
   #map-badge{position:absolute;bottom:1.4rem;left:50%;transform:translateX(-50%);z-index:1000;
     background:rgba(255,255,255,.92);backdrop-filter:blur(4px);padding:.28rem .8rem;border-radius:20px;
-    font-size:.72rem;color:#8a93a0;box-shadow:0 1px 6px rgba(0,0,0,.12);
+    font-size:.72rem;color:var(--text-3);box-shadow:0 1px 6px rgba(0,0,0,.12);
     display:flex;align-items:center;gap:.4rem;white-space:nowrap;}
   #badge-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;flex-shrink:0;transition:background .3s;}
 
@@ -33,12 +33,12 @@
   #map-empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:999;
     pointer-events:none;text-align:center;}
   #map-empty p{background:rgba(255,255,255,.96);border-radius:10px;padding:1rem 1.6rem;
-    box-shadow:0 2px 12px rgba(0,0,0,.1);color:#8a93a0;font-size:.88rem;margin:0;}
+    box-shadow:0 2px 12px rgba(0,0,0,.1);color:var(--text-3);font-size:.88rem;margin:0;}
 
   /* Aircraft label tooltip */
-  .ac-label{background:#fff!important;border:1.5px solid #1f2933!important;border-radius:5px!important;
+  .ac-label{background:var(--surface)!important;border:1.5px solid #1f2933!important;border-radius:5px!important;
     box-shadow:0 2px 6px rgba(0,0,0,.18)!important;padding:.18rem .45rem!important;
-    font-size:.72rem!important;font-weight:600!important;color:#1f2933!important;
+    font-size:.72rem!important;font-weight:600!important;color:var(--text-1)!important;
     white-space:nowrap!important;line-height:1.3!important;}
   .ac-label::before,.ac-label::after{display:none!important;}
 
@@ -77,7 +77,7 @@
   </div>
 
   <!-- Source attribution -->
-  <div style="font-size:.7rem;color:#adb5bd;padding:.3rem .5rem .1rem;border-top:1px solid #f0f2f4;margin-top:.2rem;" id="mp-sources">
+  <div style="font-size:.7rem;color:var(--text-3);padding:.3rem .5rem .1rem;border-top:1px solid #f0f2f4;margin-top:.2rem;" id="mp-sources">
     Data: <a href="https://www.adsb.fi" target="_blank" style="color:inherit;">adsb.fi</a> ·
     <a href="https://www.adsb.lol" target="_blank" style="color:inherit;">adsb.lol</a> ·
     <a href="https://www.airplanes.live" target="_blank" style="color:inherit;">airplanes.live</a> ·
@@ -151,7 +151,7 @@ function buildPopup(ac) {
   const trk = ac.track    != null ? ac.track + '°'                    : '—';
   return `<div style="font-size:.82rem;line-height:1.6;min-width:150px;">
     <div style="font-weight:700;font-size:.95rem;">${ac.registration}</div>
-    <div style="color:#5b6573;">${ac.aircraft_type || '—'}</div>
+    <div style="color:var(--text-2);">${ac.aircraft_type || '—'}</div>
     ${ac.pilot_name ? `<div>Pilot: <b>${ac.pilot_name}</b></div>` : ''}
     <hr style="margin:.3rem 0;border:none;border-top:1px solid #f0f2f4;">
     <div>Alt: ${alt} &nbsp;·&nbsp; Spd: ${spd} &nbsp;·&nbsp; Trk: ${trk}</div>

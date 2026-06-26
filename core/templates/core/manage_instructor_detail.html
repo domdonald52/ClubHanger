@@ -76,9 +76,9 @@
       <h2 class="sh2" style="margin:0;">Availability windows</h2>
       <button type="button" class="cbtn-add" onclick="document.getElementById('add-av-modal').hidden=false">+ Add</button>
     </div>
-    <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">
+    <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .9rem;">
       If no windows are set, this instructor is treated as available all operating hours.
-      {% if past_av_count %}<span style="color:#adb5bd;">{{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }} not shown.</span>{% endif %}
+      {% if past_av_count %}<span style="color:var(--text-3);">{{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }} not shown.</span>{% endif %}
     </p>
 
     {% if av_windows %}
@@ -89,13 +89,13 @@
         <tr>
           <td>{% if av.recurrence == 'weekly' %}{{ av.get_weekday_display }}s{% else %}{{ av.date }}{% endif %}</td>
           <td>{% if av.all_day %}All day{% else %}{{ av.start_time|time:'H:i' }}–{{ av.end_time|time:'H:i' }}{% endif %}</td>
-          <td style="color:#8a93a0;font-size:.78rem;">
+          <td style="color:var(--text-3);font-size:.78rem;">
             {% if av.active_from or av.active_until %}
               {% if av.active_from %}from {{ av.active_from }}{% endif %}
               {% if av.active_until %}until {{ av.active_until }}{% endif %}
             {% else %}—{% endif %}
           </td>
-          <td style="color:#8a93a0;">{{ av.notes }}</td>
+          <td style="color:var(--text-3);">{{ av.notes }}</td>
           <td style="text-align:right;">
             <form method="post" style="display:contents;" data-confirm="Remove this window?">
               {% csrf_token %}
@@ -109,10 +109,10 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;margin-bottom:.8rem;">No windows set — treated as available all operating hours.</p>
+    <p style="color:var(--text-3);font-size:.85rem;margin-bottom:.8rem;">No windows set — treated as available all operating hours.</p>
     {% endif %}
 
-    <hr style="border:none;border-top:1px solid #eef1f4;margin:1.5rem 0;">
+    <hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;">
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;">
       <h2 class="sh2" style="margin:0;">Block-outs</h2>
@@ -131,7 +131,7 @@
             {% else %}Daily{% endif %}
           </td>
           <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
-          <td style="color:#8a93a0;">{{ bo.label }}</td>
+          <td style="color:var(--text-3);">{{ bo.label }}</td>
           <td style="text-align:right;">
             <form method="post" style="display:contents;" data-confirm="Delete this block-out?">
               {% csrf_token %}
@@ -145,7 +145,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 .8rem;">No block-outs scheduled for this instructor.</p>
+    <p style="color:var(--text-3);font-size:.85rem;margin:.2rem 0 .8rem;">No block-outs scheduled for this instructor.</p>
     {% endif %}
 
   </div><!-- /tab-availability -->
@@ -267,28 +267,27 @@
         <tr>
           <td style="font-size:.85rem;white-space:nowrap;">{{ b.scheduled_start|date:"D j M, H:i" }}</td>
           <td>{{ b.member.user.get_full_name }}</td>
-          <td style="color:#5b6573;">{{ b.aircraft.registration }}</td>
-          <td style="color:#8a93a0;font-size:.82rem;">{{ b.flight_type.name }}</td>
+          <td style="color:var(--text-2);">{{ b.aircraft.registration }}</td>
+          <td style="color:var(--text-3);font-size:.82rem;">{{ b.flight_type.name }}</td>
           <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;">No upcoming bookings.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No upcoming bookings.</p>
     {% endif %}
   </div><!-- /tab-bookings -->
 
 </div>
 
 <style>
-  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:var(--text-3);text-decoration:none;margin-bottom:1rem;}
   .back-link:hover{color:var(--banner);}
   .grade-badge{font-size:.78rem;font-weight:600;padding:.25rem .65rem;border-radius:10px;background:#e8f0fb;color:var(--primary);}
-  .grade-badge.no-grade{background:#f3f5f7;color:#8a93a0;}
+  .grade-badge.no-grade{background:var(--surface-3);color:var(--text-3);}
   .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem;}
-  .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .ft-table tr:last-child td{border-bottom:0;}
   .bo-dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem;border:1px solid rgba(0,0,0,.1);}
 

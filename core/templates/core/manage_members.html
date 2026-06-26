@@ -3,18 +3,20 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap;">
-    <h1 class="sh2" style="margin:0;">Members <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ total_count }})</span></h1>
+  <div class="page-hdr">
+    <h1 class="page-h1">Members <span class="page-h1-sub">({{ total_count }})</span></h1>
     {% if club_member.is_admin %}
-    <button type="button" class="cbtn-add" onclick="document.getElementById('invite-modal').hidden=false" style="margin-left:auto;">✉ Invite member</button>
-    <button type="button" class="cbtn-add" onclick="document.getElementById('add-member-modal').hidden=false">+ Add manually</button>
-    <button type="button" class="cbtn-add" onclick="document.getElementById('registrar-modal').hidden=false">↓ Registrar export</button>
+    <div class="page-actions">
+      <button type="button" class="cbtn-sm" onclick="document.getElementById('registrar-modal').hidden=false">↓ Export</button>
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-member-modal').hidden=false">+ Add manually</button>
+      <button type="button" class="cbtn-add" onclick="document.getElementById('invite-modal').hidden=false">✉ Invite member</button>
+    </div>
     {% endif %}
   </div>
-  <form method="get" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">
-    <div style="position:relative;flex:1;min-width:180px;max-width:300px;">
+  <form method="get" class="list-toolbar">
+    <div style="position:relative;">
       <input type="search" name="q" value="{{ q }}" placeholder="Search name or email…"
-             class="finput" style="padding-left:2rem;">
+             class="search-input" style="padding-left:2rem;">
       <svg style="position:absolute;left:.5rem;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none;" width="14" height="14" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M10 10l3.5 3.5"/></svg>
     </div>
     <select name="standing" class="finput" style="width:160px;" onchange="this.form.submit()">
@@ -69,11 +71,11 @@
           <strong>{{ m.user.get_full_name }}</strong>
           {% if m == club_member %}<span class="badge badge-you">you</span>{% endif %}
         </td>
-        <td style="font-size:.78rem;color:#8a93a0;">{{ m.user.email }}</td>
+        <td style="font-size:.78rem;color:var(--text-3);">{{ m.user.email }}</td>
         <td><span class="standing-chip standing-{{ m.standing }}">{{ m.get_standing_display }}</span></td>
-        <td style="font-size:.83rem;color:#5b6573;">
+        <td style="font-size:.83rem;color:var(--text-2);">
           {{ m.role.name|default:"—" }}
-          {% if m.has_admin_access %}<span title="Settings &amp; Rates access override" style="display:inline-block;margin-left:.3rem;font-size:.68rem;font-weight:600;padding:.1rem .35rem;border-radius:4px;background:#fdf2cd;color:#7c5000;border:1px solid #e9c46a;vertical-align:middle;">S&amp;R</span>{% endif %}
+          {% if m.has_admin_access %}<span title="Settings &amp; Rates access override" style="display:inline-block;margin-left:.3rem;font-size:.68rem;font-weight:600;padding:.1rem .35rem;border-radius:4px;background:var(--warning-bg);color:var(--warning-text);border:1px solid #e9c46a;vertical-align:middle;">S&amp;R</span>{% endif %}
         </td>
         <td style="font-size:.83rem;">
           {% if m.subscription_expires %}
@@ -88,45 +90,45 @@
             {% endif %}
           {% else %}—{% endif %}
         </td>
-        <td style="font-size:.83rem;color:#8a93a0;">{{ m.join_date }}</td>
+        <td style="font-size:.83rem;color:var(--text-3);">{{ m.join_date }}</td>
         <td>
           <a href="{% url 'core:manage_member_detail' club.slug m.id %}?back={% url 'core:manage_members' club.slug %}&back_label=Members" class="cbtn-sm cbtn-icon" title="Manage member" data-overlay data-overlay-wide><i class="ti ti-chevron-right"></i></a>
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="8" style="text-align:center;color:#8a93a0;padding:2rem;">No members found.</td></tr>
+      <tr><td colspan="8" style="text-align:center;color:var(--text-3);padding:2rem;">No members found.</td></tr>
       {% endfor %}
     </tbody>
   </table>
 
   {% if members_page.paginator.num_pages > 1 %}
   <div style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.85rem;flex-wrap:wrap;">
-    <span style="color:#8a93a0;">Page {{ members_page.number }} of {{ members_page.paginator.num_pages }}</span>
+    <span style="color:var(--text-3);">Page {{ members_page.number }} of {{ members_page.paginator.num_pages }}</span>
     {% if members_page.has_previous %}<a href="?{{ filter_qs }}&page={{ members_page.previous_page_number }}" class="cbtn-sm">‹ Prev</a>{% endif %}
     {% if members_page.has_next %}<a href="?{{ filter_qs }}&page={{ members_page.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
   </div>
   {% endif %}
 
   {% if pending_invites and club_member.is_admin %}
-  <div style="margin-top:2rem;padding-top:1.2rem;border-top:1px solid #e8eaed;">
-    <h2 style="font-size:.88rem;font-weight:650;color:#5b6573;margin:0 0 .7rem;text-transform:uppercase;letter-spacing:.05em;">Pending invites</h2>
+  <div style="margin-top:2rem;padding-top:1.2rem;border-top:1px solid var(--border);">
+    <h2 style="font-size:.88rem;font-weight:650;color:var(--text-2);margin:0 0 .7rem;text-transform:uppercase;letter-spacing:.05em;">Pending invites</h2>
     <table style="width:100%;border-collapse:collapse;font-size:.84rem;">
       <thead>
-        <tr style="border-bottom:1px solid #e8eaed;">
-          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Email</th>
-          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Role</th>
-          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Sent</th>
-          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Expires</th>
-          <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;">Invite link</th>
+        <tr style="border-bottom:1px solid var(--border);">
+          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Email</th>
+          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Role</th>
+          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Sent</th>
+          <th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Expires</th>
+          <th style="padding:.3rem .5rem;text-align:right;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;">Invite link</th>
         </tr>
       </thead>
       <tbody>
         {% for inv in pending_invites %}
-        <tr style="border-bottom:1px solid #f0f2f4;">
+        <tr style="border-bottom:1px solid var(--border-subtle);">
           <td style="padding:.4rem .5rem;">{{ inv.email }}</td>
-          <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.role.name|default:"—" }}</td>
-          <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.created_at|date:"j M" }}</td>
-          <td style="padding:.4rem .5rem;color:#5b6573;">{{ inv.expires_at|date:"j M" }}</td>
+          <td style="padding:.4rem .5rem;color:var(--text-2);">{{ inv.role.name|default:"—" }}</td>
+          <td style="padding:.4rem .5rem;color:var(--text-2);">{{ inv.created_at|date:"j M" }}</td>
+          <td style="padding:.4rem .5rem;color:var(--text-2);">{{ inv.expires_at|date:"j M" }}</td>
           <td style="padding:.4rem .5rem;text-align:right;">
             <button type="button" class="copy-invite-btn"
                     data-link="{{ request.scheme }}://{{ request.get_host }}{% url 'core:accept_invite' inv.token %}"
@@ -138,7 +140,7 @@
         {% endfor %}
       </tbody>
     </table>
-    <p style="font-size:.76rem;color:#9aa3ad;margin:.6rem .5rem 0;line-height:1.5;">
+    <p style="font-size:.76rem;color:var(--text-3);margin:.6rem .5rem 0;line-height:1.5;">
       A 7-day sign-up link is emailed automatically when you invite someone. Use <strong>Copy link</strong> to send it yourself (e.g. by text) — handy while email delivery is being set up or overridden for testing.
     </p>
   </div>
@@ -153,9 +155,9 @@
         setTimeout(function(){ btn.textContent = orig; }, 1600);
       };
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(link).then(done, function(){ window.prompt('Copy this invite link:', link); });
+        navigator.clipboard.writeText(link).then(done, function(){ window.toast('Could not copy — copy the link manually: ' + link, 'info'); });
       } else {
-        window.prompt('Copy this invite link:', link);
+        window.toast('Copy the invite link manually: ' + link, 'info');
       }
     });
   });
@@ -164,44 +166,43 @@
 </div>
 
 <style>
-  .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
+  .sh2{font-size:1rem;font-weight:650;color:var(--text-1);}
 
   .avatar-sm{width:32px;height:32px;border-radius:50%;object-fit:cover;display:block;}
-  span.avatar-sm{display:flex;align-items:center;justify-content:center;background:#e8f0fb;color:var(--primary);}
+  span.avatar-sm{display:flex;align-items:center;justify-content:center;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);}
   span.avatar-sm svg{width:18px;height:18px;}
   .avatar-default{}
 
   .mg-table{width:100%;border-collapse:collapse;font-size:.86rem;}
-  .mg-table th{padding:.4rem .7rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .mg-table td{padding:.5rem .7rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .mg-table td{padding:.5rem .7rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .mg-table tr:last-child td{border-bottom:0;}
-  .row-dim td{color:#adb5bd;}
-  .row-dim td strong{color:#adb5bd;}
-  .expired{color:#c0392b !important;}
+  .row-dim td{color:var(--text-3);}
+  .row-dim td strong{color:var(--text-3);}
+  .expired{color:var(--danger) !important;}
 
-  .inline-sel{padding:.28rem .4rem;border:1px solid #d6dae0;border-radius:5px;font-size:.82rem;background:#fff;cursor:pointer;color:#333;}
+  .inline-sel{padding:.28rem .4rem;border:1px solid var(--input-border);border-radius:5px;font-size:.82rem;background:var(--surface);cursor:pointer;color:var(--text-1);}
   .badge{display:inline-block;padding:.1rem .4rem;border-radius:8px;font-size:.7rem;font-weight:600;margin-left:.3rem;vertical-align:middle;}
-  .badge-you{background:#e8f0fb;color:#2f7dd1;}
+  .badge-you{background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);}
 
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(460px,95vw);}
+  .modal{background:var(--surface);border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(460px,95vw);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
   .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:1rem;}
   .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.6rem;}
   .standing-chip{display:inline-block;font-size:.72rem;font-weight:650;padding:.18rem .5rem;border-radius:20px;border:1px solid currentColor;white-space:nowrap;}
-  .standing-active   {color:#216c2a;background:#eaf6ec;border-color:#a3d9a5;}
-  .standing-pending  {color:#92400e;background:#fffbeb;border-color:#fcd34d;}
-  .standing-suspended{color:#b45309;background:#fff7ed;border-color:#fed7aa;}
-  .standing-lapsed   {color:#6b7280;background:#f3f5f7;border-color:#d1d5db;}
-  .standing-resigned {color:#6b7280;background:#f3f5f7;border-color:#d1d5db;}
-  .standing-transferred{color:#6366f1;background:#eef2ff;border-color:#c7d2fe;}
-  .standing-non_member{color:#8a93a0;background:#f9fafb;border-color:#e5e7eb;}
+  .standing-active   {color:var(--success-text);background:var(--success-bg);border-color:#a3d9a5;}
+  .standing-pending  {color:var(--warning-text);background:var(--warning-bg);border-color:#fcd34d;}
+  .standing-suspended{color:var(--warning-text);background:var(--warning-bg);border-color:#fed7aa;}
+  .standing-lapsed   {color:var(--text-3);background:var(--surface-3);border-color:#d1d5db;}
+  .standing-resigned {color:var(--text-3);background:var(--surface-3);border-color:#d1d5db;}
+  .standing-transferred{color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,var(--surface));border-color:#c7d2fe;}
+  .standing-non_member{color:var(--text-3);background:var(--surface-2);border-color:#e5e7eb;}
   .expiry-badge{display:inline-block;font-size:.75rem;font-weight:600;padding:.15rem .45rem;border-radius:6px;white-space:nowrap;}
-  .expiry-soon  {background:#fffbeb;color:#92400e;}
-  .expiry-grace {background:#fff7ed;color:#c2410c;}
-  .expiry-overdue{background:#fff0f0;color:#c0392b;}
+  .expiry-soon  {background:var(--warning-bg);color:var(--warning-text);}
+  .expiry-grace {background:var(--warning-bg);color:var(--warning-text);}
+  .expiry-overdue{background:var(--danger-bg);color:var(--danger);}
 </style>
 
 <!-- Invite member modal -->
@@ -211,13 +212,13 @@
       <h2 style="margin:0;">Invite member</h2>
       <button type="button" class="pi-close" onclick="document.getElementById('invite-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
-    <p style="font-size:.84rem;color:#5b6573;margin:0 0 1rem;">Sends a 7-day sign-up link to the recipient's email. They create their own account and are added with Pending standing.</p>
+    <p style="font-size:.84rem;color:var(--text-2);margin:0 0 1rem;">Sends a 7-day sign-up link to the recipient's email. They create their own account and are added with Pending standing.</p>
     <form method="post" action="{% url 'core:send_invite' club.slug %}">
       {% csrf_token %}
       <label class="flabel">Email address
         <input type="email" name="email" required class="finput" autocomplete="off" placeholder="member@example.com">
       </label>
-      <label class="flabel" style="margin-top:.6rem;">Role <span style="font-weight:400;color:#9aa3af;">(optional — pre-assign a role)</span>
+      <label class="flabel" style="margin-top:.6rem;">Role <span style="font-weight:400;color:var(--text-3);">(optional — pre-assign a role)</span>
         <select name="role_id" class="finput">
           <option value="">— No role assigned yet —</option>
           {% for r in roles %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}
@@ -258,7 +259,7 @@
         <input type="email" name="email" required class="finput" autocomplete="off">
       </label>
       <div id="add-pw-wrap" hidden>
-        <label class="flabel" style="margin-top:.1rem;">Initial password <span style="font-weight:400;color:#9aa3af;">(leave blank to auto-generate)</span>
+        <label class="flabel" style="margin-top:.1rem;">Initial password <span style="font-weight:400;color:var(--text-3);">(leave blank to auto-generate)</span>
           <input type="password" name="password" class="finput" autocomplete="new-password">
         </label>
       </div>
@@ -275,14 +276,14 @@
       <h2 style="margin:0;">Registrar export</h2>
       <button type="button" class="pi-close" onclick="document.getElementById('registrar-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
-    <p style="font-size:.85rem;color:#5b6573;margin:0 0 1rem;">Generates a point-in-time list of all members active on a chosen date.</p>
+    <p style="font-size:.85rem;color:var(--text-2);margin:0 0 1rem;">Generates a point-in-time list of all members active on a chosen date.</p>
     <label class="flabel">As at date
       <input type="date" id="reg-as-of" class="finput" value="{{ today_iso }}">
     </label>
-    <div id="reg-result" style="margin-top:.9rem;font-size:.84rem;color:#5b6573;"></div>
+    <div id="reg-result" style="margin-top:.9rem;font-size:.84rem;color:var(--text-2);"></div>
     <div id="reg-table-wrap" style="margin-top:.7rem;max-height:320px;overflow-y:auto;display:none;">
       <table style="width:100%;border-collapse:collapse;font-size:.82rem;">
-        <thead id="reg-thead" style="position:sticky;top:0;background:#fff;"></thead>
+        <thead id="reg-thead" style="position:sticky;top:0;background:var(--surface);"></thead>
         <tbody id="reg-tbody"></tbody>
       </table>
     </div>
@@ -341,9 +342,9 @@ function regPreview() {
     const thead = document.getElementById('reg-thead');
     const tbody = document.getElementById('reg-tbody');
     const cols = Object.keys(REG_LABELS);
-    thead.innerHTML = '<tr>' + cols.map(c => `<th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;border-bottom:1px solid #e3e6ea;">${REG_LABELS[c]}</th>`).join('') + '</tr>';
+    thead.innerHTML = '<tr>' + cols.map(c => `<th style="padding:.3rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;border-bottom:1px solid var(--border);">${REG_LABELS[c]}</th>`).join('') + '</tr>';
     tbody.innerHTML = data.rows.map(r =>
-      '<tr style="border-bottom:1px solid #f4f6f8;">' +
+      '<tr style="border-bottom:1px solid var(--border-subtle);">' +
       cols.map(c => `<td style="padding:.35rem .5rem;white-space:nowrap;">${r[c] || '—'}</td>`).join('') +
       '</tr>'
     ).join('');

@@ -7,7 +7,7 @@
 <div class="gap-sm"></div>
 
 {% if request.GET.saved %}
-<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:0 .75rem .5rem;font-size:.83rem;font-weight:600;">Booking requested — pending instructor confirmation.</div>
+<div style="background:#dcfce7;color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:0 .75rem .5rem;font-size:.83rem;font-weight:600;">Booking requested — pending instructor confirmation.</div>
 {% endif %}
 
 {% if upcoming %}
@@ -52,11 +52,11 @@
 <div class="app-list">
   {% for b in past %}
   <div class="app-list-row">
-    <div style="width:38px;height:38px;border-radius:10px;background:#f4f6f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:#8a93a0;">
+    <div style="width:38px;height:38px;border-radius:10px;background:#f4f6f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:var(--text-3);">
       {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
     </div>
     <div class="app-list-main">
-      <div class="app-list-title" style="color:#4a5568;">{{ b.aircraft.registration }}</div>
+      <div class="app-list-title" style="color:var(--text-2);">{{ b.aircraft.registration }}</div>
       <div class="app-list-sub">{{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
         {% if b.flight_type %} &middot; {{ b.flight_type.name }}{% endif %}
       </div>
@@ -68,7 +68,7 @@
 <div class="gap-md"></div>
 
 <!-- ── Booking detail sheet ── -->
-<div id="bk-sheet-back" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:300;" onclick="closeBookingSheet()"></div>
+<div id="bk-sheet-back" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:300;" onclick="closeBookingSheet()"></div>
 <div id="bk-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
   <div style="width:36px;height:4px;background:#e0e3e8;border-radius:2px;margin:0 auto .9rem;"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;">
@@ -83,16 +83,16 @@
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1.1rem;">
     <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.7rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Date &amp; time</div>
+      <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Date &amp; time</div>
       <div style="font-size:.86rem;font-weight:600;" id="bk-start"></div>
-      <div style="font-size:.8rem;color:#6b7280;" id="bk-end"></div>
+      <div style="font-size:.8rem;color:var(--text-3);" id="bk-end"></div>
     </div>
     <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.7rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Instructor</div>
+      <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Instructor</div>
       <div style="font-size:.86rem;font-weight:600;" id="bk-instr"></div>
     </div>
     <div id="bk-type-wrap" style="grid-column:1/-1;background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;display:none;">
-      <div style="font-size:.7rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Flight type</div>
+      <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Flight type</div>
       <div style="font-size:.86rem;font-weight:600;" id="bk-type"></div>
     </div>
   </div>
@@ -107,7 +107,7 @@
   </div>
 
   <div id="bk-cancel-section" style="display:none;">
-    <div style="font-size:.82rem;font-weight:600;color:#1f2933;margin-bottom:.45rem;">Cancellation reason</div>
+    <div style="font-size:.82rem;font-weight:600;color:var(--text-1);margin-bottom:.45rem;">Cancellation reason</div>
     <select id="bk-cancel-reason" style="display:block;width:100%;padding:.5rem .6rem;border:1px solid #dde1e8;border-radius:9px;font-size:.86rem;background:#fff;margin-bottom:.7rem;">
       <option value="no_longer_required">No longer required</option>
       <option value="scheduling_conflict">Scheduling conflict</option>

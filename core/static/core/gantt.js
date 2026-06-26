@@ -184,15 +184,16 @@
     const blank = document.createElement("option"); blank.value = ""; fFlightType.appendChild(blank);
     const memberFTs  = FLIGHT_TYPES.filter(ft => !ft.for_contacts);
     const contactFTs = FLIGHT_TYPES.filter(ft =>  ft.for_contacts);
+    const ftLabel = ft => ft.name + (ft.for_contacts ? '' : ft.is_solo ? ' · Solo' : ' · Instructor');
     if ((cfg.isInstructor || cfg.canManage) && contactFTs.length) {
       const mg = document.createElement("optgroup"); mg.label = "Member flights";
-      memberFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ft.name; mg.appendChild(o); });
+      memberFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ftLabel(ft); mg.appendChild(o); });
       const cg = document.createElement("optgroup"); cg.label = "Contact flights";
-      contactFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ft.name; cg.appendChild(o); });
+      contactFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ftLabel(ft); cg.appendChild(o); });
       fFlightType.appendChild(mg);
       fFlightType.appendChild(cg);
     } else {
-      memberFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ft.name; fFlightType.appendChild(o); });
+      memberFTs.forEach(ft => { const o = document.createElement("option"); o.value = ft.id; o.textContent = ftLabel(ft); fFlightType.appendChild(o); });
     }
   })();
 
@@ -218,10 +219,10 @@
     const m = MEMBERS.find(x => String(x.id) === fMember.value);
     if (m) {
       fMemberDisplay.textContent = m.name;
-      fMemberDisplay.style.color = m.badge !== "current" ? "#adb5bd" : "#1f2933";
+      fMemberDisplay.style.color = m.badge !== "current" ? "var(--text-3)" : "var(--text-1)";
     } else {
       fMemberDisplay.textContent = "— select member —";
-      fMemberDisplay.style.color = "#8a93a0";
+      fMemberDisplay.style.color = "var(--text-3)";
     }
   }
 
@@ -327,13 +328,9 @@
   let   _fmSelected = null; // { id, el } of highlighted row
 
   function _fmHighlight(item, memberId) {
-    if (_fmSelected) {
-      _fmSelected.el.style.background = "";
-      _fmSelected.el.style.fontWeight = "";
-    }
+    if (_fmSelected) _fmSelected.el.classList.remove("selected");
     _fmSelected = { id: memberId, el: item };
-    item.style.background = "color-mix(in srgb, var(--primary) 12%, #fff)";
-    item.style.fontWeight  = "600";
+    item.classList.add("selected");
     if (fmApply) { fmApply.disabled = false; }
   }
 
@@ -349,8 +346,7 @@
       const badge = m.badge === "current" ? "" : m.badge === "non_member" ? " · Non-mbr" : " · Lapsed";
       const warn  = m.acct_warning ? " ⚠" : "";
       const item  = document.createElement("div");
-      item.style.cssText = "padding:.5rem .75rem;cursor:pointer;font-size:.88rem;border-bottom:1px solid #f0f2f4;transition:background .1s;";
-      item.style.color = m.badge !== "current" ? "#adb5bd" : "#1f2933";
+      item.className = "fm-item" + (m.badge !== "current" ? " inactive" : "");
       item.textContent = m.name + badge + warn;
       item.dataset.memberId = m.id;
       item.addEventListener("click", () => _fmHighlight(item, m.id));
@@ -359,7 +355,7 @@
       count++;
     });
     if (!count) {
-      fmList.innerHTML = '<div style="padding:.75rem;color:#8a93a0;font-size:.84rem;text-align:center;">No members found</div>';
+      fmList.innerHTML = '<div class="fm-empty">No members found</div>';
     }
   }
 
@@ -448,6 +444,8 @@
     fId.value = "";
     btnDelete.hidden = true;
     if (aircraftId) fAircraft.value = aircraftId;
+    // Restore full instructor list (may have been filtered by a previous find-slot open)
+    fillSelect(fInstructor, INSTRUCTORS.filter(function(i){ return i.on_roster !== false; }), "id", "name", true);
     fInstructor.value = instructorId || "";
     fStart.value = fmtLocalInput(start);
     fDuration.value = cfg.defaultDuration;
@@ -790,19 +788,7 @@
     });
   }
 
-  // ---- deep-link: ?book=1&aircraft=N&instructor=N&start=ISO ----------
-  if (cfg.canBook) {
-    const params = new URLSearchParams(location.search);
-    if (params.get("book") === "1") {
-      const acId = params.get("aircraft") || "";
-      const instrId = params.get("instructor") || "";
-      const startIso = params.get("start") || "";
-      const bookingKind = params.get("booking_kind") || "dual";
-      const start = startIso ? new Date(startIso) : new Date(cfg.dayStart);
-      openCreate(acId, start, instrId, bookingKind);
-      history.replaceState(null, "", location.pathname);
-    }
-  }
+  // deep-link handled below, after window.openNewBookingWith is defined
 
   // ---- watch modal (non-staff viewing another member's booking) --------
   const watchModal = document.getElementById("watch-modal");
@@ -865,17 +851,6 @@
       }
     });
   });
-
-  // ---- right-click to watch a slot (management only) ------------------
-  if (cfg.canManage) {
-    document.querySelectorAll(".pill").forEach((pill) => {
-      pill.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openWatchModal(pill);
-      });
-    });
-  }
 
   // ---- drag + resize ---------------------------------------------------
   // Set for one animation frame after any drag so the track click-to-create
@@ -1278,6 +1253,107 @@
     loadDetailOverlay(detailUrl);
   }
   window.openDetailOverlay = openDetailOverlay;
+  window.openNewBooking = function() {
+    try {
+      openCreate(null, new Date(Date.now() + 60 * 1000));
+    } catch(e) {
+      toast('Could not open booking form: ' + e.message, 'err');
+    }
+  };
+  window.openNewBookingWith = function(aircraftId, instructorId, startIso, endIso, bookingKind, instructorIds) {
+    try {
+      var start = new Date(startIso);
+      // openCreate restores the full instructor list then clears flight type
+      openCreate(aircraftId || null, start, null, null);
+
+      // Pick a flight type matching the booking kind so instructor field visibility is correct
+      var isSoloKind = (bookingKind === 'solo');
+      var matchingFt = FLIGHT_TYPES.find(function(ft) {
+        return !ft.for_contacts && (ft.is_solo === isSoloKind);
+      });
+      if (matchingFt) {
+        fFlightType.value = String(matchingFt.id);
+        syncFlightTypeMode();
+      }
+      // For dual bookings, always force instructor field visible regardless of whether a flight
+      // type matched (club may only have one generic type; user still needs to pick instructor)
+      if (!isSoloKind && fInstructorLabel) {
+        fInstructorLabel.hidden = false;
+        fInstructor.disabled = false;
+        if (fInstructorLabel.style) fInstructorLabel.style.opacity = '';
+      }
+
+      // Filter instructor dropdown to only the available instructors for this slot
+      if (!isSoloKind && instructorIds && instructorIds.length > 0) {
+        var allowed = {};
+        instructorIds.forEach(function(id) { allowed[String(id)] = true; });
+        Array.from(fInstructor.options).forEach(function(opt) {
+          if (opt.value && !allowed[opt.value]) opt.remove();
+        });
+      }
+
+      // Pre-select instructor (single pre-fill or auto-select when only one option remains)
+      if (instructorId) {
+        fInstructor.value = String(instructorId);
+      } else if (instructorIds && instructorIds.length === 1) {
+        fInstructor.value = String(instructorIds[0]);
+      }
+
+      // Default member to current user for managers — editable in case booking on behalf of another
+      if (cfg.canManage && fMember && !fMember.value) {
+        fMember.value = String(cfg.currentUserId);
+        updateMemberNotice();
+        updateMemberDisplay();
+      }
+
+      if (endIso && fDuration) {
+        var mins = Math.round((new Date(endIso) - start) / 60000);
+        if (mins > 0) { fDuration.value = mins; updatePreview(); }
+      }
+    } catch(e) {
+      toast('Could not open booking form: ' + e.message, 'err');
+    }
+  };
+
+  // ---- deep-link: ?book=1&aircraft=N&start=ISO&booking_kind=solo|dual&instructor_ids=A,B ----
+  if (cfg.canBook) {
+    const _bp = new URLSearchParams(location.search);
+    if (_bp.get("book") === "1") {
+      const _acId     = _bp.get("aircraft") || "";
+      const _instrId  = _bp.get("instructor") || "";
+      const _startIso = _bp.get("start") || "";
+      const _endIso   = _bp.get("span_end") || "";
+      const _kind     = _bp.get("booking_kind") || "dual";
+      const _idsRaw   = _bp.get("instructor_ids") || "";
+      const _instrIds = _idsRaw ? _idsRaw.split(',').filter(Boolean) : null;
+      const _dlStart  = new Date(_startIso);
+      // Call openCreate directly (it is in scope here) — this is the path that is known
+      // to work from the URL deep-link; openNewBookingWith is exported for the overlay path.
+      openCreate(_acId || null, _dlStart, null, null);
+      // Enhance: set flight type + filter instructor dropdown (only if modal actually opened)
+      if (!modal.hidden) {
+        const _isSolo = (_kind === 'solo');
+        const _ft = FLIGHT_TYPES.find(function(ft) { return !ft.for_contacts && ft.is_solo === _isSolo; });
+        if (_ft) { fFlightType.value = String(_ft.id); syncFlightTypeMode(); }
+        if (!_isSolo && fInstructorLabel) { fInstructorLabel.hidden = false; fInstructor.disabled = false; }
+        if (!_isSolo && _instrIds && _instrIds.length > 0) {
+          var _allowed = {};
+          _instrIds.forEach(function(id) { _allowed[String(id)] = true; });
+          Array.from(fInstructor.options).forEach(function(opt) { if (opt.value && !_allowed[opt.value]) opt.remove(); });
+        }
+        if (_instrId) { fInstructor.value = String(_instrId); }
+        else if (_instrIds && _instrIds.length === 1) { fInstructor.value = String(_instrIds[0]); }
+        if (cfg.canManage && fMember && !fMember.value) {
+          fMember.value = String(cfg.currentUserId); updateMemberNotice(); updateMemberDisplay();
+        }
+        if (_endIso && fDuration) {
+          var _mins = Math.round((new Date(_endIso) - _dlStart) / 60000);
+          if (_mins > 0) { fDuration.value = _mins; updatePreview(); }
+        }
+      }
+      history.replaceState(null, "", location.pathname);
+    }
+  }
 
   // ---- row-label click → open detail overlay (instructors & aircraft) -----
   document.querySelectorAll(".row-label[data-detail-url]").forEach((el) => {

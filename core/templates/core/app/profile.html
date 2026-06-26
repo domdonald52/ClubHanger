@@ -5,10 +5,10 @@
 {% block extra_style %}
 <style>
 .m-pill { font-size:.62rem; font-weight:700; padding:.15rem .5rem; border-radius:20px; text-transform:uppercase; letter-spacing:.05em; }
-.m-pill-green  { background:#dcfce7; color:#166534; }
-.m-pill-amber  { background:#fef3c7; color:#92400e; }
-.m-pill-red    { background:#fee2e2; color:#b91c1c; }
-.m-pill-grey   { background:#f0f2f4; color:#6b7280; }
+.m-pill-green  { background:#dcfce7; color:var(--success-text); }
+.m-pill-amber  { background:#fef3c7; color:var(--warning-text); }
+.m-pill-red    { background:var(--danger-bg); color:#b91c1c; }
+.m-pill-grey   { background:#f0f2f4; color:var(--text-3); }
 
 </style>
 {% endblock %}
@@ -25,7 +25,7 @@
 
 {% block content %}
 {% if saved %}
-<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Saved.</div>
+<div style="background:#dcfce7;color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Saved.</div>
 {% endif %}
 <div class="gap-sm"></div>
 
@@ -54,7 +54,7 @@
   <div style="display:grid;gap:.4rem;font-size:.86rem;">
     {% if club_member.subscription_expires %}
     <div style="display:flex;align-items:center;gap:.6rem;">
-      <span style="color:#9ca3af;font-size:.75rem;min-width:52px;">Expires</span>
+      <span style="color:var(--text-3);font-size:.75rem;min-width:52px;">Expires</span>
       <span style="font-weight:600;">{{ club_member.subscription_expires|date:"j/n/Y" }}</span>
       {% if sub_status == 'expired' %}
       <span class="m-pill m-pill-red">Expired</span>
@@ -65,13 +65,13 @@
     {% endif %}
     {% if club_member.caa_number %}
     <div>
-      <span style="color:#9ca3af;font-size:.75rem;min-width:52px;display:inline-block;">CAA</span>
+      <span style="color:var(--text-3);font-size:.75rem;min-width:52px;display:inline-block;">CAA</span>
       {{ club_member.caa_number }}
     </div>
     {% endif %}
     {% if club_member.role %}
     <div>
-      <span style="color:#9ca3af;font-size:.75rem;min-width:52px;display:inline-block;">Role</span>
+      <span style="color:var(--text-3);font-size:.75rem;min-width:52px;display:inline-block;">Role</span>
       {{ club_member.role.name }}
     </div>
     {% endif %}
@@ -81,12 +81,12 @@
 <!-- Quick-nav tiles -->
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;padding:.25rem .75rem .75rem;">
 
-  <a href="{% url 'core:app_flight_log' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+  <a href="{% url 'core:app_flight_log' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
     <i class="ti ti-plane-departure" style="font-size:26px;color:var(--primary);line-height:1;"></i>
-    <span style="font-size:.75rem;font-weight:700;color:#374151;">Flight log</span>
+    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Flight log</span>
   </a>
 
-  <a href="{% url 'core:app_training' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+  <a href="{% url 'core:app_training' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
     <!-- Clipboard with lines -->
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
       <rect x="9" y="2" width="6" height="3" rx="1"/>
@@ -94,26 +94,26 @@
       <line x1="8" y1="11" x2="16" y2="11"/>
       <line x1="8" y1="15" x2="14" y2="15"/>
     </svg>
-    <span style="font-size:.75rem;font-weight:700;color:#374151;">Training notes</span>
+    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Training notes</span>
   </a>
 
-  <a href="{% url 'core:app_credentials' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+  <a href="{% url 'core:app_credentials' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
     <!-- ID card / credential -->
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
       <rect x="2" y="5" width="20" height="14" rx="2"/>
       <circle cx="8" cy="12" r="2"/>
       <path d="M14 9h4M14 12h4M14 15h2"/>
     </svg>
-    <span style="font-size:.75rem;font-weight:700;color:#374151;">Credentials</span>
+    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Credentials</span>
   </a>
 
-  <a href="{% url 'core:app_notification_settings' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
+  <a href="{% url 'core:app_notification_settings' club.slug %}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.2rem .5rem;text-decoration:none;transition:background .12s;" ontouchstart="this.style.background='#f5f7fa'" ontouchend="this.style.background='#fff'">
     <!-- Settings / sliders -->
     <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
       <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
       <circle cx="8" cy="6" r="2" fill="white"/><circle cx="16" cy="12" r="2" fill="white"/><circle cx="10" cy="18" r="2" fill="white"/>
     </svg>
-    <span style="font-size:.75rem;font-weight:700;color:#374151;">Notif. settings</span>
+    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Notif. settings</span>
   </a>
 
 </div>
@@ -124,11 +124,11 @@
 <div class="app-section gap-sm"><span class="app-section-title">My clubs</span></div>
 <div class="app-card" style="padding:0;">
   {% for ocm in other_clubs %}
-  <a href="{% url 'core:gantt_day' ocm.club.slug %}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid #f0f2f4;text-decoration:none;color:inherit;">
+  <a href="{% url 'core:gantt_day' ocm.club.slug %}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);text-decoration:none;color:inherit;">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16l-4-4H5l-2 2 5 1 3 3 5-1 5-1z"/><path d="M12 12V5l-2-1"/></svg>
     <div style="flex:1;">
       <div style="font-size:.88rem;font-weight:600;">{{ ocm.club.name }}</div>
-      <div style="font-size:.74rem;color:#9ca3af;">Switch to this club</div>
+      <div style="font-size:.74rem;color:var(--text-3);">Switch to this club</div>
     </div>
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
   </a>

@@ -8,11 +8,11 @@
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.4rem;">
     <div>
       <h1 style="margin:0;font-size:1.4rem;">Invoice {{ invoice.display_number }}</h1>
-      <div style="color:#8a93a0;font-size:.85rem;margin-top:.25rem;">
+      <div style="color:var(--text-3);font-size:.85rem;margin-top:.25rem;">
         {{ invoice.member.user.get_full_name }} ·
         Issued {{ invoice.issue_date|date:"j M Y" }} ·
         Due {{ invoice.due_date|date:"j M Y" }}
-        {% if invoice.is_overdue %}<span style="color:#c0392b;font-weight:600;"> · {{ invoice.days_overdue }} days overdue</span>{% endif %}
+        {% if invoice.is_overdue %}<span style="color:var(--danger);font-weight:600;"> · {{ invoice.days_overdue }} days overdue</span>{% endif %}
       </div>
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
@@ -36,46 +36,46 @@
     <div style="padding:.5rem 0;">
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
         <thead>
-          <tr style="border-bottom:1px solid #eef1f4;">
-            <th style="padding:.4rem .9rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Date</th>
-            <th style="padding:.4rem .6rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Description</th>
-            <th style="padding:.4rem .9rem;text-align:right;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Amount</th>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <th style="padding:.4rem .9rem;text-align:left;color:var(--text-3);font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Date</th>
+            <th style="padding:.4rem .6rem;text-align:left;color:var(--text-3);font-weight:600;font-size:.75rem;text-transform:uppercase;">Description</th>
+            <th style="padding:.4rem .9rem;text-align:right;color:var(--text-3);font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Amount</th>
           </tr>
         </thead>
         <tbody>
           {% for item in line_items %}
           {% if item.charge_item %}
           {% with ci=item.charge_item b=item.charge_item.flight_completion.booking %}
-          <tr style="border-bottom:1px solid #f4f6f8;">
-            <td style="padding:.5rem .9rem;white-space:nowrap;color:#5b6573;font-size:.82rem;">{{ b.scheduled_start|date:"j M Y" }}</td>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:.5rem .9rem;white-space:nowrap;color:var(--text-2);font-size:.82rem;">{{ b.scheduled_start|date:"j M Y" }}</td>
             <td style="padding:.5rem .6rem;">
               <span style="font-weight:500;">{{ b.aircraft.registration }}</span>{% if b.flight_type %} · {{ b.flight_type.name }}{% endif %}{% if b.instructor %} · {{ b.instructor.get_full_name }}{% endif %}
-              <br><span style="color:#8a93a0;font-size:.78rem;">{{ ci.get_item_type_display }}</span>
+              <br><span style="color:var(--text-3);font-size:.78rem;">{{ ci.get_item_type_display }}</span>
             </td>
             <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ item.amount|currency }}</td>
           </tr>
           {% endwith %}
           {% elif item.display_is_arrears %}
-          <tr style="border-bottom:1px solid #f4f6f8;">
-            <td style="padding:.5rem .9rem;color:#8a93a0;font-size:.82rem;">—</td>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:.5rem .9rem;color:var(--text-3);font-size:.82rem;">—</td>
             <td style="padding:.5rem .6rem;">Account deficit (credit overdraft)</td>
             <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ item.amount|currency }}</td>
           </tr>
           {% else %}
-          <tr style="border-bottom:1px solid #f4f6f8;">
-            <td style="padding:.5rem .9rem;color:#8a93a0;font-size:.82rem;">—</td>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:.5rem .9rem;color:var(--text-3);font-size:.82rem;">—</td>
             <td style="padding:.5rem .6rem;">{{ item.description }}</td>
             <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ item.amount|currency }}</td>
           </tr>
           {% endif %}
           {% empty %}
-          <tr><td colspan="3" style="padding:1rem .9rem;color:#8a93a0;text-align:center;">No line items.</td></tr>
+          <tr><td colspan="3" style="padding:1rem .9rem;color:var(--text-3);text-align:center;">No line items.</td></tr>
           {% endfor %}
         </tbody>
         <tfoot>
           <tr style="border-top:2px solid #e3e6ea;">
-            <td colspan="2" style="padding:.5rem .9rem;text-align:right;color:#8a93a0;font-size:.82rem;">G.S.T. {{ invoice.gst_rate }}% included</td>
-            <td style="padding:.5rem .9rem;text-align:right;color:#8a93a0;">${{ invoice.gst_amount|currency }}</td>
+            <td colspan="2" style="padding:.5rem .9rem;text-align:right;color:var(--text-3);font-size:.82rem;">G.S.T. {{ invoice.gst_rate }}% included</td>
+            <td style="padding:.5rem .9rem;text-align:right;color:var(--text-3);">${{ invoice.gst_amount|currency }}</td>
           </tr>
           <tr>
             <td colspan="2" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Invoice total</td>
@@ -83,12 +83,12 @@
           </tr>
           {% if invoice.amount_paid %}
           <tr>
-            <td colspan="2" style="padding:.4rem .9rem;text-align:right;color:#216c2a;">Payments received</td>
-            <td style="padding:.4rem .9rem;text-align:right;color:#216c2a;">${{ invoice.amount_paid|currency }}</td>
+            <td colspan="2" style="padding:.4rem .9rem;text-align:right;color:var(--success-text);">Payments received</td>
+            <td style="padding:.4rem .9rem;text-align:right;color:var(--success-text);">${{ invoice.amount_paid|currency }}</td>
           </tr>
-          <tr style="border-top:1px solid #eef1f4;">
+          <tr style="border-top:1px solid var(--border);">
             <td colspan="2" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Total due</td>
-            <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;{% if invoice.balance_due %}color:#c0392b;{% else %}color:#216c2a;{% endif %}">${{ invoice.balance_due|currency }}</td>
+            <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;{% if invoice.balance_due %}color:var(--danger);{% else %}color:var(--success-text);{% endif %}">${{ invoice.balance_due|currency }}</td>
           </tr>
           {% endif %}
         </tfoot>
@@ -103,16 +103,16 @@
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
         <tbody>
           {% for sp in session_payments %}
-          <tr style="border-bottom:1px solid #f4f6f8;">
-            <td style="padding:.5rem .9rem;white-space:nowrap;color:#5b6573;font-size:.82rem;">{{ sp.completion.booking.scheduled_start|date:"j M Y" }}</td>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:.5rem .9rem;white-space:nowrap;color:var(--text-2);font-size:.82rem;">{{ sp.completion.booking.scheduled_start|date:"j M Y" }}</td>
             <td style="padding:.5rem .6rem;font-weight:500;">{{ sp.completion.booking.aircraft.registration }}{% if sp.completion.booking.flight_type %} · {{ sp.completion.booking.flight_type.name }}{% endif %}</td>
             <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ sp.amount|floatformat:2 }}</td>
           </tr>
           {% endfor %}
           {% if arrears_clearance_at %}
-          <tr style="border-bottom:1px solid #f4f6f8;">
-            <td style="padding:.5rem .9rem;color:#8a93a0;font-size:.82rem;">—</td>
-            <td style="padding:.5rem .6rem;font-weight:500;color:#92400e;">Account deficit (credit overdraft)</td>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:.5rem .9rem;color:var(--text-3);font-size:.82rem;">—</td>
+            <td style="padding:.5rem .6rem;font-weight:500;color:var(--warning-text);">Account deficit (credit overdraft)</td>
             <td style="padding:.5rem .9rem;text-align:right;font-weight:500;">${{ arrears_clearance_at.amount|floatformat:2 }}</td>
           </tr>
           {% endif %}
@@ -130,26 +130,26 @@
     <div style="padding:.5rem 0;">
       <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
         <thead>
-          <tr style="border-bottom:1px solid #eef1f4;">
-            <th style="padding:.35rem .9rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Date</th>
-            <th style="padding:.35rem .6rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Method</th>
-            <th style="padding:.35rem .6rem;text-align:left;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;">Reference</th>
-            <th style="padding:.35rem .9rem;text-align:right;color:#8a93a0;font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Amount</th>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <th style="padding:.35rem .9rem;text-align:left;color:var(--text-3);font-weight:600;font-size:.75rem;text-transform:uppercase;">Date</th>
+            <th style="padding:.35rem .6rem;text-align:left;color:var(--text-3);font-weight:600;font-size:.75rem;text-transform:uppercase;">Method</th>
+            <th style="padding:.35rem .6rem;text-align:left;color:var(--text-3);font-weight:600;font-size:.75rem;text-transform:uppercase;">Reference</th>
+            <th style="padding:.35rem .9rem;text-align:right;color:var(--text-3);font-weight:600;font-size:.75rem;text-transform:uppercase;width:100px;">Amount</th>
           </tr>
         </thead>
         <tbody>
           {% for p in inv_payments %}
-          <tr style="border-bottom:1px solid #f4f6f8;">
-            <td style="padding:.45rem .9rem;">{{ p.paid_at|date:"j M Y" }} <span style="color:#8a93a0;font-size:.8rem;">{{ p.paid_at|time:"H:i" }}</span></td>
+          <tr style="border-bottom:1px solid var(--border-subtle);">
+            <td style="padding:.45rem .9rem;">{{ p.paid_at|date:"j M Y" }} <span style="color:var(--text-3);font-size:.8rem;">{{ p.paid_at|time:"H:i" }}</span></td>
             <td style="padding:.45rem .6rem;">{{ p.get_method_display }}</td>
-            <td style="padding:.45rem .6rem;color:#5b6573;">{{ p.reference|default:"—" }}</td>
+            <td style="padding:.45rem .6rem;color:var(--text-2);">{{ p.reference|default:"—" }}</td>
             <td style="padding:.45rem .9rem;text-align:right;font-weight:500;">${{ p.amount|currency }}</td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
       {% if invoice.status != 'paid' %}
-      <p style="font-size:.78rem;color:#8a93a0;margin:.5rem .9rem 0;">Bank transfer payments are entered by the bookkeeper during bank reconciliation and may not appear immediately.</p>
+      <p style="font-size:.78rem;color:var(--text-3);margin:.5rem .9rem 0;">Bank transfer payments are entered by the bookkeeper during bank reconciliation and may not appear immediately.</p>
       {% endif %}
     </div>
   </div>
@@ -168,14 +168,14 @@
     <form method="post" style="padding:.9rem;">
       {% csrf_token %}
       <div style="margin-bottom:1rem;">
-        <label class="flabel" style="margin:0;">Description <span style="font-weight:400;color:#8a93a0;">(shown on invoice)</span>
+        <label class="flabel" style="margin:0;">Description <span style="font-weight:400;color:var(--text-3);">(shown on invoice)</span>
           <input type="text" name="description" value="{{ invoice.description }}" class="finput">
         </label>
       </div>
       <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;">
         <button type="submit" name="action" value="update_details" class="cbtn" style="font-size:.82rem;">Save details</button>
         <button type="submit" name="action" value="mark_sent" class="cbtn-add">↗ Issue invoice</button>
-        <span style="font-size:.8rem;color:#8a93a0;">Issuing saves details and notifies the member.</span>
+        <span style="font-size:.8rem;color:var(--text-3);">Issuing saves details and notifies the member.</span>
       </div>
     </form>
 
@@ -203,7 +203,7 @@
           <button type="submit" name="action" value="mark_paid" class="cbtn primary">Record</button>
         </div>
         {% if member_account_balance is not None %}
-        <div id="inv-credit-hint" style="display:none;font-size:.82rem;color:#5b6573;margin-top:.4rem;">
+        <div id="inv-credit-hint" style="display:none;font-size:.82rem;color:var(--text-2);margin-top:.4rem;">
           Account balance: <strong>${{ member_account_balance|floatformat:2 }}</strong>
         </div>
         {% endif %}
@@ -241,9 +241,9 @@
 </div>
 
 <style>
-  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:var(--text-3);text-decoration:none;margin-bottom:1rem;}
   .back-link:hover{color:var(--banner);}
-  .inv-card{border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1.2rem;overflow:hidden;}
-  .inv-card-head{background:#fafbfc;padding:.6rem .9rem;border-bottom:1px solid #eef1f4;font-size:.88rem;font-weight:600;}
+  .inv-card{border:1px solid var(--border);border-radius:10px;margin-bottom:1.2rem;overflow:hidden;}
+  .inv-card-head{background:var(--surface-2);padding:.6rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.88rem;font-weight:600;}
 </style>
 {% endblock %}

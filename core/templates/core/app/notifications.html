@@ -19,7 +19,7 @@
     <div class="app-list-main" style="flex:1;min-width:0;">
       <div class="app-list-title" style="font-size:.85rem;">{{ notif.subject }}</div>
       {% if notif.body %}<div class="app-list-sub" style="margin-top:.1rem;">{{ notif.body }}</div>{% endif %}
-      <div style="font-size:.72rem;color:#9ca3af;margin-top:.15rem;">{{ notif.created_at|timesince }} ago</div>
+      <div style="font-size:.72rem;color:var(--text-3);margin-top:.15rem;">{{ notif.created_at|timesince }} ago</div>
     </div>
     {% if notif.action_url %}
     <a href="{{ notif.action_url }}" style="font-size:.75rem;color:var(--primary);white-space:nowrap;text-decoration:none;padding:.2rem 0;flex-shrink:0;">View →</a>
@@ -31,7 +31,7 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="app-card" style="text-align:center;color:#9ca3af;font-size:.88rem;">No notifications</div>
+<div class="app-card" style="text-align:center;color:var(--text-3);font-size:.88rem;">No notifications</div>
 {% endif %}
 
 <div style="height:2rem;"></div>
@@ -66,7 +66,10 @@ function dismiss(row) {
 }
 
 function clearAll() {
-  if (!confirm('Clear all notifications?')) return;
+  document.getElementById('clear-all-confirm').hidden = false;
+}
+function doClearAll() {
+  document.getElementById('clear-all-confirm').hidden = true;
   var rows = document.querySelectorAll('.notif-row');
   rows.forEach(function(r) { r.style.opacity = '0'; });
   fetch(DISMISS_URL, {
@@ -84,7 +87,7 @@ function checkEmpty() {
       list.innerHTML = '';
       var msg = document.createElement('div');
       msg.className = 'app-card';
-      msg.style.cssText = 'text-align:center;color:#9ca3af;font-size:.88rem;';
+      msg.style.cssText = 'text-align:center;color:var(--text-3);font-size:.88rem;';
       msg.textContent = 'No notifications';
       list.parentNode.insertBefore(msg, list);
       list.remove();
@@ -127,4 +130,13 @@ document.querySelectorAll('.notif-row').forEach(function(row) {
   }, { passive: true });
 });
 </script>
+
+<div id="clear-all-confirm" hidden style="position:fixed;bottom:0;left:0;right:0;z-index:900;background:var(--surface);border-top:1px solid var(--border);padding:1rem 1.25rem;display:flex;flex-direction:column;gap:.65rem;box-shadow:0 -4px 20px rgba(0,0,0,.15);">
+  <p style="margin:0;font-size:.9rem;font-weight:600;color:var(--text-1);">Clear all notifications?</p>
+  <p style="margin:0;font-size:.8rem;color:var(--text-3);">This cannot be undone.</p>
+  <div style="display:flex;gap:.6rem;">
+    <button onclick="doClearAll()" style="flex:1;padding:.6rem;border-radius:8px;border:none;background:#ef4444;color:#fff;font-size:.87rem;font-weight:600;cursor:pointer;">Clear all</button>
+    <button onclick="document.getElementById('clear-all-confirm').hidden=true" style="flex:1;padding:.6rem;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-1);font-size:.87rem;font-weight:600;cursor:pointer;">Cancel</button>
+  </div>
+</div>
 {% endblock %}

@@ -3,7 +3,9 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1.2rem;">Block-outs</h1>
+  <div class="page-hdr">
+    <h1 class="page-h1">Block-outs</h1>
+  </div>
 
 
   <div class="bo-page-header">
@@ -47,7 +49,7 @@
           {% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}
           {% else %}—{% endif %}
         </td>
-        <td style="color:#8a93a0;">{{ bo.label }}</td>
+        <td style="color:var(--text-3);">{{ bo.label }}</td>
         <td style="text-align:right;">
           <div style="display:inline-flex;gap:.35rem;align-items:center;">
             <button type="button" class="cbtn-sm cbtn-icon" title="Edit"
@@ -81,7 +83,7 @@
   </p>
   {% endif %}
   {% else %}
-  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1rem;">No all-resource block-outs scheduled.</p>
+  <p style="color:var(--text-3);font-size:.85rem;margin-bottom:1rem;">No all-resource block-outs scheduled.</p>
   {% endif %}
 </div>
 
@@ -212,7 +214,7 @@
 <div id="del-bo-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(360px,96vw);">
     <h2>Delete block-out?</h2>
-    <p style="font-size:.88rem;color:#4a5568;margin:0 0 1.1rem;">This cannot be undone.</p>
+    <p style="font-size:.88rem;color:var(--text-2);margin:0 0 1.1rem;">This cannot be undone.</p>
     <div class="modal-actions">
       <button type="button" class="cbtn" id="del-bo-cancel">Cancel</button>
       <span style="flex:1"></span>
@@ -225,25 +227,23 @@
 
   .bo-page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin:1.2rem 0 1rem;flex-wrap:wrap;}
   .bo-page-title{font-size:1.05rem;font-weight:700;margin:0 0 .2rem;}
-  .bo-page-desc{color:#8a93a0;font-size:.82rem;margin:0;max-width:600px;}
+  .bo-page-desc{color:var(--text-3);font-size:.82rem;margin:0;max-width:600px;}
 
   .bo-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:.5rem;}
-  .bo-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.76rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .bo-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .bo-table td{padding:.5rem .6rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .bo-table tr:last-child td{border-bottom:0;}
   .bo-dot{display:inline-block;width:10px;height:10px;border-radius:3px;vertical-align:middle;margin-right:.35rem;border:1px solid rgba(0,0,0,.1);}
 
-  .bo-empty{text-align:center;padding:3rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;}
+  .bo-empty{text-align:center;padding:3rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:var(--text-3);}
   .bo-empty p{margin:.75rem 0 1rem;font-size:.9rem;}
 
-  .past-hint{font-size:.75rem;color:#adb5bd;display:inline-flex;align-items:center;gap:.25rem;}
+  .past-hint{font-size:.75rem;color:var(--text-3);display:inline-flex;align-items:center;gap:.25rem;}
 
   .snotice{padding:.6rem .9rem;border-radius:6px;margin-bottom:1rem;font-size:.88rem;}
-  .snotice.warn{background:#fff8e1;border-left:3px solid #f59e0b;color:#92400e;}
+  .snotice.warn{background:#fff8e1;border-left:3px solid #f59e0b;color:var(--warning-text);}
 
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:100;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.6rem;}
+  .modal-back{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:100;}
   .modal-back[hidden]{display:none;}
   .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}

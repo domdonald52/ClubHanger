@@ -353,10 +353,10 @@ def find_available_slots(club, date_start, date_end, aircraft=None, aircraft_typ
 def get_date_range(range_type):
     """
     Get start and end dates based on range type.
-    
+
     Args:
-        range_type: 'this_week', 'next_week', 'this_month', 'next_3_months', 'custom'
-    
+        range_type: 'today', 'this_week', 'next_week', 'this_month', 'next_month'
+
     Returns:
         (date_start, date_end) tuple
     """
@@ -366,10 +366,6 @@ def get_date_range(range_type):
 
     if range_type == 'today':
         return today, today
-
-    elif range_type == 'tomorrow':
-        t = today + timedelta(days=1)
-        return t, t
 
     elif range_type == 'this_week':
         # Monday to Sunday of this week
@@ -392,22 +388,18 @@ def get_date_range(range_type):
             end = today.replace(month=today.month + 1, day=1) - timedelta(days=1)
         return start, end
     
-    elif range_type == 'next_3_months':
-        # Next 3 months from today
-        start = today
-        month = today.month + 3
-        year = today.year
-        if month > 12:
-            year += month // 12
-            month = month % 12
-        if month == 0:
-            month = 12
-            year -= 1
-        end = (today.replace(month=month, year=year, day=1) - timedelta(days=1)).replace(day=1) + timedelta(days=32)
-        # Simpler: just add 3 months in days
-        end = today + timedelta(days=90)
+    elif range_type == 'next_month':
+        # First to last day of next calendar month
+        if today.month == 12:
+            start = today.replace(year=today.year + 1, month=1, day=1)
+        else:
+            start = today.replace(month=today.month + 1, day=1)
+        if start.month == 12:
+            end = start.replace(year=start.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end = start.replace(month=start.month + 1, day=1) - timedelta(days=1)
         return start, end
-    
+
     else:
         # Default: this week
         start = today - timedelta(days=today.weekday())

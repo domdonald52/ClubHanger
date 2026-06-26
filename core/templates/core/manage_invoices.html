@@ -2,10 +2,12 @@
 {% block title %}Invoices · {{ club.name }}{% endblock %}
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1rem;">Sales</h1>
+  <div class="page-hdr">
+    <h1 class="page-h1">Sales</h1>
+  </div>
   {% include "core/_sales_tabs.html" with active_tab="invoices" %}
 
-  <form method="get" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1rem;">
+  <form method="get" class="list-toolbar">
     <select name="status" class="finput" style="width:auto;" onchange="this.form.submit()">
       <option value="">All statuses</option>
       {% for val, label in status_choices %}
@@ -23,7 +25,7 @@
     <a href="?" class="cbtn cbtn-sm">Clear</a>
     {% endif %}
     {% if overdue_count %}
-    <a href="?status=overdue" style="font-size:.82rem;color:#c0392b;font-weight:600;align-self:center;text-decoration:none;">⚠ {{ overdue_count }} overdue</a>
+    <a href="?status=overdue" style="font-size:.82rem;color:var(--danger);font-weight:600;align-self:center;text-decoration:none;">⚠ {{ overdue_count }} overdue</a>
     {% endif %}
   </form>
 
@@ -47,15 +49,15 @@
       <tr class="{% if inv.is_overdue %}row-conflict{% endif %}">
         <td style="white-space:nowrap;"><strong>{{ inv.display_number }}</strong></td>
         <td style="white-space:nowrap;">{{ inv.member.user.get_full_name|default:"—" }}</td>
-        <td style="color:#5b6573;font-size:.82rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ inv.description|default:'' }}">{{ inv.description|truncatechars:22|default:"—" }}</td>
-        <td style="white-space:nowrap;color:#8a93a0;">{{ inv.issue_date|date:"j M Y" }}</td>
-        <td style="white-space:nowrap;{% if inv.is_overdue %}color:#c0392b;{% else %}color:#8a93a0;{% endif %}">
+        <td style="color:var(--text-2);font-size:.82rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ inv.description|default:'' }}">{{ inv.description|truncatechars:22|default:"—" }}</td>
+        <td style="white-space:nowrap;color:var(--text-3);">{{ inv.issue_date|date:"j M Y" }}</td>
+        <td style="white-space:nowrap;{% if inv.is_overdue %}color:var(--danger);{% else %}color:var(--text-3);{% endif %}">
           {{ inv.due_date|date:"j M Y" }}
-          {% if inv.is_overdue %}<span style="display:inline-block;margin-left:.35rem;font-size:.7rem;font-weight:700;background:#fdecea;color:#c0392b;border-radius:8px;padding:.1rem .4rem;vertical-align:middle;">{{ inv.days_overdue }}d</span>{% endif %}
+          {% if inv.is_overdue %}<span style="display:inline-block;margin-left:.35rem;font-size:.7rem;font-weight:700;background:#fdecea;color:var(--danger);border-radius:8px;padding:.1rem .4rem;vertical-align:middle;">{{ inv.days_overdue }}d</span>{% endif %}
         </td>
         <td style="text-align:right;">${{ inv.total|currency }}</td>
         <td style="text-align:right;">
-          {% if inv.balance_due %}<span style="color:{% if inv.is_overdue %}#c0392b{% else %}#8a93a0{% endif %};">${{ inv.balance_due|currency }}</span>{% else %}<span style="color:#216c2a;">—</span>{% endif %}
+          {% if inv.balance_due %}<span style="color:{% if inv.is_overdue %}#c0392b{% else %}#8a93a0{% endif %};">${{ inv.balance_due|currency }}</span>{% else %}<span style="color:var(--success-text);">—</span>{% endif %}
         </td>
         <td>
           {% if inv.status == 'sent' and inv.is_overdue %}
@@ -76,22 +78,20 @@
   </table>
   {% if invoices_page.paginator.num_pages > 1 %}
   <div style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.85rem;flex-wrap:wrap;">
-    <span style="color:#8a93a0;">Page {{ invoices_page.number }} of {{ invoices_page.paginator.num_pages }} &nbsp;({{ invoices_page.paginator.count }} invoices)</span>
+    <span style="color:var(--text-3);">Page {{ invoices_page.number }} of {{ invoices_page.paginator.num_pages }} &nbsp;({{ invoices_page.paginator.count }} invoices)</span>
     {% if invoices_page.has_previous %}<a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort={{ sort }}&dir={{ sort_dir }}&page={{ invoices_page.previous_page_number }}" class="cbtn-sm">‹ Prev</a>{% endif %}
     {% if invoices_page.has_next %}<a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort={{ sort }}&dir={{ sort_dir }}&page={{ invoices_page.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
   </div>
   {% endif %}
   {% else %}
-  <p style="color:#8a93a0;padding:2rem 0;text-align:center;">No invoices found.</p>
+  <p style="color:var(--text-3);padding:2rem 0;text-align:center;">No invoices found.</p>
   {% endif %}
 </div>
 
 <style>
   .bk-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-  .bk-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .bk-table td{padding:.55rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .bk-table td{padding:.55rem .6rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .bk-table tr:last-child td{border-bottom:0;}
   .row-conflict td:first-child{border-left:3px solid #e03131;}
-.finput{padding:.38rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.85rem;}
 </style>
 {% endblock %}

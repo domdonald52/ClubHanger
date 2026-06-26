@@ -1,6 +1,7 @@
-{% extends "core/base.html" %}
+{% extends base_template %}
 
 {% block title %}Find Available Slots - {{ club.name }}{% endblock %}
+{% block inline_title %}Find available slots{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -8,7 +9,6 @@
     <!-- Sticky block: title + filters + calendar band -->
     <div class="avail-sticky">
         <div style="padding:1.1rem 1.4rem .8rem;">
-            <h1 style="margin:0 0 1rem;">Find available slots</h1>
             <form method="get" id="avail-form">
                 <input type="hidden" name="s" value="1">
 
@@ -27,11 +27,10 @@
                     <label class="flabel" for="range_type">Date range
                         <select name="range_type" id="range_type" class="finput" onchange="avSubmit()">
                             <option value="today" {% if filters_applied.range_type == 'today' %}selected{% endif %}>Today</option>
-                            <option value="tomorrow" {% if filters_applied.range_type == 'tomorrow' %}selected{% endif %}>Tomorrow</option>
                             <option value="this_week" {% if filters_applied.range_type == 'this_week' %}selected{% endif %}>This week</option>
                             <option value="next_week" {% if filters_applied.range_type == 'next_week' %}selected{% endif %}>Next week</option>
                             <option value="this_month" {% if filters_applied.range_type == 'this_month' %}selected{% endif %}>This month</option>
-                            <option value="next_3_months" {% if filters_applied.range_type == 'next_3_months' %}selected{% endif %}>Next 3 months</option>
+                            <option value="next_month" {% if filters_applied.range_type == 'next_month' %}selected{% endif %}>Next month</option>
                         </select>
                     </label>
 
@@ -53,6 +52,14 @@
                         </select>
                     </label>
 
+                    <label class="flabel" for="duration">Min duration
+                        <select name="duration" id="duration" class="finput" onchange="avSubmit()">
+                            {% for d in duration_choices %}
+                                <option value="{{ d }}" {% if filters_applied.duration == d %}selected{% endif %}>{{ d }} min</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
                     <label class="flabel" for="instructor" id="instructor-field">Instructor
                         <select name="instructor" id="instructor" class="finput" onchange="avSubmit()">
                             <option value="">Any instructor</option>
@@ -65,8 +72,8 @@
                 </div>
 
                 <div style="display:flex;align-items:center;gap:.8rem;">
-                    <span style="font-size:.78rem;color:#8a93a0;">Filters apply automatically.</span>
-                    <a href="{% url 'core:availability_search' club.slug %}" style="font-size:.8rem;color:#8a93a0;">Reset</a>
+                    <span style="font-size:.78rem;color:var(--text-3);">Filters apply automatically.</span>
+                    <a href="{% url 'core:availability_search' club.slug %}" style="font-size:.8rem;color:var(--text-3);">Reset</a>
                 </div>
             </form>
         </div>
@@ -97,51 +104,67 @@
         <h2 style="margin:0 0 .8rem;">Available across {{ results|length }} day{{ results|length|pluralize }}</h2>
 
         {% if results %}
-            <div class="slots-grid" style="margin-top:1rem;">
-                {% for day in results %}
-                    {% ifchanged day.iso_week_key %}{% if not forloop.first %}
-                    <div class="week-sep"><span>{{ day.week_label }}</span></div>
-                    {% endif %}{% endifchanged %}
-                    <div id="{{ day.day_anchor }}" style="border:1px solid #e3e6ea;border-radius:10px;overflow:hidden;background:#fff;">
-                        <div style="padding:.55rem .9rem;font-weight:650;border-bottom:1px solid #e3e6ea;{% if day.is_weekend %}background:color-mix(in srgb,var(--accent) 12%,#fff);color:var(--accent);{% else %}background:#f0f4f8;color:#3a4a5a;{% endif %}">
-                            {{ day.date_label }}{% if day.is_weekend %} · weekend{% endif %}
-                        </div>
-                        <div style="padding:.4rem .9rem .6rem;display:flex;flex-direction:column;gap:.5rem;">
-                            {% if filters_applied.booking_kind == 'dual' %}
-                                {% for ir in day.instructor_rows %}
-                                <div>
-                                    <div style="font-size:.78rem;font-weight:700;color:#374151;padding:.3rem 0 .2rem;">{{ ir.instructor_name }}</div>
-                                    {% for slot in ir.slot_rows %}
-                                    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.15rem 0 .15rem .7rem;border-left:2px solid #eef1f4;">
-                                        <span style="min-width:105px;color:#6b7280;font-size:.82rem;white-space:nowrap;">{{ slot.start_label }} – {{ slot.end_label }}</span>
-                                        <div style="display:flex;gap:.3rem;flex-wrap:wrap;">
-                                            {% for pill in slot.type_pills %}
-                                            <a href="{% url 'core:gantt_day_date' club.slug slot.year slot.month slot.day %}?book=1&amp;aircraft={{ pill.aircraft_id }}&amp;instructor={{ ir.instructor_id }}&amp;start={{ slot.start_iso|urlencode }}&amp;span_end={{ slot.end_iso|urlencode }}&amp;booking_kind=dual"
-                                               class="slot-btn" title="{{ slot.start_label }}–{{ slot.end_label }} with {{ ir.instructor_name }}">{{ pill.reg }} ({{ pill.type_name }})</a>
-                                            {% endfor %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                {% for slot in day.slot_rows %}
-                                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;padding:.1rem 0;">
-                                    <span style="min-width:105px;color:#495057;font-size:.82rem;white-space:nowrap;">{{ slot.start_label }} – {{ slot.end_label }}</span>
-                                    <div style="display:flex;gap:.3rem;flex-wrap:wrap;">
-                                        {% for pill in slot.type_pills %}
-                                        <a href="{% url 'core:gantt_day_date' club.slug slot.year slot.month slot.day %}?book=1&amp;aircraft={{ pill.aircraft_id }}&amp;start={{ slot.start_iso|urlencode }}&amp;span_end={{ slot.end_iso|urlencode }}&amp;booking_kind=solo"
-                                           class="slot-btn" title="{{ slot.start_label }}–{{ slot.end_label }}">{{ pill.reg }} ({{ pill.type_name }})</a>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endfor %}
-            </div><!-- /slots-grid -->
-            <p style="margin-top:.8rem;color:#8a93a0;font-size:.8rem;">Click a type pill to open the booking dialog with date, time{% if filters_applied.booking_kind == 'dual' %} and instructor{% endif %} pre-selected.</p>
+            <div style="margin-top:.8rem;overflow-x:auto;">
+              <table class="slot-tbl">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Aircraft</th>
+                    {% if filters_applied.booking_kind == 'dual' %}<th>Instructor</th>{% endif %}
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for day in results %}
+                    {% for slot in day.slot_rows %}
+                    {% with ac=slot.aircraft instrs=slot.instructors %}
+                    <tr id="{% if forloop.first %}{{ day.day_anchor }}{% endif %}" class="{% if forloop.first and not forloop.parentloop.first %}slot-day-sep{% endif %}">
+                      <td class="slot-date">
+                        {% if forloop.first %}
+                        <span class="slot-date-wd">{{ day.date|date:"D" }}</span><br>
+                        <span class="slot-date-dm">{{ day.date|date:"j M" }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="slot-time">{{ slot.start_label }}–{{ slot.end_label }}</td>
+                      <td><span class="slot-ac-pill">{{ ac.reg }}&thinsp;·&thinsp;{{ ac.type_name }}</span></td>
+                      {% if filters_applied.booking_kind == 'dual' %}
+                      <td>
+                        {% if instrs|length == 1 %}
+                        <span class="slot-instr-pill">{{ instrs.0.instructor_name }}</span>
+                        {% else %}
+                        <span class="slot-instr-pill">{{ instrs|length }} instructor{{ instrs|length|pluralize }}</span>
+                        {% endif %}
+                      </td>
+                      {% endif %}
+                      <td class="slot-tbl-book">
+                        {% if filters_applied.booking_kind == 'dual' %}
+                        <a href="{% url 'core:gantt_day_date' club.slug slot.year slot.month slot.day %}?book=1&amp;aircraft={{ ac.aircraft_id }}&amp;start={{ slot.start_iso|urlencode }}&amp;span_end={{ slot.end_iso|urlencode }}&amp;booking_kind=dual&amp;instructor_ids={% for i in instrs %}{{ i.instructor_id }}{% if not forloop.last %},{% endif %}{% endfor %}{% if instrs|length == 1 %}&amp;instructor={{ instrs.0.instructor_id }}{% endif %}"
+                           class="cbtn cbtn-sm"
+                           data-aircraft="{{ ac.aircraft_id }}"
+                           data-instructor="{% if instrs|length == 1 %}{{ instrs.0.instructor_id }}{% endif %}"
+                           data-instructors="{% for i in instrs %}{{ i.instructor_id }}{% if not forloop.last %},{% endif %}{% endfor %}"
+                           data-start="{{ slot.start_iso }}"
+                           data-end="{{ slot.end_iso }}"
+                           data-kind="dual"
+                           onclick="return bookSlotClick(event,this)">Book</a>
+                        {% else %}
+                        <a href="{% url 'core:gantt_day_date' club.slug slot.year slot.month slot.day %}?book=1&amp;aircraft={{ ac.aircraft_id }}&amp;start={{ slot.start_iso|urlencode }}&amp;span_end={{ slot.end_iso|urlencode }}&amp;booking_kind=solo"
+                           class="cbtn cbtn-sm"
+                           data-aircraft="{{ ac.aircraft_id }}"
+                           data-start="{{ slot.start_iso }}"
+                           data-end="{{ slot.end_iso }}"
+                           data-kind="solo"
+                           onclick="return bookSlotClick(event,this)">Book</a>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% endwith %}
+                    {% endfor %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
         {% else %}
             <p class="exc-empty">No available slots found — try adjusting the date range, aircraft, or duration.</p>
         {% endif %}
@@ -152,7 +175,15 @@
 
 <script>
 const _availForm = document.getElementById('avail-form');
-function avSubmit() { if (_availForm) _availForm.submit(); }
+function avSubmit() {
+  if (!_availForm) return;
+  // requestSubmit() fires the submit event (caught by overlay's attachHandlers);
+  // plain .submit() bypasses listeners and triggers real page navigation.
+  if (_availForm.requestSubmit) _availForm.requestSubmit();
+  else _availForm.dispatchEvent(new Event('submit', {bubbles:true, cancelable:true}));
+}
+// Expose globally so inline onchange="avSubmit()" handlers work when loaded via overlay's new Function()
+window.avSubmit = avSubmit;
 
 (function(){
   const instrField = document.getElementById('instructor-field');
@@ -200,11 +231,20 @@ function avSubmit() { if (_availForm) _availForm.submit(); }
   applyTypeFilter();
 })();
 
+// When loaded inside the page overlay, remove the 52px header offset from sticky
+(function(){
+  const sticky = document.querySelector('.avail-sticky');
+  if (sticky && document.getElementById('page-overlay-body')) {
+    sticky.style.top = '0';
+  }
+})();
+
 // Offset anchor scrolling so day headers land below the sticky bar
 function fixScrollMargins() {
   const sticky = document.querySelector('.avail-sticky');
   if (!sticky) return;
-  const headerH = window.innerWidth >= 900 ? 52 : 0;
+  const inOverlay = !!document.getElementById('page-overlay-body');
+  const headerH = (!inOverlay && window.innerWidth >= 900) ? 52 : 0;
   const margin = sticky.offsetHeight + headerH + 8;
   document.querySelectorAll('[id^="day-"]').forEach(el => {
     el.style.scrollMarginTop = margin + 'px';
@@ -212,5 +252,32 @@ function fixScrollMargins() {
 }
 fixScrollMargins();
 window.addEventListener('resize', fixScrollMargins);
+
+window.bookSlotClick = function(e, el) {
+  var aircraft = el.dataset.aircraft || '';
+  var instructor = el.dataset.instructor || '';
+  var instructorsRaw = el.dataset.instructors || '';
+  var instructorIds = instructorsRaw ? instructorsRaw.split(',').map(function(s){return s.trim();}).filter(Boolean) : null;
+  var start = el.dataset.start;
+  var end = el.dataset.end;
+  var kind = el.dataset.kind || 'dual';
+  var po = document.getElementById('page-overlay');
+  if (window.openNewBookingWith) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (po) { po.hidden = true; document.body.style.overflow = ''; }
+    window.openNewBookingWith(aircraft, instructor, start, end, kind, instructorIds);
+    return false;
+  }
+  // Not on gantt page — close overlay and navigate directly
+  if (po && !po.hidden) {
+    e.preventDefault();
+    po.hidden = true;
+    document.body.style.overflow = '';
+    window.location.href = el.href;
+    return false;
+  }
+  return true;
+};
 </script>
 {% endblock %}

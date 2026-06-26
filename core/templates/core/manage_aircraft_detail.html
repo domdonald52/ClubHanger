@@ -13,7 +13,7 @@
   <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.4rem;flex-wrap:wrap;">
     <div>
       <h1 style="margin:0;font-size:1.5rem;">{{ ac.registration }}</h1>
-      <div style="color:#8a93a0;font-size:.88rem;margin-top:.2rem;">{{ ac.aircraft_type }}{% if ac.serial_number %} · {{ ac.serial_number }}{% endif %}</div>
+      <div style="color:var(--text-3);font-size:.88rem;margin-top:.2rem;">{{ ac.aircraft_type }}{% if ac.serial_number %} · {{ ac.serial_number }}{% endif %}</div>
     </div>
     <span class="status-badge status-{{ ac.status }}">{{ ac.get_status_display }}</span>
   </div>
@@ -62,7 +62,7 @@
           </label>
           <div>
             <div style="font-size:.88rem;font-weight:500;">Leased-in aircraft</div>
-            <div style="font-size:.78rem;color:#8a93a0;">Not club-owned — affects financial reporting (leased vs owned split in reports).</div>
+            <div style="font-size:.78rem;color:var(--text-3);">Not club-owned — affects financial reporting (leased vs owned split in reports).</div>
           </div>
         </div>
         <div style="display:flex;align-items:flex-start;gap:.75rem;">
@@ -72,7 +72,7 @@
           </label>
           <div>
             <div style="font-size:.88rem;font-weight:500;">Available for member bookings</div>
-            <div style="font-size:.78rem;color:#8a93a0;">Hide from the booking calendar during maintenance or when otherwise unavailable. Note: use Retired only for permanent fleet removal.</div>
+            <div style="font-size:.78rem;color:var(--text-3);">Hide from the booking calendar during maintenance or when otherwise unavailable. Note: use Retired only for permanent fleet removal.</div>
           </div>
         </div>
       </div>
@@ -98,7 +98,7 @@
       <input type="hidden" name="action" value="save_instruments">
 
       <h2 class="sh2">Recording instruments</h2>
-      <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .7rem;">Enable each instrument fitted to this aircraft. These determine which meter readings are available at check-in.</p>
+      <p style="font-size:.78rem;color:var(--text-3);margin:.1rem 0 .7rem;">Enable each instrument fitted to this aircraft. These determine which meter readings are available at check-in.</p>
       <div style="display:flex;gap:1.4rem;flex-wrap:wrap;margin-bottom:1rem;">
         {% for fname, label, checked in records_instruments %}
         <label style="display:flex;align-items:center;gap:.5rem;font-size:.88rem;cursor:pointer;">
@@ -125,7 +125,7 @@
       </label>
 
       <h2 class="sh2" style="margin-top:1.4rem;">Starting meter readings</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .7rem;">The readings when this aircraft was entered into the system — used to compute cumulative totals. Set once; use Amend only to correct a data entry error.</p>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .7rem;">The readings when this aircraft was entered into the system — used to compute cumulative totals. Set once; use Amend only to correct a data entry error.</p>
       <div id="meter-readings-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.6rem 1rem;max-width:520px;margin-bottom:.8rem;">
         <div id="row-hobbs-initial" class="init-row">
           <div class="flabel-lk">Hobbs initial</div>
@@ -175,7 +175,7 @@
       </div>
 
       <h2 class="sh2" style="margin-top:1.4rem;">Maintenance hours</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .7rem;">
+      <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .7rem;">
         Which instrument to use and what fraction to count as maintenance hours (e.g. 0.95 of tacho).
       </p>
       <div class="fgrid" style="max-width:500px;margin-bottom:.8rem;">
@@ -189,7 +189,7 @@
         <label class="flabel">Fraction
           <input type="number" name="maint_time_fraction" value="{{ ac.maint_time_fraction }}"
                  min="0.5" max="1.0" step="0.01" class="finput" style="width:120px;" placeholder="e.g. 0.95">
-          <span style="font-size:.78rem;color:#8a93a0;">0.50–1.00</span>
+          <span style="font-size:.78rem;color:var(--text-3);">0.50–1.00</span>
         </label>
         <div class="flabel-lk" style="grid-column:1/-1;">Initial maintenance hours
           <div class="init-field-wrap" style="margin-top:.25rem;">
@@ -204,7 +204,7 @@
             <button type="button" class="cbtn-sm apply-btn" data-target="maint-hours-initial-input">Apply</button>
             {% endif %}
           </div>
-          <span style="font-size:.78rem;color:#8a93a0;">Accumulated hours when entered into this system</span>
+          <span style="font-size:.78rem;color:var(--text-3);">Accumulated hours when entered into this system</span>
         </div>
       </div>
 
@@ -242,7 +242,7 @@
         {% for r in hire_rates %}
         <tr>
           <td>{{ r.flight_type.name }}</td>
-          <td style="color:#8a93a0;font-size:.82rem;">{{ r.get_time_method_display }}</td>
+          <td style="color:var(--text-3);font-size:.82rem;">{{ r.get_time_method_display }}</td>
           <td>${{ r.amount|currency }}</td>
           <td>
             <span class="hire-badge {% if r.includes_fuel %}wet{% else %}dry{% endif %}">
@@ -289,10 +289,10 @@
     {% with current=fuel_rates.0 %}
     <div class="current-rate-card">
       <span class="current-rate-label">Current rate</span>
-      <span class="current-rate-amount" style="{% if not current.is_active %}text-decoration:line-through;color:#adb5bd;{% endif %}">${{ current.rate|currency }}/hr</span>
+      <span class="current-rate-amount" style="{% if not current.is_active %}text-decoration:line-through;color:var(--text-3);{% endif %}">${{ current.rate|currency }}/hr</span>
       <span class="current-rate-since">from {{ current.effective_from }}</span>
       {% if current.notes %}<span class="current-rate-notes">{{ current.notes }}</span>{% endif %}
-      {% if not current.is_active %}<span class="hire-badge dry" style="background:#fff0f0;color:#c0392b;">Paused</span>{% endif %}
+      {% if not current.is_active %}<span class="hire-badge dry" style="background:var(--danger-bg);color:var(--danger);">Paused</span>{% endif %}
       {% if club_member.is_admin %}
       <form method="post" style="display:inline;margin-left:auto;">
         {% csrf_token %}
@@ -306,7 +306,7 @@
     {% endwith %}
     {% if fuel_rates|length > 1 %}
     <details style="margin-top:.5rem;">
-      <summary style="font-size:.8rem;color:#8a93a0;cursor:pointer;list-style:none;user-select:none;">
+      <summary style="font-size:.8rem;color:var(--text-3);cursor:pointer;list-style:none;user-select:none;">
         Rate history ({{ fuel_rates|length|add:"-1" }} previous)
       </summary>
       <table class="ft-table" style="margin-top:.5rem;">
@@ -316,7 +316,7 @@
           <tr>
             <td style="font-size:.85rem;">{{ r.effective_from }}</td>
             <td>${{ r.rate|currency }}</td>
-            <td style="color:#8a93a0;font-size:.82rem;">{{ r.notes|default:"—" }}</td>
+            <td style="color:var(--text-3);font-size:.82rem;">{{ r.notes|default:"—" }}</td>
             <td style="text-align:right;">
               {% if club_member.is_admin %}
               <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete this rate?')">
@@ -351,7 +351,7 @@
 
   <!-- ── SURCHARGES tab ── -->
   <div id="tab-surcharges" class="stab-panel">
-    <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">
+    <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .9rem;">
       Active surcharges are automatically added to every flight on this aircraft.
       Surcharge types and amounts are configured in <a href="{% url 'core:club_types' club.slug %}?tab=charge-types">Types → Charge types</a>.
     </p>
@@ -364,7 +364,7 @@
         <tr>
           <td><strong>{{ st.name }}</strong></td>
           <td>${{ st.amount|currency }}/flight</td>
-          <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
+          <td style="color:var(--text-3);font-size:.82rem;">{{ st.description|default:"—" }}</td>
           <td>
             {% if club_member.is_admin %}
             <form method="post" style="display:inline-flex;align-items:center;gap:.4rem;">
@@ -373,12 +373,12 @@
               <input type="hidden" name="sc_id" value="{{ st.id }}">
               <button type="submit" class="sc-toggle {% if st.id in assigned_surcharge_ids %}sc-on{% else %}sc-off{% endif %}"
                       title="{% if st.id in assigned_surcharge_ids %}Active on this aircraft — click to deactivate{% else %}Inactive — click to activate for this aircraft{% endif %}"></button>
-              <span style="font-size:.78rem;color:{% if st.id in assigned_surcharge_ids %}#2a7a3b{% else %}#8a93a0{% endif %};">{% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}</span>
+              <span style="font-size:.78rem;color:{% if st.id in assigned_surcharge_ids %}var(--success){% else %}#8a93a0{% endif %};">{% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}</span>
             </form>
             {% else %}
             <span style="display:inline-flex;align-items:center;gap:.4rem;">
               <span class="sc-toggle {% if st.id in assigned_surcharge_ids %}sc-on{% else %}sc-off{% endif %}"></span>
-              <span style="font-size:.78rem;color:{% if st.id in assigned_surcharge_ids %}#2a7a3b{% else %}#8a93a0{% endif %};">{% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}</span>
+              <span style="font-size:.78rem;color:{% if st.id in assigned_surcharge_ids %}var(--success){% else %}#8a93a0{% endif %};">{% if st.id in assigned_surcharge_ids %}Active{% else %}Inactive{% endif %}</span>
             </span>
             {% endif %}
           </td>
@@ -388,7 +388,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;">No surcharge types configured yet.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No surcharge types configured yet.</p>
     {% endif %}
   </div><!-- /tab-surcharges -->
 
@@ -413,7 +413,7 @@
             {% else %}Daily{% endif %}
           </td>
           <td>{% if bo.all_day %}All day{% elif bo.start_time and bo.end_time %}{{ bo.start_time|time:'H:i' }}–{{ bo.end_time|time:'H:i' }}{% else %}—{% endif %}</td>
-          <td style="color:#8a93a0;">{{ bo.label }}</td>
+          <td style="color:var(--text-3);">{{ bo.label }}</td>
           <td style="text-align:right;">
             <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete this block-out?')">
               {% csrf_token %}
@@ -427,10 +427,10 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 1rem;">No block-outs scheduled for this aircraft.</p>
+    <p style="color:var(--text-3);font-size:.85rem;margin:.2rem 0 1rem;">No block-outs scheduled for this aircraft.</p>
     {% endif %}
 
-    <hr style="border:none;border-top:1px solid #eef1f4;margin:0 0 1.4rem;">
+    <hr style="border:none;border-top:1px solid var(--border);margin:0 0 1.4rem;">
 
     <!-- Maintenance items -->
     <div class="tab-section-header">
@@ -446,10 +446,10 @@
       <tbody>
         {% for m in maintenance_items %}
         <tr>
-          <td><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:#8a93a0;font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
+          <td><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:var(--text-3);font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
           <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_date|default:"—" }}</td>
           <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_hours|default:"—" }}</td>
-          <td style="font-size:.82rem;color:#8a93a0;white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
+          <td style="font-size:.82rem;color:var(--text-3);white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
           <td><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
           <td>
             {% if m.progress_pct is not None %}
@@ -488,27 +488,27 @@
     </div>
     {% endif %}
 
-    <hr style="border:none;border-top:1px solid #eef1f4;margin:0 0 1.4rem;">
+    <hr style="border:none;border-top:1px solid var(--border);margin:0 0 1.4rem;">
 
     <!-- Maintenance log (long — at bottom) -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;">
-      <h2 class="sh2" style="margin:0;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 100 entries)</span></h2>
+      <h2 class="sh2" style="margin:0;">Maintenance log <span style="font-weight:400;font-size:.82rem;color:var(--text-3);">(last 100 entries)</span></h2>
       <div style="display:flex;gap:.4rem;align-items:center;">
         <a href="{% url 'core:aircraft_maintenance_log' club.slug ac.id %}" target="_blank" class="cbtn-sm">View full log →</a>
       </div>
     </div>
-    <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .8rem;">Auto-recorded at each check-in. Manual entries explain meter gaps (ground runs, tows, corrections, errors).</p>
+    <p style="font-size:.78rem;color:var(--text-3);margin:.1rem 0 .8rem;">Auto-recorded at each check-in. Manual entries explain meter gaps (ground runs, tows, corrections, errors).</p>
 
     {% if maint_peak_total or maint_peak_instrument %}
-    <div style="display:flex;gap:1.5rem;align-items:center;background:#f8f9fa;border:1px solid #e3e6ea;border-radius:8px;padding:.5rem .9rem;margin-bottom:.9rem;flex-wrap:wrap;">
-      <span style="font-size:.78rem;font-weight:600;color:#8a93a0;text-transform:uppercase;letter-spacing:.04em;">Current meters</span>
+    <div style="display:flex;gap:1.5rem;align-items:center;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:.5rem .9rem;margin-bottom:.9rem;flex-wrap:wrap;">
+      <span style="font-size:.78rem;font-weight:600;color:var(--text-3);text-transform:uppercase;letter-spacing:.04em;">Current meters</span>
       {% if maint_peak_instrument %}
-      <span style="font-size:.85rem;color:#2b333d;">{{ ac.get_maint_time_source_display }}: <strong>{{ maint_peak_instrument|floatformat:1 }}</strong></span>
+      <span style="font-size:.85rem;color:var(--text-1);">{{ ac.get_maint_time_source_display }}: <strong>{{ maint_peak_instrument|floatformat:1 }}</strong></span>
       {% endif %}
       {% if maint_peak_total %}
-      <span style="font-size:.85rem;color:#2b333d;">Total maint hrs: <strong>{{ maint_peak_total|floatformat:1 }}</strong></span>
+      <span style="font-size:.85rem;color:var(--text-1);">Total maint hrs: <strong>{{ maint_peak_total|floatformat:1 }}</strong></span>
       {% endif %}
-      <span style="font-size:.74rem;color:#8a93a0;margin-left:auto;">Verify against aircraft — check highest recorded value</span>
+      <span style="font-size:.74rem;color:var(--text-3);margin-left:auto;">Verify against aircraft — check highest recorded value</span>
     </div>
     {% endif %}
 
@@ -525,9 +525,9 @@
         {% for e in maint_log %}
         <tr>
           <td style="font-size:.82rem;">{{ e.date }}</td>
-          <td style="font-size:.82rem;color:#8a93a0;">
+          <td style="font-size:.82rem;color:var(--text-3);">
             {% if e.flight_completion %}{{ e.flight_completion.booking.member.user.get_full_name }}
-            {% elif e.notes %}<span style="color:#92400e;">Manual — {{ e.notes|truncatechars:60 }}</span>
+            {% elif e.notes %}<span style="color:var(--warning-text);">Manual — {{ e.notes|truncatechars:60 }}</span>
             {% else %}<span>Manual</span>{% endif %}
           </td>
           <td style="font-size:.82rem;">{{ e.hobbs_reading|default:"—" }}</td>
@@ -540,7 +540,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;margin:.2rem 0 1.5rem;">No log entries yet — entries are created automatically at each check-in.</p>
+    <p style="color:var(--text-3);font-size:.85rem;margin:.2rem 0 1.5rem;">No log entries yet — entries are created automatically at each check-in.</p>
     {% endif %}
 
   </div><!-- /tab-maintenance -->
@@ -677,8 +677,8 @@
             <input type="number" name="last_completed_hours" id="amm-last-hours" min="0" step="0.1" class="finput">
           </label>
         </div>
-        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid #eef1f4;">
-          <div style="font-size:.8rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Recurrence interval <span style="font-weight:400;color:#8a93a0;">(leave blank for one-off)</span></div>
+        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border);">
+          <div style="font-size:.8rem;font-weight:600;color:var(--text-2);margin-bottom:.5rem;">Recurrence interval <span style="font-weight:400;color:var(--text-3);">(leave blank for one-off)</span></div>
           <div class="fgrid">
             <label class="flabel">Every (days)
               <input type="number" name="interval_days" id="amm-interval-days" min="1" step="1" class="finput" placeholder="e.g. 365">
@@ -728,8 +728,8 @@
             <input type="number" name="last_completed_hours" id="emm-last-hours" min="0" step="0.1" class="finput">
           </label>
         </div>
-        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid #eef1f4;">
-          <div style="font-size:.8rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Recurrence interval <span style="font-weight:400;color:#8a93a0;">(blank = one-off)</span></div>
+        <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border);">
+          <div style="font-size:.8rem;font-weight:600;color:var(--text-2);margin-bottom:.5rem;">Recurrence interval <span style="font-weight:400;color:var(--text-3);">(blank = one-off)</span></div>
           <div class="fgrid">
             <label class="flabel">Every (days)
               <input type="number" name="interval_days" id="emm-interval-days" min="1" step="1" class="finput" placeholder="e.g. 365">
@@ -750,7 +750,7 @@
   <div id="del-confirm-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(360px,94vw);">
       <h2 id="dcm-title">Confirm</h2>
-      <p id="dcm-msg" style="font-size:.88rem;color:#4a5568;margin:.2rem 0 1.2rem;"></p>
+      <p id="dcm-msg" style="font-size:.88rem;color:var(--text-2);margin:.2rem 0 1.2rem;"></p>
       <div class="modal-actions">
         <button type="button" class="cbtn" id="dcm-cancel">Cancel</button>
         <span style="flex:1"></span>
@@ -818,10 +818,10 @@
   <!-- ── LIVE tab ── -->
   <div id="tab-live" class="stab-panel">
     <div id="adsb-panel">
-      <div id="adsb-status" style="font-size:.88rem;font-weight:500;color:#8a93a0;margin-bottom:.3rem;">Waiting…</div>
-      <div id="adsb-info" style="font-size:.82rem;color:#5b6573;margin-bottom:.4rem;display:none;"></div>
-      <div id="adsb-map" style="height:340px;border-radius:8px;border:1px solid #e3e6ea;display:none;margin-bottom:.4rem;"></div>
-      <div id="adsb-meta" style="font-size:.75rem;color:#adb5bd;display:none;">
+      <div id="adsb-status" style="font-size:.88rem;font-weight:500;color:var(--text-3);margin-bottom:.3rem;">Waiting…</div>
+      <div id="adsb-info" style="font-size:.82rem;color:var(--text-2);margin-bottom:.4rem;display:none;"></div>
+      <div id="adsb-map" style="height:340px;border-radius:8px;border:1px solid var(--border);display:none;margin-bottom:.4rem;"></div>
+      <div id="adsb-meta" style="font-size:.75rem;color:var(--text-3);display:none;">
         <span id="adsb-last-updated"></span> · refreshes every 60s · <span id="adsb-tried"></span> ·
         <a href="https://www.adsb.fi" target="_blank" style="color:inherit;">adsb.fi</a> /
         <a href="https://www.adsb.lol" target="_blank" style="color:inherit;">adsb.lol</a> /
@@ -844,8 +844,8 @@
         <tr>
           <td style="white-space:nowrap;font-size:.85rem;">{{ b.scheduled_start|date:"j M Y" }}</td>
           <td>{{ b.member.user.get_full_name }}</td>
-          <td style="color:#8a93a0;font-size:.85rem;">{{ b.instructor.get_full_name|default:"—" }}</td>
-          <td style="color:#8a93a0;font-size:.82rem;">{{ b.flight_type.name }}</td>
+          <td style="color:var(--text-3);font-size:.85rem;">{{ b.instructor.get_full_name|default:"—" }}</td>
+          <td style="color:var(--text-3);font-size:.82rem;">{{ b.flight_type.name }}</td>
           <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
           <td style="font-size:.85rem;">
             {% if b.flight_completion %}{{ b.flight_completion.actual_flight_hours|default:"—" }}h{% else %}—{% endif %}
@@ -862,47 +862,45 @@
     </table>
     {% if flight_history.paginator.num_pages > 1 %}
     <div style="display:flex;align-items:center;gap:.5rem;margin-top:1rem;font-size:.85rem;flex-wrap:wrap;">
-      <span style="color:#8a93a0;">Page {{ flight_history.number }} of {{ flight_history.paginator.num_pages }} &nbsp;({{ flight_history.paginator.count }} flights)</span>
+      <span style="color:var(--text-3);">Page {{ flight_history.number }} of {{ flight_history.paginator.num_pages }} &nbsp;({{ flight_history.paginator.count }} flights)</span>
       {% if flight_history.has_previous %}<a href="?tab=history&fh_page={{ flight_history.previous_page_number }}" class="cbtn-sm">‹ Prev</a>{% endif %}
       {% if flight_history.has_next %}<a href="?tab=history&fh_page={{ flight_history.next_page_number }}" class="cbtn-sm">Next ›</a>{% endif %}
     </div>
     {% endif %}
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;">No flight history yet.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No flight history yet.</p>
     {% endif %}
   </div><!-- /tab-history -->
 
 </div>
 
 <style>
-  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:var(--text-3);text-decoration:none;margin-bottom:1rem;}
   .back-link:hover{color:var(--banner);}
 
-  .status-badge{font-size:.75rem;font-weight:600;padding:.25rem .65rem;border-radius:10px;background:#f3f5f7;color:#5b6573;}
-  .status-badge.status-online{background:#e6f4ea;color:#2a7a3b;}
-  .status-badge.status-retired{background:#f5f5f5;color:#8a93a0;}
+  .status-badge{font-size:.75rem;font-weight:600;padding:.25rem .65rem;border-radius:10px;background:var(--surface-3);color:var(--text-2);}
+  .status-badge.status-online{background:var(--success-bg);color:var(--success);}
+  .status-badge.status-retired{background:#f5f5f5;color:var(--text-3);}
 
 
 
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
+  .modal{background:var(--surface);border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
   .modal-actions{display:flex;align-items:center;gap:.5rem;}
   .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
 
-  .sh2{font-size:1rem;font-weight:650;color:#1f2933;margin:.4rem 0 .6rem;}
+  .sh2{font-size:1rem;font-weight:650;color:var(--text-1);margin:.4rem 0 .6rem;}
   .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.6rem;}
 
   .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem;}
-  .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .ft-table tr:last-child td{border-bottom:0;}
 
 
-  .maint-bar-wrap{height:8px;background:#eef1f4;border-radius:4px;overflow:hidden;margin-bottom:.15rem;}
+  .maint-bar-wrap{height:8px;background:var(--surface-3);border-radius:4px;overflow:hidden;margin-bottom:.15rem;}
   .maint-bar{height:100%;border-radius:4px;transition:width .3s;}
   .maint-bar-green{background:#4caf50;}
   .maint-bar-amber{background:#ff9800;}
@@ -913,24 +911,24 @@
   .add-wrap{margin-top:.5rem;}
   .add-toggle{cursor:pointer;font-size:.82rem;color:var(--primary);user-select:none;list-style:none;}
   .add-toggle::-webkit-details-marker{display:none;}
-  .row-action-link{font-size:.8rem;color:#5b6573;text-decoration:none;padding:.25rem .6rem;border:1px solid #d6dae0;border-radius:6px;background:#fff;white-space:nowrap;}
-  .row-action-link:hover{background:#f3f5f7;color:#1f2933;}
+  .row-action-link{font-size:.8rem;color:var(--text-2);text-decoration:none;padding:.25rem .6rem;border:1px solid var(--input-border);border-radius:6px;background:var(--surface);white-space:nowrap;}
+  .row-action-link:hover{background:var(--surface-3);color:var(--text-1);}
 
   .tab-section-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin:.4rem 0 .8rem;flex-wrap:wrap;}
-  .tab-desc{font-size:.82rem;color:#8a93a0;margin:0;}
-  .tab-hr{border:none;border-top:1px solid #eef1f4;margin:1.5rem 0;}
-  .tab-empty{text-align:center;padding:2rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;margin-bottom:.5rem;}
+  .tab-desc{font-size:.82rem;color:var(--text-3);margin:0;}
+  .tab-hr{border:none;border-top:1px solid var(--border);margin:1.5rem 0;}
+  .tab-empty{text-align:center;padding:2rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:var(--text-3);margin-bottom:.5rem;}
   .tab-empty p{margin:0 0 .7rem;font-size:.88rem;}
 
   .hire-badge{font-size:.72rem;font-weight:600;padding:.18rem .5rem;border-radius:8px;}
-  .hire-badge.wet{background:#e6f4ea;color:#2a7a3b;}
-  .hire-badge.dry{background:#fff3e0;color:#c76c00;}
+  .hire-badge.wet{background:#e6f4ea;color:var(--success);}
+  .hire-badge.dry{background:var(--warning-bg);color:var(--warning-text);}
 
-  .current-rate-card{background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:.7rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.3rem;}
-  .current-rate-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;}
-  .current-rate-amount{font-size:1.1rem;font-weight:700;color:#1f2933;}
-  .current-rate-since{font-size:.82rem;color:#5b6573;}
-  .current-rate-notes{font-size:.8rem;color:#8a93a0;font-style:italic;}
+  .current-rate-card{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:.7rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.3rem;}
+  .current-rate-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);}
+  .current-rate-amount{font-size:1.1rem;font-weight:700;color:var(--text-1);}
+  .current-rate-since{font-size:.82rem;color:var(--text-2);}
+  .current-rate-notes{font-size:.8rem;color:var(--text-3);font-style:italic;}
 
   .sc-toggle{position:relative;display:inline-block;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;padding:0;flex-shrink:0;vertical-align:middle;transition:background .18s;}
   .sc-toggle::after{content:'';position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:left .18s;}
@@ -943,17 +941,17 @@
   span.sc-toggle{cursor:default;}
 .cbtn-sm
   .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:.6rem;}
-  .notice.warn{background:#fff8e6;color:#7a5800;border-left:3px solid #f59e0b;}
+  .notice.warn{background:var(--warning-bg);color:var(--warning-text);border-left:3px solid #f59e0b;}
   @keyframes adsb-spin{to{transform:rotate(360deg)}}
   .adsb-spinner{display:inline-block;width:11px;height:11px;border:2px solid #d0d6de;border-top-color:#6b7785;border-radius:50%;animation:adsb-spin .7s linear infinite;vertical-align:middle;margin-right:.35rem;flex-shrink:0;}
 
-  .flabel-lk{font-size:.82rem;font-weight:600;color:#5b6573;}
+  .flabel-lk{font-size:.82rem;font-weight:600;color:var(--text-2);}
   .init-row{display:flex;flex-direction:column;gap:.25rem;}
   .init-field-wrap{display:flex;align-items:center;gap:.4rem;}
   .init-field-wrap .finput{flex:1;min-width:0;}
-  .init-field-wrap input[readonly]{background:#f5f6f8;color:#5b6573;cursor:default;}
-  .amend-btn{color:#c76c00;border-color:#c76c00;}
-  .apply-btn{color:#2a7a3b;border-color:#2a7a3b;}
+  .init-field-wrap input[readonly]{background:var(--surface-2);color:var(--text-2);cursor:default;}
+  .amend-btn{color:var(--warning-text);border-color:var(--warning-text);}
+  .apply-btn{color:var(--success);border-color:var(--success);}
 </style>
 
 <script>
@@ -1020,7 +1018,7 @@ function _maintDueHint(pfx) {
       hintEl.style.display = 'none';
     } else if (Math.abs(dueH - calc) > 0.05) {
       hintEl.textContent = 'Expected ' + calc + ' (last + interval)';
-      hintEl.style.color = '#b45309';
+      hintEl.style.color = 'var(--warning-text)';
       hintEl.style.display = '';
     } else {
       hintEl.style.display = 'none';
@@ -1042,7 +1040,7 @@ function _maintDueHint(pfx) {
       datHintEl.style.display = 'none';
     } else if (dueDEl.value !== calcStr) {
       datHintEl.textContent = 'Expected ' + calcStr + ' (last + interval)';
-      datHintEl.style.color = '#b45309';
+      datHintEl.style.color = 'var(--warning-text)';
       datHintEl.style.display = '';
     } else {
       datHintEl.style.display = 'none';
@@ -1214,7 +1212,7 @@ window.dcModal = function(form, msg, confirmLabel, isDanger) {
       if (d.found && d.lat && d.lon) {
         lastKnownPos = { lat: d.lat, lon: d.lon, track: d.track, seenAt: Date.now() };
         statusEl.innerHTML = '{{ ac.registration }} airborne' + (d.source ? ` · via ${d.source}` : '');
-        statusEl.style.color = '#2a7a3b';
+        statusEl.style.color = 'var(--success)';
         initMap(d.lat, d.lon, d.track, false);
         const parts = [`${d.lat.toFixed(4)}, ${d.lon.toFixed(4)}`];
         if (d.alt_ft)        parts.push(`${d.alt_ft} ft`);
@@ -1228,7 +1226,7 @@ window.dcModal = function(form, msg, confirmLabel, isDanger) {
         if (lastKnownPos && (Date.now() - lastKnownPos.seenAt) < STALE_MS) {
           const minsAgo = Math.max(1, Math.round((Date.now() - lastKnownPos.seenAt) / 60000));
           statusEl.textContent = `{{ ac.registration }} — signal lost · last seen ${minsAgo}m ago`;
-          statusEl.style.color = '#d97706';
+          statusEl.style.color = 'var(--warning-text)';
           initMap(lastKnownPos.lat, lastKnownPos.lon, lastKnownPos.track, true);
           infoEl.textContent = `Last known position: ${lastKnownPos.lat.toFixed(4)}, ${lastKnownPos.lon.toFixed(4)}`;
           infoEl.style.display = '';
@@ -1313,13 +1311,13 @@ window.dcModal = function(form, msg, confirmLabel, isDanger) {
     btn.addEventListener('click', () => {
       const input = document.getElementById(btn.dataset.target);
       if (!input) return;
-      if (confirm('Amend this value? Only correct a data entry error — changing it affects all cumulative calculations.')) {
+      showAppConfirm('Amend this value? Only correct a data entry error — changing it affects all cumulative calculations.', function() {
         input.removeAttribute('readonly');
         input.focus();
         input.select();
         btn.textContent = 'Lock';
         btn.classList.replace('amend-btn','apply-btn');
-      }
+      });
     });
   });
   document.querySelectorAll('.apply-btn').forEach(btn => {

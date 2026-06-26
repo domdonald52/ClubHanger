@@ -13,35 +13,35 @@
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.2rem;">
     <div>
       <h1 style="margin:0 0 .2rem;font-size:1.3rem;">{{ report.occurrence_type.name }}</h1>
-      <div style="font-size:.83rem;color:#8a93a0;">Reported by {{ report.reported_by.user.get_full_name }} · {{ report.reported_at|date:"j M Y H:i" }}</div>
+      <div style="font-size:.83rem;color:var(--text-3);">Reported by {{ report.reported_by.user.get_full_name }} · {{ report.reported_at|date:"j M Y H:i" }}</div>
     </div>
     <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;">
-      {% if report.is_safety_risk %}<span style="background:#fff0f0;color:#c0392b;font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:20px;border:1px solid #f5c6c6;">⚠ Safety risk</span>{% endif %}
+      {% if report.is_safety_risk %}<span style="background:var(--danger-bg);color:var(--danger);font-size:.75rem;font-weight:700;padding:.2rem .6rem;border-radius:20px;border:1px solid #f5c6c6;">⚠ Safety risk</span>{% endif %}
       <span class="status-chip occ-{{ report.status }}">{{ report.get_status_display }}</span>
     </div>
   </div>
 
   <!-- Report details -->
-  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
-    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Event details</div>
+  <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;">
+    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;">Event details</div>
     <div style="padding:.8rem .9rem;display:grid;grid-template-columns:1fr 1fr;gap:.6rem 1.4rem;font-size:.85rem;">
-      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Date</span><br>{{ report.date_of_occurrence|date:"j M Y" }}{% if report.time_of_occurrence %} {{ report.time_of_occurrence|time:"H:i" }}{% endif %}</div>
-      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Location</span><br>{{ report.location|default:"—" }}</div>
-      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Aircraft</span><br>{{ report.aircraft.registration|default:"—" }}</div>
-      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Related flight</span><br>
+      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">Date</span><br>{{ report.date_of_occurrence|date:"j M Y" }}{% if report.time_of_occurrence %} {{ report.time_of_occurrence|time:"H:i" }}{% endif %}</div>
+      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">Location</span><br>{{ report.location|default:"—" }}</div>
+      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">Aircraft</span><br>{{ report.aircraft.registration|default:"—" }}</div>
+      <div><span style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">Related flight</span><br>
         {% if report.related_booking %}<a href="{% url 'core:booking_detail' club.slug report.related_booking_id %}">{{ report.related_booking.scheduled_start|date:"j M Y H:i" }}</a>{% else %}—{% endif %}
       </div>
     </div>
   </div>
 
-  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
-    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Description</div>
+  <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;">
+    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;">Description</div>
     <div style="padding:.8rem .9rem;font-size:.88rem;white-space:pre-wrap;">{{ report.description }}</div>
   </div>
 
   {% if report.immediate_action %}
-  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
-    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Immediate action taken</div>
+  <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;">
+    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;">Immediate action taken</div>
     <div style="padding:.8rem .9rem;font-size:.88rem;white-space:pre-wrap;">{{ report.immediate_action }}</div>
   </div>
   {% endif %}
@@ -57,10 +57,10 @@
   </form>
 
   <!-- ── Actions ── -->
-  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
-    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
+  <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;">
+    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;display:flex;justify-content:space-between;align-items:center;">
       Actions required
-      {% if actions %}<span style="font-size:.75rem;color:#8a93a0;">{{ actions|length }} item{{ actions|length|pluralize }}</span>{% endif %}
+      {% if actions %}<span style="font-size:.75rem;color:var(--text-3);">{{ actions|length }} item{{ actions|length|pluralize }}</span>{% endif %}
     </div>
     <div style="padding:.8rem .9rem;">
       {% if actions %}
@@ -68,7 +68,7 @@
       <div style="display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid #f3f5f7;font-size:.85rem;">
         <div style="flex:1;">
           <div>{{ a.description }}</div>
-          {% if a.assigned_to %}<div style="font-size:.78rem;color:#8a93a0;margin-top:.2rem;">→ {{ a.assigned_to.user.get_full_name }}{% if a.due_date %} · due {{ a.due_date|date:"j M" }}{% endif %}</div>{% endif %}
+          {% if a.assigned_to %}<div style="font-size:.78rem;color:var(--text-3);margin-top:.2rem;">→ {{ a.assigned_to.user.get_full_name }}{% if a.due_date %} · due {{ a.due_date|date:"j M" }}{% endif %}</div>{% endif %}
         </div>
         <div style="white-space:nowrap;">
           {% if a.status == 'open' %}
@@ -78,9 +78,9 @@
           </form>
           <button type="button" class="cbtn-sm danger" onclick="document.getElementById('override-{{ a.id }}').hidden=false">Override</button>
           {% elif a.status == 'complete' %}
-          <span style="color:#216c2a;font-size:.78rem;font-weight:600;">✓ Done</span>
+          <span style="color:var(--success-text);font-size:.78rem;font-weight:600;">✓ Done</span>
           {% else %}
-          <span style="color:#8a93a0;font-size:.78rem;">Overridden</span>
+          <span style="color:var(--text-3);font-size:.78rem;">Overridden</span>
           {% endif %}
         </div>
       </div>
@@ -93,18 +93,18 @@
             <input type="text" name="override_note" class="finput" required placeholder="Why is this being overridden?">
           </label>
           <button type="submit" class="cbtn-sm danger" style="margin-bottom:1px;">Confirm</button>
-          <button type="button" class="cbtn-sm" onclick="document.getElementById('override-{{ a.id }}').hidden=true" style="margin-bottom:1px;"><i class="ti ti-x"></i> Close</button>
+          <button type="button" class="cbtn-sm" onclick="document.getElementById('override-{{ a.id }}').hidden=true" style="margin-bottom:1px;">Close</button>
         </form>
       </div>
       {% endif %}
       {% endfor %}
       {% else %}
-      <div style="color:#8a93a0;font-size:.83rem;">No actions added yet.</div>
+      <div style="color:var(--text-3);font-size:.83rem;">No actions added yet.</div>
       {% endif %}
 
       {% if report.status != 'closed' %}
       <!-- Add action form -->
-      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid #eef1f4;">
+      <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border);">
         <form method="post" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;">
           {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
           <input type="hidden" name="action" value="add_action">
@@ -129,8 +129,8 @@
 
   <!-- ── Review panel ── -->
   {% if report.status != 'closed' %}
-  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
-    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Review</div>
+  <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;">
+    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;">Review</div>
     <div style="padding:.8rem .9rem;">
       <form method="post">
         {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
@@ -149,7 +149,7 @@
           <button type="button" class="cbtn primary" id="btn-close-no-action-trigger">Close — no action required</button>
           {% endif %}
         </div>
-        <div id="close-no-action-confirm" hidden style="margin-top:.6rem;padding:.5rem .7rem;background:#fff8e6;border:1px solid #fcd34d;border-radius:6px;font-size:.83rem;color:#92400e;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+        <div id="close-no-action-confirm" hidden style="margin-top:.6rem;padding:.5rem .7rem;background:#fff8e6;border:1px solid #fcd34d;border-radius:6px;font-size:.83rem;color:var(--warning-text);display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           Close this report with no action required. This cannot be easily undone.
           <div style="display:flex;gap:.4rem;margin-left:auto;">
             <button type="submit" name="action" value="close_no_action" class="cbtn primary" style="font-size:.8rem;padding:.3rem .7rem;">Yes, close it</button>
@@ -163,11 +163,11 @@
   <form method="post" style="margin-bottom:1rem;">
     {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
     <input type="hidden" name="action" value="reopen">
-    <button type="submit" class="cbtn" style="border-color:#d6dae0;color:#374151;background:#f9fafb;">↩ Reopen report</button>
+    <button type="submit" class="cbtn" style="border-color:#d6dae0;color:var(--text-2);background:#f9fafb;">↩ Reopen report</button>
   </form>
   {% if report.review_notes %}
-  <div style="border:1px solid #e3e6ea;border-radius:10px;margin-bottom:1rem;">
-    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Review notes</div>
+  <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;">
+    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;">Review notes</div>
     <div style="padding:.8rem .9rem;font-size:.88rem;white-space:pre-wrap;">{{ report.review_notes }}</div>
   </div>
   {% endif %}
@@ -176,13 +176,13 @@
 
   <!-- ── Audit trail ── -->
   {% if audit %}
-  <div style="border:1px solid #e3e6ea;border-radius:10px;">
-    <div style="background:#fafbfc;padding:.5rem .9rem;border-bottom:1px solid #eef1f4;font-size:.8rem;font-weight:600;">Activity</div>
+  <div style="border:1px solid var(--border);border-radius:10px;">
+    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;">Activity</div>
     <div style="padding:.4rem .9rem;">
       {% for entry in audit %}
       <div style="display:flex;gap:.8rem;padding:.45rem 0;border-bottom:1px solid #f3f5f7;font-size:.82rem;align-items:baseline;">
-        <span style="color:#8a93a0;white-space:nowrap;flex-shrink:0;">{{ entry.timestamp|date:"j M H:i" }}</span>
-        <span><strong>{{ entry.verb }}</strong>{% if entry.actor %} — {{ entry.actor.user.get_full_name }}{% endif %}{% if entry.note %}<span style="color:#8a93a0;"> · {{ entry.note }}</span>{% endif %}</span>
+        <span style="color:var(--text-3);white-space:nowrap;flex-shrink:0;">{{ entry.timestamp|date:"j M H:i" }}</span>
+        <span><strong>{{ entry.verb }}</strong>{% if entry.actor %} — {{ entry.actor.user.get_full_name }}{% endif %}{% if entry.note %}<span style="color:var(--text-3);"> · {{ entry.note }}</span>{% endif %}</span>
       </div>
       {% endfor %}
     </div>
@@ -192,10 +192,10 @@
 </div>
 
 <style>
-  .occ-submitted{background:#dbeafe;color:#1d4ed8;}
-  .occ-reviewed{background:#eaf6ec;color:#216c2a;}
-  .occ-closed{background:#f3f5f7;color:#8a93a0;}
-  .occ-draft{background:#fffbeb;color:#92400e;}
+  .occ-submitted{background:var(--info-bg);color:var(--info-text);}
+  .occ-reviewed{background:var(--success-bg);color:var(--success-text);}
+  .occ-closed{background:var(--surface-3);color:var(--text-3);}
+  .occ-draft{background:var(--warning-bg);color:var(--warning-text);}
 </style>
 <script>
 (function(){

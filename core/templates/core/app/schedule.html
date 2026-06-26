@@ -48,7 +48,7 @@
   .ac-header-wrap {
     display: flex;
     background: #fff;
-    border-bottom: 1px solid #e3e6ea;
+    border-bottom:1px solid var(--border);
     flex-shrink: 0;
     overflow: hidden;
   }
@@ -59,10 +59,10 @@
     padding: .4rem .3rem;
     text-align: center;
     font-size: .72rem; font-weight: 700;
-    color: #1f2933;
+    color:var(--text-1);
     border-right: 1px solid #f0f2f4;
   }
-  .ac-head-cell span { display: block; font-size: .6rem; font-weight: 400; color: #8a93a0; }
+  .ac-head-cell span { display: block; font-size: .6rem; font-weight: 400; color:var(--text-3); }
 
   /* ── Instructor header cells ── */
   .instr-head-strip {
@@ -216,7 +216,7 @@
   }
 
   /* ── No aircraft ── */
-  .no-ac { flex: 1; display: flex; align-items: center; justify-content: center; color: #8a93a0; font-size: .88rem; padding: 2rem; text-align: center; }
+  .no-ac { flex: 1; display: flex; align-items: center; justify-content: center; color:var(--text-3); font-size: .88rem; padding: 2rem; text-align: center; }
 
   /* ── Full block-out ── */
   .blockout-banner {
@@ -355,7 +355,7 @@
     <div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto 1rem;"></div>
     <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span style="font-size:.95rem;font-weight:700;color:#1f2933;">Booking unavailable</span>
+      <span style="font-size:.95rem;font-weight:700;color:var(--text-1);">Booking unavailable</span>
     </div>
     <p style="font-size:.87rem;color:#4b5563;line-height:1.55;margin:0;">{{ booking_block_msg }}</p>
   </div>
@@ -370,7 +370,7 @@
 <div id="lp-sheet" style="display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,.35);" onclick="document.getElementById('lp-sheet').style.display='none'">
   <div id="lp-sheet-card" style="position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:18px 18px 0 0;padding:1.1rem 1rem calc(1.5rem + var(--safe-bottom));touch-action:none;" onclick="event.stopPropagation()">
     <div id="lp-handle" style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto .9rem;cursor:grab;"></div>
-    <div id="lp-title" style="font-size:.82rem;font-weight:600;color:#6b7280;text-align:center;margin-bottom:1rem;"></div>
+    <div id="lp-title" style="font-size:.82rem;font-weight:600;color:var(--text-3);text-align:center;margin-bottom:1rem;"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;">
       <a id="lp-solo" href="#" class="app-btn" style="text-align:center;">Solo</a>
       <a id="lp-dual" href="#" class="app-btn" style="text-align:center;background:var(--banner);">Dual</a>
@@ -385,8 +385,8 @@
     <!-- member + aircraft header -->
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.9rem;">
       <div>
-        <div id="bks-name" style="font-size:1.05rem;font-weight:700;color:#1f2933;line-height:1.2;"></div>
-        <div id="bks-sub" style="font-size:.83rem;color:#6b7280;margin-top:.2rem;"></div>
+        <div id="bks-name" style="font-size:1.05rem;font-weight:700;color:var(--text-1);line-height:1.2;"></div>
+        <div id="bks-sub" style="font-size:.83rem;color:var(--text-3);margin-top:.2rem;"></div>
       </div>
       <span id="bks-badge" style="font-size:.72rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:.15rem;"></span>
     </div>

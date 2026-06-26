@@ -40,10 +40,10 @@ _bookings = {
 }
 _cancelled_booking  = Booking.objects.filter(club=_club, status='cancelled').values_list('id', flat=True).first()
 _completed_paid     = (Booking.objects.filter(club=_club, status='completed',
-                                              flight_completion__paid_at__isnull=False)
+                                              flight_completions__paid_at__isnull=False)
                        .values_list('id', flat=True).first())
 _completed_unpaid   = (Booking.objects.filter(club=_club, status='completed',
-                                              flight_completion__paid_at__isnull=True)
+                                              flight_completions__paid_at__isnull=True)
                        .values_list('id', flat=True).first())
 _decl_ft            = FlightType.objects.filter(club=_club, requires_declaration=True).values_list('id', flat=True).first()
 _member_with_creds  = ClubMember.objects.filter(club=_club, user__credentials__isnull=False).values_list('id', flat=True).first()

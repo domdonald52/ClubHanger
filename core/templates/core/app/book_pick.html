@@ -13,12 +13,12 @@
 {% block extra_style %}
 <style>
 .pick-section { padding: 1.1rem .9rem .3rem; }
-.pick-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#8a93a0; margin-bottom:.6rem; }
+.pick-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); margin-bottom:.6rem; }
 .mode-toggle { display:flex; gap:.5rem; }
 .mode-btn {
   flex:1; padding:.85rem .5rem; border-radius:12px; text-align:center;
   border:2px solid #dde1e6; background:#fff; font-size:.92rem; font-weight:600;
-  color:#6b7280; cursor:pointer; transition:all .15s;
+  color:var(--text-3); cursor:pointer; transition:all .15s;
 }
 .mode-btn.selected { border-color:var(--primary); background:color-mix(in srgb,var(--primary) 10%,#fff); color:var(--primary); }
 .date-chips { display:flex; gap:.45rem; overflow-x:auto; padding-bottom:.4rem; scrollbar-width:none; }

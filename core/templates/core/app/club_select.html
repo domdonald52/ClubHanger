@@ -12,7 +12,7 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f6f9;color:#1f2933;
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f4f6f9;color:var(--text-1);
        padding:calc(env(safe-area-inset-top,0px) + 1.5rem) 1.1rem calc(env(safe-area-inset-bottom,0px) + 1.5rem);
        display:flex;flex-direction:column;}
   .brand{display:flex;align-items:center;gap:.7rem;margin-bottom:1.8rem;}
@@ -20,8 +20,8 @@
   .brand-text{font-size:1rem;font-weight:750;color:#111827;letter-spacing:.03em;}
   .brand-sub{font-size:.64rem;color:#9aa3ad;letter-spacing:.11em;margin-top:.12rem;}
   h1{font-size:1.25rem;font-weight:780;margin-bottom:.3rem;}
-  .lede{font-size:.86rem;color:#8a93a0;margin-bottom:1.4rem;line-height:1.5;}
-  .club-btn{display:flex;align-items:center;gap:.9rem;width:100%;padding:.95rem 1rem;border:1px solid #e3e6ea;
+  .lede{font-size:.86rem;color:var(--text-3);margin-bottom:1.4rem;line-height:1.5;}
+  .club-btn{display:flex;align-items:center;gap:.9rem;width:100%;padding:.95rem 1rem;border:1px solid var(--border);
             border-radius:14px;background:#fff;text-decoration:none;color:inherit;margin-bottom:.7rem;
             box-shadow:0 1px 4px rgba(0,0,0,.05);}
   .club-btn:active{background:#f7f9fc;}
@@ -29,11 +29,11 @@
              justify-content:center;flex-shrink:0;overflow:hidden;}
   .club-icon img{width:44px;height:44px;object-fit:cover;}
   .club-main{flex:1;min-width:0;}
-  .club-name{font-weight:700;font-size:.95rem;color:#1f2933;}
-  .club-role{font-size:.76rem;color:#8a93a0;margin-top:.1rem;}
+  .club-name{font-weight:700;font-size:.95rem;color:var(--text-1);}
+  .club-role{font-size:.76rem;color:var(--text-3);margin-top:.1rem;}
   .chev{color:#c8cdd4;flex-shrink:0;}
   .signout{margin-top:auto;padding-top:1.4rem;text-align:center;}
-  .signout button{background:none;border:none;color:#8a93a0;font-size:.82rem;cursor:pointer;text-decoration:underline;}
+  .signout button{background:none;border:none;color:var(--text-3);font-size:.82rem;cursor:pointer;text-decoration:underline;}
 </style>
 </head>
 <body>

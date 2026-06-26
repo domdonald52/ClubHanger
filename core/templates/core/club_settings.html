@@ -67,7 +67,7 @@
       <div style="display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:1.4rem;">
         <!-- Logo preview + upload -->
         <div style="flex-shrink:0;">
-          <div style="font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Club logo</div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.5rem;">Club logo</div>
           <div style="width:120px;height:60px;background:var(--banner);border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:.5rem;">
             {% if config.logo %}
               <img src="{{ config.logo.url }}" style="max-height:52px;max-width:110px;object-fit:contain;">
@@ -85,17 +85,17 @@
                     onclick="showAppConfirm('Remove the club logo?', function(){ document.getElementById('remove-logo-form').submit(); })">Remove</button>
             {% endif %}
           </div>
-          <div style="font-size:.73rem;color:#8a93a0;margin-top:.4rem;">White on transparent PNG works best</div>
+          <div style="font-size:.73rem;color:var(--text-3);margin-top:.4rem;">White on transparent PNG works best</div>
         </div>
 
         <!-- Mobile app banner image -->
         <div style="flex-shrink:0;">
-          <div style="font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.5rem;">Mobile app banner</div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.5rem;">Mobile app banner</div>
           <div style="width:200px;height:66px;background:#e9ecef;border-radius:8px;overflow:hidden;margin-bottom:.5rem;display:flex;align-items:center;justify-content:center;">
             {% if config.app_banner %}
               <img src="{{ config.app_banner.url }}" style="width:100%;height:100%;object-fit:cover;">
             {% else %}
-              <span style="font-size:.72rem;color:#adb5bd;">No banner set</span>
+              <span style="font-size:.72rem;color:var(--text-3);">No banner set</span>
             {% endif %}
           </div>
           <div style="display:flex;gap:.4rem;">
@@ -108,7 +108,7 @@
                     onclick="showAppConfirm('Remove the app banner image?', function(){ document.getElementById('remove-app-banner-form').submit(); })">Remove</button>
             {% endif %}
           </div>
-          <div style="font-size:.73rem;color:#8a93a0;margin-top:.4rem;">Landscape, ~3:1 ratio (e.g. 1200×400px). Falls back to the Club Hangar default if not set.</div>
+          <div style="font-size:.73rem;color:var(--text-3);margin-top:.4rem;">Landscape, ~3:1 ratio (e.g. 1200×400px). Falls back to the Club Hangar default if not set.</div>
         </div>
 
         <!-- Club name -->
@@ -120,15 +120,15 @@
       </div>
 
       <div class="fgrid" style="margin-bottom:1rem;">
-        <label class="flabel">Phone <span style="font-weight:400;color:#8a93a0;">(also printed on invoices)</span>
+        <label class="flabel">Phone <span style="font-weight:400;color:var(--text-3);">(also printed on invoices)</span>
           <input type="text" name="billing_phone" value="{{ config.billing_phone }}" class="finput"
                  pattern="[0-9+\(\)\s\-]{7,20}" title="7–20 digits, spaces, +, -, ()">
         </label>
-        <label class="flabel">Email <span style="font-weight:400;color:#8a93a0;">(also printed on invoices)</span>
+        <label class="flabel">Email <span style="font-weight:400;color:var(--text-3);">(also printed on invoices)</span>
           <input type="email" name="billing_email" value="{{ config.billing_email }}" class="finput">
         </label>
       </div>
-      <label class="flabel" style="margin-bottom:1.6rem;">Address <span style="font-weight:400;color:#8a93a0;">(also printed on invoices)</span>
+      <label class="flabel" style="margin-bottom:1.6rem;">Address <span style="font-weight:400;color:var(--text-3);">(also printed on invoices)</span>
         <textarea name="billing_address" class="finput" rows="3">{{ config.billing_address }}</textarea>
       </label>
 
@@ -141,7 +141,7 @@
     <div id="tab-bookings" class="stab-panel">
 
         <h2 class="sh2">Operating hours</h2>
-        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .8rem;">
+        <p style="font-size:.82rem;color:var(--text-3);margin:.2rem 0 .8rem;">
           The full span of the daily calendar. Aircraft and bookings outside these hours are not displayed.
         </p>
         <div class="fgrid">
@@ -154,7 +154,7 @@
         </div>
 
         <h2 class="sh2" style="margin-top:1.6rem;">Booking slots</h2>
-        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .8rem;">
+        <p style="font-size:.82rem;color:var(--text-3);margin:.2rem 0 .8rem;">
           The standard time slots members can book into. These appear in the mobile booking finder and define the
           &ldquo;normal&rdquo; flying window on the calendar — anything within operating hours but outside these slots
           is shown as atypical and requires the member to confirm before saving.
@@ -167,7 +167,7 @@
         <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
 
         <h2 class="sh2">Booking blocks</h2>
-        <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .9rem;">Prevent members from making new bookings when account conditions aren't met. Instructors and admins are always exempt.</p>
+        <p style="font-size:.82rem;color:var(--text-3);margin:.2rem 0 .9rem;">Prevent members from making new bookings when account conditions aren't met. Instructors and admins are always exempt.</p>
 
         <label style="display:flex;align-items:center;gap:.7rem;margin-bottom:1.1rem;cursor:pointer;">
           <input type="checkbox" name="booking_block_enabled" value="on"{% if config.booking_block_enabled %} checked{% endif %}
@@ -176,21 +176,21 @@
         </label>
 
         <div id="bb-conditions" style="{% if not config.booking_block_enabled %}opacity:.45;pointer-events:none;{% endif %}">
-          <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.2rem 0 .8rem;">Block conditions <span style="font-weight:400;font-size:.78rem;color:#8a93a0;text-transform:none;letter-spacing:0;">(any one triggers a block)</span></h3>
+          <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.2rem 0 .8rem;">Block conditions <span style="font-weight:400;font-size:.78rem;color:var(--text-3);text-transform:none;letter-spacing:0;">(any one triggers a block)</span></h3>
           <div class="fgrid" style="margin-bottom:1rem;">
             <label class="flabel">Block when unpaid flight charges are older than (days)
-              <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">Leave blank to disable. Credit limit blocks are set per member.</span>
+              <span style="font-size:.78rem;font-weight:400;color:var(--text-3);">Leave blank to disable. Credit limit blocks are set per member.</span>
               <input type="number" name="booking_block_unpaid_flight_days" value="{{ config.booking_block_unpaid_flight_days|default:'' }}"
                      min="1" class="finput" style="width:120px;" placeholder="e.g. 30">
             </label>
             <label class="flabel">Block when unpaid invoices are older than (days)
-              <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">Leave blank to disable.</span>
+              <span style="font-size:.78rem;font-weight:400;color:var(--text-3);">Leave blank to disable.</span>
               <input type="number" name="booking_block_invoice_days" value="{{ config.booking_block_invoice_days|default:'' }}"
                      min="1" class="finput" style="width:120px;" placeholder="e.g. 30">
             </label>
           </div>
           <label class="flabel" style="margin-bottom:1.2rem;">Message shown to blocked member
-            <span style="font-size:.78rem;font-weight:400;color:#8a93a0;">Leave blank to auto-generate from your club phone / email.</span>
+            <span style="font-size:.78rem;font-weight:400;color:var(--text-3);">Leave blank to auto-generate from your club phone / email.</span>
             <textarea name="booking_block_message" class="finput" rows="3"
                       placeholder="e.g. Your account has an outstanding balance. Please call the club office to discuss.">{{ config.booking_block_message }}</textarea>
           </label>
@@ -209,7 +209,7 @@
       row.style.cssText = 'display:flex;align-items:center;gap:.5rem;';
       row.innerHTML =
         '<input type="time" class="finput bs-start" value="' + (start || '') + '" style="width:110px;">' +
-        '<span style="color:#8a93a0;font-size:.85rem;">to</span>' +
+        '<span style="color:var(--text-3);font-size:.85rem;">to</span>' +
         '<input type="time" class="finput bs-end" value="' + (end || '') + '" style="width:110px;">' +
         '<button type="button" onclick="this.parentNode.remove()" style="background:none;border:none;color:#c8cdd4;cursor:pointer;font-size:1.1rem;padding:.1rem .4rem;line-height:1;" title="Remove">&#x2715;</button>';
       document.getElementById('slot-rows').appendChild(row);
@@ -249,11 +249,9 @@
       <input type="hidden" name="theme_banner"   id="inp-banner"   value="{{ config.theme_banner }}">
       <input type="hidden" name="theme_primary"  id="inp-primary"  value="{{ config.theme_primary }}">
       <input type="hidden" name="theme_accent"   id="inp-accent"   value="{{ config.theme_accent }}">
-      <input type="hidden" name="theme_weekend"        value="{{ config.theme_weekend }}">
-      <input type="hidden" name="theme_atypical"       value="{{ config.theme_atypical }}">
 
       <h2 class="sh2">Colour palette</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 1rem;">Pick a palette for the banner and primary colour. The primary colour is used for booking pills throughout the calendar — darker for airborne, lighter for pending/confirmed/returned.</p>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 1rem;">Pick a palette for the banner and primary colour. The primary colour is used for booking pills throughout the calendar — darker for airborne, lighter for pending/confirmed/returned.</p>
 
       <div class="palette-grid" id="palette-grid">
         <!-- Palettes defined by JS below; current values pre-select the matching one -->
@@ -264,27 +262,27 @@
         <label class="flabel">Banner colour
           <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
             <input type="color" id="pick-banner" value="{{ config.theme_banner }}"
-                   style="width:44px;height:36px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
+                   style="width:44px;height:36px;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
             <input type="text" id="hex-banner" value="{{ config.theme_banner }}"
-                   style="width:90px;padding:.38rem;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:.85rem;"
+                   style="width:90px;padding:.38rem;border:1px solid var(--input-border);border-radius:6px;font-family:monospace;font-size:.85rem;"
                    maxlength="7" placeholder="#rrggbb">
           </div>
         </label>
         <label class="flabel">Primary colour
           <div style="display:flex;gap:.5rem;align-items:center;margin-top:.25rem;">
             <input type="color" id="pick-primary" value="{{ config.theme_primary }}"
-                   style="width:44px;height:36px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
+                   style="width:44px;height:36px;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
             <input type="text" id="hex-primary" value="{{ config.theme_primary }}"
-                   style="width:90px;padding:.38rem;border:1px solid #ddd;border-radius:6px;font-family:monospace;font-size:.85rem;"
+                   style="width:90px;padding:.38rem;border:1px solid var(--input-border);border-radius:6px;font-family:monospace;font-size:.85rem;"
                    maxlength="7" placeholder="#rrggbb">
           </div>
         </label>
       </div>
 
       <h2 class="sh2" style="margin-top:.8rem;">Preview</h2>
-      <div style="border:1px solid #e3e6ea;border-radius:10px;overflow:hidden;margin-bottom:1.4rem;">
+      <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1.4rem;">
         <div id="pv-banner" style="background:{{ config.theme_banner }};color:#fff;padding:.75rem 1rem;font-weight:600;font-size:.95rem;">✈ {{ club.name }}</div>
-        <div style="padding:.75rem 1rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;border-bottom:1px solid #f0f2f5;">
+        <div style="padding:.75rem 1rem;display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border-subtle);">
           <span id="pv-primary" style="background:{{ config.theme_primary }};color:#fff;padding:.38rem .8rem;border-radius:6px;font-size:.84rem;">Button</span>
           <span class="status-chip confirmed">Confirmed</span>
           <span class="status-chip pending">Pending</span>
@@ -293,7 +291,7 @@
           <span class="status-chip completed">Completed</span>
         </div>
         <div style="padding:.6rem 1rem .75rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:flex-end;">
-          <span style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;flex-basis:100%;margin-bottom:.15rem;">Calendar pills</span>
+          <span style="font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);flex-basis:100%;margin-bottom:.15rem;">Calendar pills</span>
           <span class="pv-pill pending">A. Jones · ZK-XYZ</span>
           <span class="pv-pill confirmed">J. Smith · ZK-ABC</span>
           <span class="pv-pill departed">✈ T. Brown · ZK-ABC</span>
@@ -303,11 +301,11 @@
       </div>
 
       <h2 class="sh2" style="margin-top:1.2rem;">Body font</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">Selecting a font previews it on this page. Save to apply across the whole app.</p>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .9rem;">Selecting a font previews it on this page. Save to apply across the whole app.</p>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;" id="font-options">
         {% for opt in font_options %}
         <label class="font-label" data-font="{{ opt.value }}"
-               style="display:flex;align-items:center;gap:.4rem;padding:.5rem 1.1rem;border:1.5px solid {% if config.font_choice == opt.value %}var(--primary){% else %}#d6dae0{% endif %};border-radius:6px;cursor:pointer;background:{% if config.font_choice == opt.value %}color-mix(in srgb,var(--primary) 8%,#fff){% else %}#fff{% endif %};">
+               style="display:flex;align-items:center;gap:.4rem;padding:.5rem 1.1rem;border:1.5px solid {% if config.font_choice == opt.value %}var(--primary){% else %}var(--input-border){% endif %};border-radius:6px;cursor:pointer;background:{% if config.font_choice == opt.value %}color-mix(in srgb,var(--primary) 8%,#fff){% else %}var(--surface){% endif %};">
           <input type="radio" name="font_choice" value="{{ opt.value }}" {% if config.font_choice == opt.value %}checked{% endif %} style="accent-color:var(--primary);">
           <span style="font-family:{{ opt.stack }};font-size:.9rem;font-weight:500;">{{ opt.label }}</span>
         </label>
@@ -326,22 +324,22 @@
           document.body.style.fontFamily = FONT_STACKS[this.value] || '';
           document.querySelectorAll('.font-label').forEach(function(l) {
             var active = l.dataset.font === radio.value;
-            l.style.borderColor = active ? 'var(--primary)' : '#d6dae0';
-            l.style.background  = active ? 'color-mix(in srgb,var(--primary) 8%,#fff)' : '#fff';
+            l.style.borderColor = active ? 'var(--primary)' : 'var(--input-border)';
+            l.style.background  = active ? 'color-mix(in srgb,var(--primary) 8%,#fff)' : 'var(--surface)';
           });
         });
       });
       </script>
 
       <h2 class="sh2" style="margin-top:1.2rem;">Chart colours</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">8–10 hex colours used in stacked charts. Should be distinct and complement your primary colour. Leave blank to use the built-in burnt-orange defaults.</p>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .9rem;">8–10 hex colours used in stacked charts. Should be distinct and complement your primary colour. Leave blank to use the built-in burnt-orange defaults.</p>
       <div id="chart-color-swatches" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.6rem;">
         {% for c in config.get_chart_colors %}
         <div style="display:flex;flex-direction:column;align-items:center;gap:.25rem;">
           <input type="color" value="{{ c }}" data-ci="{{ forloop.counter0 }}"
-                 style="width:40px;height:32px;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;"
+                 style="width:40px;height:32px;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;"
                  oninput="updateChartColor({{ forloop.counter0 }},this.value)">
-          <span style="font-size:.68rem;font-family:monospace;color:#8a93a0;">{{ forloop.counter }}</span>
+          <span style="font-size:.68rem;font-family:monospace;color:var(--text-3);">{{ forloop.counter }}</span>
         </div>
         {% endfor %}
       </div>
@@ -364,8 +362,53 @@
       })();
       </script>
 
-      <h2 class="sh2" style="margin-top:1.4rem;">Layout density</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .8rem;">Compact mode reduces padding and font sizes across the management app for denser layouts on smaller screens.</p>
+      <details class="adv-block" style="margin-top:1.4rem;margin-bottom:.2rem;">
+        <summary class="adv-summary">Advanced colours</summary>
+        <div class="adv-body">
+          <p style="font-size:.82rem;color:var(--text-3);margin:0 0 .9rem;">These rarely need changing — they apply to specific edge cases in the calendar and booking views.</p>
+          <div style="display:flex;gap:1.2rem;flex-wrap:wrap;">
+            <label class="flabel">Dual-flight pairing
+              <span style="font-weight:400;color:var(--text-3);display:block;font-size:.78rem;margin-bottom:.25rem;">Accent on paired dual lessons</span>
+              <div style="display:flex;gap:.5rem;align-items:center;">
+                <input type="color" id="pick-dual" name="dual_accent" value="{{ config.dual_accent }}"
+                       style="width:40px;height:32px;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
+                <input type="text" id="hex-dual" value="{{ config.dual_accent }}"
+                       style="width:88px;padding:.35rem;border:1px solid var(--input-border);border-radius:6px;font-family:monospace;font-size:.83rem;"
+                       maxlength="7" placeholder="#rrggbb">
+              </div>
+            </label>
+            <label class="flabel">Weekend shading
+              <span style="font-weight:400;color:var(--text-3);display:block;font-size:.78rem;margin-bottom:.25rem;">Availability search weekend slots</span>
+              <div style="display:flex;gap:.5rem;align-items:center;">
+                <input type="color" id="pick-weekend" name="theme_weekend" value="{{ config.theme_weekend }}"
+                       style="width:40px;height:32px;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
+                <input type="text" id="hex-weekend" value="{{ config.theme_weekend }}"
+                       style="width:88px;padding:.35rem;border:1px solid var(--input-border);border-radius:6px;font-family:monospace;font-size:.83rem;"
+                       maxlength="7" placeholder="#rrggbb">
+              </div>
+            </label>
+            <label class="flabel">Off-hours shading
+              <span style="font-weight:400;color:var(--text-3);display:block;font-size:.78rem;margin-bottom:.25rem;">Slots outside typical operating hours</span>
+              <div style="display:flex;gap:.5rem;align-items:center;">
+                <input type="color" id="pick-atypical" name="theme_atypical" value="{{ config.theme_atypical }}"
+                       style="width:40px;height:32px;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
+                <input type="text" id="hex-atypical" value="{{ config.theme_atypical }}"
+                       style="width:88px;padding:.35rem;border:1px solid var(--input-border);border-radius:6px;font-family:monospace;font-size:.83rem;"
+                       maxlength="7" placeholder="#rrggbb">
+              </div>
+            </label>
+          </div>
+        </div>
+      </details>
+
+      <h2 class="sh2" style="margin-top:1.4rem;">Layout &amp; display</h2>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .8rem;">Theme and density settings for the management app.</p>
+      <label style="display:flex;align-items:center;gap:.7rem;cursor:pointer;font-size:.88rem;font-weight:500;margin-bottom:.85rem;">
+        <input type="checkbox" name="dark_mode" id="dark-toggle"
+               {% if config.dark_mode %}checked{% endif %}
+               style="width:16px;height:16px;accent-color:var(--primary);flex-shrink:0;">
+        Dark mode
+      </label>
       <label style="display:flex;align-items:center;gap:.7rem;cursor:pointer;font-size:.88rem;font-weight:500;margin-bottom:1.2rem;">
         <input type="checkbox" name="compact_mode" id="compact-toggle"
                {% if config.compact_mode %}checked{% endif %}
@@ -376,6 +419,14 @@
       <button type="submit" name="_tab" value="appearance" class="btn secondary" id="save-appearance-btn">Save appearance</button>
       <script>
       (function(){
+        /* Dark mode toggle — immediate preview */
+        var darkToggle = document.getElementById('dark-toggle');
+        if (darkToggle) {
+          darkToggle.addEventListener('change', function() {
+            document.body.classList.toggle('dark-mode', this.checked);
+            markDirty();
+          });
+        }
         /* Compact toggle — immediate preview */
         var toggle = document.getElementById('compact-toggle');
         if (toggle) {
@@ -428,7 +479,7 @@
                 <input type="checkbox" name="ft_value" value="1" {% if ft.is_solo %}checked{% endif %} onchange="this.form.submit()">
                 <span class="tog-track"></span>
               </label>
-              <span style="font-size:.78rem;color:#8a93a0;">{% if ft.is_solo %}Solo{% else %}Dual{% endif %}</span>
+              <span style="font-size:.78rem;color:var(--text-3);">{% if ft.is_solo %}Solo{% else %}Dual{% endif %}</span>
             </form>
           </td>
           <td>
@@ -522,7 +573,7 @@
         <tr>
           <td><strong>{{ ig.name }}</strong></td>
           <td>${{ ig.hourly_rate|currency }}</td>
-          <td style="color:#8a93a0;font-size:.82rem;">{{ ig.display_order }}</td>
+          <td style="color:var(--text-3);font-size:.82rem;">{{ ig.display_order }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
               <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditIg({{ ig.id }},'{{ ig.name }}','{{ ig.hourly_rate }}','{{ ig.display_order }}')"><i class="ti ti-pencil"></i></button>
@@ -560,7 +611,7 @@
         {% for st in surcharge_types %}
         <tr>
           <td><strong>{{ st.name }}</strong></td>
-          <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
+          <td style="color:var(--text-3);font-size:.82rem;">{{ st.description|default:"—" }}</td>
           <td>${{ st.amount|currency }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
@@ -605,7 +656,7 @@
           <td>{{ bt.name }}</td>
           <td>
             <span class="bot-swatch" style="background:{{ bt.color }};"></span>
-            <span style="font-family:monospace;font-size:.78rem;color:#8a93a0;">{{ bt.color }}</span>
+            <span style="font-family:monospace;font-size:.78rem;color:var(--text-3);">{{ bt.color }}</span>
           </td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
@@ -647,7 +698,7 @@
           <td>{{ bt.name }}</td>
           <td>
             <span class="bot-swatch" style="background:{{ bt.color }};"></span>
-            <span style="font-family:monospace;font-size:.78rem;color:#8a93a0;">{{ bt.color }}</span>
+            <span style="font-family:monospace;font-size:.78rem;color:var(--text-3);">{{ bt.color }}</span>
           </td>
           <td>
             <form method="post" style="display:inline-flex;align-items:center;gap:.5rem;">{% csrf_token %}
@@ -657,7 +708,7 @@
                 <input type="checkbox" name="is_hard" {% if bt.is_hard %}checked{% endif %} onchange="this.form.submit()">
                 <span class="tog-track"></span>
               </label>
-              <span style="font-size:.78rem;color:#8a93a0;">{% if bt.is_hard %}Hard{% else %}Soft{% endif %}</span>
+              <span style="font-size:.78rem;color:var(--text-3);">{% if bt.is_hard %}Hard{% else %}Soft{% endif %}</span>
             </form>
           </td>
           <td style="text-align:right;">
@@ -700,7 +751,7 @@
           <td>{{ bt.name }}</td>
           <td>
             <span class="bot-swatch" style="background:{{ bt.color }};"></span>
-            <span style="font-family:monospace;font-size:.78rem;color:#8a93a0;">{{ bt.color }}</span>
+            <span style="font-family:monospace;font-size:.78rem;color:var(--text-3);">{{ bt.color }}</span>
           </td>
           <td>
             <form method="post" style="display:inline-flex;align-items:center;gap:.5rem;">{% csrf_token %}
@@ -710,7 +761,7 @@
                 <input type="checkbox" name="is_hard" {% if bt.is_hard %}checked{% endif %} onchange="this.form.submit()">
                 <span class="tog-track"></span>
               </label>
-              <span style="font-size:.78rem;color:#8a93a0;">{% if bt.is_hard %}Hard{% else %}Soft{% endif %}</span>
+              <span style="font-size:.78rem;color:var(--text-3);">{% if bt.is_hard %}Hard{% else %}Soft{% endif %}</span>
             </form>
           </td>
           <td style="text-align:right;">
@@ -737,7 +788,7 @@
 
   <!-- ── AIRCRAFT TYPES tab ── -->
   <div id="tab-aircraft-types" class="stab-panel">
-    <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
+    <p style="font-size:.85rem;color:var(--text-3);margin-bottom:1rem;">
       Define the aircraft types in your fleet. Aircraft and member type ratings both reference this list.
     </p>
 
@@ -750,9 +801,9 @@
         {% for at in aircraft_type_list %}
         <tr id="atr-{{ at.id }}">
           <td><strong>{{ at.name }}</strong></td>
-          <td style="color:#8a93a0;">{{ at.icao_designator|default:"—" }}</td>
-          <td style="color:#8a93a0;">{{ at.aircraft.count }}</td>
-          <td style="color:#8a93a0;">{{ at.type_ratings.count }}</td>
+          <td style="color:var(--text-3);">{{ at.icao_designator|default:"—" }}</td>
+          <td style="color:var(--text-3);">{{ at.aircraft.count }}</td>
+          <td style="color:var(--text-3);">{{ at.type_ratings.count }}</td>
           <td style="text-align:right;white-space:nowrap;">
             <button type="button" class="cbtn sm" onclick="openEditAircraftType({{ at.id }},'{{ at.name }}','{{ at.icao_designator }}')">Edit</button>
             <form method="post" style="display:inline;" data-confirm="Delete {{ at.name }}?">
@@ -766,7 +817,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No aircraft types defined yet.</p>
+    <p style="color:var(--text-3);font-size:.88rem;margin-bottom:1rem;">No aircraft types defined yet.</p>
     {% endif %}
 
     <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
@@ -784,7 +835,7 @@
 
   <!-- ── INCIDENT TYPES tab ── -->
   <div id="tab-incident-types" class="stab-panel">
-    <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
+    <p style="font-size:.85rem;color:var(--text-3);margin-bottom:1rem;">
       Define the categories members can select when submitting an event report (near-misses, hazards, observations, etc.).
     </p>
 
@@ -795,7 +846,7 @@
         {% for ot in occurrence_types %}
         <tr>
           <td><strong>{{ ot.name }}</strong></td>
-          <td style="color:#8a93a0;font-size:.83rem;">{{ ot.description|default:"—" }}</td>
+          <td style="color:var(--text-3);font-size:.83rem;">{{ ot.description|default:"—" }}</td>
           <td>
             <form method="post" style="display:inline;">
               {% csrf_token %}<input type="hidden" name="action" value="toggle_occurrence_type">
@@ -815,7 +866,7 @@
               <button type="submit" class="cbtn sm danger">Delete</button>
             </form>
             {% else %}
-            <span style="font-size:.72rem;color:#9ca3af;cursor:default;" title="Cannot delete — reports exist using this type. Deactivate it instead.">Has reports</span>
+            <span style="font-size:.72rem;color:var(--text-3);cursor:default;" title="Cannot delete — reports exist using this type. Deactivate it instead.">Has reports</span>
             {% endif %}
           </td>
         </tr>
@@ -823,7 +874,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No event types defined yet.</p>
+    <p style="color:var(--text-3);font-size:.88rem;margin-bottom:1rem;">No event types defined yet.</p>
     {% endif %}
 
     <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
@@ -853,7 +904,7 @@
             <input type="text" name="ot_desc" id="edit-ot-desc" class="finput">
           </label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true">Close</button>
             <span style="flex:1"></span>
             <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
@@ -873,7 +924,7 @@
 
   <!-- ── CONTACT TYPES tab ── -->
   <div id="tab-contact-types" class="stab-panel">
-    <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
+    <p style="font-size:.85rem;color:var(--text-3);margin-bottom:1rem;">
       Categories for non-member contacts — trial flights, Young Eagles, Gateway Scheme, commercial clients, etc.
     </p>
 
@@ -888,7 +939,7 @@
             <form method="post" style="display:inline;">
               {% csrf_token %}<input type="hidden" name="action" value="toggle_contact_type">
               <input type="hidden" name="ct_id" value="{{ ctype.id }}">
-              <button type="submit" class="cbtn sm" style="{% if ctype.is_active %}color:#216c2a;{% else %}color:#8a93a0;{% endif %}">
+              <button type="submit" class="cbtn sm" style="{% if ctype.is_active %}color:var(--success-text);{% else %}color:var(--text-3);{% endif %}">
                 {% if ctype.is_active %}Active{% else %}Inactive{% endif %}
               </button>
             </form>
@@ -908,7 +959,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No contact types defined yet.</p>
+    <p style="color:var(--text-3);font-size:.88rem;margin-bottom:1rem;">No contact types defined yet.</p>
     {% endif %}
 
     <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
@@ -932,7 +983,7 @@
             <input type="text" name="ct_name" id="edit-ct-name" class="finput" required>
           </label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true">Close</button>
             <span style="flex:1"></span>
             <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
@@ -951,7 +1002,7 @@
 
   <!-- ── VOUCHER TYPES tab ── -->
   <div id="tab-voucher-types" class="stab-panel">
-    <p style="font-size:.85rem;color:#8a93a0;margin-bottom:1rem;">
+    <p style="font-size:.85rem;color:var(--text-3);margin-bottom:1rem;">
       Pre-defined voucher products — saved descriptions and prices that auto-fill the create-voucher form.
     </p>
 
@@ -963,13 +1014,13 @@
         <tr>
           <td><strong>{{ vt.name }}</strong></td>
           <td>${{ vt.default_value|currency }}</td>
-          <td style="color:#5b6573;font-size:.85rem;">{{ vt.description|default:"—" }}</td>
-          <td style="color:#8a93a0;">{{ vt.sort_order }}</td>
+          <td style="color:var(--text-2);font-size:.85rem;">{{ vt.description|default:"—" }}</td>
+          <td style="color:var(--text-3);">{{ vt.sort_order }}</td>
           <td>
             <form method="post" style="display:inline;">
               {% csrf_token %}<input type="hidden" name="action" value="toggle_voucher_type">
               <input type="hidden" name="vt_id" value="{{ vt.id }}">
-              <button type="submit" class="cbtn sm" style="{% if vt.is_active %}color:#216c2a;{% else %}color:#8a93a0;{% endif %}">
+              <button type="submit" class="cbtn sm" style="{% if vt.is_active %}color:var(--success-text);{% else %}color:var(--text-3);{% endif %}">
                 {% if vt.is_active %}Active{% else %}Inactive{% endif %}
               </button>
             </form>
@@ -987,7 +1038,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.88rem;margin-bottom:1rem;">No voucher types defined yet.</p>
+    <p style="color:var(--text-3);font-size:.88rem;margin-bottom:1rem;">No voucher types defined yet.</p>
     {% endif %}
 
     <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
@@ -999,7 +1050,7 @@
       <label class="flabel" style="margin:0;width:110px;">Value ($)
         <input type="number" name="vt_value" class="finput" min="0" step="0.01" placeholder="250.00" required>
       </label>
-      <label class="flabel" style="margin:0;flex:1;min-width:180px;">Description <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+      <label class="flabel" style="margin:0;flex:1;min-width:180px;">Description <span style="font-weight:400;color:var(--text-3);">(optional)</span>
         <input type="text" name="vt_desc" class="finput" placeholder="e.g. 30-minute introductory flight">
       </label>
       <button type="submit" class="cbtn primary" style="margin-bottom:1px;">Add type</button>
@@ -1020,7 +1071,7 @@
           </div>
           <label class="flabel">Description<input type="text" name="vt_desc" id="edit-vt-desc" class="finput" placeholder="Optional"></label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-vt-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
+            <button type="button" class="cbtn" onclick="document.getElementById('edit-vt-modal').hidden=true">Close</button>
             <span style="flex:1"></span>
             <button type="submit" class="cbtn" data-dirty-save>Save</button>
           </div>
@@ -1047,22 +1098,22 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="save_billing">
 
-      <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Club details on invoices</h3>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.2rem 0 .9rem;">Phone, email and address are set in the <a href="?tab=general" class="slink">General tab</a>.</p>
+      <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Club details on invoices</h3>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.2rem 0 .9rem;">Phone, email and address are set in the <a href="?tab=general" class="slink">General tab</a>.</p>
       <div class="fgrid" style="margin-bottom:1rem;">
-        <label class="flabel">Legal name <span style="font-weight:400;color:#8a93a0;">(as registered with the Incorporated Societies Register)</span>
+        <label class="flabel">Legal name <span style="font-weight:400;color:var(--text-3);">(as registered with the Incorporated Societies Register)</span>
           <input type="text" name="billing_name" value="{{ config.billing_name }}" class="finput" placeholder="e.g. Aero Club Inc.">
         </label>
-        <label class="flabel">GST / tax number <span style="font-weight:400;color:#8a93a0;">(8–9 digits)</span>
+        <label class="flabel">GST / tax number <span style="font-weight:400;color:var(--text-3);">(8–9 digits)</span>
           <input type="text" name="gst_number" value="{{ config.gst_number }}" class="finput"
                  pattern="\d{8,9}" title="NZ GST number: 8 or 9 digits">
         </label>
-        <label class="flabel">GST rate <span style="font-weight:400;color:#8a93a0;">(%)</span>
+        <label class="flabel">GST rate <span style="font-weight:400;color:var(--text-3);">(%)</span>
           <input type="number" name="gst_rate" value="{{ config.gst_rate }}" step="0.01" min="0" max="99" class="finput" style="width:90px;">
         </label>
       </div>
 
-      <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Bank &amp; payment</h3>
+      <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Bank &amp; payment</h3>
       <div class="fgrid" style="margin-bottom:1rem;">
         <label class="flabel">Bank name
           <input type="text" name="bank_name" value="{{ config.bank_name }}" class="finput" placeholder="e.g. BNZ Kilbirnie">
@@ -1072,23 +1123,23 @@
                  placeholder="XX-XXXX-XXXXXXX-XX"
                  pattern="\d{2}-\d{4}-\d{7}-\d{2,3}" title="NZ format: XX-XXXX-XXXXXXX-XX">
         </label>
-        <label class="flabel">Payment terms <span style="font-weight:400;color:#8a93a0;">(days)</span>
+        <label class="flabel">Payment terms <span style="font-weight:400;color:var(--text-3);">(days)</span>
           <input type="number" name="payment_terms_days" value="{{ config.payment_terms_days }}" min="1" max="365" class="finput" style="width:90px;">
         </label>
       </div>
-      <label class="flabel" style="margin-bottom:1rem;">Payment instructions <span style="font-weight:400;color:#8a93a0;">(printed on invoice footer)</span>
+      <label class="flabel" style="margin-bottom:1rem;">Payment instructions <span style="font-weight:400;color:var(--text-3);">(printed on invoice footer)</span>
         <textarea name="payment_terms_text" class="finput" rows="3" placeholder="e.g. Please include your invoice number when paying by direct credit.">{{ config.payment_terms_text }}</textarea>
       </label>
 
-      <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Invoice numbering</h3>
+      <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Invoice numbering</h3>
       <div style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.2rem;">
-        <label class="flabel" style="margin:0;">Prefix <span style="font-weight:400;color:#8a93a0;">(optional)</span>
+        <label class="flabel" style="margin:0;">Prefix <span style="font-weight:400;color:var(--text-3);">(optional)</span>
           <input type="text" name="invoice_number_prefix" value="{{ config.invoice_number_prefix }}" class="finput" style="width:80px;" placeholder="e.g. INV-">
         </label>
         <label class="flabel" style="margin:0;">Next number
           <input type="number" name="invoice_number_next" value="{{ config.invoice_number_next }}" min="1" class="finput" style="width:100px;">
         </label>
-        <div style="font-size:.8rem;color:#8a93a0;padding-bottom:.5rem;">
+        <div style="font-size:.8rem;color:var(--text-3);padding-bottom:.5rem;">
           Next invoice will be: <strong>{{ config.invoice_number_prefix }}{{ config.invoice_number_next }}</strong>
         </div>
       </div>
@@ -1101,7 +1152,7 @@
   <div id="tab-membership" class="stab-panel">
     <h2 style="font-size:1rem;margin-bottom:.9rem;">Membership</h2>
 
-    <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Financial year</h3>
+    <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Financial year</h3>
     <form method="post" style="display:flex;align-items:flex-end;gap:.9rem;flex-wrap:wrap;margin-bottom:1.4rem;">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_membership_tab">
@@ -1115,7 +1166,7 @@
       <button type="submit" class="btn" style="margin-bottom:0;">Save</button>
     </form>
 
-    <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Auto-lapse</h3>
+    <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Auto-lapse</h3>
     <p class="s-desc" style="margin-bottom:.9rem;">Members with <strong>active</strong> standing whose subscription expired more than the grace period ago will be auto-lapsed when you click the button below, or when the <code>update_lapsed_members</code> management command runs.</p>
     <form method="post" style="display:flex;align-items:flex-end;gap:.9rem;flex-wrap:wrap;margin-bottom:.9rem;">
       {% csrf_token %}
@@ -1133,18 +1184,18 @@
           Run auto-lapse now{% if lapse_preview %} ({{ lapse_preview|length }} pending){% endif %}
         </button>
         {% if lapse_preview %}
-        <span style="font-size:.82rem;color:#c0392b;">
+        <span style="font-size:.82rem;color:var(--danger);">
           {% for m in lapse_preview %}{{ m.user.get_full_name }}{% if m.subscription_expires %} (exp. {{ m.subscription_expires|date:"j M Y" }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
         </span>
         {% else %}
-        <span style="font-size:.82rem;color:#8a93a0;">No members are overdue for lapsing.</span>
+        <span style="font-size:.82rem;color:var(--text-3);">No members are overdue for lapsing.</span>
         {% endif %}
       </div>
     </form>
 
     <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
 
-    <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Renewal invoices</h3>
+    <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Renewal invoices</h3>
     {% if request.GET.bulk_done and request.GET.tab == 'membership' %}
     <div class="notice ok" style="margin-bottom:1rem;">
       {% if request.GET.bulk_done == '0' %}
@@ -1169,7 +1220,7 @@
         </button>
       </form>
       {% if not renewal_preview %}
-      <span style="font-size:.82rem;color:#8a93a0;">No members are currently eligible — all are already invoiced or have no fee set.</span>
+      <span style="font-size:.82rem;color:var(--text-3);">No members are currently eligible — all are already invoiced or have no fee set.</span>
       {% endif %}
     </div>
     {% if renewal_preview %}
@@ -1179,7 +1230,7 @@
         {% for m in renewal_preview %}
         <tr>
           <td><a href="{% url 'core:manage_member_detail' club.slug m.id %}" data-overlay data-overlay-wide style="color:inherit;text-decoration:none;border-bottom:1px dotted #adb5bd;">{{ m.user.get_full_name }}</a></td>
-          <td style="color:#5b6573;">{{ m.role.name }}</td>
+          <td style="color:var(--text-2);">{{ m.role.name }}</td>
           <td>${{ m.role.annual_renewal_fee }}</td>
         </tr>
         {% endfor %}
@@ -1189,7 +1240,7 @@
 
     <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
 
-    <h3 style="font-size:.85rem;font-weight:650;color:#5b6573;text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Registrar's report</h3>
+    <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Registrar's report</h3>
     <p class="s-desc" style="margin-bottom:.9rem;">Export a point-in-time member register for CAA or auditing purposes. You can select the as-at date and output format on the Members page.</p>
     <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
       <a href="{% url 'core:registrar_export' club.slug %}?fmt=csv" class="cbtn">Download current register (CSV)</a>
@@ -1233,11 +1284,11 @@
         {% if forloop.first and not role.is_system_role %}
           {# no system roles at all #}
         {% endif %}
-        <tr{% if role.is_system_role %} style="background:#fafbfc;"{% endif %}>
+        <tr{% if role.is_system_role %} style="background:var(--surface-2);"{% endif %}>
           <td>
             {% if role.is_system_role %}
             <strong>{{ role.name }}</strong>
-            <span style="font-size:.7rem;color:#adb5bd;margin-top:.1rem;display:block;">System</span>
+            <span style="font-size:.7rem;color:var(--text-3);margin-top:.1rem;display:block;">System</span>
             {% else %}
             <strong>{{ role.name }}</strong>
             {% if role.is_superadmin %} <span class="status-tag st-warn">super</span>{% endif %}
@@ -1245,7 +1296,7 @@
           </td>
           <td>
             {% if role.system_role_type == 'admin' %}
-            <span style="font-size:.82rem;color:#8a93a0;opacity:.6;" title="Administrator always has full access">Manage all</span>
+            <span style="font-size:.82rem;color:var(--text-3);opacity:.6;" title="Administrator always has full access">Manage all</span>
             {% else %}
             <form method="post">{% csrf_token %}
               <input type="hidden" name="action" value="set_role_permission">
@@ -1333,7 +1384,7 @@
   <div id="role-del-modal" class="modal-back" hidden>
     <div class="modal" style="max-width:420px;">
       <h2>Delete role?</h2>
-      <p id="role-del-msg" style="margin:.5rem 0 1.2rem;font-size:.88rem;color:#4a5568;"></p>
+      <p id="role-del-msg" style="margin:.5rem 0 1.2rem;font-size:.88rem;color:var(--text-2);"></p>
       <form id="role-del-form" method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="delete_role">
@@ -1351,11 +1402,11 @@
   <!-- ── BUDGET tab ── -->
   {% if not is_types %}
   <div id="tab-budget" class="stab-panel">
-    <div style="background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.4rem;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.4rem;">
       <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
         <div>
           <h2 style="font-size:.95rem;font-weight:650;margin:0 0 .25rem;">Flying budget — {{ budget_fy_year }}/{{ budget_fy_year|add:1 }} FY</h2>
-          <p style="font-size:.8rem;color:#8a93a0;margin:0;">Budgeted hours per aircraft per month. Used for dashboard variance tracking.</p>
+          <p style="font-size:.8rem;color:var(--text-3);margin:0;">Budgeted hours per aircraft per month. Used for dashboard variance tracking.</p>
         </div>
       </div>
       <form method="post">
@@ -1365,17 +1416,17 @@
         <div style="overflow-x:auto;">
           <table style="border-collapse:collapse;font-size:.82rem;width:100%;">
             <thead>
-              <tr style="border-bottom:2px solid #e3e6ea;">
-                <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;white-space:nowrap;">Aircraft</th>
+              <tr style="border-bottom:2px solid var(--border);">
+                <th style="padding:.4rem .6rem;text-align:left;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);white-space:nowrap;">Aircraft</th>
                 {% for m, lbl, yr in budget_month_labels %}
-                <th style="padding:.4rem .35rem;text-align:center;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;min-width:52px;">{{ lbl }}</th>
+                <th style="padding:.4rem .35rem;text-align:center;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);min-width:52px;">{{ lbl }}</th>
                 {% endfor %}
-                <th style="padding:.4rem .35rem;text-align:right;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;">Total</th>
+                <th style="padding:.4rem .35rem;text-align:right;font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);">Total</th>
               </tr>
             </thead>
             <tbody>
               {% for ac in budget_aircraft %}
-              <tr style="border-bottom:1px solid #f0f2f4;">
+              <tr style="border-bottom:1px solid var(--border-subtle);">
                 <td style="padding:.45rem .6rem;font-weight:550;white-space:nowrap;">{{ ac.registration }}</td>
                 {% with ac_total=0 %}
                 {% for m, lbl, yr in budget_month_labels %}
@@ -1392,14 +1443,14 @@
                 <td style="padding:.45rem .35rem;text-align:right;font-weight:600;font-size:.82rem;" class="row-total" id="row-total-{{ ac.id }}">—</td>
               </tr>
               {% empty %}
-              <tr><td colspan="14" style="padding:1.5rem;text-align:center;color:#8a93a0;">No aircraft found.</td></tr>
+              <tr><td colspan="14" style="padding:1.5rem;text-align:center;color:var(--text-3);">No aircraft found.</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
         <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center;">
           <button type="submit" class="cbtn primary">Save budget</button>
-          <span style="font-size:.78rem;color:#8a93a0;">Enter 0 to explicitly budget zero hours; leave blank to exclude from calculations.</span>
+          <span style="font-size:.78rem;color:var(--text-3);">Enter 0 to explicitly budget zero hours; leave blank to exclude from calculations.</span>
         </div>
       </form>
     </div>
@@ -1435,7 +1486,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-ft-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-ft-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add flight type</button>
       </div>
@@ -1454,7 +1505,7 @@
         <input type="text" name="ft_name" id="eft-name" required class="finput">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-ft-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-ft-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1483,7 +1534,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-ig-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-ig-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add grade</button>
       </div>
@@ -1513,7 +1564,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-ig-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-ig-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1540,7 +1591,7 @@
         </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add surcharge</button>
       </div>
@@ -1568,7 +1619,7 @@
         </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1589,14 +1640,14 @@
       <div style="display:flex;gap:.7rem;align-items:flex-end;margin-top:.1rem;">
         <label class="flabel">Colour
           <input type="color" name="bot_color" id="add-bot-color" value="#e67e22"
-                 style="display:block;width:48px;height:36px;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
+                 style="display:block;width:48px;height:36px;margin-top:.25rem;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
         </label>
         <label class="flabel" id="add-bot-hard-wrap" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.6rem;">
           <input type="checkbox" name="bot_is_hard" id="add-bot-hard" checked> Hard block
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-bot-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('add-bot-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add type</button>
       </div>
@@ -1616,10 +1667,10 @@
       </label>
       <label class="flabel" style="margin-top:.1rem;">Colour
         <input type="color" name="bot_color" id="ebt-color"
-               style="display:block;width:48px;height:36px;margin-top:.25rem;border:1px solid #ddd;border-radius:6px;padding:0;cursor:pointer;">
+               style="display:block;width:48px;height:36px;margin-top:.25rem;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-bot-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-bot-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1640,7 +1691,7 @@
         <input type="text" name="at_icao" id="eat-icao" class="finput" maxlength="10" placeholder="e.g. C172">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-at-modal')"><i class="ti ti-x"></i> Close</button>
+        <button type="button" class="cbtn" onclick="sCloseModal('edit-at-modal')">Close</button>
         <span style="flex:1"></span>
         <button type="submit" class="cbtn" data-dirty-save>Save</button>
       </div>
@@ -1649,46 +1700,50 @@
 </div>
 
 <style>
+  .adv-block{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .adv-summary{padding:.6rem .85rem;font-size:.85rem;font-weight:600;color:var(--text-2);cursor:pointer;list-style:none;display:flex;align-items:center;gap:.4rem;user-select:none;}
+  .adv-summary::-webkit-details-marker{display:none;}
+  .adv-summary::before{content:'▸';font-size:.7rem;transition:transform .18s;display:inline-block;color:var(--text-3);}
+  details[open] .adv-summary::before{transform:rotate(90deg);}
+  .adv-body{padding:.85rem;border-top:1px solid var(--border);background:var(--surface-2);}
   .snotice{padding:.6rem .9rem;border-radius:6px;margin-bottom:1rem;font-size:.88rem;}
-  .snotice.ok{background:#eaf6ec;color:#216c2a;}
-  .snotice.err{background:#fff0f0;color:#c0392b;}
+  .snotice.ok{background:var(--success-bg);color:var(--success-text);}
+  .snotice.err{background:var(--danger-bg);color:var(--danger);}
 
-  .sh2{font-size:1rem;font-weight:650;margin:.4rem 0 .7rem;color:#1f2933;}
-  .export-row{display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem;border:1px solid #e3e6ea;border-radius:10px;background:#fff;margin-bottom:.5rem;}
+  .sh2{font-size:1rem;font-weight:650;margin:.4rem 0 .7rem;color:var(--text-1);}
+  .export-row{display:flex;align-items:center;gap:.9rem;padding:.8rem 1rem;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:.5rem;}
   .export-icon{font-size:1.3rem;flex-shrink:0;width:1.8rem;text-align:center;}
   .export-title{font-size:.88rem;font-weight:650;margin-bottom:.1rem;}
-  .export-desc{font-size:.78rem;color:#8a93a0;line-height:1.3;}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.45rem .55rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
-  .saved-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;font-weight:600;color:#2a7a3b;opacity:0;transition:opacity .3s;}
+  .export-desc{font-size:.78rem;color:var(--text-3);line-height:1.3;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.6rem;}
+  .saved-badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;font-weight:600;color:var(--success);opacity:0;transition:opacity .3s;}
   .saved-badge.show{opacity:1;}
-  input:invalid{border-color:#f59e0b;}
-  input:invalid:focus{outline-color:#f59e0b;}
+  input:invalid{border-color:var(--warning);}
+  input:invalid:focus{outline-color:var(--warning);}
   .fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;}
 
   .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:1rem;}
-  .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .ft-table tr:last-child td{border-bottom:0;}
 
-  .ft-save{padding:.28rem .65rem;border-radius:5px;border:1px solid #d6dae0;background:#f5f6f8;color:#5b6573;font-size:.78rem;cursor:pointer;}
+  .ft-save{padding:.28rem .65rem;border-radius:5px;border:1px solid var(--input-border);background:#f5f6f8;color:var(--text-2);font-size:.78rem;cursor:pointer;}
   .ft-save:hover{background:var(--primary);border-color:var(--primary);color:#fff;}
 
   /* Consistent section headers, empty states, separators */
   .s-section-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin:.4rem 0 .8rem;flex-wrap:wrap;}
-  .s-desc{font-size:.82rem;color:#8a93a0;margin:0;}
-  .s-hr{border:none;border-top:1px solid #eef1f4;margin:1.5rem 0;}
-  .s-empty{text-align:center;padding:1.8rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:#8a93a0;margin-bottom:.5rem;}
+  .s-desc{font-size:.82rem;color:var(--text-3);margin:0;}
+  .s-hr{border:none;border-top:1px solid var(--border);margin:1.5rem 0;}
+  .s-empty{text-align:center;padding:1.8rem 1rem;border:2px dashed #e3e6ea;border-radius:10px;color:var(--text-3);margin-bottom:.5rem;}
   .s-empty p{margin:0 0 .7rem;font-size:.88rem;}
-  .s-info-box{font-size:.82rem;color:#8a93a0;background:#f8f9fb;border:1px solid #e3e6ea;border-radius:7px;padding:.5rem .8rem;margin-bottom:1.2rem;}
+  .s-info-box{font-size:.82rem;color:var(--text-3);background:var(--surface-2);border:1px solid var(--border);border-radius:7px;padding:.5rem .8rem;margin-bottom:1.2rem;}
 
   /* Small per-row action buttons (same as manage_aircraft_detail) */
 .cbtn-sm
 .cbtn-sm
 /* Modal chrome (same as manage_aerodromes) */
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);}
+  .modal{background:var(--surface);border-radius:12px;padding:1.25rem 1.35rem;box-shadow:var(--shadow-modal);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
   .modal-actions{display:flex;align-items:center;gap:.5rem;}
   .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
@@ -1708,11 +1763,11 @@
 
   .palette-grid{display:flex;flex-wrap:wrap;gap:.6rem;margin-bottom:1rem;}
   .palette-btn{display:flex;align-items:center;gap:0;border:2px solid #e3e6ea;border-radius:8px;overflow:hidden;cursor:pointer;background:none;padding:0;transition:border-color .15s;}
-  .palette-btn:hover{border-color:#adb5bd;}
+  .palette-btn:hover{border-color:var(--text-3);}
   .palette-btn.active{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary);}
   .pal-banner{display:block;width:32px;height:40px;}
   .pal-primary{display:block;width:16px;height:40px;}
-  .pal-name{display:block;padding:0 .7rem;font-size:.78rem;font-weight:600;color:#5b6573;white-space:nowrap;}
+  .pal-name{display:block;padding:0 .7rem;font-size:.78rem;font-weight:600;color:var(--text-2);white-space:nowrap;}
   .no-spin::-webkit-inner-spin-button,.no-spin::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
   .no-spin{-moz-appearance:textfield;}
 </style>
@@ -1739,7 +1794,7 @@
   const _qs = new URLSearchParams(location.search);
   if (_qs.get('tab') && TABS.includes(_qs.get('tab'))) initial = _qs.get('tab');
   activateTab(initial);
-  if (_qs.get('saved') === '1' && window.toast) window.toast('Settings saved');
+  // ?saved=1 toast handled globally by base.html
 
   // ── Palette-based appearance tab ──────────────────────────────────────────
   const PALETTES = [
@@ -1827,6 +1882,18 @@
   }
   syncPicker('pick-banner',  'hex-banner',  'inp-banner',  'pv-banner');
   syncPicker('pick-primary', 'hex-primary', 'inp-primary', 'pv-primary');
+  // Advanced pickers — name is on the picker itself; just sync hex display
+  [['pick-dual','hex-dual'],['pick-weekend','hex-weekend'],['pick-atypical','hex-atypical']].forEach(([pid,hid]) => {
+    const pick = document.getElementById(pid);
+    const hex  = document.getElementById(hid);
+    if (!pick || !hex) return;
+    pick.addEventListener('input', () => { hex.value = pick.value; });
+    hex.addEventListener('input', () => {
+      const v = hex.value.trim();
+      const h = v.startsWith('#') ? v : '#'+v;
+      if (/^#[0-9a-fA-F]{6}$/.test(h)) pick.value = h;
+    });
+  });
 })();
 
 // ── Settings modal helpers ────────────────────────────────────────────────

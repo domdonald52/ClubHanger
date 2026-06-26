@@ -3,22 +3,23 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:860px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.4rem;gap:1rem;flex-wrap:wrap;">
-    <h1>Notices</h1>
-    <button class="cbtn-add" onclick="document.getElementById('add-ann-modal').hidden=false">+ New notice</button>
+  <div class="page-hdr">
+    <h1 class="page-h1">Notices</h1>
+    <div class="page-actions">
+      <button class="cbtn-add" onclick="document.getElementById('add-ann-modal').hidden=false">+ New notice</button>
+    </div>
   </div>
 
-  {% if saved %}<div class="snotice ok" style="margin-bottom:1rem;">Saved.</div>{% endif %}
 
   {% if announcements %}
-  <table class="dtable">
+  <table class="ct">
     <thead>
       <tr>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=type&dir={% if sort == 'type' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'type' %}sort-active{% endif %}">Type{% if sort == 'type' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=title&dir={% if sort == 'title' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'title' %}sort-active{% endif %}">Title{% if sort == 'title' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=expires&dir={% if sort == 'expires' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'expires' %}sort-active{% endif %}">Expires{% if sort == 'expires' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
-        <th style="text-align:center;"><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=pinned&dir={% if sort == 'pinned' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'pinned' %}sort-active{% endif %}">Pinned{% if sort == 'pinned' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=pinned&dir={% if sort == 'pinned' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'pinned' %}sort-active{% endif %}">Pinned{% if sort == 'pinned' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th></th>
       </tr>
     </thead>
@@ -31,9 +32,9 @@
           </span>
         </td>
         <td style="font-weight:600;">{{ ann.title }}</td>
-        <td style="font-size:.84rem;color:#6b7280;">{{ ann.event_date|date:"j M Y"|default:"—" }}</td>
-        <td style="font-size:.84rem;color:#6b7280;">{{ ann.expires_at|date:"j M Y"|default:"Never" }}</td>
-        <td style="text-align:center;font-size:.88rem;">{% if ann.is_pinned %}📌{% else %}—{% endif %}</td>
+        <td style="font-size:.84rem;color:var(--text-3);">{{ ann.event_date|date:"j M Y"|default:"—" }}</td>
+        <td style="font-size:.84rem;color:var(--text-3);">{{ ann.expires_at|date:"j M Y"|default:"Never" }}</td>
+        <td><i class="ti ti-pin" style="color:var(--alert);font-size:1rem;" {% if not ann.is_pinned %}hidden{% endif %}></i>{% if not ann.is_pinned %}—{% endif %}</td>
         <td style="text-align:right;white-space:nowrap;">
           <button class="cbtn-sm cbtn-icon" title="Edit" onclick="openEdit(
             '{{ ann.id }}','{{ ann.type }}','{{ ann.title|escapejs }}','{{ ann.body|escapejs }}',
@@ -46,8 +47,8 @@
     </tbody>
   </table>
   {% else %}
-  <div style="text-align:center;padding:3rem 1rem;color:#8a93a0;">
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto .75rem;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+  <div style="text-align:center;padding:3rem 1rem;color:var(--text-3);">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto .75rem;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     No notices yet — create one to show on the mobile home screen and calendar.
   </div>
   {% endif %}
@@ -55,12 +56,12 @@
 
 <!-- ── Add modal ── -->
 <div id="add-ann-modal" class="modal-back" hidden>
-  <div class="modal" style="width:480px;max-width:95vw;">
+  <div class="modal">
     <h2>New notice</h2>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="create">
-      <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:.7rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;">
         <label class="flabel" style="grid-column:1/-1;">Type
           <select name="type" class="finput">
             {% for val, label in type_choices %}
@@ -94,13 +95,13 @@
 
 <!-- ── Edit modal ── -->
 <div id="edit-ann-modal" class="modal-back" hidden>
-  <div class="modal" style="width:480px;max-width:95vw;">
+  <div class="modal">
     <h2>Edit notice</h2>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="edit">
       <input type="hidden" name="ann_id" id="edit-id">
-      <div class="field-grid" style="grid-template-columns:1fr 1fr;gap:.7rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;">
         <label class="flabel" style="grid-column:1/-1;">Type
           <select name="type" id="edit-type" class="finput">
             {% for val, label in type_choices %}
@@ -134,9 +135,9 @@
 
 <!-- ── Delete modal ── -->
 <div id="del-ann-modal" class="modal-back" hidden>
-  <div class="modal" style="width:360px;max-width:95vw;">
+  <div class="modal" style="width:min(360px,94vw);">
     <h2>Delete notice?</h2>
-    <p style="margin:.5rem 0 1.2rem;font-size:.88rem;color:#4a5568;">
+    <p style="margin:.5rem 0 1.2rem;font-size:.88rem;color:var(--text-2);">
       "<strong id="del-title"></strong>" will be removed from the home screen and calendar.
     </p>
     <form method="post">
@@ -151,16 +152,6 @@
   </div>
 </div>
 
-<style>
-.modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
-.modal-back[hidden]{display:none!important;}
-.modal{background:#fff;border-radius:12px;padding:1.4rem 1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.22);max-height:90vh;overflow-y:auto;}
-.modal h2{margin:0 0 1rem;font-size:1.05rem;}
-.modal-actions{display:flex;gap:.5rem;}
-.field-grid{display:grid;}
-.flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;}
-.finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;font-family:inherit;}
-</style>
 
 <script>
 document.querySelectorAll('.modal-back').forEach(m => {

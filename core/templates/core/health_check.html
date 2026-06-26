@@ -4,7 +4,7 @@
 {% block content %}
 <div class="container" style="padding:2rem;max-width:960px;">
   <h1 style="margin-bottom:.5rem;">Integrity</h1>
-  <p style="color:#4a5568;font-size:.875rem;max-width:680px;line-height:1.6;margin-bottom:.6rem;">
+  <p style="color:var(--text-2);font-size:.875rem;max-width:680px;line-height:1.6;margin-bottom:.6rem;">
     Cross-checks the database for internal consistency — account balances against their ledger entries,
     flight completion charge and payment totals against their line items, Hobbs meter readings across
     consecutive flights, and member subscription standing. Nothing is modified; issues found here
@@ -19,7 +19,7 @@
 
   <p style="font-size:.85rem;margin-bottom:1.4rem;">
     {% if total_issues == 0 %}
-    <strong style="color:#2a7a3b;">✓ All checks passed.</strong>
+    <strong style="color:var(--success);">✓ All checks passed.</strong>
     {% else %}
     <strong style="color:#b91c1c;">{{ total_issues }} issue{{ total_issues|pluralize }} found — see tabs below.</strong>
     {% endif %}
@@ -48,7 +48,7 @@
       {% if issue.severity == 'err' %}✗{% else %}⚠{% endif %} {{ issue.message }}
     </div>
     {% if issue.rows %}
-    <div style="background:#f8f9fa;border:1px solid #e3e6ea;border-top:none;border-radius:0 0 6px 6px;padding:.3rem .9rem;font-size:.78rem;font-family:monospace;color:#3b4451;margin-bottom:1rem;">
+    <div style="background:var(--surface-2);border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;padding:.3rem .9rem;font-size:.78rem;font-family:monospace;color:#3b4451;margin-bottom:1rem;">
       {% for row in issue.rows %}
       <div style="padding:.3rem 0;display:flex;align-items:baseline;gap:.8rem;{% if not forloop.last %}border-bottom:1px solid #eef0f3;{% endif %}">
         <span style="flex:1;word-break:break-word;">{{ row.text }}</span>
@@ -67,7 +67,7 @@
     </div>
     {% endif %}
     {% if not g.issues and not g.ok %}
-    <p style="color:#8a93a0;font-size:.85rem;">No checks configured for this tab.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No checks configured for this tab.</p>
     {% endif %}
 
     {% if key == 'financial' and g.issues %}

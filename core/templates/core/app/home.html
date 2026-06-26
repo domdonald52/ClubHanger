@@ -2,20 +2,18 @@
 {% load tz humanize static %}
 {% block title %}{{ club.name }}{% endblock %}
 
-{% block app_bar %}
-<span class="app-bar-title">{{ club.name }}</span>
-{% endblock %}
+{% block app_bar %}<span class="app-bar-title"></span>{% endblock %}
 
 {% block content %}
 <div class="gap-sm"></div>
 
 {% if request.GET.event_reported %}
-<div style="background:#dcfce7;color:#166534;border-radius:10px;padding:.6rem 1rem;margin:.5rem .75rem 0;font-size:.83rem;font-weight:600;">Event report submitted — thank you.</div>
+<div style="background:#dcfce7;color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.5rem .75rem 0;font-size:.83rem;font-weight:600;">Event report submitted — thank you.</div>
 {% endif %}
 
 <!-- Greeting -->
 <div style="padding:0 .75rem .1rem;">
-  <div style="font-size:1.05rem;font-weight:700;color:#1f2933;">{{ greeting_word }}, {{ club_member.user.first_name }}.</div>
+  <div style="font-size:1.05rem;font-weight:700;color:var(--text-1);">{{ greeting_word }}, {{ club_member.user.first_name }}.</div>
 </div>
 
 <!-- ── Hero banner ── -->
@@ -39,11 +37,11 @@
 <div class="app-card" style="border-left:4px solid {{ ann.color }};background:{{ ann.bg }};margin-top:.55rem;">
   <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.3rem;">
     <span style="font-size:.65rem;font-weight:700;padding:.15rem .42rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
-    {% if ann.event_date %}<span style="font-size:.75rem;color:#6b7280;">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
+    {% if ann.event_date %}<span style="font-size:.75rem;color:var(--text-3);">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
     {% if ann.is_pinned %}<svg width="12" height="12" viewBox="0 0 24 24" fill="{{ ann.color }}" stroke="none"><path d="M12 2L9 9H2l6 4.4L5.6 21 12 17l6.4 4L16 13.4 22 9h-7z"/></svg>{% endif %}
   </div>
-  <div style="font-size:.88rem;font-weight:700;color:#1f2933;">{{ ann.title }}</div>
-  {% if ann.body %}<div style="font-size:.81rem;color:#4a5568;margin-top:.3rem;line-height:1.45;">{{ ann.body }}</div>{% endif %}
+  <div style="font-size:.88rem;font-weight:700;color:var(--text-1);">{{ ann.title }}</div>
+  {% if ann.body %}<div style="font-size:.81rem;color:var(--text-2);margin-top:.3rem;line-height:1.45;">{{ ann.body }}</div>{% endif %}
 </div>
 {% endfor %}
 
@@ -55,14 +53,14 @@
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
     <div>
       <div style="font-size:1.05rem;font-weight:700;">{{ b.aircraft.registration }}</div>
-      <div style="font-size:.82rem;color:#8a93a0;margin-top:.15rem;">
+      <div style="font-size:.82rem;color:var(--text-3);margin-top:.15rem;">
         {{ b.scheduled_start|localtime|date:"D j M" }} &middot;
         {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
       </div>
       {% if b.instructor %}
-      <div style="font-size:.82rem;color:#4a5568;margin-top:.2rem;">with {{ b.instructor.get_full_name }}</div>
+      <div style="font-size:.82rem;color:var(--text-2);margin-top:.2rem;">with {{ b.instructor.get_full_name }}</div>
       {% else %}
-      <div style="font-size:.82rem;color:#4a5568;margin-top:.2rem;">Solo</div>
+      <div style="font-size:.82rem;color:var(--text-2);margin-top:.2rem;">Solo</div>
       {% endif %}
     </div>
     <span class="st-pill st-{{ b.status }}">{% if b.status == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.status == 'completed' %}<i class="ti ti-plane-arrival"></i> {% endif %}{{ b.get_status_display }}</span>
@@ -80,8 +78,8 @@
 {% else %}
 <div class="app-card" style="text-align:center;padding:1.2rem 1rem;margin-top:.65rem;">
   <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto .5rem;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-  <div style="font-weight:600;color:#4a5568;margin-bottom:.2rem;">No upcoming flights</div>
-  <div style="font-size:.82rem;color:#8a93a0;">Tap below to find a slot</div>
+  <div style="font-weight:600;color:var(--text-2);margin-bottom:.2rem;">No upcoming flights</div>
+  <div style="font-size:.82rem;color:var(--text-3);">Tap below to find a slot</div>
 </div>
 {% endif %}
 
@@ -96,7 +94,7 @@
         {% if flight_count and invoice_count %}&nbsp;·&nbsp;{% endif %}
         {% if invoice_count %}{{ invoice_count }} invoice{{ invoice_count|pluralize }}{% endif %}
       </div>
-      <div style="font-size:.74rem;color:#6b7280;margin-top:.1rem;">Tap to view account</div>
+      <div style="font-size:.74rem;color:var(--text-3);margin-top:.1rem;">Tap to view account</div>
     </div>
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
   </div>
@@ -104,11 +102,11 @@
 {% elif balance is not None %}
 <a href="{% url 'core:app_account' club.slug %}" class="app-card" style="display:block;text-decoration:none;color:inherit;">
   <div style="display:flex;align-items:center;justify-content:space-between;">
-    <span style="font-size:.82rem;color:#6b7280;">Account balance</span>
+    <span style="font-size:.82rem;color:var(--text-3);">Account balance</span>
     {% if balance < 0 %}
     <span style="font-size:.95rem;font-weight:700;color:#e03131;">&minus;${{ balance|floatformat:2|slice:"1:"|intcomma }}</span>
     {% else %}
-    <span style="font-size:.95rem;font-weight:700;color:#2a7a3b;">${{ balance|floatformat:2|intcomma }}</span>
+    <span style="font-size:.95rem;font-weight:700;color:var(--success);">${{ balance|floatformat:2|intcomma }}</span>
     {% endif %}
   </div>
 </a>
@@ -123,7 +121,7 @@
     </div>
     <div style="flex:1;">
       <div style="font-size:.84rem;font-weight:700;">{{ pending_count }} booking{{ pending_count|pluralize }} pending confirmation</div>
-      <div style="font-size:.74rem;color:#6b7280;margin-top:.1rem;">Tap to review</div>
+      <div style="font-size:.74rem;color:var(--text-3);margin-top:.1rem;">Tap to review</div>
     </div>
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
   </div>
@@ -154,8 +152,8 @@
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
     <div>
       <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#16a34a;margin-bottom:.3rem;">Available today</div>
-      <div style="font-size:.9rem;font-weight:700;color:#1f2933;">{{ available_ac_regs|join:", " }}</div>
-      <div style="font-size:.8rem;color:#6b7280;margin-top:.2rem;">
+      <div style="font-size:.9rem;font-weight:700;color:var(--text-1);">{{ available_ac_regs|join:", " }}</div>
+      <div style="font-size:.8rem;color:var(--text-3);margin-top:.2rem;">
         From {{ first_slot_time }} &middot; Solo{% if instr_on_roster %} &amp; Dual{% endif %}
       </div>
     </div>

@@ -40,9 +40,9 @@
       <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
         <span class="standing-badge standing-{{ member.standing }}">{{ member.get_standing_display }}</span>
         {% if member.role and member.standing == 'active' %}<span class="role-chip">{{ member.role.name }}</span>{% endif %}
-        <span style="font-size:.82rem;color:#8a93a0;">Joined {{ member.join_date|date:"M Y" }}</span>
+        <span style="font-size:.82rem;color:var(--text-3);">Joined {{ member.join_date|date:"M Y" }}</span>
       </div>
-      <div style="font-size:.83rem;color:#8a93a0;margin-top:.3rem;">{{ member.user.email }}</div>
+      <div style="font-size:.83rem;color:var(--text-3);margin-top:.3rem;">{{ member.user.email }}</div>
     </div>
   </div>
 
@@ -68,7 +68,7 @@
         <label class="flabel">First name<input type="text" name="first_name" value="{{ member.user.first_name }}" class="finput"></label>
         <label class="flabel">Last name<input type="text" name="last_name" value="{{ member.user.last_name }}" class="finput"></label>
         <label class="flabel">Date of birth<input type="date" name="date_of_birth" value="{{ member.date_of_birth|date:'Y-m-d'|default:'' }}" class="finput"></label>
-        <label class="flabel">Sex <span style="font-weight:400;color:#aaa;">(optional)</span>
+        <label class="flabel">Sex <span style="font-weight:400;color:var(--text-3);">(optional)</span>
           <select name="sex" class="finput">
             <option value="">— not specified —</option>
             <option value="M" {% if member.sex == 'M' %}selected{% endif %}>Male</option>
@@ -81,7 +81,7 @@
         <label class="flabel">Work phone<input type="text" name="phone_work" value="{{ member.phone_work }}" class="finput"></label>
       </div>
       <h2 class="section-title" style="margin-top:1.2rem;">Next of kin</h2>
-      <p style="font-size:.78rem;color:#8a93a0;margin:.1rem 0 .7rem;">Auto-filled on departure declarations; editable per flight.</p>
+      <p style="font-size:.78rem;color:var(--text-3);margin:.1rem 0 .7rem;">Auto-filled on departure declarations; editable per flight.</p>
       <div class="field-grid">
         <label class="flabel">Name<input type="text" name="next_of_kin_name" value="{{ member.next_of_kin_name }}" class="finput" placeholder="Full name"></label>
         <label class="flabel">Phone<input type="text" name="next_of_kin_phone" value="{{ member.next_of_kin_phone }}" class="finput" placeholder="+64 …"></label>
@@ -99,11 +99,11 @@
   <!-- ── PASSENGERS ── -->
   <section id="tab-passengers" class="stab-panel detail-section">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;">
-      <p style="font-size:.78rem;color:#8a93a0;margin:0;">Saved for quick selection on departure declarations.</p>
+      <p style="font-size:.78rem;color:var(--text-3);margin:0;">Saved for quick selection on departure declarations.</p>
       <button type="button" class="cbtn-add" onclick="document.getElementById('add-pax-form').hidden=false">+ Add passenger</button>
     </div>
 
-    <div id="add-pax-form" hidden style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;margin-bottom:1rem;">
+    <div id="add-pax-form" hidden style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;">
       <form method="post" style="display:flex;gap:.6rem;align-items:flex-end;flex-wrap:wrap;">
         {% csrf_token %}
         <input type="hidden" name="action" value="add_frequent_passenger">
@@ -115,7 +115,7 @@
         </label>
         <div style="display:flex;gap:.4rem;">
           <button type="submit" class="btn">Save</button>
-          <button type="button" class="cbtn" onclick="document.getElementById('add-pax-form').hidden=true"><i class="ti ti-x"></i> Close</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-pax-form').hidden=true">Close</button>
         </div>
       </form>
     </div>
@@ -127,7 +127,7 @@
         {% for fp in frequent_passengers %}
         <tr>
           <td>{{ fp.name }}</td>
-          <td style="color:#8a93a0;">{{ fp.phone }}</td>
+          <td style="color:var(--text-3);">{{ fp.phone }}</td>
           <td style="text-align:right;">
             <form method="post" style="display:contents;" data-confirm="Remove {{ fp.name }}?">{% csrf_token %}
               <input type="hidden" name="action" value="delete_frequent_passenger">
@@ -140,7 +140,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;font-style:italic;">No saved passengers yet.</p>
+    <p style="color:var(--text-3);font-size:.85rem;font-style:italic;">No saved passengers yet.</p>
     {% endif %}
   </section>
 
@@ -190,12 +190,12 @@
       </div>
     </form>
     {% if existing_sub_invoice %}
-    <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:.7rem 1rem;margin-top:.75rem;font-size:.82rem;">
-      <p style="margin:0 0 .2rem;color:#7a5c00;font-weight:600;">Outstanding subscription invoice</p>
-      <p style="margin:0;color:#5a4400;">
-        <a href="{% url 'core:invoice_detail' club.slug existing_sub_invoice.id %}" style="color:#5a4400;font-weight:600;">{{ existing_sub_invoice.display_number }}</a>
+    <div style="background:var(--warning-bg);border:1px solid #ffe082;border-radius:8px;padding:.7rem 1rem;margin-top:.75rem;font-size:.82rem;">
+      <p style="margin:0 0 .2rem;color:var(--warning-text);font-weight:600;">Outstanding subscription invoice</p>
+      <p style="margin:0;color:var(--warning-text);">
+        <a href="{% url 'core:invoice_detail' club.slug existing_sub_invoice.id %}" style="color:var(--warning-text);font-weight:600;">{{ existing_sub_invoice.display_number }}</a>
         &mdash; {{ existing_sub_invoice.issue_date|date:"j M Y" }}
-        &mdash; <span style="color:{% if existing_sub_invoice.status == 'sent' %}#e65100{% else %}#8a93a0{% endif %};">{{ existing_sub_invoice.get_status_display }}</span>
+        &mdash; <span style="color:{% if existing_sub_invoice.status == 'sent' %}var(--warning-text){% else %}#8a93a0{% endif %};">{{ existing_sub_invoice.get_status_display }}</span>
         {% if existing_sub_invoice.total %}&mdash; ${{ existing_sub_invoice.total|floatformat:2 }}{% endif %}
         {% if existing_sub_invoice.subscription_expiry_date %}&mdash; valid to {{ existing_sub_invoice.subscription_expiry_date|date:"j M Y" }}{% endif %}
       </p>
@@ -227,11 +227,11 @@
         {% for c in credentials %}
         <tr>
           <td style="white-space:nowrap;">{{ c.credential_type.name }}</td>
-          <td style="color:#5b6573;font-size:.82rem;white-space:nowrap;">
-            {% if c.credential_type.category == 'type_rating' and c.aircraft_type %}{{ c.aircraft_type.name }}{% if c.name and c.name != c.aircraft_type.name %} <span style="color:#b0b8c4;">({{ c.name }})</span>{% endif %}
+          <td style="color:var(--text-2);font-size:.82rem;white-space:nowrap;">
+            {% if c.credential_type.category == 'type_rating' and c.aircraft_type %}{{ c.aircraft_type.name }}{% if c.name and c.name != c.aircraft_type.name %} <span style="color:var(--text-3);">({{ c.name }})</span>{% endif %}
             {% else %}{{ c.name|default:"—" }}{% endif %}
           </td>
-          <td style="color:#8a93a0;font-size:.82rem;">{{ c.certificate_number|default:"—" }}</td>
+          <td style="color:var(--text-3);font-size:.82rem;">{{ c.certificate_number|default:"—" }}</td>
           <td style="font-size:.83rem;white-space:nowrap;">{% if c.issue_date %}{{ c.issue_date|date:"j M Y" }}{% else %}—{% endif %}</td>
           <td style="font-size:.83rem;white-space:nowrap;">{% if c.expiry_date %}{{ c.expiry_date|date:"j M Y" }}{% else %}—{% endif %}</td>
           <td>
@@ -265,7 +265,7 @@
     </table>
     </div>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;">No credentials recorded.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No credentials recorded.</p>
     {% endif %}
   </section>
 
@@ -315,7 +315,7 @@
           <input type="file" name="evidence" accept="image/*,.pdf" class="finput">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true">Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Add credential</button>
         </div>
@@ -369,7 +369,7 @@
           <input type="file" name="evidence" accept="image/*,.pdf" class="finput">
         </label>
         <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('edit-cred-modal').hidden=true"><i class="ti ti-x"></i> Close</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('edit-cred-modal').hidden=true">Close</button>
           <span style="flex:1"></span>
           <button type="submit" class="cbtn primary">Save</button>
         </div>
@@ -388,7 +388,7 @@
         <div class="field-grid" style="margin-bottom:.75rem;">
           <label class="flabel">Amount
             <div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" step="0.01" min="0.01" class="money-input" value="{{ prorata_amount|default:'' }}" placeholder="0.00" required></div>
-            {% if member.role and not member.role.annual_renewal_fee %}<span style="font-size:.75rem;color:#e65100;">No annual fee set on role — enter manually</span>{% endif %}
+            {% if member.role and not member.role.annual_renewal_fee %}<span style="font-size:.75rem;color:var(--warning-text);">No annual fee set on role — enter manually</span>{% endif %}
           </label>
           <label class="flabel">Subscription valid to
             <input type="date" name="subscription_expiry_date" class="finput" value="{{ fy_end|date:'Y-m-d' }}" required>
@@ -412,7 +412,7 @@
     <div class="field-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:1.4rem;">
       <div class="ro-field">
         <span class="ro-label">Balance</span>
-        <span style="font-size:1.2rem;font-weight:700;color:{% if account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">
+        <span style="font-size:1.2rem;font-weight:700;color:{% if account.balance < 0 %}#c0392b{% else %}var(--success){% endif %};">
           ${{ account.balance|currency }}
         </span>
       </div>
@@ -435,7 +435,7 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="set_credit_limit">
             <div class="money-wrap" style="width:110px;"><span class="money-sym">$</span><input type="number" name="credit_limit" min="0" step="0.01" placeholder="500" value="{% if account.credit_limit is not None %}{{ account.credit_limit }}{% endif %}" class="money-input"></div>
-            <span style="font-size:.78rem;color:#8a93a0;">Leave blank = Exempt</span>
+            <span style="font-size:.78rem;color:var(--text-3);">Leave blank = Exempt</span>
             <button type="submit" class="btn" style="padding:.3rem .7rem;font-size:.8rem;">Save</button>
           </form>
         </div>
@@ -445,7 +445,7 @@
         <span class="ro-label">Credit status</span>
         <div style="margin-top:.2rem;">
           {% if account.has_warning %}
-            <span class="status-pill" style="background:#fee2e2;color:#b91c1c;font-size:.72rem;">Over limit</span>
+            <span class="status-pill" style="background:var(--danger-bg);color:var(--danger);font-size:.72rem;">Over limit</span>
           {% else %}
             <span class="status-pill sp-ok" style="font-size:.72rem;">OK</span>
           {% endif %}
@@ -462,8 +462,8 @@
     </div>
 
     <!-- Top-up panel -->
-    <div id="panel-topup" hidden style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
-      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.75rem;">Top up account</div>
+    <div id="panel-topup" hidden style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
+      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.75rem;">Top up account</div>
       <form method="post">
         {% csrf_token %}<input type="hidden" name="action" value="account_topup">
         <label class="flabel">Amount<div class="money-wrap"><span class="money-sym">$</span><input type="number" name="amount" min="0.01" step="0.01" class="money-input" required></div></label>
@@ -484,8 +484,8 @@
     </div>
 
     <!-- Manual adjustment panel -->
-    <div id="panel-adjust" hidden style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
-      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.75rem;">Manual adjustment</div>
+    <div id="panel-adjust" hidden style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
+      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.75rem;">Manual adjustment</div>
       <form method="post">
         {% csrf_token %}<input type="hidden" name="action" value="account_adjustment">
         <label class="flabel">Direction
@@ -504,8 +504,8 @@
     </div>
 
     <!-- Transfer panel -->
-    <div id="panel-transfer" hidden style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
-      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.75rem;">Transfer to member</div>
+    <div id="panel-transfer" hidden style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;max-width:420px;">
+      <div style="font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.75rem;">Transfer to member</div>
       <form method="post">
         {% csrf_token %}<input type="hidden" name="action" value="account_transfer">
         <label class="flabel">To member
@@ -534,8 +534,8 @@
     {% endif %}
 
     <!-- Transaction list -->
-    <h3 style="font-size:.88rem;font-weight:650;color:#1f2933;margin:0 0 .15rem;">Recent transactions</h3>
-    <p style="font-size:.78rem;color:#8a93a0;margin:0 0 .7rem;">The 30 most recent account entries, newest first.</p>
+    <h3 style="font-size:.88rem;font-weight:650;color:var(--text-1);margin:0 0 .15rem;">Recent transactions</h3>
+    <p style="font-size:.78rem;color:var(--text-3);margin:0 0 .7rem;">The 30 most recent account entries, newest first.</p>
     {% if transactions %}
     <table class="cred-table" id="tx-table">
       <thead><tr><th>Date</th><th>Type</th><th>Description</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Balance effect</th></tr></thead>
@@ -543,10 +543,10 @@
         {% for tx in transactions %}
         <tr class="tx-row">
           <td style="font-size:.8rem;white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
-          <td style="font-size:.8rem;color:#8a93a0;">{{ tx.get_transaction_type_display }}</td>
+          <td style="font-size:.8rem;color:var(--text-3);">{{ tx.get_transaction_type_display }}</td>
           <td style="font-size:.85rem;">{{ tx.description }}</td>
           <td style="text-align:right;font-weight:600;">${{ tx.amount|currency }}</td>
-          <td style="text-align:right;font-weight:600;color:{% if tx.direction == 'debit' %}#c0392b{% else %}#2a7a3b{% endif %};">
+          <td style="text-align:right;font-weight:600;color:{% if tx.direction == 'debit' %}#c0392b{% else %}var(--success){% endif %};">
             {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount|currency }}
           </td>
         </tr>
@@ -555,15 +555,15 @@
     </table>
     <div id="tx-pager" style="display:none;align-items:center;justify-content:center;gap:.8rem;margin-top:.7rem;">
       <button type="button" class="cbtn" id="tx-prev" style="font-size:.8rem;padding:.3rem .7rem;">‹ Prev</button>
-      <span id="tx-pageinfo" style="font-size:.8rem;color:#5b6573;"></span>
+      <span id="tx-pageinfo" style="font-size:.8rem;color:var(--text-2);"></span>
       <button type="button" class="cbtn" id="tx-next" style="font-size:.8rem;padding:.3rem .7rem;">Next ›</button>
     </div>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;">No transactions yet.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No transactions yet.</p>
     {% endif %}
 
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;">No account record.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No account record.</p>
     {% endif %}
   </section>
 
@@ -579,15 +579,15 @@
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}</td>
           <td>{{ b.aircraft.registration|default:"—" }}</td>
           <td>{{ b.instructor.get_full_name|default:"Solo" }}</td>
-          <td style="font-size:.82rem;color:#8a93a0;">{{ b.flight_type.name|default:"—" }}</td>
+          <td style="font-size:.82rem;color:var(--text-3);">{{ b.flight_type.name|default:"—" }}</td>
           <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.2rem;">No upcoming bookings.</p>{% endif %}
+    {% else %}<p style="color:var(--text-3);font-size:.85rem;margin-bottom:1.2rem;">No upcoming bookings.</p>{% endif %}
 
-    <h2 class="section-title">Past bookings <span style="font-weight:400;font-size:.82rem;color:#8a93a0;">(last 20)</span></h2>
+    <h2 class="section-title">Past bookings <span style="font-weight:400;font-size:.82rem;color:var(--text-3);">(last 20)</span></h2>
     {% if past_bookings %}
     <table class="cred-table">
       <thead><tr><th>Date</th><th>Aircraft</th><th>Instructor</th><th>Type</th><th>Status</th></tr></thead>
@@ -597,63 +597,61 @@
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M Y" }} {{ b.scheduled_start|time:"H:i" }}</td>
           <td>{{ b.aircraft.registration|default:"—" }}</td>
           <td>{{ b.instructor.get_full_name|default:"Solo" }}</td>
-          <td style="font-size:.82rem;color:#8a93a0;">{{ b.flight_type.name|default:"—" }}</td>
+          <td style="font-size:.82rem;color:var(--text-3);">{{ b.flight_type.name|default:"—" }}</td>
           <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#8a93a0;font-size:.85rem;">No past bookings.</p>{% endif %}
+    {% else %}<p style="color:var(--text-3);font-size:.85rem;">No past bookings.</p>{% endif %}
   </section>
 
 </div>
 
 <style>
-  .profile-header{display:flex;gap:1.2rem;align-items:flex-start;background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:1.25rem 1.4rem;margin-bottom:1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .profile-header{display:flex;gap:1.2rem;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.4rem;margin-bottom:1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.06);}
   .avatar-wrap{position:relative;flex-shrink:0;}
   .avatar-lg{width:72px;height:72px;border-radius:50%;object-fit:cover;display:block;border:2px solid #e3e6ea;}
-  span.avatar-lg{display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;background:#e8f0fb;color:var(--primary);border:2px solid #e3e6ea;}
+  span.avatar-lg{display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);border:2px solid #e3e6ea;}
   span.avatar-lg svg{width:40px;height:40px;}
-  .avatar-upload-btn{position:absolute;bottom:0;right:0;width:22px;height:22px;background:#fff;border:1px solid #d6dae0;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);}
-  .avatar-upload-btn:hover{background:#f3f5f7;}
+  .avatar-upload-btn{position:absolute;bottom:0;right:0;width:22px;height:22px;background:var(--surface);border:1px solid var(--input-border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+  .avatar-upload-btn:hover{background:var(--surface-3);}
   .profile-meta{flex:1;}
 
   .standing-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;}
-  .standing-badge.standing-active{background:#e6f4ea;color:#2a7a3b;}
-  .standing-badge.standing-suspended,.standing-badge.standing-lapsed,.standing-badge.standing-resigned{background:#fee2e2;color:#c0392b;}
-  .standing-badge.standing-pending{background:#fff3e0;color:#e65100;}
-  .standing-badge.standing-non_member{background:#f3f5f7;color:#8a93a0;}
-  .role-chip{font-size:.75rem;background:#e8f0fb;color:#2f7dd1;padding:.2rem .5rem;border-radius:10px;font-weight:500;}
+  .standing-badge.standing-active{background:var(--success-bg);color:var(--success);}
+  .standing-badge.standing-suspended,.standing-badge.standing-lapsed,.standing-badge.standing-resigned{background:var(--danger-bg);color:var(--danger);}
+  .standing-badge.standing-pending{background:var(--warning-bg);color:var(--warning-text);}
+  .standing-badge.standing-non_member{background:var(--surface-3);color:var(--text-3);}
+  .role-chip{font-size:.75rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);padding:.2rem .5rem;border-radius:10px;font-weight:500;}
 
-  .detail-section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;}
-  .section-title{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 1rem;}
+  .detail-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;}
+  .section-title{font-size:.95rem;font-weight:650;color:var(--text-1);margin:0 0 1rem;}
 
   .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
-  .ro-field{font-size:.88rem;color:#1f2933;padding:.5rem 0;}
-  .ro-label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.2rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);}
+  .ro-field{font-size:.88rem;color:var(--text-1);padding:.5rem 0;}
+  .ro-label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.2rem;}
 
   .cred-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-  .cred-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .cred-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .cred-table td{padding:.45rem .5rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .cred-table tr:last-child td{border-bottom:0;}
 
   .cred-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;white-space:nowrap;}
-  .cred-chip.ok{background:#e6f4ea;color:#2a7a3b;}
-  .cred-chip.soon{background:#fff3e0;color:#e65100;}
-  .cred-chip.expired{background:#fee2e2;color:#c0392b;}
+  .cred-chip.ok{background:var(--success-bg);color:var(--success);}
+  .cred-chip.soon{background:var(--warning-bg);color:var(--warning-text);}
+  .cred-chip.expired{background:var(--danger-bg);color:var(--danger);}
 
   .status-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
   /* status-chip colours defined in base.html */
 
-  .cbtn-xs{padding:.15rem .45rem;border-radius:5px;border:1px solid #d6dae0;background:#fff;color:#5b6573;font-size:.72rem;cursor:pointer;vertical-align:middle;}
-  .cbtn-xs:hover{background:#f3f5f7;}
+  .cbtn-xs{padding:.15rem .45rem;border-radius:5px;border:1px solid var(--input-border);background:var(--surface);color:var(--text-2);font-size:.72rem;cursor:pointer;vertical-align:middle;}
+  .cbtn-xs:hover{background:var(--surface-3);}
 
 
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);max-height:90vh;overflow-y:auto;}
+  .modal{background:var(--surface);border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);max-height:90vh;overflow-y:auto;}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
   .modal-actions{display:flex;align-items:center;gap:.5rem;}
   .cbtn.primary{background:var(--primary);color:#fff;border-color:var(--primary);}
@@ -763,13 +761,13 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
   </div>
 
   {% if club_member.is_instructor or club_member.is_admin %}
-  <div id="note-form-wrap" {% if not edit_note %}hidden{% endif %} style="background:#f8f9fb;border:1px solid #e3e6ea;border-radius:10px;padding:1rem 1.1rem;margin-bottom:1.2rem;">
+  <div id="note-form-wrap" {% if not edit_note %}hidden{% endif %} style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem;margin-bottom:1.2rem;">
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_lesson_note">
       {% if edit_note %}<input type="hidden" name="note_id" value="{{ edit_note.id }}">{% endif %}
       {% if edit_note %}
-      <div style="font-size:.84rem;color:#5b6573;margin-bottom:.7rem;padding:.5rem .75rem;background:#fff;border:1px solid #e3e6ea;border-radius:7px;">
+      <div style="font-size:.84rem;color:var(--text-2);margin-bottom:.7rem;padding:.5rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:7px;">
         <strong>{{ edit_note.booking.scheduled_start|date:"j M Y" }}</strong> · {{ edit_note.booking.aircraft.registration|default:"?" }} · {{ edit_note.booking.instructor.get_full_name|default:"?" }}
       </div>
       <input type="hidden" name="booking_id" value="{{ edit_note.booking_id }}">
@@ -809,10 +807,10 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
     <tbody>
     {% for note in lesson_notes %}
     <tr>
-      <td style="white-space:nowrap;color:#5b6573;">{{ note.booking.scheduled_start|date:"j M Y" }}</td>
+      <td style="white-space:nowrap;color:var(--text-2);">{{ note.booking.scheduled_start|date:"j M Y" }}</td>
       <td>{{ note.booking.aircraft.registration|default:"—" }}</td>
-      <td style="color:#8a93a0;font-size:.84rem;">{{ note.author.get_full_name|default:"—" }}</td>
-      <td style="font-size:.81rem;color:#5b6573;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ note.exercises_covered|truncatechars:55 }}</td>
+      <td style="color:var(--text-3);font-size:.84rem;">{{ note.author.get_full_name|default:"—" }}</td>
+      <td style="font-size:.81rem;color:var(--text-2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ note.exercises_covered|truncatechars:55 }}</td>
       <td style="white-space:nowrap;text-align:right;">
         <div style="display:inline-flex;gap:.3rem;">
           <a href="{% url 'core:lesson_note_print' club.slug note.id %}" target="_blank" class="cbtn-sm cbtn-icon" title="Print"><i class="ti ti-printer"></i></a>
@@ -836,7 +834,7 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
     </tbody>
   </table>
   {% else %}
-  <p style="color:#8a93a0;font-size:.85rem;">No training notes yet.</p>
+  <p style="color:var(--text-3);font-size:.85rem;">No training notes yet.</p>
   {% endif %}
 </section>
 
@@ -850,23 +848,23 @@ window.openEditCred = function(id, type, name, certNum, issueDate, expiryDate, n
     <tbody>
     {% for e in membership_history %}
     <tr>
-      <td style="white-space:nowrap;color:#8a93a0;">{{ e.changed_at|date:"j M Y" }}</td>
+      <td style="white-space:nowrap;color:var(--text-3);">{{ e.changed_at|date:"j M Y" }}</td>
       <td>{{ e.get_event_type_display }}</td>
       <td>
-        {% if e.old_value and e.old_value != "—" %}<span style="color:#8a93a0;">{{ e.old_value }}</span> → {% endif %}
+        {% if e.old_value and e.old_value != "—" %}<span style="color:var(--text-3);">{{ e.old_value }}</span> → {% endif %}
         {% if e.new_value %}
           {% if e.event_type == "subscription_renewed" %}{{ e.new_value|date:"j M Y" }}
           {% else %}{{ e.new_value }}{% endif %}
         {% endif %}
-        {% if e.note %}<span style="color:#8a93a0;display:block;font-size:.8rem;margin-top:.15rem;">{{ e.note }}</span>{% endif %}
+        {% if e.note %}<span style="color:var(--text-3);display:block;font-size:.8rem;margin-top:.15rem;">{{ e.note }}</span>{% endif %}
       </td>
-      <td style="color:#8a93a0;">{{ e.changed_by.get_full_name|default:"—" }}</td>
+      <td style="color:var(--text-3);">{{ e.changed_by.get_full_name|default:"—" }}</td>
     </tr>
     {% endfor %}
     </tbody>
   </table>
   {% else %}
-  <p style="color:#8a93a0;font-size:.85rem;">No history recorded yet.</p>
+  <p style="color:var(--text-3);font-size:.85rem;">No history recorded yet.</p>
   {% endif %}
 
   {% if member.resigned_at %}

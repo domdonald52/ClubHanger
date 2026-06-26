@@ -169,18 +169,36 @@
   .gap-xs { margin-top: .4rem; }
   .gap-sm { margin-top: .75rem; }
   .gap-md { margin-top: 1.25rem; }
+
+  /* ── Dark mode ── */
+  body.dark-mode, html:has(body.dark-mode) { background: #0d1117; color: #e6edf3; }
+  body.dark-mode .app-nav { background: #161b22; border-top-color: #30363d; }
+  body.dark-mode .app-nav-item { color: #6e7681; }
+  body.dark-mode .app-nav-item.active { color: var(--primary); }
+  body.dark-mode .app-card { background: #161b22; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  body.dark-mode .app-card-title,
+  body.dark-mode .app-section-title { color: #6e7681; }
+  body.dark-mode .app-list { background: #161b22; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  body.dark-mode .app-list-row { border-bottom-color: #21262d; }
+  body.dark-mode .app-list-row:active { background: #22272e; }
+  body.dark-mode .app-list-sub,
+  body.dark-mode .app-list-right,
+  body.dark-mode .app-list-chev { color: #6e7681; }
+  body.dark-mode .app-empty { color: #6e7681; }
+  body.dark-mode .app-btn.secondary { background: #1c2128; color: var(--primary); border-color: #30363d; }
 </style>
 {% block extra_style %}{% endblock %}
 </head>
-<body>
+<body class="{% if theme.dark_mode %}dark-mode{% endif %}">
 
 <header class="app-bar">
   {% block app_bar_brand %}
   {% if theme.logo %}
-  <img src="{{ theme.logo.url }}" alt="{{ club.name }}" width="72" height="20" fetchpriority="high" style="flex-shrink:0;height:20px;width:auto;max-width:72px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.1rem;">
+  <img src="{{ theme.logo.url }}" alt="{{ club.name }}" fetchpriority="high" style="flex-shrink:0;max-height:30px;height:auto;width:auto;max-width:100px;object-fit:contain;opacity:.9;pointer-events:none;margin-right:.4rem;">
   {% else %}
-  <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="Club Hangar" style="flex-shrink:0;height:22px;width:22px;object-fit:contain;pointer-events:none;margin-right:.2rem;">
+  <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="Club Hangar" style="flex-shrink:0;height:22px;width:22px;object-fit:contain;pointer-events:none;margin-right:.4rem;">
   {% endif %}
+  <span style="font-size:.82rem;font-weight:700;color:#fff;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;flex-shrink:1;">{{ club.name }}</span>
   {% endblock %}
   {% block app_bar %}
   <span class="app-bar-title">{% block page_title %}Club Hangar{% endblock %}</span>

@@ -4,11 +4,10 @@
 {% block content %}
 <div class="container" style="padding:2rem;max-width:960px;">
   <h1 style="margin-bottom:.3rem;">Rates</h1>
-  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.4rem;">
+  <p style="color:var(--text-3);font-size:.85rem;margin-bottom:1.4rem;">
     The club's rate card — set by the committee, reviewed periodically. For day-to-day fuel levy and aerodrome fees, see Manage.
   </p>
 
-  {% if saved %}<div class="snotice ok">Rates saved.</div>{% endif %}
 
   <div class="stab-bar" data-managed="1">
     <button class="stab-btn active" data-tab="hire">Hire rates</button>
@@ -18,7 +17,7 @@
 
   <!-- ── HIRE RATES ── -->
   <div id="tab-hire" class="stab-panel active">
-    <p style="font-size:.83rem;color:#8a93a0;margin:.2rem 0 1rem;">
+    <p style="font-size:.83rem;color:var(--text-3);margin:.2rem 0 1rem;">
       Base hire rate per aircraft × flight type × time method. Wet hire aircraft show no separate fuel line. Dry hire aircraft will also have a fuel rate in Manage → Fuel levy.
     </p>
 
@@ -30,9 +29,9 @@
         <tr>
           <td><strong>{{ r.aircraft.registration }}</strong></td>
           <td>{{ r.flight_type.name }}</td>
-          <td style="font-family:monospace;font-size:.82rem;color:#8a93a0;">{{ r.time_method }}</td>
+          <td style="font-family:monospace;font-size:.82rem;color:var(--text-3);">{{ r.time_method }}</td>
           <td><strong>${{ r.amount|currency }}</strong></td>
-          <td style="font-size:.82rem;color:#8a93a0;">
+          <td style="font-size:.82rem;color:var(--text-3);">
             {% if r.aircraft.hire_includes_fuel %}Wet{% else %}Dry{% endif %}
           </td>
           <td style="text-align:right;">
@@ -48,11 +47,11 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;margin-bottom:1rem;">No hire rates configured yet.</p>
+    <p style="color:var(--text-3);font-size:.85rem;margin-bottom:1rem;">No hire rates configured yet.</p>
     {% endif %}
 
     <h3 style="font-size:.88rem;font-weight:650;margin-bottom:.7rem;">Add hire rate</h3>
-    <form method="post" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;padding:1rem;background:#f8f9fb;border-radius:8px;border:1px solid #e3e6ea;">
+    <form method="post" style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;padding:1rem;background:var(--surface-2);border-radius:8px;border:1px solid var(--border);">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_hire_rate">
       <label class="flabel">Aircraft
@@ -90,7 +89,7 @@
   <!-- ── INSTRUCTOR RATES ── -->
   <div id="tab-instructor" class="stab-panel">
     {% if instructor_grades %}
-    <p style="font-size:.83rem;color:#8a93a0;margin:.2rem 0 1rem;">
+    <p style="font-size:.83rem;color:var(--text-3);margin:.2rem 0 1rem;">
       Hourly rate charged per instructor grade. Grade types are configured in Settings → Charges.
     </p>
     <form method="post">
@@ -116,7 +115,7 @@
       <button type="submit" class="btn">Save instructor rates</button>
     </form>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;margin-top:.5rem;">
+    <p style="color:var(--text-3);font-size:.85rem;margin-top:.5rem;">
       No instructor grades configured. Add grade types in <a href="{% url 'core:club_settings' club.slug %}">Settings → Charges</a> first.
     </p>
     {% endif %}
@@ -125,7 +124,7 @@
   <!-- ── SURCHARGE AMOUNTS ── -->
   <div id="tab-surcharges" class="stab-panel">
     {% if surcharge_types %}
-    <p style="font-size:.83rem;color:#8a93a0;margin:.2rem 0 1rem;">
+    <p style="font-size:.83rem;color:var(--text-3);margin:.2rem 0 1rem;">
       Fixed amounts added per flight on aircraft where this surcharge is assigned. Surcharge types are configured in Settings → Charges.
     </p>
     <form method="post">
@@ -137,7 +136,7 @@
           {% for st in surcharge_types %}
           <tr>
             <td><strong>{{ st.name }}</strong></td>
-            <td style="color:#8a93a0;font-size:.82rem;">{{ st.description|default:"—" }}</td>
+            <td style="color:var(--text-3);font-size:.82rem;">{{ st.description|default:"—" }}</td>
             <td>
               <div class="money-wrap" style="width:130px;">
                 <span class="money-sym">$</span>
@@ -152,7 +151,7 @@
       <button type="submit" class="btn">Save surcharge amounts</button>
     </form>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;margin-top:.5rem;">
+    <p style="color:var(--text-3);font-size:.85rem;margin-top:.5rem;">
       No surcharge types configured. Add them in <a href="{% url 'core:club_settings' club.slug %}">Settings → Charges</a> first.
     </p>
     {% endif %}
@@ -161,15 +160,11 @@
 </div>
 
 <style>
-  .snotice{padding:.6rem .9rem;border-radius:6px;margin-bottom:1rem;font-size:.88rem;}
-  .snotice.ok{background:#eaf6ec;color:#216c2a;}
   .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-  .ft-table th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table td{padding:.5rem .6rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .ft-table tr:last-child td{border-bottom:0;}
 
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.6rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.6rem;}
   .btn{padding:.4rem .8rem;border:none;border-radius:6px;cursor:pointer;font-size:.85rem;background:var(--primary);color:#fff;}
 </style>
 

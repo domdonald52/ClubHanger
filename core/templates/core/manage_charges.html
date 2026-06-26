@@ -3,14 +3,16 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <h1 style="margin-bottom:1rem;">Sales</h1>
+  <div class="page-hdr">
+    <h1 class="page-h1">Sales</h1>
+  </div>
   {% include "core/_sales_tabs.html" with active_tab=tab %}
 
   {% if tab == 'unpaid' %}
   <!-- ── Awaiting payment ──────────────────────────────────────────────── -->
   <h2 class="sh2" style="margin-bottom:.6rem;">
     Awaiting payment
-    <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ unpaid|length }})</span>
+    <span style="font-weight:400;font-size:.85rem;color:var(--text-3);">({{ unpaid|length }})</span>
   </h2>
 
   {% if unpaid %}
@@ -28,7 +30,7 @@
         <td>{{ fc.booking.member.user.get_full_name }}</td>
         <td>{{ fc.booking.aircraft.registration }}</td>
         <td style="white-space:nowrap;font-size:.85rem;">{{ fc.booking.scheduled_start|date:"j M Y" }}</td>
-        <td style="font-size:.82rem;color:#8a93a0;">{{ fc.booking.flight_type.name }}</td>
+        <td style="font-size:.82rem;color:var(--text-3);">{{ fc.booking.flight_type.name }}</td>
         <td style="font-size:.85rem;">{{ fc.actual_flight_hours|default:"—" }}h</td>
         <td>
           {% if fc.outcome != 'completed' %}
@@ -44,17 +46,17 @@
     </tbody>
   </table>
   {% else %}
-  <p style="color:#8a93a0;font-size:.85rem;margin-bottom:2rem;">All completed flights have been processed.</p>
+  <p style="color:var(--text-3);font-size:.85rem;margin-bottom:2rem;">All completed flights have been processed.</p>
   {% endif %}
 
   {% else %}
   <!-- ── Transactions ──────────────────────────────────────────────────── -->
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:.6rem;">
     <h2 class="sh2" style="margin:0;">Transactions
-      <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ tx_page.paginator.count }} total)</span>
+      <span style="font-weight:400;font-size:.85rem;color:var(--text-3);">({{ tx_page.paginator.count }} total)</span>
     </h2>
     {% if tx_page.paginator.num_pages > 1 %}
-    <span style="font-size:.82rem;color:#8a93a0;">Page {{ tx_page.number }} of {{ tx_page.paginator.num_pages }}</span>
+    <span style="font-size:.82rem;color:var(--text-3);">Page {{ tx_page.number }} of {{ tx_page.paginator.num_pages }}</span>
     {% endif %}
   </div>
 
@@ -71,13 +73,13 @@
       {% for tx in tx_page %}
       <tr>
         <td>{{ tx.account.club_member.user.get_full_name }}</td>
-        <td style="font-size:.8rem;color:#8a93a0;">{{ tx.get_transaction_type_display }}</td>
+        <td style="font-size:.8rem;color:var(--text-3);">{{ tx.get_transaction_type_display }}</td>
         <td style="font-size:.85rem;">{{ tx.description }}</td>
-        <td style="font-size:.82rem;color:#8a93a0;">{{ tx.get_payment_method_display|default:"—" }}</td>
+        <td style="font-size:.82rem;color:var(--text-3);">{{ tx.get_payment_method_display|default:"—" }}</td>
         <td style="text-align:right;font-weight:600;color:{% if tx.direction == 'debit' %}#c0392b{% else %}#2a7a3b{% endif %};">
           {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount|currency }}
         </td>
-        <td style="font-size:.82rem;color:#8a93a0;white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
+        <td style="font-size:.82rem;color:var(--text-3);white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -93,7 +95,7 @@
       {% elif n == 1 or n == tx_page.paginator.num_pages or n >= tx_page.number|add:"-2" and n <= tx_page.number|add:"2" %}
       <a href="?{{ filter_qs }}&page={{ n }}" class="cbtn-sm">{{ n }}</a>
       {% elif n == tx_page.number|add:"-3" or n == tx_page.number|add:"3" %}
-      <span style="font-size:.82rem;color:#8a93a0;">…</span>
+      <span style="font-size:.82rem;color:var(--text-3);">…</span>
       {% endif %}
     {% endfor %}
     {% if tx_page.has_next %}
@@ -102,19 +104,18 @@
   </div>
   {% endif %}
   {% else %}
-  <p style="color:#8a93a0;font-size:.85rem;">No transactions yet.</p>
+  <p style="color:var(--text-3);font-size:.85rem;">No transactions yet.</p>
   {% endif %}
   {% endif %}
 
 </div>
 
 <style>
-  .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
+  .sh2{font-size:1rem;font-weight:650;color:var(--text-1);}
   .ct{width:100%;border-collapse:collapse;font-size:.88rem;margin-bottom:1rem;}
-  .ct th{padding:.4rem .6rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .ct td{padding:.55rem .6rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ct td{padding:.55rem .6rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .ct tr:last-child td{border-bottom:0;}
-  .ct tr.no-charge td{color:#adb5bd;}
+  .ct tr.no-charge td{color:var(--text-3);}
   .out-chip{font-size:.72rem;background:#fff3e0;color:#c76c00;padding:.1rem .4rem;border-radius:4px;font-weight:600;}
 </style>
 {% endblock %}

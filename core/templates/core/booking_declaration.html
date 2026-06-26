@@ -6,13 +6,13 @@
 <div style="max-width:720px;margin:0 auto;padding:2rem;">
 
   {% if is_app %}
-  <a href="{% url 'core:app_bookings' club.slug %}" class="back-link" style="display:inline-flex;align-items:center;gap:.3rem;margin-bottom:1rem;font-size:.85rem;color:#8a93a0;text-decoration:none;">← My Bookings</a>
+  <a href="{% url 'core:app_bookings' club.slug %}" class="back-link" style="display:inline-flex;align-items:center;gap:.3rem;margin-bottom:1rem;font-size:.85rem;color:var(--text-3);text-decoration:none;">← My Bookings</a>
   {% elif not is_inline %}
   <a href="{% url 'core:booking_detail' club.slug booking.id %}" class="back-link">← Back to booking</a>
   {% endif %}
 
   <h1 style="font-size:1.3rem;margin-bottom:.3rem;">Departure Declaration</h1>
-  <div style="font-size:.88rem;color:#8a93a0;margin-bottom:1.4rem;">
+  <div style="font-size:.88rem;color:var(--text-3);margin-bottom:1.4rem;">
     {{ booking.aircraft.registration }} · {{ booking.flight_type.name }} · {{ booking.scheduled_start|date:"D j M Y H:i" }}
   </div>
 
@@ -21,7 +21,7 @@
   {% if not decl.is_draft and booking.status != 'completed' %}
   <div class="notice ok" style="margin-bottom:1.2rem;">
     Submitted {{ decl.submitted_at|date:"j M Y H:i" }}
-    {% if decl.is_stale %}<span style="color:#c76c00;font-weight:600;margin-left:.5rem;">⚠ Submitted more than 6 hours ago — re-check weather and NOTAMs before departing.</span>{% endif %}
+    {% if decl.is_stale %}<span style="color:var(--warning-text);font-weight:600;margin-left:.5rem;">⚠ Submitted more than 6 hours ago — re-check weather and NOTAMs before departing.</span>{% endif %}
   </div>
   {% elif not decl.is_draft and booking.status == 'completed' %}
   <div class="notice ok" style="margin-bottom:1.2rem;">Submitted {{ decl.submitted_at|date:"j M Y H:i" }}</div>
@@ -64,14 +64,14 @@
         <label class="flabel" style="flex:1;min-width:200px;">SAR time
           <input type="datetime-local" name="sar_time" class="finput"
                  value="{% if decl.sar_time %}{{ decl.sar_time|date:'Y-m-d\TH:i' }}{% endif %}">
-          <span style="font-size:.72rem;color:#8a93a0;margin-top:.2rem;display:block;">Time at which SAR should be notified if not returned</span>
+          <span style="font-size:.72rem;color:var(--text-3);margin-top:.2rem;display:block;">Time at which SAR should be notified if not returned</span>
         </label>
       </div>
     </div>
 
     <div class="section">
       <h2 class="sh2">Next of kin</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .8rem;">Pre-filled from your profile. Override for this flight if needed.</p>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .8rem;">Pre-filled from your profile. Override for this flight if needed.</p>
       <div style="display:flex;gap:1rem;flex-wrap:wrap;">
         <label class="flabel" style="flex:1;min-width:200px;">Name
           <input type="text" name="next_of_kin_name" class="finput"
@@ -88,7 +88,7 @@
 
     <div class="section">
       <h2 class="sh2">Passengers</h2>
-      <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .8rem;">List all passengers on board.</p>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .8rem;">List all passengers on board.</p>
 
       {% if passengers %}
       <table class="cred-table" style="margin-bottom:.8rem;">
@@ -97,9 +97,9 @@
           {% for pax in passengers %}
           <tr>
             <td>{{ pax.name }}</td>
-            <td style="color:#8a93a0;font-size:.85rem;">{{ pax.phone|default:"—" }}</td>
+            <td style="color:var(--text-3);font-size:.85rem;">{{ pax.phone|default:"—" }}</td>
             <td style="font-size:.85rem;">{{ pax.next_of_kin_name|default:"—" }}</td>
-            <td style="color:#8a93a0;font-size:.85rem;">{{ pax.next_of_kin_phone|default:"—" }}</td>
+            <td style="color:var(--text-3);font-size:.85rem;">{{ pax.next_of_kin_phone|default:"—" }}</td>
             <td style="text-align:right;">
               {% if not readonly %}
               {# Passenger remove — separate form, NOT nested inside #decl-form #}
@@ -112,13 +112,13 @@
         </tbody>
       </table>
       {% else %}
-      <p style="font-size:.85rem;color:#8a93a0;margin-bottom:.8rem;font-style:italic;">No passengers listed yet.</p>
+      <p style="font-size:.85rem;color:var(--text-3);margin-bottom:.8rem;font-style:italic;">No passengers listed yet.</p>
       {% endif %}
 
       {% if not readonly %}
       {% if frequent_passengers %}
       <div style="margin-bottom:.6rem;">
-        <span style="font-size:.82rem;color:#5b6573;font-weight:600;">Quick-add frequent passenger:</span>
+        <span style="font-size:.82rem;color:var(--text-2);font-weight:600;">Quick-add frequent passenger:</span>
         <div style="margin-top:.35rem;display:flex;flex-wrap:wrap;gap:.4rem;">
           {% for fp in frequent_passengers %}
           <button type="button" class="fp-chip"
@@ -150,7 +150,7 @@
         </div>
         <div style="display:flex;gap:.5rem;margin-top:.4rem;">
           <button type="button" class="cbtn primary" onclick="window.addNewPax()">Add</button>
-          <button type="button" class="cbtn" onclick="document.getElementById('new-pax-panel').hidden=true;document.querySelector('.cbtn-add[onclick*=new-pax-panel]').hidden=false;"><i class="ti ti-x"></i> Close</button>
+          <button type="button" class="cbtn" onclick="document.getElementById('new-pax-panel').hidden=true;document.querySelector('.cbtn-add[onclick*=new-pax-panel]').hidden=false;">Close</button>
         </div>
       </div>
       {% endif %}
@@ -180,7 +180,7 @@
         <button type="submit" name="action" value="submit" class="cbtn primary">Submit declaration</button>
         {% endif %}
         {% if hours_to_departure > 6 %}
-        <span style="font-size:.78rem;color:#8a93a0;">
+        <span style="font-size:.78rem;color:var(--text-3);">
           Your flight is in {{ hours_to_departure|floatformat:0 }} hours — save as draft and return closer to departure to submit.
           Submitted declarations older than 6 hours are flagged stale.
         </span>
@@ -208,24 +208,22 @@
 </div>
 
 <style>
-  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:#8a93a0;text-decoration:none;margin-bottom:1rem;}
+  .back-link{display:inline-flex;align-items:center;gap:.3rem;font-size:.82rem;color:var(--text-3);text-decoration:none;margin-bottom:1rem;}
   .back-link:hover{color:var(--banner);}
   .notice{padding:.55rem .85rem;border-radius:6px;font-size:.85rem;margin-bottom:1rem;}
-  .notice.ok{background:#eaf6ec;color:#216c2a;}
-  .notice.err{background:#fff0f0;color:#c0392b;}
-  .section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;}
-  .sh2{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 .9rem;}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;margin-bottom:.7rem;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.42rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
+  .notice.ok{background:var(--success-bg);color:var(--success-text);}
+  .notice.err{background:var(--danger-bg);color:var(--danger);}
+  .section{background:#fff;border:1px solid var(--border);border-radius:10px;padding:1.2rem 1.4rem;margin-bottom:1.2rem;}
+  .sh2{font-size:.95rem;font-weight:650;color:var(--text-1);margin:0 0 .9rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);margin-bottom:.7rem;}
   .checklist{display:flex;flex-direction:column;gap:.55rem;}
-  .check-item{display:flex;align-items:center;gap:.6rem;font-size:.88rem;color:#1f2933;cursor:pointer;}
+  .check-item{display:flex;align-items:center;gap:.6rem;font-size:.88rem;color:var(--text-1);cursor:pointer;}
 
   .cred-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-  .cred-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .cred-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .cred-table td{padding:.45rem .5rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .cred-table tr:last-child td{border-bottom:0;}
-  .fp-chip{padding:.28rem .65rem;border-radius:20px;border:1px solid #d6dae0;background:#f5f6f8;color:#5b6573;font-size:.8rem;cursor:pointer;}
-  .fp-chip:hover{background:#eef1f4;}
+  .fp-chip{padding:.28rem .65rem;border-radius:20px;border:1px solid var(--input-border);background:var(--surface-2);color:var(--text-2);font-size:.8rem;cursor:pointer;}
+  .fp-chip:hover{background:var(--surface-3);}
 </style>
 
 <script>
@@ -234,10 +232,11 @@ window._submitPaxForm = function() {
 };
 
 window.removePax = function(paxId, name) {
-  if (!confirm('Remove ' + name + '?')) return;
-  document.getElementById('pax-action-value').value = 'remove_passenger';
-  document.getElementById('pax-action-id').value = paxId;
-  window._submitPaxForm();
+  showAppConfirm('Remove ' + name + '?', function() {
+    document.getElementById('pax-action-value').value = 'remove_passenger';
+    document.getElementById('pax-action-id').value = paxId;
+    window._submitPaxForm();
+  });
 };
 
 window.quickAddPax = function(name, phone, nokName, nokPhone) {
@@ -251,7 +250,7 @@ window.quickAddPax = function(name, phone, nokName, nokPhone) {
 
 window.addNewPax = function() {
   var name = document.getElementById('pax-name').value.trim();
-  if (!name) { alert('Passenger name is required'); return; }
+  if (!name) { window.toast('Passenger name is required', 'err'); return; }
   document.getElementById('pax-action-value').value = 'add_passenger';
   document.getElementById('pax-action-name').value = name;
   document.getElementById('pax-action-phone').value = document.getElementById('pax-phone').value.trim();

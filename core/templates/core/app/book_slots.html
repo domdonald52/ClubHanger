@@ -20,10 +20,10 @@
   display:flex; align-items:center; justify-content:space-between;
   padding:.45rem .75rem .3rem;
 }
-.date-band-label { font-size:.84rem; font-weight:700; color:#374151; }
+.date-band-label { font-size:.84rem; font-weight:700; color:var(--text-2); }
 .date-jump-btn {
   background:none; border:1.5px solid #d5d9e0; border-radius:8px;
-  padding:.25rem .6rem; font-size:.78rem; font-weight:600; color:#374151;
+  padding:.25rem .6rem; font-size:.78rem; font-weight:600; color:var(--text-2);
   cursor:pointer; display:flex; align-items:center; gap:.3rem;
 }
 .date-jump-btn:active { background:#f0f2f4; }
@@ -36,14 +36,14 @@
 .wday {
   flex-shrink:0; width:44px; display:flex; flex-direction:column; align-items:center;
   padding:.3rem .1rem; border-radius:8px; text-decoration:none;
-  font-size:.6rem; font-weight:600; color:#8a93a0; text-transform:uppercase;
+  font-size:.6rem; font-weight:600; color:var(--text-3); text-transform:uppercase;
   -webkit-tap-highlight-color:transparent; position:relative;
 }
 .wday-month {
   font-size:.55rem; font-weight:700; text-transform:uppercase; color:#bac0ca;
   position:absolute; top:-1px; left:0; right:0; text-align:center; letter-spacing:.03em;
 }
-.wday-num { font-size:1.02rem; font-weight:700; color:#1f2933; line-height:1.3; }
+.wday-num { font-size:1.02rem; font-weight:700; color:var(--text-1); line-height:1.3; }
 .wday.today .wday-num { color:var(--primary); }
 .wday.selected { background:var(--primary); }
 .wday.selected .wday-num, .wday.selected { color:#fff; }
@@ -53,12 +53,12 @@
 .slot-group-hdr {
   padding:.6rem .75rem .25rem;
   font-size:.68rem; font-weight:700; text-transform:uppercase;
-  letter-spacing:.07em; color:#9ca3af;
+  letter-spacing:.07em; color:var(--text-3);
 }
 .instr-hdr {
   padding:.65rem .75rem .3rem;
-  font-size:.82rem; font-weight:700; color:#374151;
-  border-bottom:1px solid #f0f2f4;
+  font-size:.82rem; font-weight:700; color:var(--text-2);
+  border-bottom:1px solid var(--border-subtle);
   background:#fafbfc;
 }
 
@@ -66,22 +66,22 @@
 .slot-row {
   display:flex; align-items:center;
   padding:.7rem 1rem;
-  border-bottom:1px solid #f0f2f4;
+  border-bottom:1px solid var(--border-subtle);
   background:#fff;
 }
 .slot-row.unavailable { opacity:.4; }
-.slot-time { min-width:76px; font-size:.92rem; font-weight:700; color:#1f2933; }
-.slot-time-end { font-size:.72rem; font-weight:500; color:#9ca3af; }
+.slot-time { min-width:76px; font-size:.92rem; font-weight:700; color:var(--text-1); }
+.slot-time-end { font-size:.72rem; font-weight:500; color:var(--text-3); }
 
 /* ── Slot row (dual — under each instructor) ── */
 .dual-slot-row {
   display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
   padding:.55rem 1rem;
-  border-bottom:1px solid #f0f2f4;
+  border-bottom:1px solid var(--border-subtle);
   background:#fff;
 }
 .dual-slot-time {
-  min-width:105px; font-size:.82rem; font-weight:600; color:#6b7280; white-space:nowrap;
+  min-width:105px; font-size:.82rem; font-weight:600; color:var(--text-3); white-space:nowrap;
 }
 
 /* ── Type pills ── */

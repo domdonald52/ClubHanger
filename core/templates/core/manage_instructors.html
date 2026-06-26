@@ -3,10 +3,12 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;">
-    <h1 style="margin:0;">Staff roster <span style="font-weight:400;font-size:.85rem;color:#8a93a0;">({{ instructors|length }})</span></h1>
+  <div class="page-hdr">
+    <h1 class="page-h1">Staff roster <span class="page-h1-sub">({{ instructors|length }})</span></h1>
     {% if club_member.is_admin %}
-    <button type="button" class="cbtn-add" onclick="document.getElementById('add-instr-modal').hidden=false">+ Add to roster</button>
+    <div class="page-actions">
+      <button type="button" class="cbtn-add" onclick="document.getElementById('add-instr-modal').hidden=false">+ Add to roster</button>
+    </div>
     {% endif %}
   </div>
 
@@ -18,11 +20,11 @@
     <tbody>
       {% for instr in instructors %}
       <tr>
-        <td><strong>{{ instr.user.get_full_name }}</strong>{% if instr.role %} <span style="font-size:.75rem;color:#8a93a0;">({{ instr.role.name }})</span>{% endif %}</td>
-        <td style="color:#5b6573;">{{ instr.instructor_grade.name|default:"—" }}</td>
-        <td style="color:#8a93a0;font-size:.85rem;">{% if instr.instructor_grade %}${{ instr.instructor_grade.hourly_rate|currency }}/hr{% else %}—{% endif %}</td>
-        <td style="color:#8a93a0;font-size:.82rem;">
-          {% if instr.av_count %}{{ instr.av_count }} window{{ instr.av_count|pluralize }}{% else %}<span style="color:#2a7a3b;font-size:.78rem;font-weight:600;">all hours</span>{% endif %}
+        <td><strong>{{ instr.user.get_full_name }}</strong>{% if instr.role %} <span style="font-size:.75rem;color:var(--text-3);">({{ instr.role.name }})</span>{% endif %}</td>
+        <td style="color:var(--text-2);">{{ instr.instructor_grade.name|default:"—" }}</td>
+        <td style="color:var(--text-3);font-size:.85rem;">{% if instr.instructor_grade %}${{ instr.instructor_grade.hourly_rate|currency }}/hr{% else %}—{% endif %}</td>
+        <td style="color:var(--text-3);font-size:.82rem;">
+          {% if instr.av_count %}{{ instr.av_count }} window{{ instr.av_count|pluralize }}{% else %}<span style="color:var(--success);font-size:.78rem;font-weight:600;">all hours</span>{% endif %}
         </td>
         <td style="text-align:right;">
           <div style="display:inline-flex;gap:.3rem;">
@@ -39,14 +41,14 @@
     </tbody>
   </table>
   {% else %}
-  <p style="color:#8a93a0;">No instructors found. Assign the Instructor role under <a href="{% url 'core:manage_members' club.slug %}">Members</a>.</p>
+  <p style="color:var(--text-3);">No instructors found. Assign the Instructor role under <a href="{% url 'core:manage_members' club.slug %}">Members</a>.</p>
   {% endif %}
 
 
 {% if cal_weeks %}
 <!-- ── Rolling 5-week roster calendar ── -->
-<div style="margin-top:1.5rem;background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:1.1rem 1.1rem .9rem;box-shadow:0 1px 4px rgba(0,0,0,.05);">
-    <h2 style="margin:0 0 .8rem;font-size:1rem;font-weight:650;color:#1f2933;">Roster — {{ cal_range }}</h2>
+<div style="margin-top:1.5rem;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.1rem .9rem;box-shadow:0 1px 4px rgba(0,0,0,.05);">
+    <h2 style="margin:0 0 .8rem;font-size:1rem;font-weight:650;color:var(--text-1);">Roster — {{ cal_range }}</h2>
 
     <!-- Legend -->
     <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.9rem;align-items:center;">
@@ -57,16 +59,16 @@
       </span>
       {% endfor %}
       {% if has_blockouts %}
-      <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;padding:.2rem .6rem;border-radius:20px;background:#fef3c7;color:#92400e;">
+      <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;font-weight:600;padding:.2rem .6rem;border-radius:20px;background:#fef3c7;color:var(--warning-text);">
         <span style="width:18px;height:4px;background:#f59e0b;border-radius:2px;flex-shrink:0;"></span>
         Block-out
       </span>
       {% endif %}
     </div>
 
-    <div style="border:1px solid #e3e6ea;border-radius:8px;overflow:hidden;">
+    <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;">
       <!-- Day headers -->
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);background:#f8f9fb;border-bottom:1px solid #e3e6ea;">
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--surface-2);border-bottom:1px solid var(--border);">
         {% for label in "1234567" %}
         <div style="padding:.4rem 0;text-align:center;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:{% if forloop.counter >= 6 %}#9ca3af{% else %}#8a93a0{% endif %};">
           {% if forloop.counter == 1 %}Mon{% elif forloop.counter == 2 %}Tue{% elif forloop.counter == 3 %}Wed{% elif forloop.counter == 4 %}Thu{% elif forloop.counter == 5 %}Fri{% elif forloop.counter == 6 %}Sat{% else %}Sun{% endif %}
@@ -77,7 +79,7 @@
       {% for week in cal_weeks %}
       <div style="display:grid;grid-template-columns:repeat(7,1fr);border-bottom:{% if forloop.last %}none{% else %}1px solid #f0f2f4{% endif %};">
         {% for cell in week %}
-        <div style="min-height:60px;padding:.3rem .4rem;border-right:{% if forloop.last %}none{% else %}1px solid #f0f2f4{% endif %};{% if cell.is_today %}background:#eff6ff;{% elif cell.has_blockout %}background:#fff8f5;{% elif cell.is_past %}background:#fafbfc;{% elif cell.is_weekend %}background:#fafbfc;{% endif %}">
+        <div style="min-height:60px;padding:.3rem .4rem;border-right:{% if forloop.last %}none{% else %}1px solid #f0f2f4{% endif %};{% if cell.is_today %}background:var(--info-bg);{% elif cell.has_blockout %}background:#fff8f5;{% elif cell.is_past %}background:var(--surface-2);{% elif cell.is_weekend %}background:var(--surface-2);{% endif %}">
           <div style="font-size:.72rem;font-weight:{% if cell.is_today %}800{% else %}500{% endif %};color:{% if cell.is_today %}var(--primary){% elif cell.is_past %}#b0b7c2{% elif cell.is_weekend %}#9ca3af{% else %}#374151{% endif %};margin-bottom:.2rem;">
             {{ cell.date.day }}{% if cell.date.day == 1 %} <span style="font-size:.65rem;font-weight:600;opacity:.7;">{{ cell.date|date:"M" }}</span>{% endif %}
           </div>
@@ -101,16 +103,15 @@
 <style>
   .conflict-badge{background:#e03131;color:#fff;font-size:.65rem;font-weight:700;padding:.1rem .4rem;border-radius:10px;line-height:1.2;}
 
-  .sh2{font-size:1rem;font-weight:650;color:#1f2933;}
+  .sh2{font-size:1rem;font-weight:650;color:var(--text-1);}
 
   .ac-table{width:100%;border-collapse:collapse;font-size:.88rem;}
-  .ac-table th{padding:.4rem .7rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .ac-table td{padding:.6rem .7rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ac-table td{padding:.6rem .7rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .ac-table tr:last-child td{border-bottom:0;}
 
-  .modal-back{position:fixed;inset:0;background:rgba(16,24,40,.45);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .modal-back{position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:200;}
   .modal-back[hidden]{display:none!important;}
-  .modal{background:#fff;border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(460px,95vw);}
+  .modal{background:var(--surface);border-radius:12px;padding:1.25rem 1.35rem;box-shadow:0 12px 40px rgba(16,24,40,.25);width:min(460px,95vw);}
   .modal h2{margin:0 0 .9rem;font-size:1.05rem;}
   .modal-actions{display:flex;align-items:center;gap:.5rem;margin-top:1rem;}
 </style>
@@ -122,20 +123,20 @@
       <h2 id="remove-title" style="margin:0;font-size:1.05rem;"></h2>
       <button type="button" class="pi-close" onclick="document.getElementById('remove-instr-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
-    <p id="remove-desc" style="font-size:.84rem;color:#5b6573;margin:0 0 .9rem;"></p>
+    <p id="remove-desc" style="font-size:.84rem;color:var(--text-2);margin:0 0 .9rem;"></p>
     <form method="post" id="remove-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="remove_instructor">
       <input type="hidden" name="member_id" id="remove-member-id">
       <div id="remove-bookings-wrap" style="display:none;margin-bottom:.9rem;">
-        <p style="font-size:.82rem;font-weight:600;color:#1f2933;margin:0 0 .5rem;">Re-assign upcoming flights</p>
+        <p style="font-size:.82rem;font-weight:600;color:var(--text-1);margin:0 0 .5rem;">Re-assign upcoming flights</p>
         <table style="width:100%;border-collapse:collapse;font-size:.82rem;" id="remove-bookings-table">
           <thead>
-            <tr style="border-bottom:1px solid #e3e6ea;">
-              <th style="text-align:left;padding:.25rem .4rem;color:#8a93a0;font-weight:600;font-size:.72rem;text-transform:uppercase;">Date</th>
-              <th style="text-align:left;padding:.25rem .4rem;color:#8a93a0;font-weight:600;font-size:.72rem;text-transform:uppercase;">Member</th>
-              <th style="text-align:left;padding:.25rem .4rem;color:#8a93a0;font-weight:600;font-size:.72rem;text-transform:uppercase;">Aircraft</th>
-              <th style="text-align:left;padding:.25rem .4rem;color:#8a93a0;font-weight:600;font-size:.72rem;text-transform:uppercase;">Reassign to</th>
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="text-align:left;padding:.25rem .4rem;color:var(--text-3);font-weight:600;font-size:.72rem;text-transform:uppercase;">Date</th>
+              <th style="text-align:left;padding:.25rem .4rem;color:var(--text-3);font-weight:600;font-size:.72rem;text-transform:uppercase;">Member</th>
+              <th style="text-align:left;padding:.25rem .4rem;color:var(--text-3);font-weight:600;font-size:.72rem;text-transform:uppercase;">Aircraft</th>
+              <th style="text-align:left;padding:.25rem .4rem;color:var(--text-3);font-weight:600;font-size:.72rem;text-transform:uppercase;">Reassign to</th>
             </tr>
           </thead>
           <tbody id="remove-bookings-body"></tbody>
@@ -156,7 +157,7 @@
       <button type="button" class="pi-close" onclick="document.getElementById('add-instr-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     {% if eligible_members %}
-    <p style="font-size:.82rem;color:#8a93a0;margin:.1rem 0 .9rem;">Only active members with an instructor-type role are shown.</p>
+    <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .9rem;">Only active members with an instructor-type role are shown.</p>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_instructor">
@@ -174,11 +175,11 @@
     </form>
     {% else %}
     {% if all_on_roster %}
-    <p style="font-size:.85rem;color:#8a93a0;margin:.1rem 0 .9rem;">
+    <p style="font-size:.85rem;color:var(--text-3);margin:.1rem 0 .9rem;">
       All members with an instructor-type role are already on the roster. To add someone new, first assign them an instructor role on their <a href="{% url 'core:manage_members' club.slug %}">member profile</a>.
     </p>
     {% else %}
-    <p style="font-size:.85rem;color:#8a93a0;margin:.1rem 0 .9rem;">
+    <p style="font-size:.85rem;color:var(--text-3);margin:.1rem 0 .9rem;">
       No members have an instructor-type role yet. Assign the instructor role to a member on their <a href="{% url 'core:manage_members' club.slug %}">member profile</a>, then add them here.
     </p>
     {% endif %}
@@ -223,7 +224,7 @@ function openRemove(memberId, name, bookingCount) {
         '<td style="padding:.3rem .4rem;white-space:nowrap;">' + b.date + '</td>' +
         '<td style="padding:.3rem .4rem;">' + b.member + '</td>' +
         '<td style="padding:.3rem .4rem;white-space:nowrap;">' + b.aircraft + '</td>' +
-        '<td style="padding:.3rem .4rem;"><select name="reassign_' + b.id + '" style="font-size:.82rem;padding:.2rem .4rem;border:1px solid #d6dae0;border-radius:5px;width:100%;">' + opts + '</select></td>' +
+        '<td style="padding:.3rem .4rem;"><select name="reassign_' + b.id + '" style="font-size:.82rem;padding:.2rem .4rem;border:1px solid var(--input-border);border-radius:5px;width:100%;">' + opts + '</select></td>' +
         '</tr>'
       );
     });

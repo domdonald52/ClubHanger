@@ -166,6 +166,7 @@ class ClubConfig(models.Model):
         help_text="Body font used across all pages."
     )
     compact_mode = models.BooleanField(default=False, help_text="Reduce padding and font sizes for denser layouts.")
+    dark_mode = models.BooleanField(default=False, help_text="Enable dark theme across the management app.")
 
     FONT_STACKS = {
         FONT_SYSTEM:  ("system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif", None),

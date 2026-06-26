@@ -3,15 +3,16 @@
 
 {% block content %}
 <div class="container" style="padding:2rem;max-width:1100px;">
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.4rem;">
-    <div>
-      <h1 style="margin:0 0 .2rem;">Events</h1>
-      {% if open_count %}<p style="color:#c0392b;font-size:.85rem;margin:0;">{{ open_count }} submitted — awaiting review</p>{% endif %}
+  <div class="page-hdr">
+    <div style="flex:1;min-width:0;">
+      <h1 class="page-h1" style="margin-bottom:.15rem;">Events {% if open_count %}<span style="font-size:.8rem;font-weight:600;color:var(--danger);margin-left:.3rem;">{{ open_count }} awaiting review</span>{% endif %}</h1>
     </div>
-    <a href="{% url 'core:occurrence_submit' club.slug %}" class="cbtn-add" data-overlay>+ Log an event</a>
+    <div class="page-actions">
+      <a href="{% url 'core:occurrence_submit' club.slug %}" class="cbtn-add" data-overlay>+ Log an event</a>
+    </div>
   </div>
 
-  <form method="get" style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.2rem;align-items:flex-end;">
+  <form method="get" class="list-toolbar">
     <label class="flabel" style="margin:0;">Status
       <select name="status" class="finput" style="width:180px;" onchange="this.form.submit()">
         <option value="" {% if f_status == '' %}selected{% endif %}>Open &amp; reviewed</option>
@@ -53,12 +54,12 @@
     <tbody>
       {% for r in page_obj %}
       <tr>
-        <td>{{ r.date_of_occurrence|date:"j M Y" }}{% if r.is_safety_risk %} <span style="color:#c0392b;font-size:.75rem;" title="Safety risk">⚠</span>{% endif %}</td>
+        <td>{{ r.date_of_occurrence|date:"j M Y" }}{% if r.is_safety_risk %} <span style="color:var(--danger);font-size:.75rem;" title="Safety risk">⚠</span>{% endif %}</td>
         <td>{{ r.occurrence_type.name }}</td>
         <td>{{ r.reported_by.user.get_full_name }}</td>
         <td>{{ r.aircraft.registration|default:"—" }}</td>
         <td><span class="status-chip occ-{{ r.status }}">{{ r.get_status_display }}</span></td>
-        <td style="color:#8a93a0;font-size:.82rem;">
+        <td style="color:var(--text-3);font-size:.82rem;">
           {% with open=r.actions.all %}{% if open %}{{ open|length }} action{{ open|length|pluralize }}{% else %}—{% endif %}{% endwith %}
         </td>
         <td><a href="{% url 'core:occurrence_detail' club.slug r.id %}" class="cbtn-sm cbtn-icon" title="View" data-overlay><i class="ti ti-eye"></i></a></td>
@@ -69,7 +70,7 @@
 
   {% if page_obj.paginator.num_pages > 1 %}
   <div style="display:flex;align-items:center;gap:.5rem;margin-top:1.2rem;font-size:.85rem;flex-wrap:wrap;">
-    <span style="color:#8a93a0;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} &nbsp;({{ page_obj.paginator.count }} records)</span>
+    <span style="color:var(--text-3);">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} &nbsp;({{ page_obj.paginator.count }} records)</span>
     {% if page_obj.has_previous %}
     <a href="?{% if f_status %}status={{ f_status }}&{% endif %}{% if f_type %}type={{ f_type }}&{% endif %}{% if f_safety_risk %}safety_risk={{ f_safety_risk }}&{% endif %}page={{ page_obj.previous_page_number }}" class="cbtn-sm">‹ Prev</a>
     {% endif %}
@@ -80,18 +81,17 @@
   {% endif %}
 
   {% else %}
-  <div style="padding:2rem;text-align:center;color:#8a93a0;font-size:.88rem;">No events found.</div>
+  <div style="padding:2rem;text-align:center;color:var(--text-3);font-size:.88rem;">No events found.</div>
   {% endif %}
 </div>
 
 <style>
   .ft-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-  .ft-table th{padding:.4rem .7rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .ft-table td{padding:.5rem .7rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .ft-table td{padding:.5rem .7rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .ft-table tr:last-child td{border-bottom:none;}
-  .occ-submitted{background:#dbeafe;color:#1d4ed8;}
-  .occ-reviewed{background:#eaf6ec;color:#216c2a;}
-  .occ-closed{background:#f3f5f7;color:#8a93a0;}
-  .occ-draft{background:#fffbeb;color:#92400e;}
+  .occ-submitted{background:var(--info-bg);color:var(--info-text);}
+  .occ-reviewed{background:var(--success-bg);color:var(--success-text);}
+  .occ-closed{background:var(--surface-3);color:var(--text-3);}
+  .occ-draft{background:var(--warning-bg);color:var(--warning-text);}
 </style>
 {% endblock %}

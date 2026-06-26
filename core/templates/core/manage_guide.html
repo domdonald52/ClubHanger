@@ -11,59 +11,58 @@
 .guide-nav h3{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#9aa3ad;margin:0 0 .3rem .1rem;padding-top:.7rem;}
 .guide-nav h3:first-child{padding-top:0;}
 .guide-nav ul{list-style:none;margin:0;padding:0;}
-.guide-nav ul li a{display:block;font-size:.8rem;color:#5b6573;padding:.22rem .5rem;border-radius:5px;text-decoration:none;line-height:1.35;}
-.guide-nav ul li a:hover,.guide-nav ul li a.act{background:#f0f2f5;color:#1f2933;}
+.guide-nav ul li a{display:block;font-size:.8rem;color:var(--text-2);padding:.22rem .5rem;border-radius:5px;text-decoration:none;line-height:1.35;}
+.guide-nav ul li a:hover,.guide-nav ul li a.act{background:#f0f2f5;color:var(--text-1);}
 .guide-nav .sub a{font-size:.76rem;padding-left:1rem;}
 .guide-body{flex:1;min-width:0;}
 /* ── Typography ── */
 .guide-body h1{font-size:1.5rem;font-weight:750;margin:0 0 .3rem;}
-.guide-body .lead{font-size:.93rem;color:#5b6573;margin:0 0 2rem;line-height:1.65;}
+.guide-body .lead{font-size:.93rem;color:var(--text-2);margin:0 0 2rem;line-height:1.65;}
 .gsec{margin-bottom:2.8rem;}
-.gsec h2{font-size:1.12rem;font-weight:700;margin:0 0 .85rem;padding-top:2rem;border-top:2px solid #e8eaed;color:#1f2933;}
-.gsec h3{font-size:.92rem;font-weight:650;margin:1.4rem 0 .45rem;color:#1f2933;}
-.gsec h4{font-size:.83rem;font-weight:650;margin:1rem 0 .35rem;color:#374151;}
-.gsec p,.gsec li{font-size:.86rem;line-height:1.72;color:#374151;}
+.gsec h2{font-size:1.12rem;font-weight:700;margin:0 0 .85rem;padding-top:2rem;border-top:2px solid #e8eaed;color:var(--text-1);}
+.gsec h3{font-size:.92rem;font-weight:650;margin:1.4rem 0 .45rem;color:var(--text-1);}
+.gsec h4{font-size:.83rem;font-weight:650;margin:1rem 0 .35rem;color:var(--text-2);}
+.gsec p,.gsec li{font-size:.86rem;line-height:1.72;color:var(--text-2);}
 .gsec p{margin:.35rem 0 .75rem;}
 .gsec ul,.gsec ol{padding-left:1.4rem;margin:.3rem 0 .75rem;}
 .gsec li{margin-bottom:.2rem;}
 /* ── Callouts ── */
 .callout{border-radius:8px;padding:.7rem 1rem;margin:.9rem 0;font-size:.83rem;line-height:1.65;}
 .callout.info{background:#f0f7ff;border-left:3px solid #3b82f6;color:#1e3a5f;}
-.callout.warn{background:#fffbeb;border-left:3px solid #f59e0b;color:#78350f;}
+.callout.warn{background:var(--warning-bg);border-left:3px solid #f59e0b;color:#78350f;}
 .callout.tip{background:#f0fdf4;border-left:3px solid #22c55e;color:#14532d;}
 .callout.danger{background:#fff1f2;border-left:3px solid #e11d48;color:#881337;}
 .callout strong{font-weight:650;}
 /* ── Step flow ── */
 .step-flow{display:flex;align-items:center;flex-wrap:wrap;gap:.35rem;margin:.9rem 0 1.1rem;}
-.step-flow .step{display:flex;align-items:center;gap:.4rem;background:#f4f6f8;border:1px solid #dde1e6;border-radius:20px;padding:.28rem .65rem .28rem .35rem;font-size:.77rem;font-weight:600;color:#374151;white-space:nowrap;}
+.step-flow .step{display:flex;align-items:center;gap:.4rem;background:#f4f6f8;border:1px solid #dde1e6;border-radius:20px;padding:.28rem .65rem .28rem .35rem;font-size:.77rem;font-weight:600;color:var(--text-2);white-space:nowrap;}
 .step-flow .step .num{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:.67rem;font-weight:700;flex-shrink:0;}
 .step-flow .arrow{color:#9aa3ad;font-size:.85rem;font-weight:700;}
 /* ── Status pills ── */
 .status-flow{display:flex;align-items:center;flex-wrap:wrap;gap:.3rem;margin:.6rem 0 .9rem;}
 .pill{font-size:.76rem;font-weight:600;padding:.2rem .6rem;border-radius:12px;white-space:nowrap;display:inline-block;}
 .pill.pending{background:#fff3e0;color:#e65100;}
-.pill.active{background:#e6f4ea;color:#2a7a3b;}
-.pill.lapsed,.pill.suspended{background:#fee2e2;color:#c0392b;}
-.pill.resigned,.pill.draft,.pill.non_member{background:#f3f5f7;color:#8a93a0;}
+.pill.active{background:#e6f4ea;color:var(--success);}
+.pill.lapsed,.pill.suspended{background:var(--danger-bg);color:var(--danger);}
+.pill.resigned,.pill.draft,.pill.non_member{background:var(--surface-3);color:var(--text-3);}
 .pill.transferred{background:#ede9fe;color:#5b21b6;}
 .pill.sent{background:#fff3e0;color:#e65100;}
-.pill.paid{background:#e6f4ea;color:#2a7a3b;}
-.pill.void{background:#f3f5f7;color:#8a93a0;}
-.pill.green{background:#e6f4ea;color:#2a7a3b;}
+.pill.paid{background:#e6f4ea;color:var(--success);}
+.pill.void{background:var(--surface-3);color:var(--text-3);}
+.pill.green{background:#e6f4ea;color:var(--success);}
 .pill.amber{background:#fff3e0;color:#b45309;}
-.pill.red{background:#fee2e2;color:#c0392b;}
+.pill.red{background:var(--danger-bg);color:var(--danger);}
 .status-flow .sarrow{color:#9aa3ad;font-size:.85rem;}
 /* ── Tables ── */
 .guide-table{width:100%;border-collapse:collapse;font-size:.82rem;margin:.65rem 0 .9rem;}
-.guide-table th{text-align:left;font-size:.71rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9aa3ad;padding:.38rem .55rem;border-bottom:2px solid #e8eaed;}
-.guide-table td{padding:.42rem .55rem;border-bottom:1px solid #f0f2f5;color:#374151;vertical-align:top;}
+.guide-table td{padding:.42rem .55rem;border-bottom:1px solid #f0f2f5;color:var(--text-2);vertical-align:top;}
 .guide-table tr:last-child td{border-bottom:none;}
-.yes{color:#2a7a3b;font-weight:600;}
-.no{color:#c0392b;}
+.yes{color:var(--success);font-weight:600;}
+.no{color:var(--danger);}
 .part{color:#e65100;}
 /* ── Collapsible detail blocks ── */
 .dblock{border:1px solid #e8eaed;border-radius:8px;margin:.9rem 0;}
-.dblock summary{padding:.65rem 1rem;font-size:.83rem;font-weight:650;cursor:pointer;color:#374151;list-style:none;display:flex;align-items:center;gap:.4rem;}
+.dblock summary{padding:.65rem 1rem;font-size:.83rem;font-weight:650;cursor:pointer;color:var(--text-2);list-style:none;display:flex;align-items:center;gap:.4rem;}
 .dblock summary::before{content:'▸';color:#9aa3ad;font-size:.75rem;transition:transform .18s;flex-shrink:0;}
 .dblock[open]>summary::before{transform:rotate(90deg);}
 .dblock summary::-webkit-details-marker{display:none;}
@@ -72,12 +71,12 @@
 /* ── Role cards ── */
 .role-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin:.7rem 0 .9rem;}
 .role-card{border:1px solid #e8eaed;border-radius:8px;padding:.8rem .9rem;}
-.role-card h4{margin:0 0 .3rem;font-size:.85rem;font-weight:650;color:#1f2933;}
+.role-card h4{margin:0 0 .3rem;font-size:.85rem;font-weight:650;color:var(--text-1);}
 .role-card .badge{font-size:.7rem;font-weight:600;padding:.1rem .45rem;border-radius:10px;margin-bottom:.35rem;display:inline-block;}
 .badge.admin{background:#ede9fe;color:#5b21b6;}
-.badge.instructor{background:#dbeafe;color:#1e40af;}
-.badge.member{background:#e6f4ea;color:#2a7a3b;}
-.role-card p{margin:0;font-size:.78rem;color:#5b6573;line-height:1.5;}
+.badge.instructor{background:var(--info-bg);color:var(--info-text);}
+.badge.member{background:#e6f4ea;color:var(--success);}
+.role-card p{margin:0;font-size:.78rem;color:var(--text-2);line-height:1.5;}
 /* ── Screenshot placeholder ── */
 .sshot{border:2px dashed #d1d5db;border-radius:8px;padding:1.5rem 1rem;text-align:center;color:#9aa3ad;font-size:.78rem;margin:.9rem 0;background:#fafafa;line-height:1.5;}
 /* ── Urgency indicator ── */
@@ -555,17 +554,17 @@
         <div class="step" style="background:#e8f5e9;border-color:#81c784;color:#1b5e20;"><span class="num" style="background:#2e7d32;">6</span>Completed</div>
       </div>
       <p><strong>1 — Request booking.</strong> Anyone with booking access can request a booking — a member via the mobile app (Schedule → + button), or an instructor or admin from the management web app Gantt calendar on behalf of any member. The booking block is checked first: if the requesting member has an active block, the + button is disabled and the configured block message is shown. Fields: aircraft, date, time, flight type, and (for dual types) instructor.</p>
-      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Member (mobile app), instructor or admin (Gantt calendar)</em></p>
+      <p style="font-size:.82rem;color:var(--text-3);margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Member (mobile app), instructor or admin (Gantt calendar)</em></p>
       <p><strong>2 — Pending.</strong> The booking appears in the Gantt calendar. The member can still edit the booking (change time, aircraft, flight type) or cancel it from the mobile app. Staff can modify or cancel it from the booking detail on the Gantt. If the flight type requires a departure declaration, the member can start completing it now — it doesn't have to wait until departure day. See <a href="#book-declarations">Departure declarations</a>.</p>
-      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Member can edit/cancel (mobile); admin/instructor can modify or cancel (Gantt)</em></p>
+      <p style="font-size:.82rem;color:var(--text-3);margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Member can edit/cancel (mobile); admin/instructor can modify or cancel (Gantt)</em></p>
       <p><strong>3 — Confirmed.</strong> An admin or instructor clicks Confirm on the booking detail. A push notification is sent to the booking member. On dual bookings, the assigned instructor is notified separately. Once confirmed, the member can no longer self-cancel from the mobile app — they need to contact staff. The booking also becomes visible to the member as "locked in."</p>
-      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
+      <p style="font-size:.82rem;color:var(--text-3);margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
       <p><strong>4 — Departed.</strong> Staff enter the meter start readings (Hobbs and/or Tacho, depending on which instruments the aircraft has) and click Depart. For solo bookings only, the member can depart themselves from the mobile app — no staff action required. Dual and instructor bookings always require staff. Before departure is allowed, the system checks: if the flight type <em>requires a declaration</em>, a submitted (non-draft) declaration must exist. If it doesn't, staff must provide a written override reason — this is recorded in the booking audit log. Once departed, if the aircraft has ADS-B configured (ICAO hex set on the aircraft record), it becomes visible on the <a href="#tools-map">Live Map</a>.</p>
-      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Solo — member (mobile) or admin; dual/instructor — admin or instructor (management web app)</em></p>
+      <p style="font-size:.82rem;color:var(--text-3);margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Solo — member (mobile) or admin; dual/instructor — admin or instructor (management web app)</em></p>
       <p><strong>5 — Returned.</strong> After landing, staff enter: Hobbs/Tacho end readings, destination aerodrome, outcome, and any passengers. The system calculates flight time from the meter delta using the aircraft's billing instrument. The same readings advance the aircraft's maintenance hours using the configured maintenance instrument (which may differ — see <a href="#ac-hours">Hours tracking</a>). The booking shows as <strong>Returned</strong> — flight record complete, charges pending.</p>
-      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
+      <p style="font-size:.82rem;color:var(--text-3);margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin or instructor (management web app)</em></p>
       <p><strong>6 — Completed.</strong> Review the calculated charge items (aircraft hire, instructor fee, surcharges, landing fees), adjust if needed, then apply payment or issue an invoice. See <a href="#book-charging">Charging</a>. The booking moves to <strong>Completed</strong> as soon as direct payment is collected (account credit or EFTPOS/cash) <em>or</em> a flight invoice is issued. Once Completed, the booking's lifecycle is done — if an invoice was issued, its own payment lifecycle continues separately under <a href="#sales-invoices">Sales → Invoices</a>.</p>
-      <p style="font-size:.82rem;color:#8a93a0;margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin (management web app)</em></p>
+      <p style="font-size:.82rem;color:var(--text-3);margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Admin (management web app)</em></p>
 
       <div class="callout info">
         <strong>Scheduling conflicts:</strong> When a booking is created, the system checks for clashes (same aircraft, overlapping time). Conflicts that slip through — or arise later when block-outs are created after the booking, or when an instructor is removed from the roster after being assigned to a booking — surface on the <a href="#book-attention">Attention page</a>.
@@ -719,8 +718,8 @@
       </details>
 
       <!-- Payment flow diagram -->
-      <div style="margin:1.2rem 0;padding:1rem;background:#f8fafc;border:1px solid #e3e6ea;border-radius:10px;overflow-x:auto;">
-        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8a93a0;margin-bottom:.9rem;">Payment flow — single flight</div>
+      <div style="margin:1.2rem 0;padding:1rem;background:#f8fafc;border:1px solid var(--border);border-radius:10px;overflow-x:auto;">
+        <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:.9rem;">Payment flow — single flight</div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:340px;">
           <!-- Start node -->
           <div style="background:#1d3a5f;color:#fff;border-radius:8px;padding:.45rem 1.1rem;font-size:.82rem;font-weight:600;">Flight completed &amp; charges confirmed</div>
@@ -732,25 +731,25 @@
             <!-- Three columns -->
             <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:0;">
               <div style="width:2px;height:18px;background:#94a3b8;"></div>
-              <div style="background:#dcfce7;border:1.5px solid #86efac;color:#166534;border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Account credit</div>
+              <div style="background:#dcfce7;border:1.5px solid #86efac;color:var(--success-text);border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Account credit</div>
               <div style="width:2px;height:14px;background:#86efac;"></div>
-              <div style="background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Balance debited immediately</div>
+              <div style="background:#f0fdf4;border:1px solid #bbf7d0;color:var(--success-text);border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Balance debited immediately</div>
               <div style="width:2px;height:14px;background:#86efac;"></div>
               <div style="background:#166534;color:#fff;border-radius:6px;padding:.35rem .7rem;font-size:.74rem;font-weight:700;text-align:center;">✓ Flight: Paid</div>
             </div>
             <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:0;">
               <div style="width:2px;height:18px;background:#94a3b8;"></div>
-              <div style="background:#dbeafe;border:1.5px solid #93c5fd;color:#1d4ed8;border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">EFTPOS / Cash</div>
+              <div style="background:var(--info-bg);border:1.5px solid #93c5fd;color:var(--info-text);border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">EFTPOS / Cash</div>
               <div style="width:2px;height:14px;background:#93c5fd;"></div>
-              <div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Payment recorded immediately</div>
+              <div style="background:var(--info-bg);border:1px solid #bfdbfe;color:var(--info-text);border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Payment recorded immediately</div>
               <div style="width:2px;height:14px;background:#93c5fd;"></div>
               <div style="background:#166534;color:#fff;border-radius:6px;padding:.35rem .7rem;font-size:.74rem;font-weight:700;text-align:center;">✓ Flight: Paid</div>
             </div>
             <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:0;">
               <div style="width:2px;height:18px;background:#94a3b8;"></div>
-              <div style="background:#fef3c7;border:1.5px solid #fcd34d;color:#92400e;border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Invoice</div>
+              <div style="background:#fef3c7;border:1.5px solid #fcd34d;color:var(--warning-text);border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Invoice</div>
               <div style="width:2px;height:14px;background:#fcd34d;"></div>
-              <div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Tax invoice created (Sent)</div>
+              <div style="background:var(--warning-bg);border:1px solid #fde68a;color:var(--warning-text);border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Tax invoice created (Sent)</div>
               <div style="width:2px;height:14px;background:#fcd34d;"></div>
               <!-- Sub-branch for invoice payment -->
               <div style="display:flex;width:100%;max-width:240px;align-items:flex-start;position:relative;">
@@ -771,7 +770,7 @@
             </div>
           </div>
         </div>
-        <div style="margin-top:1rem;font-size:.73rem;color:#8a93a0;border-top:1px solid #e3e6ea;padding-top:.6rem;">
+        <div style="margin-top:1rem;font-size:.73rem;color:var(--text-3);border-top:1px solid var(--border);padding-top:.6rem;">
           <strong>Split flights</strong> run each pilot through the same flow independently — pilot A might pay by account credit while pilot B gets an invoice. The flight's overall payment method shows as <em>Split</em>. Each pilot's portion creates its own FlightPayment row.
         </div>
       </div>

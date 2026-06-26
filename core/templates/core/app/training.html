@@ -10,11 +10,11 @@
 {% if notes %}
 <div style="padding:0 .9rem .9rem;">
   {% for note in notes %}
-  <div style="background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:1rem;margin-bottom:.75rem;">
+  <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.75rem;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
       <div>
         <div style="font-size:.95rem;font-weight:700;color:#1a2332;">{{ note.booking.scheduled_start|date:"j M Y" }}</div>
-        <div style="font-size:.78rem;color:#8a93a0;margin-top:2px;">
+        <div style="font-size:.78rem;color:var(--text-3);margin-top:2px;">
           {{ note.booking.aircraft.registration|default:"" }}
           {% if note.author %} · {{ note.author.get_full_name }}{% endif %}
           {% if note.booking.flight_completion %} · {{ note.booking.flight_completion.hobbs_time|floatformat:1 }} hrs{% endif %}
@@ -24,29 +24,29 @@
 
     {% if note.exercises_covered %}
     <div style="margin-bottom:.5rem;">
-      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:3px;">Exercises</div>
-      <div style="font-size:.84rem;color:#374151;line-height:1.55;white-space:pre-wrap;">{{ note.exercises_covered }}</div>
+      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin-bottom:3px;">Exercises</div>
+      <div style="font-size:.84rem;color:var(--text-2);line-height:1.55;white-space:pre-wrap;">{{ note.exercises_covered }}</div>
     </div>
     {% endif %}
 
     {% if note.debrief_notes %}
     <div style="margin-bottom:.5rem;padding-top:.5rem;border-top:1px solid #f0f2f4;">
-      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:3px;">Debrief</div>
-      <div style="font-size:.84rem;color:#374151;line-height:1.55;white-space:pre-wrap;">{{ note.debrief_notes }}</div>
+      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin-bottom:3px;">Debrief</div>
+      <div style="font-size:.84rem;color:var(--text-2);line-height:1.55;white-space:pre-wrap;">{{ note.debrief_notes }}</div>
     </div>
     {% endif %}
 
     {% if note.next_lesson_plan %}
     <div style="padding-top:.5rem;border-top:1px solid #f0f2f4;">
-      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#9ca3af;margin-bottom:3px;">Next lesson</div>
-      <div style="font-size:.84rem;color:#374151;line-height:1.55;white-space:pre-wrap;">{{ note.next_lesson_plan }}</div>
+      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-3);margin-bottom:3px;">Next lesson</div>
+      <div style="font-size:.84rem;color:var(--text-2);line-height:1.55;white-space:pre-wrap;">{{ note.next_lesson_plan }}</div>
     </div>
     {% endif %}
   </div>
   {% endfor %}
 </div>
 {% else %}
-<div class="app-empty" style="padding:2rem .9rem;text-align:center;color:#8a93a0;font-size:.85rem;">No training notes yet.</div>
+<div class="app-empty" style="padding:2rem .9rem;text-align:center;color:var(--text-3);font-size:.85rem;">No training notes yet.</div>
 {% endif %}
 
 {% endblock %}

@@ -32,7 +32,7 @@
       <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
         <span class="standing-badge standing-{{ member.standing }}">{{ member.get_standing_display }}</span>
         {% if member.role %}<span class="role-chip">{{ member.role.name }}</span>{% endif %}
-        <span style="font-size:.82rem;color:#8a93a0;">Member since {{ member.join_date|date:"M Y" }}</span>
+        <span style="font-size:.82rem;color:var(--text-3);">Member since {{ member.join_date|date:"M Y" }}</span>
       </div>
     </div>
   </div>
@@ -57,7 +57,7 @@
         <label class="flabel">Mobile<input type="text" name="phone_mobile" value="{{ member.phone_mobile }}" class="finput"></label>
         <label class="flabel">Home phone<input type="text" name="phone_home" value="{{ member.phone_home }}" class="finput"></label>
         <label class="flabel">Date of birth<input type="date" name="date_of_birth" value="{{ member.date_of_birth|date:'Y-m-d'|default:'' }}" class="finput"></label>
-        <label class="flabel">Sex <span style="font-weight:400;color:#aaa;">(optional)</span>
+        <label class="flabel">Sex <span style="font-weight:400;color:var(--text-3);">(optional)</span>
           <select name="sex" class="finput">
             <option value="">— not specified —</option>
             <option value="M" {% if member.sex == 'M' %}selected{% endif %}>Male</option>
@@ -78,15 +78,15 @@
     <div class="field-grid" style="grid-template-columns:repeat(2,1fr);">
       <div class="ro-field">
         <span class="ro-label">Balance</span>
-        <span style="font-size:1.3rem;font-weight:700;color:{% if account.balance < 0 %}#c0392b{% else %}#2a7a3b{% endif %};">${{ account.balance|currency }}</span>
+        <span style="font-size:1.3rem;font-weight:700;color:{% if account.balance < 0 %}var(--danger){% else %}var(--success){% endif %};">${{ account.balance|currency }}</span>
       </div>
       <div class="ro-field">
         <span class="ro-label">Status</span>
-        {% if account.has_warning %}<span style="color:#c0392b;font-weight:600;">⚠ Over credit limit</span>{% else %}<span style="color:#2a7a3b;">Good standing</span>{% endif %}
+        {% if account.has_warning %}<span style="color:var(--danger);font-weight:600;">⚠ Over credit limit</span>{% else %}<span style="color:var(--success);">Good standing</span>{% endif %}
       </div>
     </div>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;">No account information available.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No account information available.</p>
     {% endif %}
   </section>
 
@@ -119,7 +119,7 @@
         {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#8a93a0;font-size:.85rem;margin-bottom:1.2rem;">No upcoming bookings.</p>{% endif %}
+    {% else %}<p style="color:var(--text-3);font-size:.85rem;margin-bottom:1.2rem;">No upcoming bookings.</p>{% endif %}
 
     <h2 class="section-title">Past bookings</h2>
     {% if past %}
@@ -136,7 +136,7 @@
         {% endfor %}
       </tbody>
     </table>
-    {% else %}<p style="color:#8a93a0;font-size:.85rem;">No past bookings recorded.</p>{% endif %}
+    {% else %}<p style="color:var(--text-3);font-size:.85rem;">No past bookings recorded.</p>{% endif %}
 
     {% if upcoming_as_instructor %}
     <h2 class="section-title" style="margin-top:1.5rem;">My instruction schedule — next 7 days</h2>
@@ -176,14 +176,14 @@
         <tr>
           <td style="white-space:nowrap;">{{ fc.booking.scheduled_start|date:"j M Y" }}</td>
           <td>{{ fc.booking.aircraft.registration }}</td>
-          <td style="color:#8a93a0;font-size:.82rem;">{{ fc.booking.flight_type.name }}</td>
+          <td style="color:var(--text-3);font-size:.82rem;">{{ fc.booking.flight_type.name }}</td>
           <td style="text-align:right;">{% if fc.actual_flight_hours %}{{ fc.actual_flight_hours }}h{% else %}—{% endif %}</td>
           <td style="text-align:right;">${{ fc.total_charge|currency }}</td>
           <td style="text-align:right;font-weight:600;">${{ fc.amount_paid|currency }}</td>
-          <td style="font-size:.82rem;color:#8a93a0;">{{ fc.get_payment_method_display }}</td>
+          <td style="font-size:.82rem;color:var(--text-3);">{{ fc.get_payment_method_display }}</td>
           <td>
             {% if fc.is_paid %}
-              <span style="color:#2a7a3b;font-size:.82rem;">Settled</span>
+              <span style="color:var(--success);font-size:.82rem;">Settled</span>
             {% elif fc.is_partially_paid %}
               <span style="color:#b06800;font-size:.82rem;">Partial</span>
             {% endif %}
@@ -193,13 +193,13 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:#8a93a0;font-size:.85rem;">No payments recorded yet.</p>
+    <p style="color:var(--text-3);font-size:.85rem;">No payments recorded yet.</p>
     {% endif %}
   </section>
 
   <!-- ── NOTIFICATIONS ── -->
   <section id="notifications" class="detail-section stab-panel">
-    <p style="font-size:.83rem;color:#5b6573;margin-bottom:1.2rem;">
+    <p style="font-size:.83rem;color:var(--text-2);margin-bottom:1.2rem;">
       Choose which alerts appear in your <a href="{% url 'core:notifications' club.slug %}">notifications inbox</a>.
       All are on by default except slot releases (opt-in).
     </p>
@@ -210,13 +210,13 @@
       <input type="hidden" name="action" value="save_notifications">
 
       <table style="width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:1.4rem;">
-        <thead><tr style="border-bottom:2px solid #e3e6ea;">
-          <th style="padding:.4rem .6rem;text-align:left;color:#8a93a0;font-size:.75rem;text-transform:uppercase;">Alert</th>
-          <th style="padding:.4rem .6rem;text-align:center;color:#8a93a0;font-size:.75rem;text-transform:uppercase;width:56px;">On/Off</th>
+        <thead><tr style="border-bottom:2px solid var(--border);">
+          <th style="padding:.4rem .6rem;text-align:left;color:var(--text-3);font-size:.75rem;text-transform:uppercase;">Alert</th>
+          <th style="padding:.4rem .6rem;text-align:center;color:var(--text-3);font-size:.75rem;text-transform:uppercase;width:56px;">On/Off</th>
         </tr></thead>
         <tbody>
           {% for t in notification_toggle_fields %}
-          <tr style="border-bottom:1px solid #f0f2f4;">
+          <tr style="border-bottom:1px solid var(--border-subtle);">
             <td style="padding:.5rem .6rem;">{{ t.label }}</td>
             <td style="padding:.5rem .6rem;text-align:center;">
               <label class="tog-sw">
@@ -231,13 +231,13 @@
 
       {% if club_aircraft or club_instructors %}
       <h3 style="font-size:.9rem;font-weight:650;margin:.5rem 0 .4rem;">Slot release filters</h3>
-      <p style="font-size:.82rem;color:#5b6573;margin-bottom:.8rem;">When a booking is released, only notify me if it matches these filters (leave empty to match any).</p>
+      <p style="font-size:.82rem;color:var(--text-2);margin-bottom:.8rem;">When a booking is released, only notify me if it matches these filters (leave empty to match any).</p>
       {% if club_aircraft %}
       <div style="margin-bottom:.9rem;">
         <div class="flabel" style="margin-bottom:.4rem;">Aircraft</div>
         <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
           {% for ac in club_aircraft %}
-          <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:6px;padding:.28rem .6rem;cursor:pointer;">
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:.28rem .6rem;cursor:pointer;">
             <input type="checkbox" name="notify_aircraft" value="{{ ac.id }}"
                    {% if pref and ac in pref.aircraft.all %}checked{% endif %}>
             {{ ac.registration }}
@@ -251,7 +251,7 @@
         <div class="flabel" style="margin-bottom:.4rem;">Instructor</div>
         <div style="display:flex;flex-wrap:wrap;gap:.4rem;">
           {% for instr in club_instructors %}
-          <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;background:#f5f7fa;border:1px solid #e3e6ea;border-radius:6px;padding:.28rem .6rem;cursor:pointer;">
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.82rem;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;padding:.28rem .6rem;cursor:pointer;">
             <input type="checkbox" name="notify_instructors" value="{{ instr.user.id }}"
                    {% if pref and instr.user in pref.instructors.all %}checked{% endif %}>
             {{ instr.user.get_full_name }}
@@ -265,7 +265,7 @@
           <input type="number" name="max_days_ahead" min="1" max="90"
                  value="{{ pref.max_days_ahead|default:'' }}" placeholder="any"
                  class="finput" style="width:80px;">
-          <span style="font-size:.83rem;color:#5b6573;">days ahead</span>
+          <span style="font-size:.83rem;color:var(--text-2);">days ahead</span>
         </div>
       </label>
       {% endif %}
@@ -276,23 +276,23 @@
 
     {% if watched_slots %}
     <h3 style="font-size:.9rem;font-weight:650;margin:1.4rem 0 .5rem;">Active slot watches</h3>
-    <p style="font-size:.82rem;color:#5b6573;margin-bottom:.8rem;">You'll be notified if any of these slots are released.</p>
+    <p style="font-size:.82rem;color:var(--text-2);margin-bottom:.8rem;">You'll be notified if any of these slots are released.</p>
     <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
-      <thead><tr style="border-bottom:2px solid #e3e6ea;">
-        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Flight</th>
-        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">When</th>
-        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;">Watching since</th>
+      <thead><tr style="border-bottom:2px solid var(--border);">
+        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">Flight</th>
+        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">When</th>
+        <th style="padding:.35rem .5rem;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);">Watching since</th>
         <th style="padding:.35rem .5rem;"></th>
       </tr></thead>
       <tbody>
         {% for sw in watched_slots %}
-        <tr style="border-bottom:1px solid #f0f2f4;">
+        <tr style="border-bottom:1px solid var(--border-subtle);">
           <td style="padding:.4rem .5rem;">
             {{ sw.booking.member.user.get_full_name }} · {{ sw.booking.aircraft.registration }}
-            <span style="font-size:.75rem;color:#8a93a0;margin-left:.3rem;">{{ sw.booking.flight_type.name }}</span>
+            <span style="font-size:.75rem;color:var(--text-3);margin-left:.3rem;">{{ sw.booking.flight_type.name }}</span>
           </td>
-          <td style="padding:.4rem .5rem;color:#5b6573;">{{ sw.booking.scheduled_start|date:"D j M, H:i" }}</td>
-          <td style="padding:.4rem .5rem;color:#8a93a0;font-size:.8rem;">{{ sw.created_at|date:"j M Y" }}</td>
+          <td style="padding:.4rem .5rem;color:var(--text-2);">{{ sw.booking.scheduled_start|date:"D j M, H:i" }}</td>
+          <td style="padding:.4rem .5rem;color:var(--text-3);font-size:.8rem;">{{ sw.created_at|date:"j M Y" }}</td>
           <td style="padding:.4rem .5rem;text-align:right;">
             <form method="post" style="display:inline;">
               {% csrf_token %}
@@ -311,31 +311,29 @@
 </div>
 
 <style>
-  .profile-header{display:flex;gap:1.2rem;align-items:flex-start;background:#fff;border:1px solid #e3e6ea;border-radius:12px;padding:1.25rem 1.4rem;margin-bottom:1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+  .profile-header{display:flex;gap:1.2rem;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.4rem;margin-bottom:1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.06);}
   .avatar-wrap{position:relative;flex-shrink:0;}
-  .avatar-lg{width:72px;height:72px;border-radius:50%;object-fit:cover;display:block;border:2px solid #e3e6ea;}
-  span.avatar-lg{display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;background:#e8f0fb;color:var(--primary);border:2px solid #e3e6ea;}
+  .avatar-lg{width:72px;height:72px;border-radius:50%;object-fit:cover;display:block;border:2px solid var(--border);}
+  span.avatar-lg{display:flex;align-items:center;justify-content:center;width:72px;height:72px;border-radius:50%;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);border:2px solid var(--border);}
   span.avatar-lg svg{width:40px;height:40px;}
-  .avatar-upload-btn{position:absolute;bottom:0;right:0;width:22px;height:22px;background:#fff;border:1px solid #d6dae0;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);}
-  .avatar-upload-btn:hover{background:#f3f5f7;}
+  .avatar-upload-btn{position:absolute;bottom:0;right:0;width:22px;height:22px;background:var(--surface);border:1px solid var(--input-border);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+  .avatar-upload-btn:hover{background:var(--surface-3);}
   .standing-badge{font-size:.75rem;font-weight:600;padding:.2rem .55rem;border-radius:10px;}
-  .standing-badge.standing-active{background:#e6f4ea;color:#2a7a3b;}
-  .standing-badge.standing-suspended,.standing-badge.standing-lapsed{background:#fee2e2;color:#c0392b;}
-  .role-chip{font-size:.75rem;background:#e8f0fb;color:#2f7dd1;padding:.2rem .5rem;border-radius:10px;font-weight:500;}
-  .detail-section{background:#fff;border:1px solid #e3e6ea;border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;}
-  .section-title{font-size:.95rem;font-weight:650;color:#1f2933;margin:0 0 1rem;}
+  .standing-badge.standing-active{background:var(--success-bg);color:var(--success-text);}
+  .standing-badge.standing-suspended,.standing-badge.standing-lapsed{background:var(--danger-bg);color:var(--danger);}
+  .role-chip{font-size:.75rem;background:color-mix(in srgb,var(--primary) 12%,var(--surface));color:var(--primary);padding:.2rem .5rem;border-radius:10px;font-weight:500;}
+  .detail-section{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.4rem;margin-bottom:1rem;}
+  .section-title{font-size:.95rem;font-weight:650;color:var(--text-1);margin:0 0 1rem;}
   .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;}
-  .flabel{display:block;font-size:.82rem;font-weight:600;color:#5b6573;}
-  .finput{display:block;width:100%;margin-top:.25rem;padding:.4rem .5rem;border:1px solid #ddd;border-radius:6px;font-size:.88rem;box-sizing:border-box;}
-  .ro-field{font-size:.88rem;color:#1f2933;padding:.4rem 0;}
-  .ro-label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#8a93a0;margin-bottom:.25rem;}
+  .flabel{display:block;font-size:.82rem;font-weight:600;color:var(--text-2);}
+  .ro-field{font-size:.88rem;color:var(--text-1);padding:.4rem 0;}
+  .ro-label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.25rem;}
   .action-link{font-size:.78rem;color:var(--primary);text-decoration:none;font-weight:500;margin-left:.4rem;}
   .action-link:hover{text-decoration:underline;}
   .action-link.depart-link{background:var(--primary);color:#fff;padding:.2rem .5rem;border-radius:5px;margin-left:.3rem;}
   .action-link.depart-link:hover{filter:brightness(1.08);text-decoration:none;}
   .bk-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-  .bk-table th{padding:.35rem .5rem;text-align:left;border-bottom:2px solid #e3e6ea;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:#8a93a0;font-weight:600;}
-  .bk-table td{padding:.45rem .5rem;border-bottom:1px solid #f0f2f4;vertical-align:middle;}
+  .bk-table td{padding:.45rem .5rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
   .bk-table tr:last-child td{border-bottom:0;}
   .status-chip{font-size:.72rem;font-weight:600;padding:.15rem .45rem;border-radius:10px;}
   /* status-chip colours defined in base.html */
@@ -351,7 +349,7 @@
       <td>{{ a.report.date_of_occurrence|date:"j M Y" }}</td>
       <td>{{ a.report.occurrence_type.name }}</td>
       <td>{{ a.description }}</td>
-      <td style="color:#8a93a0;font-size:.83rem;">{% if a.due_date %}{{ a.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
+      <td style="color:var(--text-3);font-size:.83rem;">{% if a.due_date %}{{ a.due_date|date:"j M Y" }}{% else %}—{% endif %}</td>
       <td><a href="{% url 'core:occurrence_detail' club.slug a.report_id %}" class="cbtn-sm cbtn-icon" title="View" data-overlay><i class="ti ti-eye"></i></a></td>
     </tr>
     {% endfor %}

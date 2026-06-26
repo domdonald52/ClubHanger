@@ -514,8 +514,8 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
                 _age = _m['age_minutes']
                 _ageStr = (
                     '' if _age is None else
-                    f'{_age}min' if _age < 60 else
-                    f'{_age//60}h{_age%60}m' if _age % 60 else f'{_age//60}h'
+                    f'{_age} min' if _age < 60 else
+                    f'{_age//60}h {_age%60}m' if _age % 60 else f'{_age//60}h'
                 )
                 _wind = ''
                 if _m['wind_dir_repr'] and _m['wind_speed']:
@@ -1245,7 +1245,8 @@ def availability_search(request, club_slug):
                 aircraft=specific_aircraft, aircraft_type=aircraft_type_filter or None,
                 min_minutes=config.time_slot_interval,
             )
-            slot_day = {}  # date -> {start_label -> slot_dict}
+            # One row per (time, aircraft) so each is independently bookable
+            slot_day = {}  # date -> {(start_label, aircraft_id) -> slot_dict}
             for entry in raw:
                 d = entry['date']; ac = entry['aircraft']
                 type_name = ac.aircraft_type.name if ac.aircraft_type_id else ac.registration
@@ -1255,22 +1256,23 @@ def availability_search(request, club_slug):
                     st = timezone.localtime(s['start']); en = timezone.localtime(s['end'])
                     if not clip_and_mark(s, st, en):
                         continue
+                    if s['minutes'] < duration:
+                        continue
+                    slot_key = (s['start_label'], ac.id)
                     if d not in slot_day:
                         slot_day[d] = {}
-                    slot = slot_day[d].setdefault(s['start_label'], {
-                        'start_label': s['start_label'], 'end_label': s['end_label'],
-                        'start_iso': s['start_iso'], 'end_iso': s['end'].isoformat(),
-                        'year': d.year, 'month': d.month, 'day': d.day,
-                        'type_pills': {},
-                    })
-                    # Solo: one pill per tail (reg is the key) so each aircraft is bookable individually
-                    if ac.registration not in slot['type_pills']:
-                        slot['type_pills'][ac.registration] = {'reg': ac.registration, 'type_name': type_name, 'aircraft_id': ac.id}
+                    if slot_key not in slot_day[d]:
+                        slot_day[d][slot_key] = {
+                            'start_label': s['start_label'], 'end_label': s['end_label'],
+                            'start_iso': s['start_iso'], 'end_iso': s['end'].isoformat(),
+                            'year': d.year, 'month': d.month, 'day': d.day,
+                            'aircraft': {'reg': ac.registration, 'type_name': type_name, 'aircraft_id': ac.id},
+                            'instructors': [],
+                        }
             by_day = {
                 d: {'slot_rows': sorted(
-                    [{**{k: val for k, val in v.items() if k != 'type_pills'},
-                      'type_pills': list(v['type_pills'].values())} for v in slots.values()],
-                    key=lambda x: x['start_label']
+                    list(slots.values()),
+                    key=lambda x: (x['start_label'], x['aircraft']['reg'])
                 )}
                 for d, slots in slot_day.items()
             }
@@ -1280,7 +1282,8 @@ def availability_search(request, club_slug):
                 aircraft=specific_aircraft, aircraft_type=aircraft_type_filter or None,
                 instructor=specific_instructor, min_minutes=config.time_slot_interval,
             )
-            instr_day = {}  # date -> {instr_id -> {instructor_name, slot_map}}
+            # Group by (date, start_label, aircraft_id) → collect instructors per slot
+            slot_day = {}  # date -> {(start_label, aircraft_id) -> slot_dict}
             for entry in raw:
                 d = entry['date']; ac = entry['aircraft']
                 type_name = ac.aircraft_type.name if ac.aircraft_type_id else ac.registration
@@ -1293,35 +1296,30 @@ def availability_search(request, club_slug):
                         st = timezone.localtime(s['start']); en = timezone.localtime(s['end'])
                         if not clip_and_mark(s, st, en):
                             continue
-                        if d not in instr_day:
-                            instr_day[d] = {}
-                        if instr.id not in instr_day[d]:
-                            instr_day[d][instr.id] = {
-                                'instructor_name': instr_name, 'instructor_id': instr.id, 'slot_map': {},
+                        if s['minutes'] < duration:
+                            continue
+                        slot_key = (s['start_label'], ac.id)
+                        if d not in slot_day:
+                            slot_day[d] = {}
+                        if slot_key not in slot_day[d]:
+                            slot_day[d][slot_key] = {
+                                'start_label': s['start_label'], 'end_label': s['end_label'],
+                                'start_iso': s['start_iso'], 'end_iso': s['end'].isoformat(),
+                                'year': d.year, 'month': d.month, 'day': d.day,
+                                'aircraft': {'reg': ac.registration, 'type_name': type_name, 'aircraft_id': ac.id},
+                                'instructors': [], '_instr_seen': set(),
                             }
-                        slot = instr_day[d][instr.id]['slot_map'].setdefault(s['start_label'], {
-                            'start_label': s['start_label'], 'end_label': s['end_label'],
-                            'start_iso': s['start_iso'], 'end_iso': s['end'].isoformat(),
-                            'year': d.year, 'month': d.month, 'day': d.day,
-                            'type_pills': {},
-                        })
-                        if ac.registration not in slot['type_pills']:
-                            slot['type_pills'][ac.registration] = {'reg': ac.registration, 'type_name': type_name, 'aircraft_id': ac.id}
+                        slot = slot_day[d][slot_key]
+                        if instr.id not in slot['_instr_seen']:
+                            slot['_instr_seen'].add(instr.id)
+                            slot['instructors'].append({'instructor_id': instr.id, 'instructor_name': instr_name})
             by_day = {}
-            for d, instrs in instr_day.items():
-                instr_rows = []
-                for data in sorted(instrs.values(), key=lambda x: x['instructor_name']):
-                    slot_rows = sorted(
-                        [{**{k: val for k, val in v.items() if k != 'type_pills'},
-                          'type_pills': list(v['type_pills'].values())} for v in data['slot_map'].values()],
-                        key=lambda x: x['start_label']
-                    )
-                    instr_rows.append({
-                        'instructor_name': data['instructor_name'],
-                        'instructor_id': data['instructor_id'],
-                        'slot_rows': slot_rows,
-                    })
-                by_day[d] = {'instructor_rows': instr_rows}
+            for d, slots in slot_day.items():
+                slot_rows = sorted(
+                    [{k: v for k, v in s.items() if k != '_instr_seen'} for s in slots.values()],
+                    key=lambda x: (x['start_label'], x['aircraft']['reg'])
+                )
+                by_day[d] = {'slot_rows': slot_rows}
 
         from datetime import timedelta as _td2
         results = []
@@ -1342,17 +1340,10 @@ def availability_search(request, club_slug):
                 'day_anchor': f'day-{d.year}-{d.month:02d}-{d.day:02d}',
                 'iso_week_key': _mon.isoformat(),
                 'week_label': _wlabel,
-                'instructor_rows': day_data.get('instructor_rows', []),
                 'slot_rows': day_data.get('slot_rows', []),
             })
 
-        if is_solo:
-            result_count = sum(len(day['slot_rows']) for day in results)
-        else:
-            result_count = sum(
-                len({s['start_label'] for ir in day['instructor_rows'] for s in ir['slot_rows']})
-                for day in results
-            )
+        result_count = sum(len(day['slot_rows']) for day in results)
 
         # Build flat day list for the calendar band widget
         from datetime import timedelta as _td, date as _date
@@ -1392,8 +1383,9 @@ def availability_search(request, club_slug):
         'filters_applied': filters_applied,
         'result_count': result_count,
         'calendar_days': calendar_days if search_performed else [],
+        'base_template': 'core/base_inline.html' if request.GET.get('inline') == '1' else 'core/base.html',
     }
-    
+
     return render(request, 'core/availability_search.html', context)
 
 
@@ -2101,6 +2093,7 @@ def club_settings(request, club_slug, mode='settings'):
             if _fc in dict(config.FONT_CHOICES):
                 config.font_choice = _fc
             config.compact_mode = request.POST.get('compact_mode') == 'on'
+            config.dark_mode = request.POST.get('dark_mode') == 'on'
             oh_start = request.POST.get('operating_hours_start')
             oh_end = request.POST.get('operating_hours_end')
             if oh_start:
@@ -8065,8 +8058,10 @@ def reports_pivot(request, club_slug):
     date_to_str   = request.GET.get('date_to', '').strip()
 
     VALID_DIMS    = {'aircraft', 'aircraft_type', 'flight_type', 'member',
-                     'instructor', 'month', 'quarter', 'year', 'outcome'}
-    VALID_METRICS = {'hours', 'charge', 'paid', 'flights', 'outstanding', 'budgeted_hours'}
+                     'instructor', 'month', 'quarter', 'year', 'outcome',
+                     'booking_kind', 'day_of_week', 'week', 'member_role'}
+    VALID_METRICS = {'hours', 'charge', 'paid', 'flights', 'outstanding', 'budgeted_hours',
+                     'avg_hrs', 'avg_charge_per_hr', 'landing_fees', 'sundry_charges'}
 
     if not rows or not values:
         return JsonResponse({'error': 'rows and values required'}, status=400)
@@ -8081,6 +8076,7 @@ def reports_pivot(request, club_slug):
           .filter(booking__club=club, actual_flight_hours__isnull=False)
           .select_related('booking__aircraft__aircraft_type',
                           'booking__member__user',
+                          'booking__member__role',
                           'booking__instructor',
                           'booking__flight_type'))
     if date_from_str:
@@ -8120,10 +8116,48 @@ def reports_pivot(request, club_slug):
             return str(b.arrived_at.year) if b.arrived_at else '—'
         if dim == 'outcome':
             return fc.get_outcome_display()
+        if dim == 'booking_kind':
+            ft = b.flight_type
+            if not ft:
+                return 'Unknown'
+            if ft.for_contacts:
+                return 'Contact'
+            if ft.is_solo:
+                return 'Solo'
+            if b.instructor_id:
+                return 'Dual'
+            return 'Solo'
+        if dim == 'day_of_week':
+            return b.arrived_at.strftime('%a') if b.arrived_at else '—'
+        if dim == 'week':
+            if not b.arrived_at:
+                return '—'
+            iso = b.arrived_at.isocalendar()
+            return f'W{iso[1]:02d} {b.arrived_at.year}'
+        if dim == 'member_role':
+            m = b.member
+            if m and m.role_id:
+                return m.role.name
+            return '(no role)'
         return '—'
 
+    _charge_item_map = {}
+    if 'landing_fees' in values or 'sundry_charges' in values:
+        from collections import defaultdict as _dd
+        _cimap = _dd(lambda: {'landing': 0.0, 'sundry': 0.0})
+        _ci_qs = (FlightChargeItem.objects
+                  .filter(flight_completion__booking__club=club,
+                          item_type__in=['landing', 'one_off'])
+                  .values_list('flight_completion_id', 'item_type', 'amount'))
+        for fc_id, itype, amt in _ci_qs:
+            if itype == 'landing':
+                _cimap[fc_id]['landing'] += float(amt)
+            else:
+                _cimap[fc_id]['sundry'] += float(amt)
+        _charge_item_map = _cimap
+
     def get_metric(fc, metric):
-        if metric == 'hours':
+        if metric == 'hours' or metric == 'avg_hrs':
             return float(fc.actual_flight_hours or 0)
         if metric == 'charge':
             return float(fc.total_charge or 0)
@@ -8133,6 +8167,14 @@ def reports_pivot(request, club_slug):
             return 1
         if metric == 'outstanding':
             return float(max(0, (fc.total_charge or 0) - (fc.amount_paid or 0)))
+        if metric == 'avg_charge_per_hr':
+            hrs = float(fc.actual_flight_hours or 0)
+            chg = float(fc.total_charge or 0)
+            return round(chg / hrs, 2) if hrs else 0.0
+        if metric == 'landing_fees':
+            return _charge_item_map.get(fc.id, {}).get('landing', 0.0)
+        if metric == 'sundry_charges':
+            return _charge_item_map.get(fc.id, {}).get('sundry', 0.0)
         return 0
 
     flight_values = [v for v in values if v != 'budgeted_hours']
@@ -8179,8 +8221,10 @@ def reports_pivot(request, club_slug):
     for i, v in enumerate(values):
         if v == 'flights':
             agg_map[v] = 'count'
-        elif v == 'budgeted_hours':
+        elif v in ('budgeted_hours', 'landing_fees', 'sundry_charges'):
             agg_map[v] = 'sum'
+        elif v in ('avg_hrs', 'avg_charge_per_hr'):
+            agg_map[v] = 'avg'
         else:
             agg_map[v] = aggs[i] if i < len(aggs) and aggs[i] in ('sum', 'avg', 'count') else 'sum'
 
@@ -8237,9 +8281,12 @@ def reports_pivot(request, club_slug):
         'aircraft': 'Aircraft', 'aircraft_type': 'A/C type', 'flight_type': 'Flight type',
         'member': 'Member', 'instructor': 'Instructor',
         'month': 'Month', 'quarter': 'Quarter', 'year': 'Year', 'outcome': 'Outcome',
+        'booking_kind': 'Kind', 'day_of_week': 'Day', 'week': 'Week', 'member_role': 'Role',
         'hours': 'Hours', 'charge': 'Charge ($)', 'paid': 'Paid ($)',
         'flights': 'Flights', 'outstanding': 'Outstanding ($)',
         'budgeted_hours': 'Budgeted hrs',
+        'avg_hrs': 'Avg hrs/flight', 'avg_charge_per_hr': 'Avg $/hr',
+        'landing_fees': 'Landing fees ($)', 'sundry_charges': 'Sundry ($)',
     }
     headers = [LABELS.get(f, f) for f in rows + values]
 
@@ -9397,24 +9444,16 @@ def data_page(request, club_slug):
     except ClubMember.DoesNotExist:
         return redirect('login')
     if err := require_admin(actor, club, request): return err
-    _ico = 'width="20" height="20" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"'
+    _ti = lambda name: f'<i class="ti ti-{name}" style="font-size:1.15rem;"></i>'
     export_types = [
-        ('members',     f'<svg {_ico}><circle cx="7.5" cy="5" r="3"/><path d="M1.5 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>',
-                        'Members',        'Name, email, role, standing, account balance, subscription expiry'),
-        ('credentials', f'<svg {_ico}><rect x="2" y="2" width="11" height="11" rx="1.5"/><line x1="4.5" y1="5.5" x2="10.5" y2="5.5"/><line x1="4.5" y1="7.5" x2="10.5" y2="7.5"/><line x1="4.5" y1="9.5" x2="7.5" y2="9.5"/></svg>',
-                        'Credentials',    'Member licences, ratings, medicals, flight reviews — type, issue/expiry dates'),
-        ('flights',     f'<svg {_ico}><path d="M13.5 1.5 1.5 6.5l4.5 2 1.5 4.5 2.5-2.5z"/><line x1="6" y1="8.5" x2="13.5" y2="1.5"/></svg>',
-                        'Flight history', 'All completed flights — dates, aircraft, pilot, instructor, hours, charges'),
-        ('aircraft',    f'<svg {_ico}><path d="M7.5 1.5 6 5.5 1 9l1 1 5-2 -.5 4-2 1 .5 1 3-1.5 3 1.5.5-1-2-1L9.5 9l5 2 1-1-5-3.5z"/></svg>',
-                        'Aircraft',       'Fleet list with type, serial, seats, billing method, initial meters'),
-        ('financial',   f'<svg {_ico}><rect x="1.5" y="3.5" width="12" height="8.5" rx="1.5"/><line x1="1.5" y1="7" x2="13.5" y2="7"/><line x1="4" y1="10.5" x2="6.5" y2="10.5"/></svg>',
-                        'Financial',      'Account transactions, payments, outstanding balances'),
-        ('invoices',    f'<svg {_ico}><rect x="2.5" y="1.5" width="10" height="12" rx="1"/><line x1="5" y1="5" x2="10" y2="5"/><line x1="5" y1="7.5" x2="10" y2="7.5"/><line x1="5" y1="10" x2="8" y2="10"/></svg>',
-                        'Invoices',       'All invoices with status, amounts, and line items'),
-        ('maintenance', f'<svg {_ico}><path d="M13 2.5a3 3 0 0 0-4.2 4.2L4 11.5a1 1 0 1 0 1.4 1.4l4.8-4.8A3 3 0 0 0 13 2.5z"/><line x1="11" y1="4" x2="12.5" y2="5.5"/></svg>',
-                        'Maintenance',    'Per-aircraft maintenance hour log and scheduled items'),
-        ('occurrences', f'<svg {_ico}><path d="M7.5 2 2 12.5h11z"/><line x1="7.5" y1="6" x2="7.5" y2="9"/><circle cx="7.5" cy="11" r=".5" fill="currentColor"/></svg>',
-                        'Occurrences',    'Safety occurrence reports — type, date, description, status, review notes'),
+        ('members',     _ti('user'),             'Members',        'Name, email, role, standing, account balance, subscription expiry'),
+        ('credentials', _ti('id'),               'Credentials',    'Member licences, ratings, medicals, flight reviews — type, issue/expiry dates'),
+        ('flights',     _ti('plane-departure'),  'Flight history', 'All completed flights — dates, aircraft, pilot, instructor, hours, charges'),
+        ('aircraft',    _ti('plane'),            'Aircraft',       'Fleet list with type, serial, seats, billing method, initial meters'),
+        ('financial',   _ti('receipt-2'),        'Financial',      'Account transactions, payments, outstanding balances'),
+        ('invoices',    _ti('clipboard-list'),   'Invoices',       'All invoices with status, amounts, and line items'),
+        ('maintenance', _ti('settings'),         'Maintenance',    'Per-aircraft maintenance hour log and scheduled items'),
+        ('occurrences', _ti('alert-triangle'),   'Occurrences',    'Safety occurrence reports — type, date, description, status, review notes'),
     ]
     aircraft_list = Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration')
     return render(request, 'core/data_page.html', {

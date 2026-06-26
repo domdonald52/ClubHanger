@@ -490,23 +490,23 @@ table.items tbody tr:last-child td { border-bottom: none; }
         {% if item.charge_item %}
         {% with ci=item.charge_item b=item.charge_item.flight_completion.booking %}
         <tr>
-          <td style="white-space:nowrap;font-size:8.5pt;color:#6b7280;">{{ b.scheduled_start|date:"j M Y" }}</td>
+          <td style="white-space:nowrap;font-size:8.5pt;color:var(--text-3);">{{ b.scheduled_start|date:"j M Y" }}</td>
           <td>
             <strong>{{ b.aircraft.registration }}</strong>{% if b.flight_type %} · {{ b.flight_type.name }}{% endif %}{% if b.instructor %} · {{ b.instructor.get_full_name }}{% endif %}
-            <br><span style="font-size:8pt;color:#9ca3af;">{{ ci.get_item_type_display }}</span>
+            <br><span style="font-size:8pt;color:var(--text-3);">{{ ci.get_item_type_display }}</span>
           </td>
           <td class="r">${{ item.amount|currency }}</td>
         </tr>
         {% endwith %}
         {% elif item.display_is_arrears %}
         <tr>
-          <td style="font-size:8.5pt;color:#6b7280;">—</td>
+          <td style="font-size:8.5pt;color:var(--text-3);">—</td>
           <td>Account deficit (credit overdraft)</td>
           <td class="r">${{ item.amount|currency }}</td>
         </tr>
         {% else %}
         <tr>
-          <td style="font-size:8.5pt;color:#6b7280;">—</td>
+          <td style="font-size:8.5pt;color:var(--text-3);">—</td>
           <td>{{ item.description }}</td>
           <td class="r">${{ item.amount|currency }}</td>
         </tr>
@@ -521,7 +521,7 @@ table.items tbody tr:last-child td { border-bottom: none; }
         <tbody>
           <tr class="gst-row">
             <td class="lbl">G.S.T. {{ invoice.gst_rate }}% included</td>
-            <td class="amt" style="color:#9ca3af;">${{ invoice.gst_amount|currency }}</td>
+            <td class="amt" style="color:var(--text-3);">${{ invoice.gst_amount|currency }}</td>
           </tr>
           <tr class="total-row">
             <td class="lbl">Total</td>
@@ -534,8 +534,8 @@ table.items tbody tr:last-child td { border-bottom: none; }
           {% if grand_balance == 0 %}
           {% with last_pay=invoice.payments.last %}
           <tr>
-            <td class="lbl" style="color:#216c2a;">Paid</td>
-            <td class="amt" style="color:#216c2a;">{{ invoice.paid_at|date:"j M Y" }}{% if last_pay %} · {{ last_pay.get_method_display }}{% endif %}</td>
+            <td class="lbl" style="color:var(--success-text);">Paid</td>
+            <td class="amt" style="color:var(--success-text);">{{ invoice.paid_at|date:"j M Y" }}{% if last_pay %} · {{ last_pay.get_method_display }}{% endif %}</td>
           </tr>
           {% endwith %}
           {% endif %}
@@ -546,19 +546,19 @@ table.items tbody tr:last-child td { border-bottom: none; }
     {% if session_payments or arrears_clearance_at %}
     <!-- Also settled in this payment session -->
     <div style="margin-top:1.2rem;">
-      <div style="font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:.35rem;">Also settled in this session</div>
+      <div style="font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:.35rem;">Also settled in this session</div>
       <table class="items" style="font-size:8.5pt;">
         <tbody>
           {% for sp in session_payments %}
           <tr>
-            <td style="white-space:nowrap;color:#6b7280;">{{ sp.completion.booking.scheduled_start|date:"j M Y" }}</td>
+            <td style="white-space:nowrap;color:var(--text-3);">{{ sp.completion.booking.scheduled_start|date:"j M Y" }}</td>
             <td><strong>{{ sp.completion.booking.aircraft.registration }}</strong>{% if sp.completion.booking.flight_type %} · {{ sp.completion.booking.flight_type.name }}{% endif %}</td>
             <td class="r">${{ sp.amount|floatformat:2 }}</td>
           </tr>
           {% endfor %}
           {% if arrears_clearance_at %}
           <tr>
-            <td style="color:#6b7280;">—</td>
+            <td style="color:var(--text-3);">—</td>
             <td>Account deficit (credit overdraft)</td>
             <td class="r">${{ arrears_clearance_at.amount|floatformat:2 }}</td>
           </tr>

@@ -22,7 +22,7 @@
   </div>
 </div>
 {% else %}
-<div class="app-card" style="color:#8a93a0;text-align:center;font-size:.88rem;">No account linked</div>
+<div class="app-card" style="color:var(--text-3);text-align:center;font-size:.88rem;">No account linked</div>
 {% endif %}
 
 <!-- Outstanding amounts -->
@@ -87,8 +87,8 @@
   </div>
   {% endfor %}
 </div>
-<div style="padding:.5rem .75rem;font-size:.73rem;color:#9ca3af;line-height:1.5;">
-  Pay by EFTPOS at the club, or via online banking — use your <strong style="color:#6b7280;">invoice number</strong> as the payment reference. Account balances update at month end. If an invoice is still showing 30 days after payment, contact the club.
+<div style="padding:.5rem .75rem;font-size:.73rem;color:var(--text-3);line-height:1.5;">
+  Pay by EFTPOS at the club, or via online banking — use your <strong style="color:var(--text-3);">invoice number</strong> as the payment reference. Account balances update at month end. If an invoice is still showing 30 days after payment, contact the club.
 </div>
 {% endif %}
 {% endif %}
@@ -100,14 +100,14 @@
 </div>
 <div class="app-list">
   {% for inv in paid_receipts %}
-  <a href="{% url 'core:invoice_detail' club.slug inv.id %}?back={{ request.path|urlencode }}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid #f0f2f4;text-decoration:none;color:inherit;background:#fff;">
+  <a href="{% url 'core:invoice_detail' club.slug inv.id %}?back={{ request.path|urlencode }}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);text-decoration:none;color:inherit;background:#fff;">
     <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;background:#2a7a3b;"></div>
     <div class="app-list-main">
       <div class="app-list-title" style="font-size:.87rem;">{{ inv.display_number }}{% if inv.flight_completion %} · {{ inv.flight_completion.booking.aircraft.registration }}{% endif %}</div>
       <div class="app-list-sub">Paid {{ inv.paid_at|date:"j M Y" }} · receipt emailed</div>
     </div>
     <div style="display:flex;align-items:center;gap:.4rem;">
-      <div style="font-size:.92rem;font-weight:700;color:#2a7a3b;">${{ inv.total|floatformat:2 }}</div>
+      <div style="font-size:.92rem;font-weight:700;color:var(--success);">${{ inv.total|floatformat:2 }}</div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c8cdd4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </div>
   </a>
@@ -120,7 +120,7 @@
 <div class="app-section gap-sm">
   <span class="app-section-title">Transactions</span>
   {% if transactions_page.paginator.num_pages > 1 %}
-  <span style="font-size:.75rem;color:#8a93a0;">Page {{ transactions_page.number }} of {{ transactions_page.paginator.num_pages }}</span>
+  <span style="font-size:.75rem;color:var(--text-3);">Page {{ transactions_page.number }} of {{ transactions_page.paginator.num_pages }}</span>
   {% endif %}
 </div>
 <div class="app-list">
@@ -157,13 +157,13 @@
 <div class="gap-md"></div>
 
 <!-- ── Flight detail sheet ── -->
-<div id="fl-sheet-back" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:300;" onclick="closeFlightSheet()"></div>
+<div id="fl-sheet-back" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:300;" onclick="closeFlightSheet()"></div>
 <div id="fl-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
   <div style="width:36px;height:4px;background:#e0e3e8;border-radius:2px;margin:0 auto .9rem;"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
     <div>
       <div style="font-size:1.1rem;font-weight:750;" id="fl-reg"></div>
-      <div style="font-size:.8rem;color:#8a93a0;margin-top:.15rem;" id="fl-type"></div>
+      <div style="font-size:.8rem;color:var(--text-3);margin-top:.15rem;" id="fl-type"></div>
     </div>
     <button onclick="closeFlightSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -171,34 +171,34 @@
   </div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1rem;">
     <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Date</div>
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Date</div>
       <div style="font-size:.86rem;font-weight:600;" id="fl-date"></div>
     </div>
     <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Scheduled</div>
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Scheduled</div>
       <div style="font-size:.86rem;font-weight:600;" id="fl-sched"></div>
     </div>
     <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Actual</div>
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Actual</div>
       <div style="font-size:.86rem;font-weight:600;" id="fl-actual"></div>
     </div>
     <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Instructor</div>
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Instructor</div>
       <div style="font-size:.86rem;font-weight:600;" id="fl-instr"></div>
     </div>
     <div id="fl-ftype-wrap" style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;display:none;">
-      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Flight type</div>
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Flight type</div>
       <div style="font-size:.86rem;font-weight:600;" id="fl-ftype"></div>
     </div>
     <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Flight time</div>
+      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Flight time</div>
       <div style="font-size:.86rem;font-weight:600;" id="fl-hours"></div>
     </div>
   </div>
   <div style="background:#fff0f0;border-radius:10px;padding:.75rem .9rem;display:flex;align-items:center;justify-content:space-between;">
     <div>
       <div style="font-size:.72rem;color:#e03131;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.15rem;">Balance owing</div>
-      <div style="font-size:.78rem;color:#6b7280;" id="fl-charge-detail"></div>
+      <div style="font-size:.78rem;color:var(--text-3);" id="fl-charge-detail"></div>
     </div>
     <div style="font-size:1.2rem;font-weight:800;color:#e03131;" id="fl-owing"></div>
   </div>
@@ -246,17 +246,17 @@
 {% if unpaid_invoices %}
 <style>
   .inv-cell{background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;}
-  .inv-cell .k{font-size:.68rem;color:#8a93a0;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;}
+  .inv-cell .k{font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;}
   .inv-cell .v{font-size:.86rem;font-weight:600;}
 </style>
-<div id="inv-sheet-back" style="display:none;position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:300;" onclick="closeInvoiceSheet()"></div>
+<div id="inv-sheet-back" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:300;" onclick="closeInvoiceSheet()"></div>
 {% for inv in unpaid_invoices %}
 <div class="inv-sheet" id="inv-sheet-{{ inv.id }}" style="display:none;position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
   <div style="width:36px;height:4px;background:#e0e3e8;border-radius:2px;margin:0 auto .9rem;"></div>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
     <div>
       <div style="font-size:1.1rem;font-weight:750;">Invoice {{ inv.display_number }}</div>
-      <div style="font-size:.8rem;color:#8a93a0;margin-top:.15rem;">
+      <div style="font-size:.8rem;color:var(--text-3);margin-top:.15rem;">
         Issued {{ inv.issue_date|date:"j M Y" }}{% if inv.is_overdue %} <span style="color:#e03131;font-weight:600;">· Overdue</span>{% endif %}
       </div>
     </div>
@@ -266,11 +266,11 @@
   </div>
 
   {% if inv.description %}
-  <div style="font-size:.86rem;color:#374151;margin-bottom:1rem;">{{ inv.description }}</div>
+  <div style="font-size:.86rem;color:var(--text-2);margin-bottom:1rem;">{{ inv.description }}</div>
   {% endif %}
 
   {% if inv.flight_completion %}{% with b=inv.flight_completion.booking fc=inv.flight_completion %}
-  <div style="font-size:.68rem;color:#8a93a0;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Flight</div>
+  <div style="font-size:.68rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Flight</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1.1rem;">
     <div class="inv-cell"><div class="k">Aircraft</div><div class="v">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div></div>
     <div class="inv-cell"><div class="k">Date</div><div class="v">{{ b.scheduled_start|localtime|date:"j M Y" }}</div></div>
@@ -281,7 +281,7 @@
   </div>
   {% endwith %}{% endif %}
 
-  <div style="font-size:.68rem;color:#8a93a0;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Charges</div>
+  <div style="font-size:.68rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Charges</div>
   <div class="app-list">
     {% for li in inv.line_items.all %}
     <div class="app-list-row" style="cursor:default;">
@@ -297,12 +297,12 @@
   </div>
 
   <div style="border-top:1px solid #eef0f3;margin-top:.6rem;padding-top:.7rem;">
-    <div style="display:flex;justify-content:space-between;font-size:.84rem;color:#6b7280;margin-bottom:.3rem;">
+    <div style="display:flex;justify-content:space-between;font-size:.84rem;color:var(--text-3);margin-bottom:.3rem;">
       <span>Total{% if inv.gst_rate %} (incl. ${{ inv.gst_amount|floatformat:2|intcomma }} GST){% endif %}</span>
       <span style="font-weight:700;color:#1f2937;">${{ inv.total|floatformat:2|intcomma }}</span>
     </div>
     {% if inv.amount_paid > 0 %}
-    <div style="display:flex;justify-content:space-between;font-size:.84rem;color:#2a7a3b;margin-bottom:.3rem;">
+    <div style="display:flex;justify-content:space-between;font-size:.84rem;color:var(--success);margin-bottom:.3rem;">
       <span>Paid</span><span style="font-weight:700;">−${{ inv.amount_paid|floatformat:2|intcomma }}</span>
     </div>
     {% endif %}
@@ -312,8 +312,8 @@
     </div>
   </div>
 
-  <div style="padding:.75rem .1rem 0;font-size:.73rem;color:#9ca3af;line-height:1.5;">
-    Pay by EFTPOS at the club, or online banking — use the <strong style="color:#6b7280;">invoice number</strong> as reference. Balances update at month end.
+  <div style="padding:.75rem .1rem 0;font-size:.73rem;color:var(--text-3);line-height:1.5;">
+    Pay by EFTPOS at the club, or online banking — use the <strong style="color:var(--text-3);">invoice number</strong> as reference. Balances update at month end.
   </div>
 </div>
 {% endfor %}

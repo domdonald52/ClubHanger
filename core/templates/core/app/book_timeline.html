@@ -15,10 +15,10 @@
 .wday {
   flex:1; min-width:42px; display:flex; flex-direction:column; align-items:center;
   padding:.35rem .15rem; border-radius:8px; text-decoration:none;
-  font-size:.62rem; font-weight:600; color:#8a93a0; text-transform:uppercase;
+  font-size:.62rem; font-weight:600; color:var(--text-3); text-transform:uppercase;
   cursor:pointer; -webkit-tap-highlight-color:transparent;
 }
-.wday-num { font-size:1.05rem; font-weight:700; color:#1f2933; line-height:1.2; }
+.wday-num { font-size:1.05rem; font-weight:700; color:var(--text-1); line-height:1.2; }
 .wday.today .wday-num { color:var(--primary); }
 .wday.selected { background:var(--primary); color:#fff; }
 .wday.selected .wday-num { color:#fff; }
@@ -49,7 +49,7 @@
 .tl-headers-scroll { display:flex; overflow:hidden; flex:1; }
 .tl-ac-head {
   min-width:110px; flex:1; padding:.4rem .3rem;
-  text-align:center; font-size:.72rem; font-weight:700; color:#374151;
+  text-align:center; font-size:.72rem; font-weight:700; color:var(--text-2);
   border-right:1px solid #f0f2f4; background:#fff;
 }
 
@@ -60,7 +60,7 @@
   background:#fff; border-right:1px solid #e8eaed;
 }
 .tl-time-label {
-  position:absolute; right:5px; font-size:.6rem; color:#9ca3af; font-weight:500;
+  position:absolute; right:5px; font-size:.6rem; color:var(--text-3); font-weight:500;
   transform:translateY(-50%);
 }
 .tl-cols { display:flex; flex:1; }
@@ -109,16 +109,16 @@
 /* ── Slot confirm bottom sheet ── */
 .slot-sheet {
   position:fixed; bottom:calc(56px + var(--safe-bottom)); left:0; right:0;
-  background:#fff; border-top:1px solid #e3e6ea;
+  background:#fff; border-top:1px solid var(--border);
   padding:.85rem 1rem;
   display:none; z-index:30;
   box-shadow:0 -4px 16px rgba(0,0,0,.1);
 }
 .slot-sheet.open { display:block; }
-.slot-sheet-title { font-size:.78rem; font-weight:700; color:#374151; margin-bottom:.4rem; }
+.slot-sheet-title { font-size:.78rem; font-weight:700; color:var(--text-2); margin-bottom:.4rem; }
 .slot-sheet-row { display:flex; align-items:center; gap:.75rem; }
 .slot-time { font-size:1rem; font-weight:700; color:var(--primary); }
-.slot-ac { font-size:.85rem; color:#6b7280; }
+.slot-ac { font-size:.85rem; color:var(--text-3); }
 </style>
 {% endblock %}
 
@@ -218,7 +218,7 @@
 
         </div>
         {% empty %}
-        <div style="padding:2rem;color:#8a93a0;font-size:.88rem;">No aircraft available</div>
+        <div style="padding:2rem;color:var(--text-3);font-size:.88rem;">No aircraft available</div>
         {% endfor %}
       </div>
     </div>
