@@ -284,32 +284,40 @@ class Command(BaseCommand):
         if Booking.objects.filter(club=club).exists():
             self.stdout.write("  Bookings exist — skipping (use --reset to regenerate)")
         else:
+            self.stdout.write("  Generating bookings...")
             self._generate_bookings(club, aircraft, members, ft, admin_user)
 
         # ── Analytics (completions, accounts, invoices) ────────────────────────
         if FlightCompletion.objects.filter(booking__club=club).exists():
             self.stdout.write("  Completions exist — skipping analytics")
         else:
+            self.stdout.write("  Setting up accounts...")
             self._setup_accounts(club, members, admin_user)
+            self.stdout.write("  Setting up completions, charges and payments...")
             self._setup_completions(club, aircraft, members, admin_user)
+            self.stdout.write("  Setting up invoices...")
             self._setup_invoices(club, members, admin_user)
 
         # ── Lesson notes (idempotent — skips if any exist) ────────────────────
         if LessonNote.objects.filter(booking__club=club).exists():
             self.stdout.write("  Lesson notes exist — skipping")
         else:
+            self.stdout.write("  Setting up lesson notes...")
             self._setup_lesson_notes(club, members)
 
         # ── Block-outs ─────────────────────────────────────────────────────────
         if BlockOut.objects.filter(club=club).exists():
             self.stdout.write("  Block-outs exist — skipping")
         else:
+            self.stdout.write("  Setting up block-outs...")
             self._setup_blockouts(club, aircraft, members, admin_user)
 
         # ── Maintenance items ──────────────────────────────────────────────────
+        self.stdout.write("  Setting up maintenance items...")
         self._setup_maintenance(club, aircraft)
 
         # ── Instructor credentials ─────────────────────────────────────────────
+        self.stdout.write("  Setting up instructor credentials...")
         self._setup_instructor_credentials(club, members)
 
         # ── Instructor availability (roster windows) ───────────────────────────
@@ -828,7 +836,9 @@ class Command(BaseCommand):
         FlightPayment.objects.bulk_create(payment_rows)
 
         # Apply account debits
-        for account, amount, booking, fc_obj in account_debits:
+        for i, (account, amount, booking, fc_obj) in enumerate(account_debits):
+            if i % 25 == 0:
+                self.stdout.write(f"  Account debits: {i}/{len(account_debits)}...")
             AccountTransaction.objects.create(
                 account=account,
                 transaction_type="flight",
