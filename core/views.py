@@ -5540,17 +5540,6 @@ def manage_aircraft(request, club_slug):
 
 @login_required
 def manage_aircraft_detail(request, club_slug, aircraft_id):
-    import time as _time_mod
-    import logging as _log_mod
-    _dbg = _log_mod.getLogger('perf.aircraft_detail')
-    _t0 = _t_prev = _time_mod.perf_counter()
-    def _tick(label):
-        nonlocal _t_prev
-        _now = _time_mod.perf_counter()
-        _dbg.warning('PERF aircraft_detail [%s] %.0fms (total %.0fms)', label,
-                     (_now - _t_prev) * 1000, (_now - _t0) * 1000)
-        _t_prev = _now
-
     from .models import ChargeRate, FuelSurchargeRate, AircraftSurchargeType, AircraftMaintenanceItem, BlockOutType
     club = get_object_or_404(Club, slug=club_slug)
     try:
@@ -5560,7 +5549,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
     if err := require_staff(actor, club, request): return err
 
     ac = get_object_or_404(Aircraft, club=club, id=aircraft_id)
-    _tick('auth+ac')
 
     if request.method == 'POST':
         action = request.POST.get('action', '')
@@ -5757,7 +5745,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         .prefetch_related('aircraft', 'blockout_type')
         .order_by('recurrence', 'date', 'weekday', 'start_time')
     )
-    _tick('blockouts')
 
     hire_rates = (ChargeRate.objects
                   .filter(aircraft=ac)
@@ -5767,7 +5754,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
     all_surcharge_types = AircraftSurchargeType.objects.filter(club=club)
     assigned_surcharge_ids = set(ac.surcharges.values_list('id', flat=True))
     maintenance_items = list(AircraftMaintenanceItem.objects.filter(aircraft=ac))
-    _tick('rates+maintenance_items')
 
     # Compute progress percentage and recalculate live urgency for each maintenance item.
     # Urgency stored in DB can be stale — recalc on every page view and persist if changed.
@@ -5804,7 +5790,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                 _elapsed_h = _current_hobbs - float(_m.last_completed_hours)
                 _m.progress_pct = min(100, max(0, round(_elapsed_h / _total_h * 100)))
     maintenance_items.sort(key=lambda _m: (_UPR.get(_m.urgency, 3), str(_m.due_date or ''), str(_m.due_hours or '')))
-    _tick('maintenance_urgency_loop')
     flight_types = FlightType.objects.filter(club=club, is_billable=True)
     aircraft_blockout_types = BlockOutType.objects.filter(club=club, target='aircraft')
 
@@ -5814,7 +5799,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
               .select_related('member__user', 'instructor', 'flight_type')
               .order_by('-scheduled_start'))
     flight_history = _FHPag(_fh_qs, 25).get_page(request.GET.get('fh_page'))
-    _tick('flight_history')
 
     from .models import MaintenanceLogEntry
     from django.db.models import Max as _MMax
@@ -5828,7 +5812,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         max_tacho=_MMax('tacho_reading'),
         max_airswitch=_MMax('airswitch_reading'),
     )
-    _tick('maint_log+peak')
     # Highest reading for whichever instrument is the maint source
     _src_map = {'hobbs': _maint_peak['max_hobbs'], 'tacho': _maint_peak['max_tacho'], 'airswitch': _maint_peak['max_airswitch']}
     maint_peak_instrument = _src_map.get(ac.maint_time_source)
@@ -5845,7 +5828,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         _ac_icon_type = 'low_wing'
 
     _is_inline = request.GET.get('inline') == '1'
-    _tick('pre_render')
     return render(request, 'core/manage_aircraft_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'ac': ac,
