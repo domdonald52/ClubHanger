@@ -1397,12 +1397,14 @@ class Command(BaseCommand):
 
         blocks_created = 0
 
-        # Suppress the post_save signal during seeding — it rescans all bookings
-        # for conflicts on every BlockOut create, which is slow and can crash on
-        # a freshly-populated database. Conflict flags will be correct for real
-        # bookings created via the app; seed data doesn't need the rescan.
-        from core.models import _blockout_saved
+        # Suppress all BlockOut signals during seeding — post_save and both
+        # m2m_changed handlers all call rescan_bookings() which scans every
+        # booking in the club. With hundreds of seeded bookings this hangs.
+        from django.db.models.signals import m2m_changed
+        from core.models import _blockout_saved, _blockout_aircraft_changed, _blockout_instructors_changed
         post_save.disconnect(_blockout_saved, sender=BlockOut)
+        m2m_changed.disconnect(_blockout_aircraft_changed, sender=BlockOut.aircraft.through)
+        m2m_changed.disconnect(_blockout_instructors_changed, sender=BlockOut.instructors.through)
 
         def make_block(label="", **kwargs):
             nonlocal blocks_created
@@ -1491,4 +1493,6 @@ class Command(BaseCommand):
         b.aircraft.set(aircraft)
 
         post_save.connect(_blockout_saved, sender=BlockOut)
+        m2m_changed.connect(_blockout_aircraft_changed, sender=BlockOut.aircraft.through)
+        m2m_changed.connect(_blockout_instructors_changed, sender=BlockOut.instructors.through)
         self.stdout.write(f"  Block-outs: {blocks_created} created")
