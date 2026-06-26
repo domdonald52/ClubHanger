@@ -559,7 +559,7 @@
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}?v=25"></script>
+<script src="{% static 'core/gantt.js' %}?v=26"></script>
 <script>
 (function() {
   // Unify all row labels to the width of the longest one.
@@ -738,8 +738,7 @@
   .ctx-item:hover { background: var(--surface-3); }
 </style>
 <div id="pill-ctx" style="display:none;position:fixed;z-index:800;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(16,24,40,.18);min-width:175px;overflow:hidden;">
-  <div id="pill-ctx-primary" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;font-weight:600;"></div>
-  <div id="pill-ctx-edit" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;border-top:1px solid var(--border-subtle);"><i class="ti ti-pencil" style="opacity:.45;font-size:.9rem;"></i> Edit details</div>
+  <div id="pill-ctx-edit" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;"><i class="ti ti-pencil" style="opacity:.45;font-size:.9rem;"></i> Edit details</div>
   <div id="pill-ctx-track" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;border-top:1px solid var(--border-subtle);"><i class="ti ti-radar" style="opacity:.45;font-size:.9rem;"></i> <span id="pill-ctx-label">Track aircraft</span></div>
 </div>
 
@@ -767,15 +766,6 @@
   let adsbMap, adsbMarker, adsbTimer;
   let activePill = null;
 
-  const STATUS_ACTIONS = {
-    'pending':   { icon: 'ti-circle-check',      label: 'Confirm booking' },
-    'confirmed': { icon: 'ti-plane-departure',   label: 'Check out' },
-    'departed':  { icon: 'ti-plane-arrival',     label: 'Record return' },
-    'returned':  { icon: 'ti-receipt',           label: 'View charges' },
-    'completed': { icon: 'ti-file-description',  label: 'View booking' },
-    'cancelled': null,
-  };
-
   document.addEventListener('contextmenu', e => {
     const pill = e.target.closest('.pill');
     if (!pill) return;
@@ -783,17 +773,8 @@
     activePill = pill;
 
     const status = pill.dataset.status || '';
-    const action = STATUS_ACTIONS[status];
-    const primary = document.getElementById('pill-ctx-primary');
     const editEl  = document.getElementById('pill-ctx-edit');
     const trackEl = document.getElementById('pill-ctx-track');
-
-    if (action) {
-      primary.innerHTML = `<i class="ti ${action.icon}" style="opacity:.5;font-size:.9rem;"></i> ${action.label}`;
-      primary.style.display = 'flex';
-    } else {
-      primary.style.display = 'none';
-    }
 
     const canEdit = (status === 'pending' || status === 'confirmed') && {{ can_manage|yesno:"true,false" }};
     editEl.style.display = canEdit ? 'flex' : 'none';
@@ -802,9 +783,7 @@
     document.getElementById('pill-ctx-label').textContent = `Track ${reg} live`;
     trackEl.style.display = status === 'departed' ? 'flex' : 'none';
 
-    // Show menu only if at least one item is visible
-    const anyVisible = primary.style.display !== 'none' || editEl.style.display !== 'none' || trackEl.style.display !== 'none';
-    if (!anyVisible) return;
+    if (!canEdit && status !== 'departed') return;
 
     ctx.style.display = 'block';
     ctx.style.left = Math.min(e.clientX, window.innerWidth - 190) + 'px';
@@ -814,15 +793,6 @@
   document.addEventListener('click', e => { if (!ctx.contains(e.target)) ctx.style.display = 'none'; });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') { ctx.style.display = 'none'; closeAdsbPanel(); }});
 
-  function openBookingDetail() {
-    ctx.style.display = 'none';
-    if (!activePill) return;
-    const base = "{% url 'core:booking_detail' club.slug 0 %}";
-    const url = base.replace('/0/', '/' + activePill.dataset.id + '/');
-    if (window.openPageOverlay) window.openPageOverlay(url);
-    else window.location.href = url;
-  }
-  document.getElementById('pill-ctx-primary').addEventListener('click', openBookingDetail);
   document.getElementById('pill-ctx-edit').addEventListener('click', () => {
     ctx.style.display = 'none';
     if (activePill && window.openEditPill) window.openEditPill(activePill);
