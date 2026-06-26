@@ -93,11 +93,14 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     all_aircraft = Aircraft.objects.filter(club=club).order_by('registration')
     
     # Get all bookings for day
+    from django.db.models import Prefetch as _Prefetch
     bookings = Booking.objects.filter(
         club=club,
         scheduled_start__gte=day_start,
         scheduled_start__lt=day_end
-    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'client').prefetch_related('flight_completions')
+    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'client').prefetch_related(
+        _Prefetch('flight_completions', queryset=FlightCompletion.objects.order_by('sequence'))
+    )
     from django.db.models import Count as _GCount
     bookings = bookings.annotate(watcher_count=_GCount('watchers'))
 
@@ -2336,21 +2339,12 @@ def manage_bookings(request, club_slug):
     def conflict_reasons(b):
         r = []
         if b.id in _clashing_ids:
-            # Distinguish which resource is double-booked for the reason label
-            _ac_clash = (b.aircraft_id and Booking.objects
-                .filter(club=club, aircraft_id=b.aircraft_id,
-                        status__in=['pending','confirmed','departed'],
-                        scheduled_start__lt=b.scheduled_end,
-                        scheduled_end__gt=b.scheduled_start)
-                .exclude(pk=b.pk).exists())
-            _in_clash = (b.instructor_id and Booking.objects
-                .filter(club=club, instructor_id=b.instructor_id,
-                        status__in=['pending','confirmed','departed'],
-                        scheduled_start__lt=b.scheduled_end,
-                        scheduled_end__gt=b.scheduled_start)
-                .exclude(pk=b.pk).exists())
-            if _ac_clash: r.append('Aircraft double-booked')
-            if _in_clash: r.append('Instructor double-booked')
+            # Distinguish which resource is double-booked using pre-computed sets
+            # (no per-booking DB queries — sets built once above)
+            if b.id in _ac_clash_bids:
+                r.append('Aircraft double-booked')
+            if b.id in _in_clash_bids:
+                r.append('Instructor double-booked')
         if b.blockout_conflict and b.status not in ('departed', 'completed'):
             r.append(b.blockout_conflict_reason or 'Block-out conflict')
         if b.member:
@@ -2393,17 +2387,19 @@ def manage_bookings(request, club_slug):
     _future_active = Booking.objects.filter(
         club=club, status__in=['pending', 'confirmed'],
         scheduled_start__date__gte=today)
-    _clashing_ids = set(
+    _ac_clash_bids = set(
         _future_active.filter(aircraft__isnull=False)
         .annotate(_has_clash=_Exists(_ac_clash_inner))
         .filter(_has_clash=True)
         .values_list('id', flat=True)
-    ) | set(
+    )
+    _in_clash_bids = set(
         _future_active.filter(instructor__isnull=False)
         .annotate(_has_clash=_Exists(_instr_clash_inner))
         .filter(_has_clash=True)
         .values_list('id', flat=True)
     )
+    _clashing_ids = _ac_clash_bids | _in_clash_bids
 
     # ── Needs-attention section (aircraft/instructor filters apply; status filter applies on active tab) ──
     from django.db.models import F as _F
@@ -8411,7 +8407,7 @@ def ai_ask(request, club_slug):
 
     # Aircraft
     aircraft_rows = []
-    for ac in Aircraft.objects.filter(club=club).exclude(status='retired').prefetch_related('maintenance_items'):
+    for ac in Aircraft.objects.filter(club=club).exclude(status='retired').select_related('aircraft_type').prefetch_related('maintenance_items'):
         items = list(ac.maintenance_items.all())
         aircraft_rows.append({
             'registration': ac.registration,
@@ -8841,17 +8837,43 @@ def manage_exceptions(request, club_slug):
         .select_related('user')
         .order_by('user__last_name')
     )
+    # Pre-fetch all lapsed credentials for all relevant members in one query
+    _members_lapsed_list = list(members_lapsed_creds)
+    _lapsed_user_ids = [cm.user_id for cm in _members_lapsed_list]
+    _all_expired_creds = (
+        MemberCredential.objects
+        .filter(member_id__in=_lapsed_user_ids, expiry_date__lt=today)
+        .select_related('credential_type')
+        .order_by('member_id', 'expiry_date')
+    )
+    _expired_by_user: dict = {}
+    for _cred in _all_expired_creds:
+        _expired_by_user.setdefault(_cred.member_id, []).append(_cred)
+
+    # Pre-fetch the next upcoming booking for each member in one query per member
+    # (Django doesn't support .first() per-group, so use a dict keyed by member_id)
+    _lapsed_cm_ids = [cm.id for cm in _members_lapsed_list]
+    _upcoming_bookings = (
+        Booking.objects
+        .filter(club=club, member_id__in=_lapsed_cm_ids, scheduled_start__date__gte=today)
+        .exclude(status__in=['cancelled', 'completed'])
+        .order_by('member_id', 'scheduled_start')
+        .values('member_id', 'id', 'scheduled_start')
+    )
+    _next_booking_by_cm: dict = {}
+    for _bk in _upcoming_bookings:
+        if _bk['member_id'] not in _next_booking_by_cm:
+            _next_booking_by_cm[_bk['member_id']] = _bk
+
+    # Resolve full Booking objects only for those that are actually referenced
+    _needed_bk_ids = [v['id'] for v in _next_booking_by_cm.values()]
+    _bk_objs = {b.id: b for b in Booking.objects.filter(id__in=_needed_bk_ids).select_related('aircraft')} if _needed_bk_ids else {}
+
     lapsed_creds_data = []
-    for cm in members_lapsed_creds:
-        expired = list(
-            MemberCredential.objects
-            .filter(member=cm.user, expiry_date__lt=today)
-            .select_related('credential_type')
-        )
-        upcoming = (Booking.objects
-                    .filter(club=club, member=cm, scheduled_start__date__gte=today)
-                    .exclude(status__in=['cancelled', 'completed'])
-                    .order_by('scheduled_start').first())
+    for cm in _members_lapsed_list:
+        expired = _expired_by_user.get(cm.user_id, [])
+        _next = _next_booking_by_cm.get(cm.id)
+        upcoming = _bk_objs.get(_next['id']) if _next else None
         lapsed_creds_data.append({'cm': cm, 'expired': expired, 'next_booking': upcoming})
 
     # 4. Maintenance — amber and red items on online aircraft
