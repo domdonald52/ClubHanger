@@ -125,7 +125,7 @@
 <div class="app-card" style="padding:0;">
   {% for ocm in other_clubs %}
   <a href="{% url 'core:gantt_day' ocm.club.slug %}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);text-decoration:none;color:inherit;">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16l-4-4H5l-2 2 5 1 3 3 5-1 5-1z"/><path d="M12 12V5l-2-1"/></svg>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="stroke:var(--text-3);" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16l-4-4H5l-2 2 5 1 3 3 5-1 5-1z"/><path d="M12 12V5l-2-1"/></svg>
     <div style="flex:1;">
       <div style="font-size:.88rem;font-weight:600;">{{ ocm.club.name }}</div>
       <div style="font-size:.74rem;color:var(--text-3);">Switch to this club</div>

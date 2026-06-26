@@ -25,8 +25,8 @@
 .date-chips::-webkit-scrollbar { display:none; }
 .date-chip {
   flex-shrink:0; display:flex; flex-direction:column; align-items:center;
-  padding:.5rem .7rem; border-radius:10px; border:1.5px solid #dde1e6;
-  background:#fff; cursor:pointer; min-width:52px; transition:all .15s;
+  padding:.5rem .7rem; border-radius:10px; border:1.5px solid var(--input-border);
+  background:var(--surface); cursor:pointer; min-width:52px; transition:all .15s;
 }
 .date-chip.today { border-color:color-mix(in srgb,var(--primary) 40%,#fff); }
 .date-chip.selected { background:var(--primary); border-color:var(--primary); color:#fff; }
@@ -39,12 +39,12 @@
 {% block content %}
 {% if booking_blocked %}
 <div style="padding:2rem 1.2rem;">
-  <div style="background:#fff0f0;border-radius:14px;padding:1.4rem 1.2rem;display:flex;flex-direction:column;gap:.75rem;">
+  <div style="background:var(--danger-bg);border-radius:14px;padding:1.4rem 1.2rem;display:flex;flex-direction:column;gap:.75rem;">
     <div style="display:flex;align-items:center;gap:.6rem;">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <span style="font-size:1rem;font-weight:700;color:#c81c1c;">Booking unavailable</span>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span style="font-size:1rem;font-weight:700;color:var(--danger);">Booking unavailable</span>
     </div>
-    <p style="font-size:.88rem;color:#4b5563;line-height:1.6;margin:0;">{{ booking_block_msg }}</p>
+    <p style="font-size:.88rem;color:var(--text-2);line-height:1.6;margin:0;">{{ booking_block_msg }}</p>
   </div>
 </div>
 {% else %}

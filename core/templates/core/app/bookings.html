@@ -7,7 +7,7 @@
 <div class="gap-sm"></div>
 
 {% if request.GET.saved %}
-<div style="background:#dcfce7;color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:0 .75rem .5rem;font-size:.83rem;font-weight:600;">Booking requested — pending instructor confirmation.</div>
+<div style="background:var(--success-bg);color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:0 .75rem .5rem;font-size:.83rem;font-weight:600;">Booking requested — pending instructor confirmation.</div>
 {% endif %}
 
 {% if upcoming %}
@@ -69,29 +69,29 @@
 
 <!-- ── Booking detail sheet ── -->
 <div id="bk-sheet-back" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:300;" onclick="closeBookingSheet()"></div>
-<div id="bk-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
-  <div style="width:36px;height:4px;background:#e0e3e8;border-radius:2px;margin:0 auto .9rem;"></div>
+<div id="bk-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
+  <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto .9rem;"></div>
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;">
     <div>
       <div style="font-size:1.1rem;font-weight:750;" id="bk-reg"></div>
       <div id="bk-status-wrap" style="margin-top:.2rem;"></div>
     </div>
     <button onclick="closeBookingSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8a93a0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1.1rem;">
-    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
       <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Date &amp; time</div>
       <div style="font-size:.86rem;font-weight:600;" id="bk-start"></div>
       <div style="font-size:.8rem;color:var(--text-3);" id="bk-end"></div>
     </div>
-    <div style="background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;">
+    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
       <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Instructor</div>
       <div style="font-size:.86rem;font-weight:600;" id="bk-instr"></div>
     </div>
-    <div id="bk-type-wrap" style="grid-column:1/-1;background:#f5f7fa;border-radius:10px;padding:.7rem .8rem;display:none;">
+    <div id="bk-type-wrap" style="grid-column:1/-1;background:var(--bg);border-radius:10px;padding:.7rem .8rem;display:none;">
       <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Flight type</div>
       <div style="font-size:.86rem;font-weight:600;" id="bk-type"></div>
     </div>
@@ -108,7 +108,7 @@
 
   <div id="bk-cancel-section" style="display:none;">
     <div style="font-size:.82rem;font-weight:600;color:var(--text-1);margin-bottom:.45rem;">Cancellation reason</div>
-    <select id="bk-cancel-reason" style="display:block;width:100%;padding:.5rem .6rem;border:1px solid #dde1e8;border-radius:9px;font-size:.86rem;background:#fff;margin-bottom:.7rem;">
+    <select id="bk-cancel-reason" style="display:block;width:100%;padding:.5rem .6rem;border:1px solid var(--input-border);border-radius:9px;font-size:.86rem;background:var(--surface);margin-bottom:.7rem;">
       <option value="no_longer_required">No longer required</option>
       <option value="scheduling_conflict">Scheduling conflict</option>
       <option value="weather">Weather</option>
@@ -120,7 +120,7 @@
       <input type="hidden" name="action" value="cancel_booking">
       <input type="hidden" name="booking_id" id="bk-cancel-id">
       <input type="hidden" name="cancellation_reason" id="bk-cancel-reason-input">
-      <button type="submit" class="app-btn" style="background:#e03131;width:100%;"
+      <button type="submit" class="app-btn" style="background:var(--alert);width:100%;"
               onclick="document.getElementById('bk-cancel-reason-input').value=document.getElementById('bk-cancel-reason').value">
         Cancel booking
       </button>
