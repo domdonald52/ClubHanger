@@ -36,7 +36,7 @@
       {% for ac in online_aircraft %}
       <tr>
         <td><strong>{{ ac.registration }}</strong></td>
-        <td style="color:var(--text-2);">{{ ac.aircraft_type }}</td>
+        <td>{{ ac.aircraft_type }}</td>
         <td style="color:var(--text-3);">{{ ac.seats }}</td>
         <td style="color:var(--text-3);font-size:.82rem;">{{ ac.get_total_time_method_display }}</td>
         <td>
@@ -55,7 +55,7 @@
       {% for ac in retired_aircraft %}
       <tr class="ac-row-retired">
         <td><strong>{{ ac.registration }}</strong></td>
-        <td style="color:var(--text-2);">{{ ac.aircraft_type }}</td>
+        <td>{{ ac.aircraft_type }}</td>
         <td style="color:var(--text-3);">{{ ac.seats }}</td>
         <td style="color:var(--text-3);font-size:.82rem;">{{ ac.get_total_time_method_display }}</td>
         <td>

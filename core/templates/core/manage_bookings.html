@@ -96,6 +96,7 @@
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=instructor&dir={% if sort == 'instructor' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'instructor' %}sort-active{% endif %}">Instructor{% if sort == 'instructor' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date &amp; time{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
         <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th style="width:1%;white-space:nowrap;">Issues</th>
         <th style="width:1%;"></th>
       </tr></thead>
       <tbody>
@@ -107,8 +108,9 @@
           <td style="white-space:nowrap;">{{ b.instructor.get_full_name|default:"—" }}</td>
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}–{{ b.scheduled_end|time:"H:i" }}</td>
           <td style="white-space:nowrap;">
-            <span class="status-chip {{ b.display_status_key }}">{% if b.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif b.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif b.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif b.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif b.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ b.display_status }}</span>{% for r in item.reasons %} <span class="reason-chip">{{ r }}</span>{% endfor %}
+            <span class="status-chip {{ b.display_status_key }}">{% if b.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif b.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif b.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif b.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif b.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ b.display_status }}</span>
           </td>
+          <td style="white-space:nowrap;">{% for r in item.reasons %}<span class="reason-chip">{{ r }}</span>{% if not forloop.last %} {% endif %}{% endfor %}</td>
           <td style="text-align:right;white-space:nowrap;">
             {% if b.display_status_key == 'returned' %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn row-action-returned" data-overlay data-overlay-wide>Charges →</a>
             {% else %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="cbtn-sm cbtn-icon" title="View booking" data-overlay data-overlay-wide><i class="ti ti-eye"></i></a>{% endif %}
@@ -139,6 +141,7 @@
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=instructor&dir={% if sort == 'instructor' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'instructor' %}sort-active{% endif %}">Instructor{% if sort == 'instructor' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=date&dir={% if sort == 'date' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'date' %}sort-active{% endif %}">Date &amp; time{% if sort == 'date' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
           <th><a href="?{{ base_qs }}{% if base_qs %}&{% endif %}sort=status&dir={% if sort == 'status' and sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if sort == 'status' %}sort-active{% endif %}">Status{% if sort == 'status' %} <span class="sort-arrow">{% if sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+          <th style="width:1%;white-space:nowrap;">Issues</th>
           <th style="width:1%;"></th>
         </tr>
       </thead>
@@ -151,8 +154,9 @@
           <td style="white-space:nowrap;">{{ b.instructor.get_full_name|default:"—" }}</td>
           <td style="white-space:nowrap;">{{ b.scheduled_start|date:"D j M" }} {{ b.scheduled_start|time:"H:i" }}–{{ b.scheduled_end|time:"H:i" }}</td>
           <td style="white-space:nowrap;">
-            <span class="status-chip {{ b.display_status_key }}">{% if b.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif b.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif b.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif b.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif b.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ b.display_status }}</span>{% for r in item.reasons %} <span class="reason-chip">{{ r }}</span>{% endfor %}
+            <span class="status-chip {{ b.display_status_key }}">{% if b.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif b.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif b.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif b.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif b.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ b.display_status }}</span>
           </td>
+          <td style="white-space:nowrap;">{% for r in item.reasons %}<span class="reason-chip">{{ r }}</span>{% if not forloop.last %} {% endif %}{% endfor %}</td>
           <td style="text-align:right;white-space:nowrap;">
             {% if b.display_status_key == 'returned' %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="row-action-btn row-action-returned" data-overlay data-overlay-wide>Charges →</a>
             {% else %}<a href="{% url 'core:booking_detail' club.slug b.id %}?back={% url 'core:manage_bookings' club.slug %}&back_label=Bookings" class="cbtn-sm cbtn-icon" title="View booking" data-overlay data-overlay-wide><i class="ti ti-eye"></i></a>{% endif %}

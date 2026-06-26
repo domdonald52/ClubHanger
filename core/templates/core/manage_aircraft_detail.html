@@ -449,7 +449,7 @@
           <td><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:var(--text-3);font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
           <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_date|default:"—" }}</td>
           <td style="font-size:.85rem;white-space:nowrap;">{{ m.due_hours|default:"—" }}</td>
-          <td style="font-size:.82rem;color:var(--text-3);white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
+          <td style="font-size:.82rem;white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
           <td><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
           <td>
             {% if m.progress_pct is not None %}
@@ -845,7 +845,7 @@
           <td style="white-space:nowrap;font-size:.85rem;">{{ b.scheduled_start|date:"j M Y" }}</td>
           <td>{{ b.member.user.get_full_name }}</td>
           <td style="color:var(--text-3);font-size:.85rem;">{{ b.instructor.get_full_name|default:"—" }}</td>
-          <td style="color:var(--text-3);font-size:.82rem;">{{ b.flight_type.name }}</td>
+          <td style="font-size:.82rem;">{{ b.flight_type.name }}</td>
           <td><span class="status-chip {{ b.display_status_key }}">{{ b.display_status }}</span></td>
           <td style="font-size:.85rem;">
             {% if b.flight_completion %}{{ b.flight_completion.actual_flight_hours|default:"—" }}h{% else %}—{% endif %}

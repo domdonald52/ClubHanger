@@ -30,7 +30,7 @@
         <td>{{ fc.booking.member.user.get_full_name }}</td>
         <td>{{ fc.booking.aircraft.registration }}</td>
         <td style="white-space:nowrap;font-size:.85rem;">{{ fc.booking.scheduled_start|date:"j M Y" }}</td>
-        <td style="font-size:.82rem;color:var(--text-3);">{{ fc.booking.flight_type.name }}</td>
+        <td style="font-size:.82rem;">{{ fc.booking.flight_type.name }}</td>
         <td style="font-size:.85rem;">{{ fc.actual_flight_hours|default:"—" }}h</td>
         <td>
           {% if fc.outcome != 'completed' %}
@@ -73,13 +73,13 @@
       {% for tx in tx_page %}
       <tr>
         <td>{{ tx.account.club_member.user.get_full_name }}</td>
-        <td style="font-size:.8rem;color:var(--text-3);">{{ tx.get_transaction_type_display }}</td>
+        <td style="font-size:.8rem;">{{ tx.get_transaction_type_display }}</td>
         <td style="font-size:.85rem;">{{ tx.description }}</td>
         <td style="font-size:.82rem;color:var(--text-3);">{{ tx.get_payment_method_display|default:"—" }}</td>
         <td style="text-align:right;font-weight:600;color:{% if tx.direction == 'debit' %}#c0392b{% else %}#2a7a3b{% endif %};">
           {% if tx.direction == 'debit' %}−{% else %}+{% endif %}${{ tx.amount|currency }}
         </td>
-        <td style="font-size:.82rem;color:var(--text-3);white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
+        <td style="font-size:.82rem;white-space:nowrap;">{{ tx.created_at|date:"j M Y H:i" }}</td>
       </tr>
       {% endfor %}
     </tbody>
