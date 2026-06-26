@@ -2330,10 +2330,11 @@ def manage_bookings(request, club_slug):
     f_date_to        = request.GET.get('date_to', '')
     show_all_history = request.GET.get('all_history') == '1'
 
+    from django.db.models import Prefetch as _MBPrefetch
     _base_qs = (Booking.objects
                 .filter(club=club)
-                .select_related('member__user', 'aircraft', 'instructor',
-                                'flight_type'))
+                .select_related('member__user', 'aircraft', 'instructor', 'flight_type')
+                .prefetch_related(_MBPrefetch('flight_completions', queryset=FlightCompletion.objects.order_by('sequence'))))
 
     # Aircraft + instructor filters apply to both sections
     if f_aircraft:
@@ -2361,7 +2362,8 @@ def manage_bookings(request, club_slug):
             r.append('Aircraft retired')
         if _instructor_off_roster(b):
             r.append('Instructor off roster')
-        _fc = b.flight_completion
+        _fcs = b.flight_completions.all()  # uses prefetch cache
+        _fc = _fcs[0] if _fcs else None
         if _fc and _fc.amount_paid and _fc.total_charge and _fc.amount_paid > _fc.total_charge:
             _over = _fc.amount_paid - _fc.total_charge
             r.append(f'Overpaid ${_over:.2f} — review and credit account')
