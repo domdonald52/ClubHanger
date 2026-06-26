@@ -228,7 +228,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'client_id':   b.client_id or '',
             'client_name': b.client.name if b.client else '',
             'billed_to':   b.billed_to or '',
-            'paid': (getattr(b.flight_completion, 'paid_at', None) is not None),
+            'paid': any(fc.paid_at for fc in b.flight_completions.all()),
             'decl_pending': _decl_pending,
             'decl_url': (
                 f'/manage/{club_slug}/bookings/{b.id}/declaration/'
@@ -5738,12 +5738,13 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         Q(recurrence__in=['weekly', 'daily'], active_until__isnull=True) |
         Q(recurrence__in=['weekly', 'daily'], active_until__gte=_today)
     )
-    blockouts = (BlockOut.objects
-                 .filter(club=club, scope='aircraft')
-                 .filter(_active_q)
-                 .prefetch_related('aircraft', 'blockout_type')
-                 .order_by('recurrence', 'date', 'weekday', 'start_time'))
-    ac_blockouts = [bo for bo in blockouts if ac in bo.aircraft.all()]
+    ac_blockouts = list(
+        BlockOut.objects
+        .filter(club=club, scope='aircraft', aircraft=ac)
+        .filter(_active_q)
+        .prefetch_related('aircraft', 'blockout_type')
+        .order_by('recurrence', 'date', 'weekday', 'start_time')
+    )
 
     hire_rates = (ChargeRate.objects
                   .filter(aircraft=ac)
@@ -5762,6 +5763,11 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                       .order_by('-booking__arrived_at', '-created_at')
                       .values('hobbs_end').first())
     _current_hobbs = float(_latest_meters['hobbs_end']) if _latest_meters else None
+    # Pre-fetch the latest maint log entry once so recalc_urgency doesn't query per-item.
+    _latest_log = ac.maint_log.order_by('-date', '-id').first()
+    _current_maint_hours = (
+        float(_latest_log.maint_hours_total) if _latest_log else float(ac.maint_hours_initial or 0)
+    )
     _today = timezone.localdate()
     try:
         _ac_config = club.config
@@ -5769,7 +5775,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         _ac_config = None
     _UPR = {'red': 0, 'amber': 1, 'green': 2}
     for _m in maintenance_items:
-        _live_urg = _m.recalc_urgency(_ac_config)
+        _live_urg = _m.recalc_urgency(_ac_config, current_maint_hours=_current_maint_hours)
         if _m.urgency != _live_urg:
             _m.urgency = _live_urg
             _m.save(update_fields=['urgency'])

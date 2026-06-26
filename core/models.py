@@ -932,9 +932,12 @@ class AircraftMaintenanceItem(models.Model):
             return None
         return round(float(self.due_hours) - self.current_maint_hours, 2)
 
-    def recalc_urgency(self, config=None):
+    def recalc_urgency(self, config=None, current_maint_hours=None):
         urgency = MaintenanceUrgency.GREEN
-        hr = self.hours_remaining
+        if current_maint_hours is not None and self.due_hours is not None:
+            hr = round(float(self.due_hours) - current_maint_hours, 2)
+        else:
+            hr = self.hours_remaining
         dr = self.days_until_due
         if hr is not None:
             alert_h = float(self.alert_hours or (config.maint_alert_hours if config else 5))
