@@ -2,7 +2,10 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn aero_club.wsgi --workers 3 --timeout 120"
+# Migrations run before the healthcheck timer starts. On a fresh PostgreSQL all
+# migrations take ~80s — running them inline in startCommand kills the 60s window.
+preDeployCommand = "python manage.py migrate --noinput && python manage.py collectstatic --noinput"
+startCommand = "gunicorn aero_club.wsgi --workers 3 --timeout 120"
 # Use the branded login (always present) rather than /admin/login/, which moves
 # when ADMIN_URL is set to hide the Django admin.
 healthcheckPath = "/login/"
