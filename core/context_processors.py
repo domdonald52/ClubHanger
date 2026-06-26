@@ -68,7 +68,11 @@ def theme(request):
             except Exception:
                 ctx['open_occurrences_count'] = 0
                 ctx['open_actions_count'] = 0
-            if cm.can_access_manage:
+            _on_manage_page = rm and rm.url_name and (
+                rm.url_name.startswith('manage_') or 'manage' in (rm.namespace or '')
+                or (rm.kwargs.get('club_slug') and request.path.startswith(f"/manage/"))
+            )
+            if cm.can_access_manage and _on_manage_page:
                 try:
                     from .models import Booking, AircraftMaintenanceItem, MemberCredential, MaintenanceUrgency, Invoice
                     from django.db.models import Q, Exists, OuterRef
@@ -174,5 +178,6 @@ def theme(request):
                     ctx['exceptions_count'] = _n
                 except Exception:
                     ctx['exceptions_count'] = 0
+                ctx['exceptions_count'] = 0
                 ctx['integrity_issues_count'] = 0
     return ctx
