@@ -1,10 +1,14 @@
 [build]
 builder = "nixpacks"
+# collectstatic must run at build time so the staticfiles manifest is baked into
+# the image. preDeployCommand runs in a separate ephemeral container whose
+# filesystem is discarded — manifest generated there never reaches gunicorn.
+buildCommand = "python manage.py collectstatic --noinput"
 
 [deploy]
 # Migrations run before the healthcheck timer starts. On a fresh PostgreSQL all
 # migrations take ~80s — running them inline in startCommand kills the 60s window.
-preDeployCommand = "python manage.py migrate --noinput && python manage.py collectstatic --noinput"
+preDeployCommand = "python manage.py migrate --noinput"
 startCommand = "gunicorn aero_club.wsgi --workers 3 --timeout 120"
 # Use the branded login (always present) rather than /admin/login/, which moves
 # when ADMIN_URL is set to hide the Django admin.
