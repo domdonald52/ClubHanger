@@ -309,6 +309,29 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         else:
             _av_cache[instr.id] = any(w.applies_on(selected_date) for w in windows)
 
+    # Pre-fetch credentials for all instructors (one query, used in row loop below)
+    from .models import MemberCredential as _MCred
+    from datetime import date as _cred_date_cls, timedelta as _cred_td
+    _cred_today = _cred_date_cls.today()
+    _cred_warn  = _cred_today + _cred_td(days=60)
+    _instr_user_ids = [i.user_id for i in instructors]
+    _creds_by_user = {}
+    for _cr in _MCred.objects.filter(
+        member_id__in=_instr_user_ids,
+        credential_type__expires=True,
+    ).values('member_id', 'expiry_date'):
+        _creds_by_user.setdefault(_cr['member_id'], []).append(_cr['expiry_date'])
+
+    def _cred_status(user_id):
+        dates = [d for d in _creds_by_user.get(user_id, []) if d is not None]
+        if not dates:
+            return None
+        if any(d < _cred_today for d in dates):
+            return 'red'
+        if any(d <= _cred_warn for d in dates):
+            return 'amber'
+        return 'green'
+
     # Build grid data
     instructor_rows = []
     for instr in instructors:
@@ -352,6 +375,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'ghost_reason': ghost_reason,  # 'inactive' | 'off_roster' | None
             'has_hard_blockout': any(b['is_hard'] for b in bands),
             'has_soft_blockout': any(not b['is_hard'] for b in bands),
+            'cred_status': _cred_status(instr.user_id),
         })
 
     # Ghost rows for users who had the instructor role removed but still have bookings today
@@ -387,6 +411,24 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
                 'has_soft_blockout': False,
             })
 
+    # Pre-fetch maintenance urgency per aircraft (one query)
+    from .models import AircraftMaintenanceItem as _AMI, MaintenanceUrgency as _MU
+    _maint_by_ac = {}
+    for _mi in _AMI.objects.filter(aircraft__club=club).values('aircraft_id', 'urgency'):
+        _maint_by_ac.setdefault(_mi['aircraft_id'], []).append(_mi['urgency'])
+
+    def _ac_maint_urgency(ac_id, online):
+        if not online:
+            return None
+        urgencies = _maint_by_ac.get(ac_id, [])
+        if not urgencies:
+            return None
+        if _MU.RED in urgencies:
+            return 'red'
+        if _MU.AMBER in urgencies:
+            return 'amber'
+        return 'green'
+
     aircraft_rows = []
     for ac in all_aircraft:
         is_online = ac.status == 'online'
@@ -413,6 +455,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'has_blockout': bool(ac_bands),
             'ghost': ghost,
             'ghost_reason': 'retired' if ghost else None,
+            'maint_urgency': _ac_maint_urgency(ac.id, is_online),
         })
 
     # Row-label width: fit the longest instructor/aircraft label (7px/char approx at .76rem)

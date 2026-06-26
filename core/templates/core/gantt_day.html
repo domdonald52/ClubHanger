@@ -59,6 +59,10 @@
   .roster-badge{font-size:.65rem;flex-shrink:0}
   .roster-badge.on{color:var(--success)}
   .roster-badge.off{color:var(--text-3)}
+  .status-dot{font-size:.65rem;flex-shrink:0;line-height:1}
+  .status-dot.green{color:var(--success)}
+  .status-dot.amber{color:#f59e0b}
+  .status-dot.red{color:var(--danger)}
   .bo-badge{font-size:.68rem;flex-shrink:0}
   .bo-badge.hard{color:var(--danger)}
   .bo-badge.soft{color:var(--accent)}
@@ -233,7 +237,10 @@
             {% elif row.ghost_reason == 'off_roster' %}
               <span class="ghost-badge" title="Off roster today — bookings need review">Off roster</span>
             {% else %}
-              {% if row.on_roster is True %}<span class="roster-badge on" title="On roster today">●</span>{% endif %}
+              {% if row.cred_status == 'red' %}<span class="status-dot red" title="Expired credential">●</span>
+              {% elif row.cred_status == 'amber' %}<span class="status-dot amber" title="Credential expiring soon">●</span>
+              {% elif row.cred_status == 'green' %}<span class="status-dot green" title="Credentials current">●</span>
+              {% endif %}
             {% endif %}
           </div>
           <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="instructor" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true" data-ghost-reason="{{ row.ghost_reason }}"{% endif %}>
@@ -255,6 +262,9 @@
             <span class="row-name">{{ row.label }}</span>
             {% if row.ghost_reason == 'retired' %}
               <span class="ghost-badge" title="Aircraft retired — bookings need reassignment">Retired</span>
+            {% elif row.maint_urgency == 'red' %}<span class="status-dot red" title="Maintenance overdue">●</span>
+            {% elif row.maint_urgency == 'amber' %}<span class="status-dot amber" title="Maintenance due soon">●</span>
+            {% elif row.maint_urgency == 'green' %}<span class="status-dot green" title="Maintenance current">●</span>
             {% endif %}
           </div>
           <div class="track{% if row.ghost %} track-ghost{% endif %}" data-row-key="{{ row.row_key }}" data-row-type="aircraft" data-resource-id="{{ row.resource_id }}"{% if row.ghost %} data-ghost="true"{% endif %}>
@@ -549,7 +559,7 @@
   </div>
 </div>
 
-<script src="{% static 'core/gantt.js' %}?v=24"></script>
+<script src="{% static 'core/gantt.js' %}?v=25"></script>
 <script>
 (function() {
   // Unify all row labels to the width of the longest one.
@@ -723,8 +733,13 @@
 </script>
 
 <!-- ── Right-click context menu ── -->
+<style>
+  .ctx-item { cursor: pointer; }
+  .ctx-item:hover { background: var(--surface-3); }
+</style>
 <div id="pill-ctx" style="display:none;position:fixed;z-index:800;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(16,24,40,.18);min-width:175px;overflow:hidden;">
   <div id="pill-ctx-primary" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;font-weight:600;"></div>
+  <div id="pill-ctx-edit" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;border-top:1px solid var(--border-subtle);"><i class="ti ti-pencil" style="opacity:.45;font-size:.9rem;"></i> Edit details</div>
   <div id="pill-ctx-track" class="ctx-item" style="padding:.5rem .9rem;font-size:.84rem;display:none;align-items:center;gap:.5rem;border-top:1px solid var(--border-subtle);"><i class="ti ti-radar" style="opacity:.45;font-size:.9rem;"></i> <span id="pill-ctx-label">Track aircraft</span></div>
 </div>
 
@@ -753,12 +768,12 @@
   let activePill = null;
 
   const STATUS_ACTIONS = {
-    'pending':   { icon: 'ti-pencil',           label: 'Edit booking' },
-    'confirmed': { icon: 'ti-plane-departure',   label: 'Check out flight' },
+    'pending':   { icon: 'ti-circle-check',      label: 'Confirm booking' },
+    'confirmed': { icon: 'ti-plane-departure',   label: 'Check out' },
     'departed':  { icon: 'ti-plane-arrival',     label: 'Record return' },
     'returned':  { icon: 'ti-receipt',           label: 'View charges' },
     'completed': { icon: 'ti-file-description',  label: 'View booking' },
-    'cancelled': { icon: 'ti-file-description',  label: 'View booking' },
+    'cancelled': null,
   };
 
   document.addEventListener('contextmenu', e => {
@@ -770,6 +785,7 @@
     const status = pill.dataset.status || '';
     const action = STATUS_ACTIONS[status];
     const primary = document.getElementById('pill-ctx-primary');
+    const editEl  = document.getElementById('pill-ctx-edit');
     const trackEl = document.getElementById('pill-ctx-track');
 
     if (action) {
@@ -779,9 +795,16 @@
       primary.style.display = 'none';
     }
 
+    const canEdit = (status === 'pending' || status === 'confirmed') && {{ can_manage|yesno:"true,false" }};
+    editEl.style.display = canEdit ? 'flex' : 'none';
+
     const reg = pill.dataset.registration || 'aircraft';
     document.getElementById('pill-ctx-label').textContent = `Track ${reg} live`;
     trackEl.style.display = status === 'departed' ? 'flex' : 'none';
+
+    // Show menu only if at least one item is visible
+    const anyVisible = primary.style.display !== 'none' || editEl.style.display !== 'none' || trackEl.style.display !== 'none';
+    if (!anyVisible) return;
 
     ctx.style.display = 'block';
     ctx.style.left = Math.min(e.clientX, window.innerWidth - 190) + 'px';
@@ -800,6 +823,10 @@
     else window.location.href = url;
   }
   document.getElementById('pill-ctx-primary').addEventListener('click', openBookingDetail);
+  document.getElementById('pill-ctx-edit').addEventListener('click', () => {
+    ctx.style.display = 'none';
+    if (activePill && window.openEditPill) window.openEditPill(activePill);
+  });
   document.getElementById('pill-ctx-track').addEventListener('click', () => {
     ctx.style.display = 'none';
     if (!activePill) return;

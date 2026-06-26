@@ -592,6 +592,8 @@
 
     modal.hidden = false;
   }
+  window.openEditPill = openEdit;
+
   const btnSave = document.getElementById("m-save");
 
   function closeModal() {
