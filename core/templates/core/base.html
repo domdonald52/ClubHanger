@@ -19,6 +19,9 @@
     {% block extra_head %}{% endblock %}
     <style>
         @view-transition { navigation: auto; }
+        /* Disable the default root cross-fade — it briefly shows white. Named
+           transitions (logo) still work because the browser matches them by name. */
+        ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
         /* Logo persists across page navigations without blanking */
         .site-logo-img { view-transition-name: site-logo; }
         ::view-transition-old(site-logo), ::view-transition-new(site-logo) { animation: none; }
