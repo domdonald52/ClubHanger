@@ -99,7 +99,8 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         scheduled_start__gte=day_start,
         scheduled_start__lt=day_end
     ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'client').prefetch_related(
-        _Prefetch('flight_completions', queryset=FlightCompletion.objects.order_by('sequence'))
+        _Prefetch('flight_completions', queryset=FlightCompletion.objects.order_by('sequence')),
+        'declaration',
     )
     from django.db.models import Count as _GCount
     bookings = bookings.annotate(watcher_count=_GCount('watchers'))
@@ -296,9 +297,13 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     # Include inactive instructors so ghost rows can show conflicted bookings.
     # Re-query without is_active filter (the base query already has all instructors).
     from .models import InstructorAvailability
-    _av_cache = {}  # club_member_id → bool | None
+    _all_av = InstructorAvailability.objects.filter(club_member__in=instructors)
+    _av_by_cm = {}
+    for av in _all_av:
+        _av_by_cm.setdefault(av.club_member_id, []).append(av)
+    _av_cache = {}
     for instr in instructors:
-        windows = list(InstructorAvailability.objects.filter(club_member=instr))
+        windows = _av_by_cm.get(instr.id, [])
         if not windows:
             _av_cache[instr.id] = None  # no schedule declared — treated as always available
         else:
@@ -2384,9 +2389,12 @@ def manage_bookings(request, club_slug):
             scheduled_end__gt=_OuterRef('scheduled_start'),
         )
         .exclude(pk=_OuterRef('pk')))
+    from datetime import datetime as _dtt, time as _timet
+    from django.utils import timezone as _tzm
+    _today_start_mgr = _tzm.make_aware(_dtt.combine(today, _timet.min))
     _future_active = Booking.objects.filter(
         club=club, status__in=['pending', 'confirmed'],
-        scheduled_start__date__gte=today)
+        scheduled_start__gte=_today_start_mgr)
     _ac_clash_bids = set(
         _future_active.filter(aircraft__isnull=False)
         .annotate(_has_clash=_Exists(_ac_clash_inner))
@@ -2516,7 +2524,10 @@ def booking_detail(request, club_slug, booking_id):
         actor = ClubMember.objects.get(user=request.user, club=club)
     except ClubMember.DoesNotExist:
         return redirect('login')
-    booking = get_object_or_404(Booking, club=club, id=booking_id)
+    booking = get_object_or_404(
+        Booking.objects.select_related('member__user', 'aircraft', 'instructor', 'flight_type', 'client', 'confirmed_by'),
+        club=club, id=booking_id,
+    )
     is_own_booking = (booking.member == actor)
     # Non-staff can only view their own bookings (read-only + cancel)
     if not (actor.is_admin or actor.is_instructor or is_own_booking):
@@ -8742,8 +8753,10 @@ def manage_exceptions(request, club_slug):
         scheduled_start__lt=_OuterRef('scheduled_end'),
         scheduled_end__gt=_OuterRef('scheduled_start'),
     ).exclude(pk=_OuterRef('pk'))
+    from datetime import datetime as _exc_dt, time as _exc_t
+    _today_start_exc = timezone.make_aware(_exc_dt.combine(today, _exc_t.min))
     _future_bks = (Booking.objects
-        .filter(club=club, scheduled_start__date__gte=today)
+        .filter(club=club, scheduled_start__gte=_today_start_exc)
         .exclude(status__in=['cancelled', 'completed']))
     _ac_clash_ids = set(
         _future_bks.filter(aircraft__isnull=False)
@@ -8759,7 +8772,7 @@ def manage_exceptions(request, club_slug):
 
     _db_conflicts = list(
         Booking.objects
-        .filter(club=club, scheduled_start__date__gte=today)
+        .filter(club=club, scheduled_start__gte=_today_start_exc)
         .exclude(status__in=['cancelled', 'completed'])
         .filter(
             _Q(blockout_conflict=True) |
@@ -8778,7 +8791,7 @@ def manage_exceptions(request, club_slug):
     _instr_conflicts = [
         b for b in (
             Booking.objects
-            .filter(club=club, scheduled_start__date__gte=today, instructor__isnull=False)
+            .filter(club=club, scheduled_start__gte=_today_start_exc, instructor__isnull=False)
             .exclude(status__in=['cancelled', 'completed'])
             .exclude(id__in=_seen_ids)
             .select_related('member__user', 'aircraft', 'flight_type', 'instructor')
@@ -12349,9 +12362,12 @@ def app_book_find(request, club_slug):
             ).prefetch_related('instructors')
         )
 
+    from datetime import datetime as _find_dt, time as _find_t, timedelta as _find_td
+    _find_start = timezone.make_aware(_find_dt.combine(today, _find_t.min))
+    _find_end   = timezone.make_aware(_find_dt.combine(end_date, _find_t.min))
     all_bookings = list(
         Booking.objects
-        .filter(club=club, scheduled_start__date__gte=today, scheduled_start__date__lt=end_date)
+        .filter(club=club, scheduled_start__gte=_find_start, scheduled_start__lt=_find_end)
         .exclude(status='cancelled')
         .select_related('aircraft')
     )

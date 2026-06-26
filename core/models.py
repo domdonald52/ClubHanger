@@ -2224,14 +2224,15 @@ class BlockOut(models.Model):
         if self.scope == 'all':
             return True
         if self.scope == 'aircraft':
-            return self.aircraft.filter(id=aircraft.id).exists()
+            # .all() uses prefetch cache when available; .filter() always hits DB
+            return any(a.id == aircraft.id for a in self.aircraft.all())
         return False  # instructor-scoped blocks don't block aircraft
 
     def affects_instructor(self, user):
         if self.scope == 'all':
             return True
         if self.scope == 'instructors':
-            return self.instructors.filter(id=user.id).exists()
+            return any(u.id == user.id for u in self.instructors.all())
         return False
 
     def affects_booking(self, booking):
@@ -2239,9 +2240,9 @@ class BlockOut(models.Model):
         if self.scope == 'all':
             return True
         if self.scope == 'aircraft':
-            return booking.aircraft_id and self.aircraft.filter(id=booking.aircraft_id).exists()
+            return bool(booking.aircraft_id) and any(a.id == booking.aircraft_id for a in self.aircraft.all())
         if self.scope == 'instructors':
-            return booking.instructor_id and self.instructors.filter(id=booking.instructor_id).exists()
+            return bool(booking.instructor_id) and any(u.id == booking.instructor_id for u in self.instructors.all())
         return False
 
     def interval_on(self, day):

@@ -180,6 +180,5 @@ def theme(request):
                     ctx['exceptions_count'] = _n
                 except Exception:
                     ctx['exceptions_count'] = 0
-                ctx['exceptions_count'] = 0
                 ctx['integrity_issues_count'] = 0
     return ctx
