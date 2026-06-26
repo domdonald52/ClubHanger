@@ -8,7 +8,7 @@
 <div class="gap-sm"></div>
 
 {% if request.GET.event_reported %}
-<div style="background:#dcfce7;color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.5rem .75rem 0;font-size:.83rem;font-weight:600;">Event report submitted — thank you.</div>
+<div style="background:var(--success-bg);color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.5rem .75rem 0;font-size:.83rem;font-weight:600;">Event report submitted — thank you.</div>
 {% endif %}
 
 <!-- Greeting -->
@@ -85,11 +85,11 @@
 
 <!-- ── Outstanding balance / debt ── -->
 {% if flight_count or invoice_count %}
-<a href="{% url 'core:app_account' club.slug %}" class="app-card" style="border-left:4px solid #e03131;background:color-mix(in srgb,#e03131 6%,#fff);display:block;text-decoration:none;color:inherit;">
+<a href="{% url 'core:app_account' club.slug %}" class="app-card" style="border-left:4px solid var(--alert);background:color-mix(in srgb,var(--alert) 6%,var(--surface));display:block;text-decoration:none;color:inherit;">
   <div style="display:flex;align-items:center;gap:.6rem;">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     <div style="flex:1;">
-      <div style="font-size:.84rem;font-weight:700;color:#e03131;">
+      <div style="font-size:.84rem;font-weight:700;color:var(--alert);">
         {% if flight_debt %}${{ flight_debt|floatformat:2|intcomma }} outstanding{% endif %}
         {% if flight_count and invoice_count %}&nbsp;·&nbsp;{% endif %}
         {% if invoice_count %}{{ invoice_count }} invoice{{ invoice_count|pluralize }}{% endif %}
@@ -104,7 +104,7 @@
   <div style="display:flex;align-items:center;justify-content:space-between;">
     <span style="font-size:.82rem;color:var(--text-3);">Account balance</span>
     {% if balance < 0 %}
-    <span style="font-size:.95rem;font-weight:700;color:#e03131;">&minus;${{ balance|floatformat:2|slice:"1:"|intcomma }}</span>
+    <span style="font-size:.95rem;font-weight:700;color:var(--alert);">&minus;${{ balance|floatformat:2|slice:"1:"|intcomma }}</span>
     {% else %}
     <span style="font-size:.95rem;font-weight:700;color:var(--success);">${{ balance|floatformat:2|intcomma }}</span>
     {% endif %}
@@ -114,10 +114,10 @@
 
 <!-- ── Instructor: pending confirmations ── -->
 {% if club_member.is_instructor and pending_count %}
-<a href="{% url 'core:app_bookings' club.slug %}?tab=pending" class="app-card" style="border-left:4px solid #e03131;display:block;text-decoration:none;color:inherit;">
+<a href="{% url 'core:app_bookings' club.slug %}?tab=pending" class="app-card" style="border-left:4px solid var(--alert);display:block;text-decoration:none;color:inherit;">
   <div style="display:flex;align-items:center;gap:.6rem;">
-    <div style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,#e03131 12%,#fff);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#e03131" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <div style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,var(--alert) 12%,var(--surface));display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     </div>
     <div style="flex:1;">
       <div style="font-size:.84rem;font-weight:700;">{{ pending_count }} booking{{ pending_count|pluralize }} pending confirmation</div>

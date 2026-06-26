@@ -24,10 +24,34 @@
   :root {
     --banner:  {{ theme.banner|default:'#1d3a5f' }};
     --primary: {{ theme.primary|default:'#2f7dd1' }};
+    --accent:  {{ theme.accent|default:'#e8943a' }};
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --bg:            #f4f6f9;
+    --surface:       #ffffff;
+    --surface-2:     #f8f9fb;
+    --surface-3:     #f3f5f7;
+    --text-1:        #1f2933;
+    --text-2:        #5b6573;
+    --text-3:        #8a93a0;
+    --border:        #e3e6ea;
+    --border-subtle: #f0f2f4;
+    --alert:         #e03131;
+    --alert-text:    #fff;
+    --success-bg:    #dcfce7;
+    --success-text:  #216c2a;
+    --danger-bg:     #fee2e2;
+    --danger-text:   #991b1b;
+    --info-bg:       #eff6ff;
+    --info-text:     #1d4ed8;
+  }
+  body.dark-mode {
+    --bg: #0d1117; --surface: #161b22; --surface-2: #1c2128; --surface-3: #22272e;
+    --text-1: #e6edf3; --text-2: #8b949e; --text-3: #6e7681;
+    --border: #30363d; --border-subtle: #21262d;
+    --alert: #f85149; --success-bg: rgba(46,160,67,.15); --success-text: #3fb950;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; background: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1f2933; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text-1); -webkit-tap-highlight-color: transparent; }
 
   /* ── Top bar ── */
   .app-bar {
@@ -47,15 +71,15 @@
   .app-nav {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
     height: calc(56px + var(--safe-bottom));
-    background: #fff;
-    border-top: 1px solid #e3e6ea;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
     display: flex;
     padding-bottom: var(--safe-bottom);
   }
   .app-nav-item {
     flex: 1; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 3px;
-    text-decoration: none; color: #8a93a0;
+    text-decoration: none; color: var(--text-3);
     font-size: .62rem; font-weight: 500;
     padding: .4rem 0;
     position: relative;
@@ -65,7 +89,7 @@
   .app-nav-item svg { flex-shrink: 0; }
   .app-nav-badge {
     position: absolute; top: 6px; right: calc(50% - 14px);
-    background: #e03131; color: #fff;
+    background: var(--alert); color: var(--alert-text);
     font-size: .55rem; font-weight: 700;
     min-width: 14px; height: 14px;
     border-radius: 7px; padding: 0 3px;
@@ -84,32 +108,32 @@
 
   /* ── Cards ── */
   .app-card {
-    background: #fff; border-radius: 14px;
+    background: var(--surface); border-radius: 14px;
     box-shadow: 0 1px 4px rgba(0,0,0,.07);
     padding: 1rem;
     margin: .75rem;
   }
-  .app-card-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8a93a0; margin-bottom: .6rem; }
+  .app-card-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin-bottom: .6rem; }
 
   /* ── Section header ── */
   .app-section { padding: .75rem .75rem .25rem; }
-  .app-section-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #8a93a0; }
+  .app-section-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
 
   /* ── List rows ── */
-  .app-list { background: #fff; border-radius: 14px; overflow: hidden; margin: 0 .75rem; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
+  .app-list { background: var(--surface); border-radius: 14px; overflow: hidden; margin: 0 .75rem; box-shadow: 0 1px 4px rgba(0,0,0,.07); }
   .app-list-row {
     display: flex; align-items: center; gap: .75rem;
     padding: .85rem 1rem;
-    border-bottom: 1px solid #f0f2f4;
+    border-bottom: 1px solid var(--border-subtle);
     text-decoration: none; color: inherit;
     cursor: pointer;
   }
   .app-list-row:last-child { border-bottom: none; }
-  .app-list-row:active { background: #f8f9fb; }
+  .app-list-row:active { background: var(--surface-2); }
   .app-list-main { flex: 1; min-width: 0; }
   .app-list-title { font-size: .9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .app-list-sub { font-size: .78rem; color: #8a93a0; margin-top: .1rem; }
-  .app-list-right { font-size: .8rem; color: #8a93a0; flex-shrink: 0; }
+  .app-list-sub { font-size: .78rem; color: var(--text-3); margin-top: .1rem; }
+  .app-list-right { font-size: .8rem; color: var(--text-3); flex-shrink: 0; }
   .app-list-chev { color: #c8cdd4; flex-shrink: 0; }
 
   /* ── Status pills ── */
@@ -123,7 +147,7 @@
   /* ── Booking list row — lifecycle left border + date badge ── */
   .bk-pending   { border-left: 3px dashed color-mix(in srgb, var(--primary) 50%, #fff); }
   .bk-confirmed { border-left: 3px solid color-mix(in srgb, var(--primary) 65%, #fff); }
-  .bk-departed  { border-left: 3px solid var(--primary); background: color-mix(in srgb, var(--primary) 5%, #f4f6f9); }
+  .bk-departed  { border-left: 3px solid var(--primary); background: color-mix(in srgb, var(--primary) 5%, var(--bg)); }
   .bk-completed { border-left: 3px solid #b4b2a9; }
   .bk-date-badge {
     width: 38px; height: 38px; border-radius: 10px;
@@ -133,7 +157,7 @@
   .bk-pending .bk-date-badge   { background: color-mix(in srgb, var(--primary) 15%, #fff); color: color-mix(in srgb, var(--primary) 55%, #000); }
   .bk-confirmed .bk-date-badge { background: color-mix(in srgb, var(--primary) 32%, #fff); color: color-mix(in srgb, var(--primary) 55%, #000); }
   .bk-departed .bk-date-badge  { background: var(--primary); color: #fff; }
-  .bk-completed .bk-date-badge { background: #f4f6f9; color: #8a93a0; }
+  .bk-completed .bk-date-badge { background: var(--bg); color: var(--text-3); }
 
   /* ── Buttons ── */
   .app-btn {
@@ -163,7 +187,7 @@
   }
 
   /* ── Empty state ── */
-  .app-empty { text-align: center; padding: 2.5rem 1rem; color: #8a93a0; font-size: .88rem; }
+  .app-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-3); font-size: .88rem; }
 
   /* ── Utilities ── */
   .gap-xs { margin-top: .4rem; }
@@ -171,21 +195,10 @@
   .gap-md { margin-top: 1.25rem; }
 
   /* ── Dark mode ── */
-  body.dark-mode, html:has(body.dark-mode) { background: #0d1117; color: #e6edf3; }
-  body.dark-mode .app-nav { background: #161b22; border-top-color: #30363d; }
-  body.dark-mode .app-nav-item { color: #6e7681; }
-  body.dark-mode .app-nav-item.active { color: var(--primary); }
-  body.dark-mode .app-card { background: #161b22; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
-  body.dark-mode .app-card-title,
-  body.dark-mode .app-section-title { color: #6e7681; }
-  body.dark-mode .app-list { background: #161b22; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
-  body.dark-mode .app-list-row { border-bottom-color: #21262d; }
-  body.dark-mode .app-list-row:active { background: #22272e; }
-  body.dark-mode .app-list-sub,
-  body.dark-mode .app-list-right,
-  body.dark-mode .app-list-chev { color: #6e7681; }
-  body.dark-mode .app-empty { color: #6e7681; }
-  body.dark-mode .app-btn.secondary { background: #1c2128; color: var(--primary); border-color: #30363d; }
+  /* CSS variable overrides are set in :root body.dark-mode block at the top of this style block */
+  body.dark-mode .app-card { box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  body.dark-mode .app-list { box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+  body.dark-mode .app-btn.secondary { background: var(--surface-2); color: var(--primary); border-color: var(--border); }
 </style>
 {% block extra_style %}{% endblock %}
 </head>
@@ -206,7 +219,7 @@
   {% block app_bar_right %}
   <a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" style="position:relative;padding:.3rem .1rem .3rem .4rem;" title="Notifications">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    {% if unread_notifications_count %}<span style="position:absolute;top:5px;right:5px;width:7px;height:7px;background:#e03131;border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}
+    {% if unread_notifications_count %}<span style="position:absolute;top:5px;right:5px;width:7px;height:7px;background:var(--alert);border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}
   </a>
   <button class="app-bar-action" onclick="appSignOutConfirm()" title="Sign out" style="padding:.3rem .2rem .3rem .4rem;">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -221,7 +234,7 @@
     <div style="font-size:.86rem;color:#6b7280;margin-bottom:1.1rem;">You'll need to sign in again to access the app.</div>
     <div style="display:flex;gap:.6rem;">
       <button onclick="document.getElementById('signout-overlay').style.display='none'" style="flex:1;padding:.75rem;border:1.5px solid #dde1e8;border-radius:10px;background:#fff;font-size:.9rem;font-weight:600;cursor:pointer;color:#374151;">Cancel</button>
-      <form method="post" action="{% url 'logout' %}" style="flex:1;">{% csrf_token %}<input type="hidden" name="next" value="/"><button type="submit" style="width:100%;padding:.75rem;border:none;border-radius:10px;background:#e03131;color:#fff;font-size:.9rem;font-weight:600;cursor:pointer;">Sign out</button></form>
+      <form method="post" action="{% url 'logout' %}" style="flex:1;">{% csrf_token %}<input type="hidden" name="next" value="/"><button type="submit" style="width:100%;padding:.75rem;border:none;border-radius:10px;background:var(--alert);color:var(--alert-text);font-size:.9rem;font-weight:600;cursor:pointer;">Sign out</button></form>
     </div>
   </div>
 </div>

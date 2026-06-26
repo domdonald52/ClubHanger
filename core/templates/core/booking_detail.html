@@ -1285,9 +1285,9 @@
             </tbody>
             <tfoot>
               <tr>
-                <td class="ch-total-label" style="padding:.65rem 0;border-top:2px solid #e3e6ea;">Total received{% if fc.is_paid %} <span style="font-size:.78rem;font-weight:500;color:var(--success);">✓ Paid in full</span>{% endif %}</td>
-                <td class="ch-total-amount" style="text-align:right;padding:.65rem .5rem .65rem .75rem;width:90px;border-top:2px solid #e3e6ea;color:{% if fc.is_paid %}var(--success){% else %}var(--warning-text){% endif %};">${{ batch_session_total|currency }}</td>
-                <td style="width:28px;border-top:2px solid #e3e6ea;"></td>
+                <td class="ch-total-label" style="padding:.65rem 0;border-top:2px solid var(--border);">Total received{% if fc.is_paid %} <span style="font-size:.78rem;font-weight:500;color:var(--success);">✓ Paid in full</span>{% endif %}</td>
+                <td class="ch-total-amount" style="text-align:right;padding:.65rem .5rem .65rem .75rem;width:90px;border-top:2px solid var(--border);color:{% if fc.is_paid %}var(--success){% else %}var(--warning-text){% endif %};">${{ batch_session_total|currency }}</td>
+                <td style="width:28px;border-top:2px solid var(--border);"></td>
               </tr>
             </tfoot>
           </table>
@@ -1354,7 +1354,7 @@
   .notice.err{background:var(--danger-bg);color:var(--danger);}
   .notice.warn{background:var(--warning-bg);color:var(--warning-text);}
 
-  .sep{color:#d0d5dd;margin:0 .2rem;}
+  .sep{color:var(--border);margin:0 .2rem;}
 
   /* base_inline.html's <style> block renders after this content block, so !important is needed to win */
   .status-chip.returned,.status-chip.status-returned{background:#eef2ff!important;color:#4338ca!important;}
@@ -1382,7 +1382,7 @@
 
   .ch-table{width:100%;border-collapse:collapse;font-size:.86rem;margin-bottom:.7rem;}
   .ch-table td{padding:.38rem .5rem;border-bottom:1px solid var(--border-subtle);vertical-align:middle;}
-  .ch-table tfoot td{border-top:2px solid #e3e6ea;border-bottom:none;}
+  .ch-table tfoot td{border-top:2px solid var(--border);border-bottom:none;}
   .del-btn{background:none;border:none;color:var(--danger);cursor:pointer;font-size:1rem;line-height:1;padding:0 .3rem;}
 
   .paid-badge{font-size:.75rem;font-weight:500;color:var(--success);background:var(--success-bg);padding:.2rem .6rem;border-radius:10px;}
@@ -1396,7 +1396,7 @@
   .lf-add-btn{flex-shrink:0;padding:.42rem .75rem;margin-bottom:.6rem;}
   .lf-hint{font-size:.8rem;color:var(--text-3);margin:.3rem .7rem .1rem;font-style:italic;}
 
-  .ch-total-row{display:flex;align-items:center;justify-content:space-between;padding:.7rem .5rem;border-top:2px solid #e3e6ea;margin-top:.6rem;}
+  .ch-total-row{display:flex;align-items:center;justify-content:space-between;padding:.7rem .5rem;border-top:2px solid var(--border);margin-top:.6rem;}
   .ch-total-label{font-size:.88rem;font-weight:600;color:var(--text-2);}
   .ch-total-amount{font-size:1.15rem;font-weight:700;color:var(--text-1);}
   /* Two-column grid layouts */

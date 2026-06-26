@@ -52,16 +52,16 @@
   .tick{position:absolute;top:0;height:26px;border-left:1px solid var(--border-subtle)}
   .tick span{position:absolute;top:6px;left:4px;font-size:.63rem;color:var(--text-3);white-space:nowrap}
   .gridline{position:absolute;top:0;bottom:0;border-left:1px solid var(--border-subtle);pointer-events:none}
-  #now-overlay{position:absolute;top:0;bottom:0;width:1px;background:#e03131;z-index:2;pointer-events:none;}
-  #now-overlay::before{content:'';position:absolute;top:17px;left:-5px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #e03131;}
+  #now-overlay{position:absolute;top:0;bottom:0;width:1px;background:var(--alert);z-index:2;pointer-events:none;}
+  #now-overlay::before{content:'';position:absolute;top:17px;left:-5px;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--alert);}
   .band{position:absolute;top:0;bottom:0;opacity:.28;z-index:1;pointer-events:none;border-left:1px solid rgba(0,0,0,.15);border-right:1px solid rgba(0,0,0,.15)}
   .band-soft{opacity:.14;border-left:2px dashed rgba(0,0,0,.2);border-right:2px dashed rgba(0,0,0,.2)}
   .roster-badge{font-size:.65rem;flex-shrink:0}
-  .roster-badge.on{color:#2f9e44}
+  .roster-badge.on{color:var(--success)}
   .roster-badge.off{color:var(--text-3)}
   .bo-badge{font-size:.68rem;flex-shrink:0}
   .bo-badge.hard{color:var(--danger)}
-  .bo-badge.soft{color:#e67e22}
+  .bo-badge.soft{color:var(--accent)}
   .band span{position:absolute;top:2px;left:4px;font-size:.6rem;font-weight:600;color:var(--text-1);opacity:.9;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
   .track.bookable{cursor:crosshair}
   /* Lifecycle ramp — single primary hue at varying intensities */
@@ -75,7 +75,7 @@
   .pill.completed.paid{background:#f1efe8;border:1px solid #b4b2a9;color:#444441;cursor:pointer;}
   /* Exception left-spine */
   .pill-spine{flex:0 0 5px;width:5px;align-self:stretch;}
-  .pill-spine.conflict{background:#e24b4a;}
+  .pill-spine.conflict{background:var(--alert);}
   .pill-spine.declaration{background-image:repeating-linear-gradient(135deg,#ba7517,#ba7517 3px,#fac775 3px,#fac775 6px);}
   /* Body */
   .pill-body{flex:1;min-width:0;padding:.2rem .35rem;display:flex;flex-direction:column;justify-content:center;overflow:hidden;transform:scaleX(var(--pill-unscale,1));transform-origin:0 0;}
@@ -95,7 +95,7 @@
   @keyframes pill-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
   .pill.shake{animation:pill-shake .35s ease;cursor:not-allowed;}
   .track.drag-over{outline:2px solid var(--primary);outline-offset:-2px}
-  .pill.invalid{outline:2px solid #ffd43b;outline-offset:-2px}
+  .pill.invalid{outline:2px solid var(--warning-border);outline-offset:-2px}
   .pill.override{box-shadow:0 0 0 2px var(--surface),0 0 0 4px #845ef7}
   .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize;z-index:6;}
   /* Overlapping pills on the same track — half-height stacked pair */

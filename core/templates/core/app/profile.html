@@ -5,9 +5,9 @@
 {% block extra_style %}
 <style>
 .m-pill { font-size:.62rem; font-weight:700; padding:.15rem .5rem; border-radius:20px; text-transform:uppercase; letter-spacing:.05em; }
-.m-pill-green  { background:#dcfce7; color:var(--success-text); }
+.m-pill-green  { background:var(--success-bg); color:var(--success-text); }
 .m-pill-amber  { background:#fef3c7; color:var(--warning-text); }
-.m-pill-red    { background:var(--danger-bg); color:#b91c1c; }
+.m-pill-red    { background:var(--danger-bg); color:var(--danger-text); }
 .m-pill-grey   { background:#f0f2f4; color:var(--text-3); }
 
 </style>
@@ -25,7 +25,7 @@
 
 {% block content %}
 {% if saved %}
-<div style="background:#dcfce7;color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Saved.</div>
+<div style="background:var(--success-bg);color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:.75rem;font-size:.83rem;font-weight:600;">✓ Saved.</div>
 {% endif %}
 <div class="gap-sm"></div>
 
@@ -34,7 +34,7 @@
   <div class="app-card-title">Membership</div>
   <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.65rem;">
     {% if club_member.avatar %}
-    <img src="{{ club_member.avatar.url }}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #e8eaed;">
+    <img src="{{ club_member.avatar.url }}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid var(--border);">
     {% else %}
     <div style="width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0;">
       {{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}
