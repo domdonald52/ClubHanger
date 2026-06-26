@@ -932,11 +932,11 @@
 
   .sc-toggle{position:relative;display:inline-block;width:42px;height:24px;border-radius:12px;border:none;cursor:pointer;padding:0;flex-shrink:0;vertical-align:middle;transition:background .18s;}
   .sc-toggle::after{content:'';position:absolute;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:left .18s;}
-  .sc-toggle.sc-on{background:#34c759;}
+  .sc-toggle.sc-on{background:var(--primary);}
   .sc-toggle.sc-on::after{left:calc(100% - 21px);}
   .sc-toggle.sc-off{background:#d1d5db;}
   .sc-toggle.sc-off::after{left:3px;}
-  .sc-toggle:hover.sc-on{background:#28a745;}
+  .sc-toggle:hover.sc-on{background:color-mix(in srgb,var(--primary) 85%,#000);}
   .sc-toggle:hover.sc-off{background:#b8bcc4;}
   span.sc-toggle{cursor:default;}
 .cbtn-sm
