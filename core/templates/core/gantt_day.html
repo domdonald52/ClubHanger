@@ -272,7 +272,10 @@
 <!-- Block-out creation modal -->
 <div id="bo-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(500px,94vw);">
-    <h2>Add block-out</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+      <h2 style="margin:0;">Add block-out</h2>
+      <button type="button" class="pi-close" id="bo-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <div class="two">
       <label>Type<select id="bo-type"><option value="">— none —</option></select></label>
       <label>Scope
@@ -322,9 +325,7 @@
       <label>End<input type="time" id="bo-end" value="17:00"></label>
     </div>
     <label>Label (optional)<input type="text" id="bo-label" placeholder="e.g. 100-hr check ZK-TAW"></label>
-    <div class="modal-actions">
-      <button class="cbtn" id="bo-cancel" type="button">Close</button>
-      <span style="flex:1"></span>
+    <div class="modal-actions" style="justify-content:flex-end;">
       <button class="cbtn primary" id="bo-save" type="button">Add block-out</button>
     </div>
   </div>

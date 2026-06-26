@@ -1514,6 +1514,8 @@ class Booking(models.Model):
         ordering = ['-scheduled_start']
         indexes = [
             models.Index(fields=['club', 'scheduled_start']),
+            models.Index(fields=['club', 'status', 'scheduled_start']),
+            models.Index(fields=['club', 'status']),
             models.Index(fields=['member', 'status']),
         ]
     

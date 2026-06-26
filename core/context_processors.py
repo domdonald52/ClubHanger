@@ -76,9 +76,11 @@ def theme(request):
                 try:
                     from .models import Booking, AircraftMaintenanceItem, MemberCredential, MaintenanceUrgency, Invoice
                     from django.db.models import Q, Exists, OuterRef
-                    from datetime import date, timedelta
+                    from datetime import datetime, timedelta, time as _time
                     from django.utils import timezone as _tz
-                    _today = date.today()
+                    # Use datetime range (not __date__) so PostgreSQL can use the index
+                    _today = _tz.localdate()
+                    _today_start = _tz.make_aware(datetime.combine(_today, _time.min))
                     _n = 0
                     # Unpaid completed flights (no invoice)
                     _n += Booking.objects.filter(
@@ -90,7 +92,7 @@ def theme(request):
                     # Booking conflicts — build one deduped set of IDs (mirrors manage_exceptions)
                     _future = Booking.objects.filter(
                         club=club, status__in=['pending', 'confirmed'],
-                        scheduled_start__date__gte=_today)
+                        scheduled_start__gte=_today_start)
                     _ac_sub = Booking.objects.filter(
                         club=club, aircraft_id=OuterRef('aircraft_id'),
                         status__in=['pending', 'confirmed', 'departed'],
@@ -114,7 +116,7 @@ def theme(request):
                     )
                     _conf_ids = set(
                         Booking.objects.filter(
-                            club=club, scheduled_start__date__gte=_today,
+                            club=club, scheduled_start__gte=_today_start,
                         ).exclude(status__in=['cancelled', 'completed']).filter(
                             Q(blockout_conflict=True) |
                             Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
@@ -138,7 +140,7 @@ def theme(request):
                     _instr_bks = list(
                         Booking.objects.filter(
                             club=club, instructor__isnull=False,
-                            scheduled_start__date__gte=_today,
+                            scheduled_start__gte=_today_start,
                         ).exclude(status__in=['cancelled', 'completed'])
                         .exclude(id__in=_conf_ids)
                         .values_list('id', 'instructor_id', 'scheduled_start')
@@ -166,7 +168,7 @@ def theme(request):
                     # Lapsed credentials for members with upcoming bookings
                     _fut_user_ids = (
                         Booking.objects
-                        .filter(club=club, scheduled_start__date__gte=_today)
+                        .filter(club=club, scheduled_start__gte=_today_start)
                         .exclude(status__in=['cancelled', 'completed'])
                         .values_list('member__user_id', flat=True).distinct()
                     )
