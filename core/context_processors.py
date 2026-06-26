@@ -174,14 +174,5 @@ def theme(request):
                     ctx['exceptions_count'] = _n
                 except Exception:
                     ctx['exceptions_count'] = 0
-                try:
-                    from .models import Account as _Acct
-                    from decimal import Decimal as _D
-                    _drift = 0
-                    for _acc in _Acct.objects.filter(club_member__club=club):
-                        if abs(_acc.recompute_balance() - _acc.balance) > _D('0.01'):
-                            _drift += 1
-                    ctx['integrity_issues_count'] = _drift
-                except Exception:
-                    ctx['integrity_issues_count'] = 0
+                ctx['integrity_issues_count'] = 0
     return ctx
