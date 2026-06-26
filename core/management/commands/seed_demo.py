@@ -32,6 +32,7 @@ import os
 from django.core.management.base import BaseCommand, CommandError
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.db.models.signals import post_save
 from django.utils import timezone
 
 from core.models import (
@@ -1396,6 +1397,13 @@ class Command(BaseCommand):
 
         blocks_created = 0
 
+        # Suppress the post_save signal during seeding — it rescans all bookings
+        # for conflicts on every BlockOut create, which is slow and can crash on
+        # a freshly-populated database. Conflict flags will be correct for real
+        # bookings created via the app; seed data doesn't need the rescan.
+        from core.models import _blockout_saved
+        post_save.disconnect(_blockout_saved, sender=BlockOut)
+
         def make_block(label="", **kwargs):
             nonlocal blocks_created
             self.stdout.write(f"  Block-out: {label or kwargs.get('blockout_type', '?')}...")
@@ -1482,4 +1490,5 @@ class Command(BaseCommand):
         )
         b.aircraft.set(aircraft)
 
+        post_save.connect(_blockout_saved, sender=BlockOut)
         self.stdout.write(f"  Block-outs: {blocks_created} created")
