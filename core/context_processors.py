@@ -74,6 +74,16 @@ def theme(request):
             )
             if cm.can_access_manage and _on_manage_page:
                 try:
+                    import time as _cp_time, logging as _cp_log
+                    _cp_logger = _cp_log.getLogger('perf.context_processor')
+                    _cp_t0 = _cp_t_prev = _cp_time.perf_counter()
+                    def _cp_tick(label):
+                        nonlocal _cp_t_prev
+                        _now = _cp_time.perf_counter()
+                        _cp_logger.warning('PERF ctx_proc [%s] %.0fms (total %.0fms)', label,
+                                           (_now - _cp_t_prev) * 1000, (_now - _cp_t0) * 1000)
+                        _cp_t_prev = _now
+
                     from .models import Booking, AircraftMaintenanceItem, MemberCredential, MaintenanceUrgency, Invoice
                     from django.db.models import Q, Exists, OuterRef
                     from datetime import datetime, timedelta, time as _time
@@ -89,6 +99,7 @@ def theme(request):
                         flight_completions__total_charge__gt=0,
                         flight_completions__invoices__isnull=True,
                     ).distinct().count()
+                    _cp_tick('unpaid_flights')
                     # Booking conflicts — build one deduped set of IDs (mirrors manage_exceptions)
                     _future = Booking.objects.filter(
                         club=club, status__in=['pending', 'confirmed'],
@@ -114,6 +125,7 @@ def theme(request):
                         .annotate(_cl=Exists(_in_sub)).filter(_cl=True)
                         .values_list('id', flat=True)
                     )
+                    _cp_tick('clash_ids')
                     _conf_ids = set(
                         Booking.objects.filter(
                             club=club, scheduled_start__gte=_today_start,
@@ -128,6 +140,7 @@ def theme(request):
                         ).values_list('id', flat=True)
                     )
                     _n += len(_conf_ids)
+                    _cp_tick('conf_ids')
                     # Instructor off-roster — only bookings not already counted above
                     from .models import InstructorAvailability as _IA
                     _roster_uids = set(
@@ -151,6 +164,7 @@ def theme(request):
                         and _av_by_user.get(_uid)
                         and not any(w.applies_on(_tz.localtime(_start).date()) for w in _av_by_user[_uid])
                     )
+                    _cp_tick('instructor_off_roster')
                     # Maintenance items (amber/red)
                     _n += AircraftMaintenanceItem.objects.filter(
                         aircraft__club=club, aircraft__status='online',
@@ -165,6 +179,7 @@ def theme(request):
                         club=club, status='departed',
                         departed_at__lt=_tz.now() - timedelta(hours=24),
                     ).count()
+                    _cp_tick('maint+invoices+overdue')
                     # Lapsed credentials for members with upcoming bookings
                     _fut_user_ids = (
                         Booking.objects
@@ -177,6 +192,7 @@ def theme(request):
                         .filter(member_id__in=_fut_user_ids, expiry_date__lt=_today)
                         .values('member_id').distinct().count()
                     )
+                    _cp_tick('lapsed_credentials')
                     ctx['exceptions_count'] = _n
                 except Exception:
                     ctx['exceptions_count'] = 0
