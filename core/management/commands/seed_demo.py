@@ -1121,6 +1121,8 @@ class Command(BaseCommand):
         ]
 
         notes_created = 0
+        total_students = len(student_usernames)
+        self.stdout.write(f"  Lesson notes: 0/{total_students} students...")
         for i, username in enumerate(student_usernames):
             try:
                 student_member = next(m for m in members if m.user.username == username)
@@ -1150,6 +1152,8 @@ class Command(BaseCommand):
                     next_lesson_plan=next_plan,
                 )
                 notes_created += 1
+
+            self.stdout.write(f"  Lesson notes: {i + 1}/{total_students} students ({notes_created} notes)")
 
         self.stdout.write(f"  Lesson notes: {notes_created} created")
 
@@ -1392,9 +1396,10 @@ class Command(BaseCommand):
 
         blocks_created = 0
 
-        def make_block(**kwargs):
+        def make_block(label="", **kwargs):
             nonlocal blocks_created
-            b = BlockOut.objects.create(club=club, created_by=admin_user, **kwargs)
+            self.stdout.write(f"  Block-out: {label or kwargs.get('blockout_type', '?')}...")
+            b = BlockOut.objects.create(club=club, created_by=admin_user, label=label, **kwargs)
             blocks_created += 1
             return b
 
