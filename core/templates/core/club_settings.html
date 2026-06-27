@@ -599,23 +599,23 @@
     <div class="s-section-hdr">
       <div>
         <h2 class="sh2" style="margin:0 0 .2rem;">Aircraft surcharge types</h2>
-        <p class="s-desc">Per-flight additions (e.g. 4-seat surcharge). Assign to specific aircraft under Manage → Aircraft.</p>
+        <p class="s-desc">Per-flight additions. Assign to specific aircraft under Manage → Aircraft.</p>
       </div>
       <button type="button" class="cbtn-add" onclick="sOpenModal('add-sc-modal')">+ Add surcharge</button>
     </div>
 
     {% if surcharge_types %}
     <table class="ft-table">
-      <thead><tr><th>Name</th><th>Description</th><th>Amount/flight</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Description</th><th>Rate</th><th></th></tr></thead>
       <tbody>
         {% for st in surcharge_types %}
         <tr>
           <td><strong>{{ st.name }}</strong></td>
           <td style="color:var(--text-3);font-size:.82rem;">{{ st.description|default:"—" }}</td>
-          <td>${{ st.amount|currency }}</td>
+          <td>${{ st.amount|currency }}{% if st.rate_type == 'per_hour' %}/hr{% else %}/flight{% endif %}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditSc({{ st.id }},'{{ st.name }}','{{ st.description }}','{{ st.amount }}')"><i class="ti ti-pencil"></i></button>
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditSc({{ st.id }},'{{ st.name }}','{{ st.description }}','{{ st.amount }}','{{ st.rate_type }}')"><i class="ti ti-pencil"></i></button>
               <form method="post" style="display:contents;" data-confirm="Delete {{ st.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_surcharge_type">
                 <input type="hidden" name="st_id" value="{{ st.id }}">
@@ -1619,17 +1619,25 @@
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="add_surcharge_type">
       <label class="flabel">Name
-        <input type="text" name="st_name" required class="finput" placeholder="e.g. 4-seat surcharge">
+        <input type="text" name="st_name" required class="finput">
       </label>
       <label class="flabel" style="margin-top:.1rem;">Description <span style="font-weight:400;">(optional)</span>
         <input type="text" name="st_desc" class="finput" placeholder="e.g. Additional insurance loading">
       </label>
-      <label class="flabel" style="margin-top:.1rem;max-width:160px;">Amount/flight
-        <div class="money-wrap">
-          <span class="money-sym">$</span>
-          <input type="number" name="st_amount" value="0" min="0" step="0.01" class="money-input">
-        </div>
-      </label>
+      <div style="display:flex;gap:.8rem;align-items:flex-end;margin-top:.1rem;">
+        <label class="flabel" style="max-width:140px;margin:0;">Amount
+          <div class="money-wrap">
+            <span class="money-sym">$</span>
+            <input type="number" name="st_amount" value="0" min="0" step="0.01" class="money-input">
+          </div>
+        </label>
+        <label class="flabel" style="margin:0;">Unit
+          <select name="st_rate_type" class="finput" style="width:auto;">
+            <option value="each">Per flight</option>
+            <option value="per_hour">Per hour</option>
+          </select>
+        </label>
+      </div>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')">Close</button>
         <span style="flex:1"></span>
@@ -1652,12 +1660,20 @@
       <label class="flabel" style="margin-top:.1rem;">Description
         <input type="text" name="st_desc" id="esc-desc" class="finput">
       </label>
-      <label class="flabel" style="margin-top:.1rem;max-width:160px;">Amount/flight
-        <div class="money-wrap">
-          <span class="money-sym">$</span>
-          <input type="number" name="st_amount" id="esc-amount" min="0" step="0.01" class="money-input">
-        </div>
-      </label>
+      <div style="display:flex;gap:.8rem;align-items:flex-end;margin-top:.1rem;">
+        <label class="flabel" style="max-width:140px;margin:0;">Amount
+          <div class="money-wrap">
+            <span class="money-sym">$</span>
+            <input type="number" name="st_amount" id="esc-amount" min="0" step="0.01" class="money-input">
+          </div>
+        </label>
+        <label class="flabel" style="margin:0;">Unit
+          <select name="st_rate_type" id="esc-rate-type" class="finput" style="width:auto;">
+            <option value="each">Per flight</option>
+            <option value="per_hour">Per hour</option>
+          </select>
+        </label>
+      </div>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')">Close</button>
         <span style="flex:1"></span>
@@ -1972,11 +1988,12 @@ function sOpenEditIg(id, name, rate, order) {
   document.getElementById('eig-order').value = order;
   sOpenModal('edit-ig-modal');
 }
-function sOpenEditSc(id, name, desc, amount) {
+function sOpenEditSc(id, name, desc, amount, rateType) {
   document.getElementById('esc-id').value = id;
   document.getElementById('esc-name').value = name;
   document.getElementById('esc-desc').value = desc;
   document.getElementById('esc-amount').value = amount;
+  document.getElementById('esc-rate-type').value = rateType || 'each';
   sOpenModal('edit-sc-modal');
 }
 function sOpenAddBot(target, defaultColor, showHard) {

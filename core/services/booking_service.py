@@ -259,9 +259,15 @@ def check_in(
                           'amount': round(float(fc.instructor_rate_snapshot) * float(hours), 2)}
             )
         for sc in ac.surcharges.all():
+            if sc.rate_type == 'per_hour':
+                sc_amount = round(float(sc.amount) * float(hours), 2)
+                sc_desc = f'{sc.name} × {hours:.1f} hrs'
+            else:
+                sc_amount = float(sc.amount)
+                sc_desc = sc.name
             FlightChargeItem.objects.get_or_create(
                 flight_completion=fc, item_type='surcharge',
-                defaults={'description': sc.name, 'amount': sc.amount}
+                defaults={'description': sc_desc, 'amount': sc_amount}
             )
 
     from ..models import create_maint_log_entry

@@ -1822,11 +1822,14 @@ def club_settings(request, club_slug, mode='settings'):
             st_name = request.POST.get('st_name', '').strip()
             st_amount = request.POST.get('st_amount', '').strip()
             st_desc = request.POST.get('st_desc', '').strip()
+            st_rate_type = request.POST.get('st_rate_type', 'each')
+            if st_rate_type not in ('each', 'per_hour'):
+                st_rate_type = 'each'
             if st_name and st_amount:
                 try:
                     AircraftSurchargeType.objects.get_or_create(
                         club=club, name=st_name,
-                        defaults={'amount': st_amount, 'description': st_desc}
+                        defaults={'amount': st_amount, 'description': st_desc, 'rate_type': st_rate_type}
                     )
                 except Exception:
                     pass
@@ -1844,7 +1847,10 @@ def club_settings(request, club_slug, mode='settings'):
                     st.name = name
                 st.description = request.POST.get('st_desc', '').strip()
                 st.amount = request.POST.get('st_amount', st.amount)
-                st.save(update_fields=['name', 'description', 'amount'])
+                st_rate_type = request.POST.get('st_rate_type', st.rate_type)
+                if st_rate_type in ('each', 'per_hour'):
+                    st.rate_type = st_rate_type
+                st.save(update_fields=['name', 'description', 'amount', 'rate_type'])
             return redirect(_redir_name, club_slug=club_slug)
 
         elif action == 'add_aircraft_type':
