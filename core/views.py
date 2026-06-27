@@ -5768,14 +5768,14 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                     )
             _saved = True
 
-        elif action == 'add_fuel_rate' and actor.is_admin:
+        elif action == 'amend_fuel_rate' and actor.is_admin:
             rate = request.POST.get('fuel_rate', '').strip()
-            effective_from = request.POST.get('effective_from', '').strip()
             notes = request.POST.get('notes', '').strip()
-            if rate and effective_from:
+            if rate:
+                from django.utils import timezone as _tz
                 FuelSurchargeRate.objects.create(
                     club=club, aircraft=ac, rate=rate,
-                    effective_from=effective_from, notes=notes
+                    effective_from=_tz.localdate(), notes=notes
                 )
 
         elif action == 'toggle_fuel_rate' and actor.is_admin:
@@ -5895,7 +5895,12 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         (ft, _hire_rate_map.get(ft.id))
         for ft in FlightType.objects.filter(club=club).order_by('name')
     ]
-    fuel_rates = FuelSurchargeRate.objects.filter(aircraft=ac).order_by('-effective_from')
+    fuel_rates = list(FuelSurchargeRate.objects.filter(aircraft=ac).order_by('-effective_from'))
+    from datetime import timedelta as _td
+    fuel_rate_history = [
+        (fuel_rates[i], fuel_rates[i - 1].effective_from - _td(days=1))
+        for i in range(1, len(fuel_rates))
+    ]
     all_surcharge_types = AircraftSurchargeType.objects.filter(club=club)
     assigned_surcharge_ids = set(ac.surcharges.values_list('id', flat=True))
     maintenance_items = list(AircraftMaintenanceItem.objects.filter(aircraft=ac))
@@ -5979,6 +5984,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'ac_icon_type': _ac_icon_type,
         'hire_rate_rows': hire_rate_rows,
         'fuel_rates': fuel_rates,
+        'fuel_rate_history': fuel_rate_history,
         'all_surcharge_types': all_surcharge_types,
         'assigned_surcharge_ids': assigned_surcharge_ids,
         'maintenance_items': maintenance_items,

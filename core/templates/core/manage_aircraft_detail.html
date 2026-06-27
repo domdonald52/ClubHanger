@@ -329,11 +329,11 @@
 
     <div class="tab-section-header">
       <div>
-        <h2 class="sh2" style="margin:0 0 .2rem;">Fuel charge rates</h2>
-        <p class="tab-desc">Automatically added at check-in whenever active. Add a new entry whenever the rate changes — the most recent effective date applies.</p>
+        <h2 class="sh2" style="margin:0 0 .2rem;">Fuel charge rate</h2>
+        <p class="tab-desc">Added at check-in whenever active. Amend the rate whenever it changes — previous rates are kept as history.</p>
       </div>
       {% if club_member.is_admin %}
-      <button type="button" class="cbtn-add" onclick="document.getElementById('add-fuel-modal').hidden=false">+ Add fuel charge rate</button>
+      <button type="button" class="cbtn-add" onclick="document.getElementById('amend-fuel-modal').hidden=false">{% if fuel_rates %}Amend rate{% else %}+ Set rate{% endif %}</button>
       {% endif %}
     </div>
 
@@ -342,7 +342,7 @@
     <div class="current-rate-card">
       <span class="current-rate-label">Current rate</span>
       <span class="current-rate-amount" style="{% if not current.is_active %}text-decoration:line-through;color:var(--text-3);{% endif %}">${{ current.rate|currency }}/hr</span>
-      <span class="current-rate-since">from {{ current.effective_from }}</span>
+      <span class="current-rate-since">valid from {{ current.effective_from }}</span>
       {% if current.notes %}<span class="current-rate-notes">{{ current.notes }}</span>{% endif %}
       {% if not current.is_active %}<span class="hire-badge dry" style="background:var(--danger-bg);color:var(--danger);">Paused</span>{% endif %}
       {% if club_member.is_admin %}
@@ -353,25 +353,32 @@
         <button type="submit" class="sc-toggle {% if current.is_active %}sc-on{% else %}sc-off{% endif %}"
                 title="Fuel charging {% if current.is_active %}active — click to pause{% else %}paused — click to activate{% endif %}"></button>
       </form>
+      <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete current rate?')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_fuel_rate">
+        <input type="hidden" name="rate_id" value="{{ current.id }}">
+        <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete current rate"><i class="ti ti-trash"></i></button>
+      </form>
       {% endif %}
     </div>
     {% endwith %}
-    {% if fuel_rates|length > 1 %}
+    {% if fuel_rate_history %}
     <details style="margin-top:.5rem;">
       <summary style="font-size:.8rem;color:var(--text-3);cursor:pointer;list-style:none;user-select:none;">
-        Rate history ({{ fuel_rates|length|add:"-1" }} previous)
+        Rate history ({{ fuel_rate_history|length }} previous)
       </summary>
       <table class="ft-table" style="margin-top:.5rem;">
-        <thead><tr><th>Effective from</th><th>Rate/hr</th><th>Notes</th><th></th></tr></thead>
+        <thead><tr><th>From</th><th>To</th><th style="text-align:right;">Rate/hr</th><th>Notes</th><th></th></tr></thead>
         <tbody>
-          {% for r in fuel_rates %}{% if not forloop.first %}
+          {% for r, valid_to in fuel_rate_history %}
           <tr>
             <td style="font-size:.85rem;">{{ r.effective_from }}</td>
-            <td>${{ r.rate|currency }}</td>
+            <td style="font-size:.85rem;">{{ valid_to }}</td>
+            <td style="text-align:right;">${{ r.rate|currency }}</td>
             <td style="color:var(--text-3);font-size:.82rem;">{{ r.notes|default:"—" }}</td>
             <td style="text-align:right;">
               {% if club_member.is_admin %}
-              <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete this rate?')">
+              <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete this rate entry?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_fuel_rate">
                 <input type="hidden" name="rate_id" value="{{ r.id }}">
@@ -380,22 +387,14 @@
               {% endif %}
             </td>
           </tr>
-          {% endif %}{% endfor %}
+          {% endfor %}
         </tbody>
       </table>
     </details>
     {% endif %}
-    {% if club_member.is_admin %}
-    <form method="post" style="display:inline;margin-top:.4rem;">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="delete_fuel_rate">
-      <input type="hidden" name="rate_id" value="{{ fuel_rates.0.id }}">
-      <button type="submit" class="cbtn-sm cbtn-danger" style="font-size:.78rem;" onclick="return dcModal(this.closest('form'),'Delete current rate?')">Delete current rate</button>
-    </form>
-    {% endif %}
     {% else %}
     <div class="tab-empty">
-      <p>No fuel charge rates set. Fuel charges will not be added at check-in until a rate is added and activated.</p>
+      <p>No fuel charge rate set. Fuel charges will not be added at check-in until a rate is set and activated.</p>
     </div>
     {% endif %}
 
@@ -598,31 +597,27 @@
   </div><!-- /tab-maintenance -->
 
   <!-- Add fuel charge rate modal -->
-  <div id="add-fuel-modal" class="modal-back" hidden>
-    <div class="modal" style="width:min(460px,95vw);">
+  <div id="amend-fuel-modal" class="modal-back" hidden>
+    <div class="modal" style="width:min(420px,95vw);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 style="margin:0;">Add fuel charge rate</h2>
-        <button type="button" class="pi-close" onclick="document.getElementById('add-fuel-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+        <h2 style="margin:0;">Amend fuel charge rate</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('amend-fuel-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post">
         {% csrf_token %}
-        <input type="hidden" name="action" value="add_fuel_rate">
-        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-          <label class="flabel">Effective from
-            <input type="date" name="effective_from" class="finput" required>
-          </label>
-          <label class="flabel" style="width:130px;">Rate/hr
-            <div class="money-wrap">
-              <span class="money-sym">$</span>
-              <input type="number" name="fuel_rate" min="0" step="0.01" placeholder="0.00" class="money-input" required>
-            </div>
-          </label>
-        </div>
-        <label class="flabel" style="margin-top:.1rem;">Notes <span style="font-weight:400;">(optional)</span>
-          <input type="text" name="notes" class="finput" placeholder="e.g. Committee approved 2026-06-01">
+        <input type="hidden" name="action" value="amend_fuel_rate">
+        <label class="flabel">New rate/hr
+          <div class="money-wrap">
+            <span class="money-sym">$</span>
+            <input type="number" name="fuel_rate" min="0" step="0.01" placeholder="0.00" class="money-input" required>
+          </div>
         </label>
-        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
-          <button type="submit" class="cbtn primary">Add rate</button>
+        <label class="flabel" style="margin-top:.6rem;">Notes <span style="font-weight:400;">(optional)</span>
+          <input type="text" name="notes" class="finput" placeholder="e.g. Fuel price review June 2026">
+        </label>
+        <p style="font-size:.8rem;color:var(--text-3);margin:.8rem 0 0;">Effective from today. The current rate will move to history.</p>
+        <div class="modal-actions" style="margin-top:.8rem;justify-content:flex-end;">
+          <button type="submit" class="cbtn primary">Save rate</button>
         </div>
       </form>
     </div>
@@ -968,14 +963,14 @@
 })();
 
 // Close all modals on backdrop click or Escape
-['add-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal','add-manual-log-modal'].forEach(id => {
+['amend-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal','add-manual-log-modal'].forEach(id => {
   const m = document.getElementById(id);
   if (!m) return;
   m.addEventListener('click', e => { if (e.target === m) m.hidden = true; });
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['add-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal','add-manual-log-modal'].forEach(id => {
+    ['amend-fuel-modal','add-maint-modal','edit-maint-modal','add-ac-bo-modal','add-manual-log-modal'].forEach(id => {
       const m = document.getElementById(id);
       if (m) m.hidden = true;
     });
