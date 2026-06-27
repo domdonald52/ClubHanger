@@ -1,0 +1,2 @@
+Registration*,Type,ICAO designator,Serial number,Engines,Seats,Records Hobbs,Records Tacho,Records Airswitch,Time method,Hobbs initial,Tacho initial,Maint time source,Maint hours initial,Fuel L/hr,Status,Available for hire,Is leased
+E.g. ZK-ABC,Cessna 172S,C172,17280001,1,4,TRUE,FALSE,FALSE,hobbs,,9500.0,hobbs,9500.0,30,online,TRUE,FALSE

@@ -59,12 +59,29 @@ The import command matches case-insensitively. Recommended CH names and the `--f
 
 Only non-identical names need to be in the map. Adjust if you name things differently in CH.
 
-### 0b. Set up aircraft in CH Settings
+### 0b. Set up aircraft
 
-In CH → Settings → Aircraft: add each aircraft manually.  
+Fill in `migration/aircraft_import.csv` with one row per aircraft.  
 Source: AircraftStatus.pdf (maintenance schedules) and AircraftTechLog.pdf (current Hobbs/Tacho).
 
-The import matches aircraft by **registration** (e.g. `ZK-ABC`). Aircraft must exist before flights can be imported.
+Column notes:
+- **Time method** and **Maint time source**: `hobbs`, `tacho`, or `airswitch`
+- **Hobbs/Tacho initial**: leave blank if unknown — enter later via Settings → Aircraft
+- **Maint hours initial**: total maintenance hours accrued before this system; used as starting point for maintenance regime intervals
+- **Fuel L/hr**: average fuel burn for planning purposes (not billed)
+- **Status**: `online` (default) or `retired`
+
+After filling in the CSV, import it:
+
+```bash
+# Dry run first
+/opt/venv/bin/python manage.py import_aircraft /app/migration/aircraft_import.csv --club wac --dry-run
+
+# Live
+/opt/venv/bin/python manage.py import_aircraft /app/migration/aircraft_import.csv --club wac
+```
+
+Aircraft must exist before flights can be imported (Step 5). The import is re-runnable — existing registrations are skipped. Pass `--update` to overwrite existing aircraft fields.
 
 ### 0c. Export flight history from PA (do this now, not on cut-over day)
 
@@ -317,7 +334,7 @@ Keep `migration/PROCEDURE.md` for the record.
 | Item | Owner | Status |
 |------|-------|--------|
 | Confirm flight type names match plan above or update `--flight-type-map` | Dominic | Before Phase 0a |
-| Set up aircraft in CH Settings with Hobbs/Tacho from AircraftStatus.pdf | Dominic | Phase 0b |
+| Fill in `migration/aircraft_import.csv` with aircraft data (Hobbs/Tacho from AircraftStatus.pdf) | Dominic | Phase 0b |
 | Confirm exact date range of FlyingSheet exports already held | Dominic | Phase 0c |
 | Bookkeeper meeting: GL codes on charge types, Xero reconciliation procedure | Dominic + bookkeeper | Before cut-over |
 | Decide cut-over month (July or August 2026) | Dominic | Now |

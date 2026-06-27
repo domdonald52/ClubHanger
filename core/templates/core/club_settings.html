@@ -1101,7 +1101,7 @@
       <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Club details on invoices</h3>
       <p style="font-size:.82rem;color:var(--text-3);margin:.2rem 0 .9rem;">Phone, email and address are set in the <a href="?tab=general" class="slink">General tab</a>.</p>
       <div class="fgrid" style="margin-bottom:1rem;">
-        <label class="flabel">Legal name <span style="font-weight:400;color:var(--text-3);">(as registered with the Incorporated Societies Register)</span>
+        <label class="flabel">Legal name
           <input type="text" name="billing_name" value="{{ config.billing_name }}" class="finput" placeholder="e.g. Aero Club Inc.">
         </label>
         <label class="flabel">GST / tax number <span style="font-weight:400;color:var(--text-3);">(8–9 digits)</span>
@@ -1152,46 +1152,60 @@
   <div id="tab-membership" class="stab-panel">
     <h2 style="font-size:1rem;margin-bottom:.9rem;">Membership</h2>
 
-    <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Financial year</h3>
-    <form method="post" style="display:flex;align-items:flex-end;gap:.9rem;flex-wrap:wrap;margin-bottom:1.4rem;">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="save_membership_tab">
-      <label class="flabel" style="max-width:200px;margin:0;">FY start month
-        <select name="fy_start_month" class="finput">
-          {% for val, lbl in fy_month_choices %}
-          <option value="{{ val }}" {% if config.fy_start_month == val %}selected{% endif %}>{{ lbl }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <button type="submit" class="btn" style="margin-bottom:0;">Save</button>
-    </form>
-
-    <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Auto-lapse</h3>
-    <p class="s-desc" style="margin-bottom:.9rem;">Members with <strong>active</strong> standing whose subscription expired more than the grace period ago will be auto-lapsed when you click the button below, or when the <code>update_lapsed_members</code> management command runs.</p>
-    <form method="post" style="display:flex;align-items:flex-end;gap:.9rem;flex-wrap:wrap;margin-bottom:.9rem;">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="save_membership_tab">
-      <label class="flabel" style="max-width:180px;margin:0;">Grace period (days)
-        <input type="number" name="lapse_grace_days" value="{{ config.lapse_grace_days }}" min="0" class="finput" style="width:90px;">
-      </label>
-      <button type="submit" class="btn" style="margin-bottom:0;">Save</button>
-    </form>
-    <form method="post" style="margin-bottom:1.4rem;">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="run_auto_lapse">
-      <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
-        <button type="submit" class="cbtn{% if lapse_preview %} primary{% endif %}">
-          Run auto-lapse now{% if lapse_preview %} ({{ lapse_preview|length }} pending){% endif %}
-        </button>
-        {% if lapse_preview %}
-        <span style="font-size:.82rem;color:var(--danger);">
-          {% for m in lapse_preview %}{{ m.user.get_full_name }}{% if m.subscription_expires %} (exp. {{ m.subscription_expires|date:"j M Y" }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
-        </span>
-        {% else %}
-        <span style="font-size:.82rem;color:var(--text-3);">No members are overdue for lapsing.</span>
-        {% endif %}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:start;margin-bottom:1.4rem;">
+      <div>
+        <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Financial year</h3>
+        <form method="post" style="display:flex;align-items:flex-end;gap:.9rem;flex-wrap:wrap;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_membership_tab">
+          <label class="flabel" style="max-width:200px;margin:0;">FY start month
+            <select name="fy_start_month" class="finput">
+              {% for val, lbl in fy_month_choices %}
+              <option value="{{ val }}" {% if config.fy_start_month == val %}selected{% endif %}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <button type="submit" class="btn" style="margin-bottom:0;">Save</button>
+        </form>
       </div>
-    </form>
+      <div>
+        <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Auto-lapse</h3>
+        <p class="s-desc" style="margin-bottom:.9rem;">Members with <strong>active</strong> standing whose subscription expired more than the grace period ago will be auto-lapsed when you click the button below, or when the <code>update_lapsed_members</code> management command runs.</p>
+        <form method="post" style="display:flex;align-items:flex-end;gap:.9rem;flex-wrap:wrap;margin-bottom:.9rem;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_membership_tab">
+          <label class="flabel" style="max-width:180px;margin:0;">Grace period (days)
+            <input type="number" name="lapse_grace_days" value="{{ config.lapse_grace_days }}" min="0" class="finput" style="width:90px;">
+          </label>
+          <button type="submit" class="btn" style="margin-bottom:0;">Save</button>
+        </form>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="run_auto_lapse">
+          <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
+            <button type="submit" class="cbtn{% if lapse_preview %} primary{% endif %}">
+              Run auto-lapse now{% if lapse_preview %} ({{ lapse_preview|length }} pending){% endif %}
+            </button>
+            {% if lapse_preview %}
+            <span style="font-size:.82rem;color:var(--danger);">
+              {% for m in lapse_preview %}{{ m.user.get_full_name }}{% if m.subscription_expires %} (exp. {{ m.subscription_expires|date:"j M Y" }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}
+            </span>
+            {% else %}
+            <span style="font-size:.82rem;color:var(--text-3);">No members are overdue for lapsing.</span>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
+
+    <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Registrar's report</h3>
+    <p class="s-desc" style="margin-bottom:.9rem;">Export a point-in-time member register for CAA or auditing purposes. You can select the as-at date and output format on the Members page.</p>
+    <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+      <a href="{% url 'core:registrar_export' club.slug %}?fmt=csv" class="cbtn">Download current register (CSV)</a>
+      <a href="{% url 'core:manage_members' club.slug %}" class="cbtn-sm">Open Members page (date options)</a>
+    </div>
 
     <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
 
@@ -1254,15 +1268,6 @@
       </tbody>
     </table>
     {% endif %}
-
-    <hr style="border:none;border-top:1px solid #e8eaed;margin:1.5rem 0;">
-
-    <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Registrar's report</h3>
-    <p class="s-desc" style="margin-bottom:.9rem;">Export a point-in-time member register for CAA or auditing purposes. You can select the as-at date and output format on the Members page.</p>
-    <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-      <a href="{% url 'core:registrar_export' club.slug %}?fmt=csv" class="cbtn">Download current register (CSV)</a>
-      <a href="{% url 'core:manage_members' club.slug %}" class="cbtn-sm">Open Members page (date options)</a>
-    </div>
   </div><!-- /tab-membership -->
 
   <!-- ── ROLES tab ── -->
