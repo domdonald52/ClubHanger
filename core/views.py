@@ -2246,7 +2246,12 @@ def club_settings(request, club_slug, mode='settings'):
         'instructor_blockout_types': BlockOutType.objects.filter(club=club, target='instructor'),
         'aircraft_blockout_types': BlockOutType.objects.filter(club=club, target='aircraft'),
         'flight_types': FlightType.objects.filter(club=club),
-        'instructor_grades': InstructorGrade.objects.filter(club=club),
+        'ig_sort': (_ig_sort := request.GET.get('ig_sort', 'name')),
+        'ig_sort_dir': (_ig_dir := request.GET.get('ig_dir', 'asc') if request.GET.get('ig_dir') in ('asc', 'desc') else 'asc'),
+        'ig_base_qs': __import__('urllib.parse', fromlist=['urlencode']).urlencode({k: v for k, v in request.GET.items() if k not in ('ig_sort', 'ig_dir') and v}),
+        'instructor_grades': InstructorGrade.objects.filter(club=club).order_by(
+            ('-' if _ig_dir == 'desc' else '') + ('hourly_rate' if _ig_sort == 'rate' else 'name')
+        ),
         'surcharge_types': AircraftSurchargeType.objects.filter(club=club),
         'aircraft_type_list': AircraftType.objects.filter(club=club),
         'occurrence_types': OccurrenceType.objects.filter(club=club),

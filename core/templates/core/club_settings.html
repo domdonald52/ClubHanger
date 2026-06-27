@@ -572,16 +572,19 @@
 
     {% if instructor_grades %}
     <table class="ft-table" style="margin-bottom:2rem;">
-      <thead><tr><th>Grade</th><th>Rate/hr</th><th>Order</th><th></th></tr></thead>
+      <thead><tr>
+        <th><a href="?{{ ig_base_qs }}{% if ig_base_qs %}&{% endif %}ig_sort=name&ig_dir={% if ig_sort == 'name' and ig_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if ig_sort == 'name' %}sort-active{% endif %}">Grade{% if ig_sort == 'name' %} <span class="sort-arrow">{% if ig_sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th><a href="?{{ ig_base_qs }}{% if ig_base_qs %}&{% endif %}ig_sort=rate&ig_dir={% if ig_sort == 'rate' and ig_sort_dir == 'asc' %}desc{% else %}asc{% endif %}" class="sort-th {% if ig_sort == 'rate' %}sort-active{% endif %}">Rate/hr{% if ig_sort == 'rate' %} <span class="sort-arrow">{% if ig_sort_dir == 'asc' %}↑{% else %}↓{% endif %}</span>{% endif %}</a></th>
+        <th></th>
+      </tr></thead>
       <tbody>
         {% for ig in instructor_grades %}
         <tr>
           <td><strong>{{ ig.name }}</strong></td>
           <td>${{ ig.hourly_rate|currency }}</td>
-          <td style="color:var(--text-3);font-size:.82rem;">{{ ig.display_order }}</td>
           <td style="text-align:right;">
             <div style="display:inline-flex;gap:.3rem;">
-              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditIg({{ ig.id }},'{{ ig.name }}','{{ ig.hourly_rate }}','{{ ig.display_order }}')"><i class="ti ti-pencil"></i></button>
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit" onclick="sOpenEditIg({{ ig.id }},'{{ ig.name }}','{{ ig.hourly_rate }}')"><i class="ti ti-pencil"></i></button>
               <form method="post" style="display:contents;" data-confirm="Delete {{ ig.name }}?">{% csrf_token %}
                 <input type="hidden" name="action" value="delete_instructor_grade">
                 <input type="hidden" name="ig_id" value="{{ ig.id }}">
@@ -1567,17 +1570,12 @@
       <label class="flabel">Grade name
         <input type="text" name="ig_name" required class="finput" placeholder="e.g. C-Cat">
       </label>
-      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
-        <label class="flabel" style="flex:1;">Hourly rate
-          <div class="money-wrap">
-            <span class="money-sym">$</span>
-            <input type="number" name="ig_rate" value="0" min="0" step="0.01" class="money-input">
-          </div>
-        </label>
-        <label class="flabel" style="width:90px;">Display order
-          <input type="number" name="ig_order" value="0" min="0" class="finput">
-        </label>
-      </div>
+      <label class="flabel" style="margin-top:.1rem;">Hourly rate
+        <div class="money-wrap">
+          <span class="money-sym">$</span>
+          <input type="number" name="ig_rate" value="0" min="0" step="0.01" class="money-input">
+        </div>
+      </label>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="cbtn" onclick="sCloseModal('add-ig-modal')">Close</button>
         <span style="flex:1"></span>
@@ -1597,17 +1595,12 @@
       <label class="flabel">Grade name
         <input type="text" name="ig_name" id="eig-name" required class="finput">
       </label>
-      <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
-        <label class="flabel" style="flex:1;">Hourly rate
-          <div class="money-wrap">
-            <span class="money-sym">$</span>
-            <input type="number" name="ig_rate" id="eig-rate" min="0" step="0.01" class="money-input">
-          </div>
-        </label>
-        <label class="flabel" style="width:90px;">Display order
-          <input type="number" name="ig_order" id="eig-order" min="0" class="finput">
-        </label>
-      </div>
+      <label class="flabel" style="margin-top:.1rem;">Hourly rate
+        <div class="money-wrap">
+          <span class="money-sym">$</span>
+          <input type="number" name="ig_rate" id="eig-rate" min="0" step="0.01" class="money-input">
+        </div>
+      </label>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="cbtn" onclick="sCloseModal('edit-ig-modal')">Close</button>
         <span style="flex:1"></span>
@@ -1986,11 +1979,10 @@ function sOpenEditFt(id, name) {
   document.getElementById('eft-name').value = name;
   sOpenModal('edit-ft-modal');
 }
-function sOpenEditIg(id, name, rate, order) {
+function sOpenEditIg(id, name, rate) {
   document.getElementById('eig-id').value = id;
   document.getElementById('eig-name').value = name;
   document.getElementById('eig-rate').value = rate;
-  document.getElementById('eig-order').value = order;
   sOpenModal('edit-ig-modal');
 }
 function sOpenEditSc(id, name, desc, amount, rateType) {
