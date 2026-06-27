@@ -2031,17 +2031,17 @@ def club_settings(request, club_slug, mode='settings'):
         elif action == 'save_renewal_defaults':
             from decimal import Decimal as _D
             _eb_raw = request.POST.get('early_bird_amount', '').strip()
-            _eb_cutoff_raw = request.POST.get('early_bird_cutoff', '').strip()
+            _eb_days_raw = request.POST.get('early_bird_days_before_fy_end', '').strip()
             try:
                 config.renewal_early_bird_amount = _D(_eb_raw) if _eb_raw else None
             except Exception:
                 config.renewal_early_bird_amount = None
             try:
-                from datetime import date as _ddate
-                config.renewal_early_bird_cutoff = _ddate.fromisoformat(_eb_cutoff_raw) if _eb_cutoff_raw else None
-            except Exception:
-                config.renewal_early_bird_cutoff = None
-            config.save(update_fields=['renewal_early_bird_amount', 'renewal_early_bird_cutoff'])
+                _days = int(_eb_days_raw)
+                config.renewal_early_bird_days_before_fy_end = _days if _days > 0 else None
+            except (ValueError, TypeError):
+                config.renewal_early_bird_days_before_fy_end = None
+            config.save(update_fields=['renewal_early_bird_amount', 'renewal_early_bird_days_before_fy_end'])
             from django.urls import reverse as _rev_s
             return redirect(_rev_s(_redir_name, kwargs={'club_slug': club_slug}) + '?tab=membership&saved=1')
 
@@ -2054,32 +2054,14 @@ def club_settings(request, club_slug, mode='settings'):
             fy_label = f'FY{str(fy_end.year)[2:]}'
             candidates = _renewal_preview(club, config)
             today = timezone.localdate()
-            # Optional early-bird fields from POST
-            _eb_raw = request.POST.get('early_bird_amount', '').strip()
-            _eb_amount = None
-            if _eb_raw:
-                try:
-                    _eb_amount = _D(_eb_raw)
-                    if _eb_amount <= 0:
-                        _eb_amount = None
-                except Exception:
-                    pass
-            _eb_cutoff_raw = request.POST.get('early_bird_cutoff', '').strip()
+            # Compute early-bird from saved config defaults
+            _eb_amount = config.renewal_early_bird_amount or None
             _eb_cutoff = None
-            if _eb_cutoff_raw:
-                try:
-                    from datetime import date as _ddate
-                    _eb_cutoff = _ddate.fromisoformat(_eb_cutoff_raw)
-                except Exception:
-                    pass
-            # Only apply early-bird if both fields are provided and cutoff is in the future
-            if not (_eb_amount and _eb_cutoff and _eb_cutoff >= today):
-                _eb_amount = None
-                _eb_cutoff = None
-            # Persist the early-bird defaults for next time
-            config.renewal_early_bird_amount = _eb_amount
-            config.renewal_early_bird_cutoff = _eb_cutoff
-            config.save(update_fields=['renewal_early_bird_amount', 'renewal_early_bird_cutoff'])
+            if _eb_amount and config.renewal_early_bird_days_before_fy_end:
+                _eb_cutoff = fy_end - _td(days=config.renewal_early_bird_days_before_fy_end)
+                if _eb_cutoff < today:
+                    _eb_amount = None
+                    _eb_cutoff = None
             created = 0
             for m in candidates:
                 config.refresh_from_db()
@@ -2271,6 +2253,10 @@ def club_settings(request, club_slug, mode='settings'):
         'renewal_preview': _renewal_preview(club, config),
         'renewal_fy_end': _next_fy_end(config),
         'renewal_fy_label': f'FY{str(_next_fy_end(config).year)[2:]}',
+        'renewal_eb_cutoff_computed': (
+            _next_fy_end(config) - __import__('datetime').timedelta(days=config.renewal_early_bird_days_before_fy_end)
+            if config.renewal_early_bird_amount and config.renewal_early_bird_days_before_fy_end else None
+        ),
         # Budget
         'budget_aircraft': Aircraft.objects.filter(club=club).exclude(status=AircraftStatus.RETIRED).order_by('registration'),
         'budget_entries': {(b.aircraft_id, b.fy_year, b.month): b.budgeted_hours

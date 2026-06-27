@@ -249,7 +249,10 @@ class ClubConfig(models.Model):
     # Saved early-bird defaults for bulk renewal invoices
     renewal_early_bird_amount = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True)
-    renewal_early_bird_cutoff = models.DateField(null=True, blank=True)
+    renewal_early_bird_days_before_fy_end = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text="Days before the FY end date that the early-bird cutoff falls. "
+                  "e.g. 60 → cutoff is 60 days before 31 March.")
 
     # ── Booking blocks (financial) ────────────────────────────────────────────
     booking_block_enabled = models.BooleanField(

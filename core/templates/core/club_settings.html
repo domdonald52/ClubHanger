@@ -1225,9 +1225,10 @@
       Invoices are sent immediately using the role's annual fee.
       Members already holding an unpaid subscription invoice are skipped automatically.
     </p>
-    <form method="post" data-confirm="Send {{ renewal_fy_label }} renewal invoices to {{ renewal_preview|length }} member(s)?" style="margin-bottom:1rem;">
+    <form method="post" style="margin-bottom:1rem;">
       {% csrf_token %}
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:.8rem;">
+      <input type="hidden" name="action" value="save_renewal_defaults">
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:.5rem;">
         <div>
           <label class="flabel" style="margin-bottom:.3rem;">Early-bird amount <span style="font-weight:400;color:var(--text-3);">(optional)</span>
             <div class="money-wrap" style="margin-top:.25rem;width:130px;">
@@ -1240,18 +1241,33 @@
         </div>
         <div>
           <label class="flabel" style="margin-bottom:.3rem;">Early-bird cutoff <span style="font-weight:400;color:var(--text-3);">(optional)</span>
-            <input type="date" name="early_bird_cutoff" class="finput" style="margin-top:.25rem;width:160px;"
-                   value="{{ config.renewal_early_bird_cutoff|date:'Y-m-d'|default:'' }}">
+            <div style="display:flex;align-items:center;gap:.4rem;margin-top:.25rem;">
+              <input type="number" name="early_bird_days_before_fy_end" min="1" placeholder="e.g. 60"
+                     value="{{ config.renewal_early_bird_days_before_fy_end|default:'' }}"
+                     class="finput" style="width:70px;">
+              <span style="font-size:.82rem;color:var(--text-2);">days before FY end</span>
+            </div>
           </label>
         </div>
-        <div style="display:flex;gap:.5rem;align-items:flex-end;">
-          <button type="submit" name="action" value="save_renewal_defaults" class="btn" style="margin-bottom:0;">Save defaults</button>
-          <button type="submit" name="action" value="run_bulk_renewal" class="cbtn{% if renewal_preview %} primary{% endif %}" style="margin-bottom:1px;">
-            Send renewal invoices{% if renewal_preview %} ({{ renewal_preview|length }} eligible){% endif %}
-          </button>
-        </div>
+        <button type="submit" class="btn" style="margin-bottom:0;">Save defaults</button>
       </div>
-      <p style="font-size:.8rem;color:var(--text-3);margin:0;">If an early-bird amount and cutoff are set, invoices will show both amounts. Payments received at the early-bird rate on or before the cutoff are accepted as payment in full.</p>
+      {% if renewal_eb_cutoff_computed %}
+      <p style="font-size:.8rem;color:var(--text-3);margin:.3rem 0 0;">Early-bird cutoff for the current FY: <strong>{{ renewal_eb_cutoff_computed|date:"j N Y" }}</strong>. Payments received at the early-bird rate on or before this date are accepted as payment in full.</p>
+      {% else %}
+      <p style="font-size:.8rem;color:var(--text-3);margin:.3rem 0 0;">If set, invoices will show both the early-bird and full amounts. Payments received at the early-bird rate on or before the computed cutoff are accepted as payment in full.</p>
+      {% endif %}
+    </form>
+    <form method="post" data-confirm="Send {{ renewal_fy_label }} renewal invoices to {{ renewal_preview|length }} member(s)?" style="margin-bottom:1rem;">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="run_bulk_renewal">
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <button type="submit" class="cbtn{% if renewal_preview %} primary{% endif %}">
+          Send renewal invoices{% if renewal_preview %} ({{ renewal_preview|length }} eligible){% endif %}
+        </button>
+        {% if renewal_eb_cutoff_computed %}
+        <span style="font-size:.82rem;color:var(--text-3);">Early-bird rate of ${{ config.renewal_early_bird_amount|floatformat:2 }} applies to payments received by {{ renewal_eb_cutoff_computed|date:"j N Y" }}.</span>
+        {% endif %}
+      </div>
       {% if not renewal_preview %}
       <p style="font-size:.82rem;color:var(--text-3);margin:.5rem 0 0;">No members are currently eligible — all are already invoiced or have no fee set.</p>
       {% endif %}
