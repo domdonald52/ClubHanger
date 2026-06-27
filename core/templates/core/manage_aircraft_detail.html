@@ -292,7 +292,7 @@
     </form>
 
     <script>
-    function startEditRates() {
+    window.startEditRates = function() {
       document.querySelectorAll('.rate-view').forEach(el => el.hidden = true);
       document.querySelectorAll('.rate-edit').forEach(el => el.hidden = false);
       document.getElementById('default-rate-view').hidden = true;
@@ -300,8 +300,8 @@
       document.getElementById('edit-rates-btn').hidden = true;
       document.getElementById('fill-blanks-btn').hidden = false;
       document.getElementById('rates-save-row').hidden = false;
-    }
-    function cancelEditRates() {
+    };
+    window.cancelEditRates = function() {
       document.querySelectorAll('.rate-view').forEach(el => el.hidden = false);
       document.querySelectorAll('.rate-edit').forEach(el => el.hidden = true);
       document.getElementById('default-rate-view').hidden = false;
@@ -309,14 +309,14 @@
       document.getElementById('edit-rates-btn').hidden = false;
       document.getElementById('fill-blanks-btn').hidden = true;
       document.getElementById('rates-save-row').hidden = true;
-    }
-    function fillBlanks() {
+    };
+    window.fillBlanks = function() {
       var def = document.getElementById('default-rate-input').value;
       if (!def) return;
       document.querySelectorAll('input[name^="rate_"]').forEach(function(inp) {
         if (!inp.value) inp.value = def;
       });
-    }
+    };
     </script>
 
     <hr class="tab-hr">
