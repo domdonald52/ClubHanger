@@ -3491,7 +3491,14 @@ def booking_detail(request, club_slug, booking_id):
                                                   booking__club=club)
                                           .select_related('booking__aircraft', 'booking')
                                           .order_by('booking__scheduled_start'))
+                            _invoiced_ids = set(
+                                Invoice.objects.filter(
+                                    flight_completion__in=_other_fcs,
+                                ).exclude(status='void').values_list('flight_completion_id', flat=True)
+                            )
                             for _ofc in _other_fcs:
+                                if _ofc.id in _invoiced_ids:
+                                    continue  # must be paid via the invoice, not a FlightPayment
                                 _ostr = request.POST.get(f'other_amount_{_ofc.id}', '').strip()
                                 try:
                                     _oamt = _D(_ostr)
