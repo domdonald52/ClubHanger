@@ -48,9 +48,9 @@
       {% if issue.severity == 'err' %}✗{% else %}⚠{% endif %} {{ issue.message }}
     </div>
     {% if issue.rows %}
-    <div style="background:var(--surface-2);border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;padding:.3rem .9rem;font-size:.78rem;font-family:monospace;color:#3b4451;margin-bottom:1rem;">
+    <div style="background:var(--surface-2);border:1px solid var(--border);border-top:none;border-radius:0 0 6px 6px;padding:.3rem .9rem;font-size:.78rem;font-family:monospace;color:var(--text-1);margin-bottom:1rem;">
       {% for row in issue.rows %}
-      <div style="padding:.3rem 0;display:flex;align-items:baseline;gap:.8rem;{% if not forloop.last %}border-bottom:1px solid #eef0f3;{% endif %}">
+      <div style="padding:.3rem 0;display:flex;align-items:baseline;gap:.8rem;{% if not forloop.last %}border-bottom:1px solid var(--border-subtle);{% endif %}">
         <span style="flex:1;word-break:break-word;">{{ row.text }}</span>
         {% if row.url %}<a href="{{ row.url }}" data-overlay data-overlay-wide style="white-space:nowrap;color:#4a6fa5;font-weight:500;text-decoration:none;font-size:.75rem;flex-shrink:0;">{{ row.link_label|default:"View →" }}</a>{% endif %}
       </div>
