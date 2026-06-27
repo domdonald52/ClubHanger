@@ -2175,7 +2175,9 @@ def club_settings(request, club_slug, mode='settings'):
             _fc = request.POST.get('font_choice', '').strip()
             if _fc in dict(config.FONT_CHOICES):
                 config.font_choice = _fc
-            config.compact_mode = request.POST.get('compact_mode') == 'on'
+            _density = request.POST.get('density', 'compact')
+            if _density in ('comfortable', 'compact', 'ultra'):
+                config.density = _density
             config.dark_mode = request.POST.get('dark_mode') == 'on'
             oh_start = request.POST.get('operating_hours_start')
             oh_end = request.POST.get('operating_hours_end')

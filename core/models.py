@@ -152,12 +152,10 @@ class ClubConfig(models.Model):
     FONT_SYSTEM  = 'system'
     FONT_INTER   = 'inter'
     FONT_LORA    = 'lora'
-    FONT_POPPINS = 'poppins'
     FONT_NUNITO  = 'nunito'
     FONT_CHOICES = [
         (FONT_SYSTEM,  'System default'),
         (FONT_INTER,   'Inter (modern sans-serif)'),
-        (FONT_POPPINS, 'Poppins (geometric sans-serif)'),
         (FONT_NUNITO,  'Nunito (rounded, friendly)'),
         (FONT_LORA,    'Lora (elegant serif)'),
     ]
@@ -165,13 +163,20 @@ class ClubConfig(models.Model):
         max_length=20, default=FONT_SYSTEM, choices=FONT_CHOICES,
         help_text="Body font used across all pages."
     )
-    compact_mode = models.BooleanField(default=False, help_text="Reduce padding and font sizes for denser layouts.")
+    DENSITY_COMFORTABLE = 'comfortable'
+    DENSITY_COMPACT     = 'compact'
+    DENSITY_ULTRA       = 'ultra'
+    DENSITY_CHOICES = [
+        (DENSITY_COMFORTABLE, 'Comfortable'),
+        (DENSITY_COMPACT,     'Compact'),
+        (DENSITY_ULTRA,       'Ultra-compact'),
+    ]
+    density = models.CharField(max_length=12, default=DENSITY_COMPACT, choices=DENSITY_CHOICES)
     dark_mode = models.BooleanField(default=False, help_text="Enable dark theme across the management app.")
 
     FONT_STACKS = {
         FONT_SYSTEM:  ("system-ui,-apple-system,'Segoe UI',Helvetica,Arial,sans-serif", None),
         FONT_INTER:   ("'Inter',sans-serif",   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=optional"),
-        FONT_POPPINS: ("'Poppins',sans-serif", "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=optional"),
         FONT_NUNITO:  ("'Nunito',sans-serif",  "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;700&display=optional"),
         FONT_LORA:    ("'Lora',Georgia,serif", "https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&display=optional"),
     }
