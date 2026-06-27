@@ -191,7 +191,7 @@
                  min="0.5" max="1.0" step="0.01" class="finput" style="width:120px;" placeholder="e.g. 0.95">
           <span style="font-size:.78rem;color:var(--text-3);">0.50–1.00</span>
         </label>
-        <div class="flabel-lk" style="grid-column:1/-1;">Total airframe hours (at entry)
+        <div class="flabel-lk" style="grid-column:1/-1;">Total maintenance hours (at entry)
           <div class="init-field-wrap" style="margin-top:.25rem;">
             <input type="number" name="maint_hours_initial" id="maint-hours-initial-input"
                    value="{{ ac.maint_hours_initial|default:'' }}"
@@ -204,7 +204,7 @@
             <button type="button" class="cbtn-sm apply-btn" data-target="maint-hours-initial-input">Apply</button>
             {% endif %}
           </div>
-          <span style="font-size:.78rem;color:var(--text-3);">Total airframe hours across all instruments — seed value for the running total</span>
+          <span style="font-size:.78rem;color:var(--text-3);">Total maintenance hours across all instruments — seed value for the running total</span>
         </div>
       </div>
 

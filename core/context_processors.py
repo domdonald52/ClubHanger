@@ -33,7 +33,7 @@ def theme(request):
             'chart_colors': config.get_chart_colors(),
             'font_family': config.get_font()[0],
             'font_url': config.get_font()[1],
-            'compact_mode': config.compact_mode,
+            'density': config.density,
             'dark_mode': config.dark_mode,
         }
     }
