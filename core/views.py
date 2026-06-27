@@ -3799,23 +3799,39 @@ def booking_detail(request, club_slug, booking_id):
             )
         )
         _unpaid_qs = _base.filter(paid_at__isnull=True, total_charge__gt=0).filter(~_has_current_invoice)
-        other_unpaid_list = list(_unpaid_qs)
-        # Annotate any that have an overdue invoice so the template can flag them
+        _all_unpaid = list(_unpaid_qs)
+        # Annotate unpaid items with any overdue invoice
         _overdue_inv_map = {}
-        overdue_fc_ids = [x.pk for x in other_unpaid_list]
-        if overdue_fc_ids:
+        _unpaid_ids = [x.pk for x in _all_unpaid]
+        if _unpaid_ids:
             for _inv in Invoice.objects.filter(
-                flight_completion_id__in=overdue_fc_ids,
+                flight_completion_id__in=_unpaid_ids,
                 status='sent',
-                due_date__lt=_today,
             ).order_by('invoice_number'):
                 _overdue_inv_map.setdefault(_inv.flight_completion_id, _inv)
-        for _fc_item in other_unpaid_list:
-            _fc_item.overdue_invoice = _overdue_inv_map.get(_fc_item.pk)
-        other_outstanding_list = list(
+        for _fc_item in _all_unpaid:
+            _fc_item.active_invoice = _overdue_inv_map.get(_fc_item.pk)
+
+        _all_outstanding = list(
             _base.filter(paid_at__isnull=False).extra(where=['amount_paid < total_charge'])
         )
+        # Annotate outstanding items with any active invoice
+        _outstanding_inv_map = {}
+        _outstanding_ids = [x.pk for x in _all_outstanding]
+        if _outstanding_ids:
+            for _inv in Invoice.objects.filter(
+                flight_completion_id__in=_outstanding_ids,
+            ).exclude(status='void').order_by('invoice_number'):
+                _outstanding_inv_map.setdefault(_inv.flight_completion_id, _inv)
+        for _fc_item in _all_outstanding:
+            _fc_item.active_invoice = _outstanding_inv_map.get(_fc_item.pk)
+
+        # Split: items with invoices go to informational section; without go to checkbox section
+        other_invoiced_list  = [x for x in _all_unpaid + _all_outstanding if x.active_invoice]
+        other_unpaid_list    = [x for x in _all_unpaid    if not x.active_invoice]
+        other_outstanding_list = [x for x in _all_outstanding if not x.active_invoice]
     else:
+        other_invoiced_list = []
         other_unpaid_list = []
         other_outstanding_list = []
 
@@ -4063,6 +4079,7 @@ def booking_detail(request, club_slug, booking_id):
         'fc_has_uninvoiced_payees': fc_has_uninvoiced_payees,
         'fc_any_invoice_paid': fc_any_invoice_paid,
         'club_members': club_members,
+        'other_invoiced_list': other_invoiced_list,
         'other_unpaid_list': other_unpaid_list,
         'other_outstanding_list': other_outstanding_list,
         'other_unpaid_total': other_unpaid_total,

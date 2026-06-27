@@ -969,7 +969,32 @@
             <!-- This flight amount (hidden; JS recalcTotal() reads it) -->
             <div class="mp-row" style="display:none;"><input class="mp-amount" value="{{ balance_owing }}" readonly></div>
 
+            {% if other_invoiced_list %}
+            <div style="font-size:.8rem;font-weight:700;color:var(--text-2);margin-bottom:.3rem;">Outstanding invoices</div>
+            <div class="notice warn" style="padding:.5rem .75rem;margin-bottom:.65rem;font-size:.82rem;">
+              The flights below have outstanding invoices. Record payment against each invoice in <strong>Sales → Invoices</strong> — they cannot be bundled here.
+            </div>
+            <table class="ch-table" style="margin-bottom:.75rem;opacity:.8;">
+              <tbody>
+                {% for item in other_invoiced_list %}
+                <tr>
+                  <td style="font-size:.85rem;padding:.38rem .5rem;">
+                    <span style="font-weight:500;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M Y" }}{% if item.booking.flight_type %} · {{ item.booking.flight_type.name }}{% endif %}</span>
+                    <div style="font-size:.74rem;color:var(--warning-text);margin-top:.1rem;">
+                      Invoice {{ item.active_invoice.display_number }}{% if item.active_invoice.is_overdue %} · overdue{% endif %} — <a href="{% url 'core:invoice_detail' club.slug item.active_invoice.id %}" data-overlay style="color:inherit;">view invoice</a>
+                    </div>
+                  </td>
+                  <td style="text-align:right;width:90px;font-variant-numeric:tabular-nums;color:var(--warning-text);font-weight:600;">
+                    ${{ item.active_invoice.balance_due|currency }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            {% endif %}
+
             {% if other_unpaid_list or other_outstanding_list or arrears_clearable %}
+            {% if other_unpaid_list or other_outstanding_list %}<div style="font-size:.8rem;font-weight:700;color:var(--text-2);margin-bottom:.3rem;">Outstanding charges</div>{% endif %}
             <table class="ch-table" style="margin-bottom:0;">
               <tbody>
                 {% for item in other_unpaid_list %}
@@ -979,7 +1004,6 @@
                   </td>
                   <td style="font-size:.85rem;">
                     <span style="font-weight:500;">{{ item.booking.aircraft.registration }} · {{ item.booking.scheduled_start|date:"j M Y" }}{% if item.booking.flight_type %} · {{ item.booking.flight_type.name }}{% endif %}</span>
-                    {% if item.overdue_invoice %}<div style="font-size:.74rem;color:var(--warning-text);margin-top:.1rem;">Invoice overdue · {{ item.overdue_invoice.display_number }}</div>{% endif %}
                   </td>
                   <td style="text-align:right;width:90px;font-variant-numeric:tabular-nums;"><input type="hidden" name="other_amount_{{ item.id }}" class="mp-amount" value="{{ item.total_charge }}">${{ item.total_charge|currency }}</td>
                   <td style="width:28px;"></td>
