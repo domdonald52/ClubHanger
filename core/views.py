@@ -444,7 +444,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         ac_bands = bands_for_aircraft(ac) if is_online else []
         aircraft_rows.append({
             'type': 'aircraft',
-            'label': f"{ac.registration} ({ac.aircraft_type.name if ac.aircraft_type_id else '?'})",
+            'label': ac.registration,
             'row_key': f"aircraft:{ac.id}",
             'resource_id': ac.id,
             'detail_id': ac.id,
