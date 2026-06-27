@@ -1822,11 +1822,14 @@ def club_settings(request, club_slug, mode='settings'):
             st_name = request.POST.get('st_name', '').strip()
             st_amount = request.POST.get('st_amount', '').strip()
             st_desc = request.POST.get('st_desc', '').strip()
+            st_rate_type = request.POST.get('st_rate_type', 'per_flight')
+            if st_rate_type not in ('per_flight', 'per_hour'):
+                st_rate_type = 'per_flight'
             if st_name and st_amount:
                 try:
                     AircraftSurchargeType.objects.get_or_create(
                         club=club, name=st_name,
-                        defaults={'amount': st_amount, 'description': st_desc}
+                        defaults={'amount': st_amount, 'description': st_desc, 'rate_type': st_rate_type}
                     )
                 except Exception:
                     pass
@@ -1844,7 +1847,10 @@ def club_settings(request, club_slug, mode='settings'):
                     st.name = name
                 st.description = request.POST.get('st_desc', '').strip()
                 st.amount = request.POST.get('st_amount', st.amount)
-                st.save(update_fields=['name', 'description', 'amount'])
+                st_rate_type = request.POST.get('st_rate_type', st.rate_type)
+                if st_rate_type in ('per_flight', 'per_hour'):
+                    st.rate_type = st_rate_type
+                st.save(update_fields=['name', 'description', 'amount', 'rate_type'])
             return redirect(_redir_name, club_slug=club_slug)
 
         elif action == 'add_aircraft_type':
@@ -2986,9 +2992,11 @@ def booking_detail(request, club_slug, booking_id):
                             amount=round(float(_new_fc.instructor_rate_snapshot) * float(_fc_hours), 2),
                         )
                     for _sc in ac.surcharges.all():
+                        _sc_amt = (round(float(_sc.amount) * float(_fc_hours), 2)
+                                   if _sc.rate_type == 'per_hour' else float(_sc.amount))
                         FlightChargeItem.objects.create(
                             flight_completion=_new_fc, segment=None,
-                            item_type='surcharge', description=_sc.name, amount=_sc.amount,
+                            item_type='surcharge', description=_sc.name, amount=_sc_amt,
                         )
                 else:
                     # Single pilot — charge items directly on FC (no segments)
@@ -3013,9 +3021,11 @@ def booking_detail(request, club_slug, booking_id):
                             amount=round(float(_new_fc.instructor_rate_snapshot) * float(_fc_hours), 2),
                         )
                     for _sc in ac.surcharges.all():
+                        _sc_amt = (round(float(_sc.amount) * float(_fc_hours), 2)
+                                   if _sc.rate_type == 'per_hour' else float(_sc.amount))
                         FlightChargeItem.objects.create(
                             flight_completion=_new_fc, item_type='surcharge',
-                            description=_sc.name, amount=_sc.amount,
+                            description=_sc.name, amount=_sc_amt,
                         )
 
                 _update_total(_new_fc)
@@ -3132,9 +3142,11 @@ def booking_detail(request, club_slug, booking_id):
                             amount=round(float(fc.instructor_rate_snapshot) * float(hours), 2),
                         )
                     for sc in ac.surcharges.all():
+                        _sc_amt = (round(float(sc.amount) * float(hours), 2)
+                                   if sc.rate_type == 'per_hour' else float(sc.amount))
                         FlightChargeItem.objects.create(
                             flight_completion=fc, item_type='surcharge',
-                            description=sc.name, amount=sc.amount,
+                            description=sc.name, amount=_sc_amt,
                         )
                     _update_total(fc)
                     for _mi in booking.aircraft.maintenance_items.all():
@@ -3936,7 +3948,7 @@ def booking_detail(request, club_slug, booking_id):
                 _instr_rate = float(_im.instructor_grade.hourly_rate)
         _fuel_snap = float(booking.fuel_rate_snapshot) if booking.fuel_rate_snapshot else None
         _surcharge_list = [
-            {'name': sc.name, 'amount': float(sc.amount)}
+            {'name': sc.name, 'amount': float(sc.amount), 'rate_type': sc.rate_type}
             for sc in booking.aircraft.surcharges.all()
         ]
         checkin_rates_json = _json.dumps({
@@ -4238,18 +4250,27 @@ def _generate_segment_charges(fc, segments, booking, config=None):
                         amount=amt,
                     )
 
-    # Flat surcharges — split proportionally, last segment absorbs rounding
+    # Surcharges — per-hour billed by each pilot's hours; per-flight split proportionally
     if total_hours:
         for sc in ac.surcharges.all():
-            amounts = [round(float(sc.amount) * float(s.hours) / float(total_hours), 2) for s in segments]
-            amounts[-1] = round(float(sc.amount) - sum(amounts[:-1]), 2)
-            for seg, amt in zip(segments, amounts):
-                if amt > 0:
-                    _FCI.objects.create(
-                        flight_completion=fc, segment=seg, item_type='surcharge',
-                        description=f'{sc.name} ({seg.member.user.get_full_name()})',
-                        amount=amt,
-                    )
+            if sc.rate_type == 'per_hour':
+                for seg in segments:
+                    if seg.hours:
+                        _FCI.objects.create(
+                            flight_completion=fc, segment=seg, item_type='surcharge',
+                            description=f'{sc.name} ({seg.member.user.get_full_name()})',
+                            amount=round(float(sc.amount) * float(seg.hours), 2),
+                        )
+            else:
+                amounts = [round(float(sc.amount) * float(s.hours) / float(total_hours), 2) for s in segments]
+                amounts[-1] = round(float(sc.amount) - sum(amounts[:-1]), 2)
+                for seg, amt in zip(segments, amounts):
+                    if amt > 0:
+                        _FCI.objects.create(
+                            flight_completion=fc, segment=seg, item_type='surcharge',
+                            description=f'{sc.name} ({seg.member.user.get_full_name()})',
+                            amount=amt,
+                        )
 
 
 @login_required

@@ -1092,12 +1092,17 @@ class FlightType(models.Model):
 
 class AircraftSurchargeType(models.Model):
     """
-    Configurable surcharge types per club (e.g. 'twin surcharge').
-    Assigned to specific aircraft via M2M. Applied per flight.
+    Configurable surcharge types per club (e.g. 'twin surcharge', 'fuel levy').
+    Assigned to specific aircraft via M2M. Per-flight = flat amount; per-hour = amount × flight hours.
     """
+    RATE_PER_FLIGHT = 'per_flight'
+    RATE_PER_HOUR   = 'per_hour'
+    RATE_CHOICES = [('per_flight', 'Per flight'), ('per_hour', 'Per hour')]
+
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='surcharge_types')
     name = models.CharField(max_length=100)
     amount = models.DecimalField(max_digits=8, decimal_places=2)
+    rate_type = models.CharField(max_length=10, choices=RATE_CHOICES, default='per_flight')
     description = models.CharField(max_length=255, blank=True)
 
     class Meta:
