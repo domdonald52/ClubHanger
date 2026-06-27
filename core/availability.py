@@ -6,7 +6,7 @@ Finds free slots matching user criteria across date range.
 from datetime import datetime, timedelta, time
 from django.db.models import Q
 from django.utils import timezone
-from .models import Booking, Aircraft, AircraftStatus, ClubMember, Role
+from .models import Booking, BookingStatus, Aircraft, AircraftStatus, ClubMember, Role
 
 
 def _subtract_intervals(span_start, span_end, busy):
@@ -90,7 +90,7 @@ def _instructor_busy(club, instr_user, day_start, day_end, day):
     for b in Booking.objects.filter(
         club=club, instructor=instr_user,
         scheduled_start__lt=day_end, scheduled_end__gt=day_start,
-    ).exclude(status='cancelled'):
+    ).exclude(status=BookingStatus.CANCELLED):
         busy.append((b.scheduled_start, b.scheduled_end))
     for bo in BlockOut.objects.filter(club=club).prefetch_related('instructors'):
         if not bo.applies_on(day):
@@ -163,7 +163,7 @@ def find_free_spans_with_instructors(club, date_start, date_end, aircraft=None,
             ac_busy = []
             for b in Booking.objects.filter(
                 aircraft=ac, scheduled_start__lt=day_end, scheduled_end__gt=day_start,
-            ).exclude(status='cancelled'):
+            ).exclude(status=BookingStatus.CANCELLED):
                 ac_busy.append((b.scheduled_start, b.scheduled_end))
             ac_busy.extend(_blockout_intervals_for(club, day, ac, day_start, day_end))
             ac_free = _subtract_intervals(day_start, day_end, ac_busy)
@@ -229,7 +229,7 @@ def find_free_spans(club, date_start, date_end, aircraft=None, aircraft_type=Non
             # bookings
             for b in Booking.objects.filter(
                 aircraft=ac, scheduled_start__lt=day_end, scheduled_end__gt=day_start,
-            ).exclude(status='cancelled'):
+            ).exclude(status=BookingStatus.CANCELLED):
                 busy.append((b.scheduled_start, b.scheduled_end))
             # block-outs
             busy.extend(_blockout_intervals_for(club, day, ac, day_start, day_end))

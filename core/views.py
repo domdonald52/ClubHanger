@@ -8,11 +8,11 @@ from django.db import transaction
 from datetime import datetime, timedelta, time, date
 
 logger = logging.getLogger('clubhangar.audit')
-from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, AircraftStatus, Role, FlightType, BlockOutType,
+from .models import (Club, ClubMember, Booking, BookingStatus, Aircraft, AircraftType, AircraftStatus, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem,
-                     FlightCompletion, FlightSegment, AircraftMaintenanceItem, ChargeRate, FlightChargeItem,
-                     FlightLandingEntry, AccountTransaction, ClubConfig,
+                     FlightCompletion, FlightSegment, AircraftMaintenanceItem, MaintenanceUrgency, ChargeRate, FlightChargeItem,
+                     FlightLandingEntry, AccountTransaction, ClubConfig, CredentialCategory,
                      OccurrenceReport, OccurrenceType, OccurrenceAction, OccurrenceAuditEntry,
                      ContactType, MembershipHistoryEntry, VoucherType,
                      create_maint_log_entry, FlyingBudget, FeedbackMessage)
@@ -98,7 +98,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         club=club,
         scheduled_start__gte=day_start,
         scheduled_start__lt=day_end
-    ).exclude(status='cancelled').select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'client').prefetch_related(
+    ).exclude(status=BookingStatus.CANCELLED).select_related('member__user', 'aircraft', 'instructor', 'confirmed_by', 'flight_type', 'client').prefetch_related(
         _Prefetch('flight_completions', queryset=FlightCompletion.objects.order_by('sequence')),
         'declaration',
     )
@@ -189,7 +189,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         in_conflict, conflict_reason, issue_types = _check_live_conflict(b)
         _decl_pending = (
             getattr(b.flight_type, 'requires_declaration', False) and
-            b.status in ('pending', 'confirmed') and
+            b.status in (BookingStatus.PENDING, BookingStatus.CONFIRMED) and
             not (hasattr(b, 'declaration') and not b.declaration.is_draft)
         )
         return {
@@ -231,7 +231,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'decl_pending': _decl_pending,
             'decl_url': (
                 f'/manage/{club_slug}/bookings/{b.id}/declaration/'
-                if getattr(b.flight_type, 'requires_declaration', False) and b.status in ('pending', 'confirmed')
+                if getattr(b.flight_type, 'requires_declaration', False) and b.status in (BookingStatus.PENDING, BookingStatus.CONFIRMED)
                 else ''
             ),
             'watcher_count': getattr(b, 'watcher_count', 0),
@@ -336,7 +336,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     for instr in instructors:
         instr_bookings = bookings.filter(instructor=instr.user)
         if show_pending:
-            instr_bookings = instr_bookings.filter(status='pending')
+            instr_bookings = instr_bookings.filter(status=BookingStatus.PENDING)
         if filter_aircraft:
             instr_bookings = instr_bookings.filter(aircraft_id=filter_aircraft)
 
@@ -388,7 +388,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         for user_id, user in ex_users.items():
             ex_bookings = bookings.filter(instructor_id=user_id)
             if show_pending:
-                ex_bookings = ex_bookings.filter(status='pending')
+                ex_bookings = ex_bookings.filter(status=BookingStatus.PENDING)
             if filter_aircraft:
                 ex_bookings = ex_bookings.filter(aircraft_id=filter_aircraft)
             if not ex_bookings.exists():
@@ -422,17 +422,17 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         if not urgencies:
             return None
         if _MU.RED in urgencies:
-            return 'red'
+            return MaintenanceUrgency.RED
         if _MU.AMBER in urgencies:
-            return 'amber'
-        return 'green'
+            return MaintenanceUrgency.AMBER
+        return MaintenanceUrgency.GREEN
 
     aircraft_rows = []
     for ac in all_aircraft:
         is_online = ac.status == AircraftStatus.ONLINE
         ac_bookings = bookings.filter(aircraft=ac)
         if show_pending:
-            ac_bookings = ac_bookings.filter(status='pending')
+            ac_bookings = ac_bookings.filter(status=BookingStatus.PENDING)
         if filter_instructor:
             ac_bookings = ac_bookings.filter(instructor_id=filter_instructor)
 
@@ -862,7 +862,7 @@ def credential_check_api(request, booking_id):
         'checks': checks,
         'has_warnings': any(c['status'] == 'warn' for c in checks),
         'maintenance': maint_data,
-        'has_maint_warnings': any(m['urgency'] in ('amber', 'red') for m in maint_data),
+        'has_maint_warnings': any(m['urgency'] in (MaintenanceUrgency.AMBER, MaintenanceUrgency.RED) for m in maint_data),
         'current_hobbs': current_hobbs,
         'aircraft_reg': ac.registration,
     })
@@ -1113,9 +1113,9 @@ def edit_booking(request, booking_id):
         actor = ClubMember.objects.get(user=request.user, club=club)
     except ClubMember.DoesNotExist:
         return JsonResponse({'error': 'Not authorized'}, status=403)
-    is_own_pending = (booking.member == actor and booking.status == 'pending')
+    is_own_pending = (booking.member == actor and booking.status == BookingStatus.PENDING)
     if not (actor.is_admin or actor.is_instructor or is_own_pending):
-        if booking.member == actor and booking.status == 'confirmed':
+        if booking.member == actor and booking.status == BookingStatus.CONFIRMED:
             club_phone = getattr(get_config(club), 'billing_phone', '') or ''
             contact_hint = f' Call the club on {club_phone}.' if club_phone else ''
             return JsonResponse({
@@ -2341,14 +2341,14 @@ def manage_bookings(request, club_slug):
     if request.method == 'POST':
         action = request.POST.get('action', '')
         ids = [int(i) for i in request.POST.getlist('booking_ids') if i.isdigit()]
-        qs = Booking.objects.filter(club=club, id__in=ids).exclude(status='cancelled')
+        qs = Booking.objects.filter(club=club, id__in=ids).exclude(status=BookingStatus.CANCELLED)
         if action == 'confirm':
-            qs.filter(status='pending').update(
-                status='confirmed', confirmed_by=request.user, confirmed_at=timezone.now()
+            qs.filter(status=BookingStatus.PENDING).update(
+                status=BookingStatus.CONFIRMED, confirmed_by=request.user, confirmed_at=timezone.now()
             )
         elif action == 'cancel':
             reason = request.POST.get('bulk_cancel_reason', 'no_longer_required')
-            qs.update(status='cancelled', cancellation_reason=reason)
+            qs.update(status=BookingStatus.CANCELLED, cancellation_reason=reason)
         elif action == 'move_aircraft':
             ac = Aircraft.objects.filter(club=club, id=request.POST.get('target_aircraft_id'), status=AircraftStatus.ONLINE).first()
             if ac:
@@ -2410,7 +2410,7 @@ def manage_bookings(request, club_slug):
             r.append(f'Overpaid ${_over:.2f} — review and credit account')
         return r
 
-    _STATUS_ORDER = {'departed': 0, 'completed': 1, 'confirmed': 2, 'pending': 3}
+    _STATUS_ORDER = {BookingStatus.DEPARTED: 0, BookingStatus.COMPLETED: 1, BookingStatus.CONFIRMED: 2, BookingStatus.PENDING: 3}
 
     # ── Booking-vs-booking aircraft clash detection ────────────────────────────
     from django.db.models import Q as _Q2, Exists as _Exists, OuterRef as _OuterRef
@@ -2418,7 +2418,7 @@ def manage_bookings(request, club_slug):
         .filter(
             club=club,
             aircraft_id=_OuterRef('aircraft_id'),
-            status__in=['pending', 'confirmed', 'departed'],
+            status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED],
             scheduled_start__lt=_OuterRef('scheduled_end'),
             scheduled_end__gt=_OuterRef('scheduled_start'),
         )
@@ -2427,7 +2427,7 @@ def manage_bookings(request, club_slug):
         .filter(
             club=club,
             instructor_id=_OuterRef('instructor_id'),
-            status__in=['pending', 'confirmed', 'departed'],
+            status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED],
             scheduled_start__lt=_OuterRef('scheduled_end'),
             scheduled_end__gt=_OuterRef('scheduled_start'),
         )
@@ -2436,7 +2436,7 @@ def manage_bookings(request, club_slug):
     from django.utils import timezone as _tzm
     _today_start_mgr = _tzm.make_aware(_dtt.combine(today, _timet.min))
     _future_active = Booking.objects.filter(
-        club=club, status__in=['pending', 'confirmed'],
+        club=club, status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED],
         scheduled_start__gte=_today_start_mgr)
     _ac_clash_bids = set(
         _future_active.filter(aircraft__isnull=False)
@@ -2456,12 +2456,12 @@ def manage_bookings(request, club_slug):
     from django.db.models import F as _F
     _near_cutoff = today + timedelta(days=7)
     _attn_qs = _base_qs.filter(
-        _Q2(status='departed') |
-        _Q2(status='returned') |
-        _Q2(status='completed', flight_completions__paid_at__isnull=True) |
-        _Q2(status__in=['pending', 'confirmed'], scheduled_start__date__lte=_near_cutoff) |
+        _Q2(status=BookingStatus.DEPARTED) |
+        _Q2(status=BookingStatus.RETURNED) |
+        _Q2(status=BookingStatus.COMPLETED, flight_completions__paid_at__isnull=True) |
+        _Q2(status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED], scheduled_start__date__lte=_near_cutoff) |
         _Q2(id__in=_clashing_ids) |
-        _Q2(status='completed', flight_completions__amount_paid__gt=_F('flight_completions__total_charge'))
+        _Q2(status=BookingStatus.COMPLETED, flight_completions__amount_paid__gt=_F('flight_completions__total_charge'))
     )
     if f_status:
         _attn_qs = _attn_qs.filter(status=f_status)
@@ -2501,15 +2501,15 @@ def manage_bookings(request, club_slug):
     _list_qs = _base_qs
     if f_status:
         _list_qs = _list_qs.filter(status=f_status)
-    qs = _list_qs.exclude(status='cancelled').order_by(*_bk_order)
+    qs = _list_qs.exclude(status=BookingStatus.CANCELLED).order_by(*_bk_order)
 
     using_default_window = False
     if not (f_date_from or f_date_to or f_status or show_all_history):
         from django.db.models import Q as _Q3
         cutoff = today - timedelta(days=30)
         qs = qs.filter(
-            _Q3(status__in=['pending', 'confirmed', 'departed']) |
-            _Q3(status__in=['completed', 'transferred'], scheduled_start__date__gte=cutoff)
+            _Q3(status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED]) |
+            _Q3(status__in=[BookingStatus.COMPLETED, 'transferred'], scheduled_start__date__gte=cutoff)
         )
         using_default_window = True
     if f_date_from:
@@ -2583,9 +2583,9 @@ def booking_detail(request, club_slug, booking_id):
         action = request.POST.get('action', '')
         fc = booking.flight_completion
 
-        if action == 'confirm' and booking.status == 'pending' and (actor.is_admin or actor.is_instructor):
+        if action == 'confirm' and booking.status == BookingStatus.PENDING and (actor.is_admin or actor.is_instructor):
             Booking.objects.filter(pk=booking.pk).update(
-                status='confirmed',
+                status=BookingStatus.CONFIRMED,
                 confirmed_by=request.user,
                 confirmed_at=timezone.now(),
             )
@@ -2597,7 +2597,7 @@ def booking_detail(request, club_slug, booking_id):
             _email_confirmed(booking)
             success = 'Booking confirmed.'
 
-        elif action == 'cancel_booking' and booking.status in ('pending', 'confirmed'):
+        elif action == 'cancel_booking' and booking.status in (BookingStatus.PENDING, BookingStatus.CONFIRMED):
             reason = request.POST.get('cancellation_reason', 'no_longer_required')
             reason_other = request.POST.get('cancellation_reason_other', '')
             result = booking_service.cancel(
@@ -2615,13 +2615,13 @@ def booking_detail(request, club_slug, booking_id):
             else:
                 error = result.error
 
-        elif action == 'depart' and booking.status == 'confirmed' and (actor.is_admin or actor.is_instructor):
+        elif action == 'depart' and booking.status == BookingStatus.CONFIRMED and (actor.is_admin or actor.is_instructor):
             requires_decl = booking.flight_type.requires_declaration
             has_decl = hasattr(booking, 'declaration') and not booking.declaration.is_draft
             _elig = qualification_service.check_eligibility(booking) if booking.member else None
             _has_elig_issues = _elig and (_elig.has_blocks or _elig.has_warnings)
             _has_maint_issues = booking.aircraft and AircraftMaintenanceItem.objects.filter(
-                aircraft=booking.aircraft, urgency__in=['amber', 'red']).exists()
+                aircraft=booking.aircraft, urgency__in=[MaintenanceUrgency.AMBER, MaintenanceUrgency.RED]).exists()
             _needs_ack = _has_elig_issues or _has_maint_issues
             acknowledged = request.POST.get('acknowledged') == '1'
             if _needs_ack and not acknowledged:
@@ -2644,7 +2644,7 @@ def booking_detail(request, club_slug, booking_id):
                 SlotWatch.objects.filter(booking=booking).delete()
                 success = 'Checked out.'
 
-        elif action == 'undo_depart' and booking.status == 'departed' and actor.is_admin:
+        elif action == 'undo_depart' and booking.status == BookingStatus.DEPARTED and actor.is_admin:
             # Check for any stub FCs (old pattern) or logged FCs (new pattern)
             _existing_fcs = list(booking.flight_completions.all())
             _has_payment = any((fc.amount_paid or 0) > 0 for fc in _existing_fcs)
@@ -2657,7 +2657,7 @@ def booking_detail(request, club_slug, booking_id):
                 for fc in _existing_fcs:
                     fc.delete()
                 Booking.objects.filter(pk=booking.pk).update(
-                    status='confirmed',
+                    status=BookingStatus.CONFIRMED,
                     departed_at=None,
                     departed_aircraft_id=None,
                     departed_instructor_id=None,
@@ -2669,7 +2669,7 @@ def booking_detail(request, club_slug, booking_id):
                 _audit(booking, request.user, 'undo_depart')
                 success = 'Departure undone — flight is back to confirmed.'
 
-        elif action == 'change_details' and booking.status in ('pending', 'confirmed') and actor.is_admin:
+        elif action == 'change_details' and booking.status in (BookingStatus.PENDING, BookingStatus.CONFIRMED) and actor.is_admin:
             new_instr_id = request.POST.get('instructor_id', '').strip()
             new_ac_id    = request.POST.get('aircraft_id', '').strip()
             new_desc     = request.POST.get('description', booking.description or '').strip()
@@ -2708,12 +2708,12 @@ def booking_detail(request, club_slug, booking_id):
                     elif new_start != booking.scheduled_start or new_end != booking.scheduled_end:
                         ac_clash = Booking.objects.filter(
                             club=club, aircraft=booking.aircraft,
-                            status__in=['pending', 'confirmed', 'departed'],
+                            status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED],
                             scheduled_start__lt=new_end, scheduled_end__gt=new_start,
                         ).exclude(pk=booking.pk).exists()
                         instr_clash = booking.instructor and Booking.objects.filter(
                             club=club, instructor=booking.instructor,
-                            status__in=['pending', 'confirmed', 'departed'],
+                            status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED],
                             scheduled_start__lt=new_end, scheduled_end__gt=new_start,
                         ).exclude(pk=booking.pk).exists()
                         if ac_clash:
@@ -2743,9 +2743,9 @@ def booking_detail(request, club_slug, booking_id):
                 _email_amended(booking, changes=notif_changes)
                 success = 'Booking updated.'
 
-        elif action == 'undo_confirm' and booking.status == 'confirmed' and actor.is_admin:
+        elif action == 'undo_confirm' and booking.status == BookingStatus.CONFIRMED and actor.is_admin:
             Booking.objects.filter(pk=booking.pk).update(
-                status='pending',
+                status=BookingStatus.PENDING,
                 confirmed_by=None,
                 confirmed_at=None,
             )
@@ -2757,7 +2757,7 @@ def booking_detail(request, club_slug, booking_id):
             _email_unconfirmed(booking)
             success = 'Confirmation undone — flight is back to pending.'
 
-        elif action == 'return_aircraft' and booking.status in ('departed', 'returned') and (actor.is_admin or actor.is_instructor) and not fc:
+        elif action == 'return_aircraft' and booking.status in (BookingStatus.DEPARTED, BookingStatus.RETURNED) and (actor.is_admin or actor.is_instructor) and not fc:
             _ret_hobbs     = request.POST.get('return_hobbs', '').strip() or None
             _ret_tacho     = request.POST.get('return_tacho', '').strip() or None
             _ret_airswitch = request.POST.get('return_airswitch', '').strip() or None
@@ -2821,7 +2821,7 @@ def booking_detail(request, club_slug, booking_id):
                     return_notes=_ret_notes,
                     returned_at=timezone.now(),
                     arrived_at=timezone.now(),
-                    status='returned',
+                    status=BookingStatus.RETURNED,
                 )
                 booking.refresh_from_db()
                 for _mi in booking.aircraft.maintenance_items.all():
@@ -2986,7 +2986,7 @@ def booking_detail(request, club_slug, booking_id):
                 _ns.notify_flight_charged(_new_fc)
                 success = 'Aircraft returned — charges ready.'
 
-        elif action == 'undo_return' and booking.status == 'returned' and actor.is_admin:
+        elif action == 'undo_return' and booking.status == BookingStatus.RETURNED and actor.is_admin:
             _existing_fcs = list(booking.flight_completions.all())
             _has_payment = any((fc.amount_paid or 0) > 0 for fc in _existing_fcs)
             if _has_payment:
@@ -3004,13 +3004,13 @@ def booking_detail(request, club_slug, booking_id):
                     return_notes='',
                     returned_at=None,
                     arrived_at=None,
-                    status='departed',
+                    status=BookingStatus.DEPARTED,
                 )
                 booking.refresh_from_db()
                 _audit(booking, request.user, 'undo_return')
                 success = 'Return undone — flight is back to departed.'
 
-        elif action == 'edit_checkin' and booking.status in ('returned', 'completed') and actor.is_admin:
+        elif action == 'edit_checkin' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_admin:
             fc = booking.flight_completion
             if fc:
                 hobbs_start      = request.POST.get('hobbs_start', '').strip() or None
@@ -3112,7 +3112,7 @@ def booking_detail(request, club_slug, booking_id):
             )
             return redirect(request.path + ('?inline=1&saved=1' if is_inline else '?saved=1'))
 
-        elif action == 'add_charge' and booking.status in ('returned', 'completed') and (actor.is_admin or actor.is_instructor):
+        elif action == 'add_charge' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and (actor.is_admin or actor.is_instructor):
             fc = booking.flight_completion
             if fc:
                 _active_inv = fc.invoices.exclude(status='void')
@@ -3152,7 +3152,7 @@ def booking_detail(request, club_slug, booking_id):
                     else:
                         error = result.error
 
-        elif action == 'delete_charge' and booking.status in ('returned', 'completed'):
+        elif action == 'delete_charge' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc:
                 _active_inv = fc.invoices.exclude(status='void')
@@ -3172,7 +3172,7 @@ def booking_detail(request, club_slug, booking_id):
                             if _voided_inv else ''
                         )
 
-        elif action == 'confirm_payment' and booking.status in ('returned', 'completed'):
+        elif action == 'confirm_payment' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             # Quick single-payment record (default to booking member)
             fc = booking.flight_completion
             if fc and not fc.is_paid:
@@ -3187,7 +3187,7 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
-        elif action == 'record_payee' and booking.status in ('returned', 'completed'):
+        elif action == 'record_payee' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc:
                 _pid_for_check = request.POST.get('payment_id', '').strip()
@@ -3240,7 +3240,7 @@ def booking_detail(request, club_slug, booking_id):
                         else:
                             error = result.error
 
-        elif action == 'record_all_payees' and booking.status in ('returned', 'completed'):
+        elif action == 'record_all_payees' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc and not fc.is_paid:
                 from decimal import Decimal as _D, InvalidOperation as _IO
@@ -3294,7 +3294,7 @@ def booking_detail(request, club_slug, booking_id):
                         if not error:
                             success = 'All payments recorded.'
 
-        elif action == 'record_new_payee' and booking.status in ('returned', 'completed'):
+        elif action == 'record_new_payee' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc:
                 _mid_for_check = request.POST.get('member_id', '').strip()
@@ -3319,7 +3319,7 @@ def booking_detail(request, club_slug, booking_id):
                         else:
                             error = result.error
 
-        elif action == 'record_segment_payments' and booking.status in ('returned', 'completed'):
+        elif action == 'record_segment_payments' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc and actor.is_admin:
                 from decimal import Decimal as _D, InvalidOperation
@@ -3389,7 +3389,7 @@ def booking_detail(request, club_slug, booking_id):
                             fc._sync_payment_cache()
                         success = 'Segment payments recorded.'
 
-        elif action == 'remove_payee' and booking.status in ('returned', 'completed'):
+        elif action == 'remove_payee' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc and actor.is_admin:
                 payment_id = request.POST.get('payment_id', '').strip()
@@ -3399,7 +3399,7 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
-        elif action == 'record_multi_payment' and booking.status in ('returned', 'completed'):
+        elif action == 'record_multi_payment' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc:
                 _fc_inv = fc.invoices.filter(member=booking.member, status__in=['draft', 'sent']).first()
@@ -3554,7 +3554,7 @@ def booking_detail(request, club_slug, booking_id):
                                 fc._sync_payment_cache()
                                 success = 'Split payment recorded.'
 
-        elif action == 'void_checkin' and booking.status in ('returned', 'completed') and actor.is_admin:
+        elif action == 'void_checkin' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_admin:
             fc = booking.flight_completion
             if fc:
                 _active_invoices = fc.invoices.exclude(status='void')
@@ -3572,7 +3572,7 @@ def booking_detail(request, club_slug, booking_id):
                         _vfc.segments.all().delete()
                         _vfc.delete()
                     Booking.objects.filter(pk=booking.pk).update(
-                        status='departed',
+                        status=BookingStatus.DEPARTED,
                         return_hobbs=None, return_tacho=None, return_airswitch=None,
                         return_condition='serviceable', return_notes='',
                         returned_at=None, arrived_at=None,
@@ -3585,7 +3585,7 @@ def booking_detail(request, club_slug, booking_id):
                     else:
                         success = 'Flights voided — booking is back to departed. Re-enter return details to re-log.'
 
-        elif action == 'reverse_payment' and booking.status in ('returned', 'completed') and actor.is_admin:
+        elif action == 'reverse_payment' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_admin:
             fc = booking.flight_completion
             if fc:
                 payment_id = request.POST.get('payment_id') or None
@@ -3603,7 +3603,7 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
-        elif action == 'record_refund' and booking.status in ('returned', 'completed') and actor.is_admin:
+        elif action == 'record_refund' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_admin:
             fc = booking.flight_completion
             if fc:
                 result = charging_service.record_refund(
@@ -3616,7 +3616,7 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     error = result.error
 
-        elif action == 'waive_charge' and booking.status in ('returned', 'completed') and actor.is_admin:
+        elif action == 'waive_charge' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_admin:
             fc = booking.flight_completion
             if fc and not fc.amount_paid:
                 reason = request.POST.get('waive_reason', '').strip()
@@ -3629,7 +3629,7 @@ def booking_detail(request, club_slug, booking_id):
                     fc.total_charge = 0
                     fc.save(update_fields=['charge_waived', 'waive_reason', 'total_charge'])
                     # Mark booking completed (zero-charge = settled)
-                    Booking.objects.filter(pk=booking.pk).update(status='completed')
+                    Booking.objects.filter(pk=booking.pk).update(status=BookingStatus.COMPLETED)
                     booking.refresh_from_db()
                     success = 'Charge waived.'
 
@@ -3641,7 +3641,7 @@ def booking_detail(request, club_slug, booking_id):
             # else fall through to re-render with error
         elif success and not error:
             # Transition returned → completed when payment fully recorded
-            if booking.status == 'returned' and action in (
+            if booking.status == BookingStatus.RETURNED and action in (
                 'record_segment_payments', 'record_all_payees', 'record_multi_payment',
                 'record_payee', 'record_new_payee',
             ):
@@ -3649,7 +3649,7 @@ def booking_detail(request, club_slug, booking_id):
                 if _chk_fc:
                     _chk_fc.refresh_from_db(fields=['amount_paid', 'paid_at', 'invoice_issued'])
                     if _chk_fc.is_paid or _chk_fc.invoice_issued:
-                        Booking.objects.filter(pk=booking.pk).update(status='completed')
+                        Booking.objects.filter(pk=booking.pk).update(status=BookingStatus.COMPLETED)
             if is_inline:
                 if action in ('depart', 'confirm'):
                     # Close the overlay after checkout or confirmation
@@ -3785,15 +3785,15 @@ def booking_detail(request, club_slug, booking_id):
 
     # Eligibility check — shown in the depart section so staff can see issues before letting a member fly
     eligibility = None
-    if booking.status in ('confirmed', 'pending') and booking.member:
+    if booking.status in (BookingStatus.CONFIRMED, BookingStatus.PENDING) and booking.member:
         eligibility = qualification_service.check_eligibility(booking)
 
     # Maintenance items for the aircraft — only AMBER/RED, shown in the same status panel
     departure_maint_items = []
-    if booking.status in ('confirmed', 'pending') and booking.aircraft:
+    if booking.status in (BookingStatus.CONFIRMED, BookingStatus.PENDING) and booking.aircraft:
         _maint_qs = AircraftMaintenanceItem.objects.filter(
             aircraft=booking.aircraft,
-            urgency__in=['amber', 'red'],
+            urgency__in=[MaintenanceUrgency.AMBER, MaintenanceUrgency.RED],
         ).order_by('urgency', 'due_date')
         _latest_hobbs = (FlightCompletion.objects
                          .filter(booking__aircraft=booking.aircraft)
@@ -3817,10 +3817,10 @@ def booking_detail(request, club_slug, booking_id):
 
     # Previous meter readings for this aircraft — used by gap-detection JS when logging flights
     from django.db.models import Q as _Q
-    _prev_fc_status_check = booking.status in ('departed', 'returned')
+    _prev_fc_status_check = booking.status in (BookingStatus.DEPARTED, BookingStatus.RETURNED)
     # For returned bookings: if flights already logged, use last logged flight's end as prev
     _last_logged_fc = all_fcs[-1] if all_fcs else None
-    if _last_logged_fc and booking.status == 'returned':
+    if _last_logged_fc and booking.status == BookingStatus.RETURNED:
         _prev_fc = _last_logged_fc
     elif _prev_fc_status_check:
         _prev_fc = (FlightCompletion.objects
@@ -3838,7 +3838,7 @@ def booking_detail(request, club_slug, booking_id):
     # Rate data for the log-flight JS charge preview
     import json as _json
     checkin_rates_json = 'null'
-    if booking.status in ('departed', 'returned'):
+    if booking.status in (BookingStatus.DEPARTED, BookingStatus.RETURNED):
         _hire = ChargeRate.objects.filter(
             aircraft=booking.aircraft, flight_type=booking.flight_type,
             time_method=booking.aircraft.total_time_method
@@ -3950,7 +3950,7 @@ def booking_detail(request, club_slug, booking_id):
     _pending_conflict_ids = set(
         Booking.objects.filter(
             club=club,
-            status='pending',
+            status=BookingStatus.PENDING,
             instructor__isnull=False,
             scheduled_start__lt=booking.scheduled_end,
             scheduled_end__gt=booking.scheduled_start,
@@ -4046,9 +4046,9 @@ def booking_detail(request, club_slug, booking_id):
         'online_aircraft': Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).order_by('registration'),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
         'inline_title': (
-            'Check out' if booking.status == 'confirmed' else
-            'Check in' if booking.status == 'departed' else
-            'Charges' if booking.status in ('returned', 'completed') else
+            'Check out' if booking.status == BookingStatus.CONFIRMED else
+            'Check in' if booking.status == BookingStatus.DEPARTED else
+            'Charges' if booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) else
             'Booking'
         ),
         'watchers': list(SlotWatch.objects.filter(booking=booking).select_related('club_member__user')) if actor.can_access_manage else [],
@@ -4275,7 +4275,7 @@ def manage_member_detail(request, club_slug, member_id):
             notes = request.POST.get('notes', '').strip()
             ac_type_id = request.POST.get('cred_aircraft_type_id', '').strip()
             ac_type_obj = (AircraftType.objects.filter(club=club, id=ac_type_id).first()
-                           if ac_type_id and ct_obj and ct_obj.category == 'type_rating' else None)
+                           if ac_type_id and ct_obj and ct_obj.category == CredentialCategory.TYPE_RATING else None)
             if action == 'add_credential' and ct_obj:
                 cred = MemberCredential(
                     member=member.user, credential_type=ct_obj, name=name,
@@ -4493,8 +4493,8 @@ def manage_member_detail(request, club_slug, member_id):
     from .models import MemberCredential, AccountTransaction, FrequentPassenger as _FP
     from django.db.models import Q as _Q
     _now = timezone.now()
-    _PAST_STATUSES = ('completed', 'transferred')
-    _ACTIVE_STATUSES = ('pending', 'confirmed', 'departed')
+    _PAST_STATUSES = (BookingStatus.COMPLETED, 'transferred')
+    _ACTIVE_STATUSES = (BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED)
     upcoming_bookings = (Booking.objects
                          .filter(club=club, member=member, status__in=_ACTIVE_STATUSES,
                                  scheduled_start__gte=_now)
@@ -4503,7 +4503,7 @@ def manage_member_detail(request, club_slug, member_id):
     past_bookings = (Booking.objects
                      .filter(club=club, member=member)
                      .filter(_Q(status__in=_PAST_STATUSES) | _Q(scheduled_start__lt=_now))
-                     .exclude(status='cancelled')
+                     .exclude(status=BookingStatus.CANCELLED)
                      .select_related('aircraft', 'instructor', 'flight_type').prefetch_related('flight_completions')
                      .order_by('-scheduled_start')[:20])
     credentials = (MemberCredential.objects
@@ -4566,7 +4566,7 @@ def manage_member_detail(request, club_slug, member_id):
                     .select_related('booking__aircraft', 'booking__instructor', 'author')
                     .order_by('-booking__scheduled_start'))
     dual_bookings = (Booking.objects
-                     .filter(member=member, club=club, status='completed', instructor__isnull=False)
+                     .filter(member=member, club=club, status=BookingStatus.COMPLETED, instructor__isnull=False)
                      .select_related('aircraft', 'instructor')
                      .order_by('-scheduled_start')[:50])
     _edit_note_id = request.GET.get('edit_note')
@@ -4653,7 +4653,7 @@ def app_flight_log(request, club_slug):
 
     # 1. Flights where this member was the booking pilot
     fc_qs = (FlightCompletion.objects
-             .filter(booking__member=actor, booking__club=club, booking__status='completed')
+             .filter(booking__member=actor, booking__club=club, booking__status=BookingStatus.COMPLETED)
              .select_related('booking__aircraft', 'booking__instructor', 'booking__flight_type')
              .prefetch_related('segments')
              .order_by('-booking__scheduled_start'))
@@ -4661,7 +4661,7 @@ def app_flight_log(request, club_slug):
     # 2. Segments where this member flew but was not the booker (split flights only)
     seg_qs = (_FS.objects
               .filter(member=actor, flight_completion__booking__club=club,
-                      flight_completion__booking__status='completed')
+                      flight_completion__booking__status=BookingStatus.COMPLETED)
               .exclude(flight_completion__booking__member=actor)
               .select_related('flight_completion__booking__aircraft',
                               'flight_completion__booking__instructor',
@@ -4758,7 +4758,7 @@ def app_save_special_hours(request, club_slug, fc_id):
     if not actor:
         return redirect('login')
 
-    fc = get_object_or_404(FlightCompletion, id=fc_id, booking__club=club, booking__status='completed')
+    fc = get_object_or_404(FlightCompletion, id=fc_id, booking__club=club, booking__status=BookingStatus.COMPLETED)
 
     seg_id = request.POST.get('seg_id', '').strip()
     if seg_id:
@@ -4853,8 +4853,8 @@ def my_profile(request, club_slug):
 
     from django.db.models import Q as _Q
     _now = timezone.now()
-    _PAST_STATUSES = ('completed', 'transferred')
-    _ACTIVE_STATUSES = ('pending', 'confirmed', 'departed')
+    _PAST_STATUSES = (BookingStatus.COMPLETED, 'transferred')
+    _ACTIVE_STATUSES = (BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED)
     upcoming = (Booking.objects
                 .filter(club=club, member=member, status__in=_ACTIVE_STATUSES,
                         scheduled_start__gte=_now)
@@ -4863,7 +4863,7 @@ def my_profile(request, club_slug):
     past = (Booking.objects
             .filter(club=club, member=member)
             .filter(_Q(status__in=_PAST_STATUSES) | _Q(scheduled_start__lt=_now))
-            .exclude(status='cancelled')
+            .exclude(status=BookingStatus.CANCELLED)
             .select_related('aircraft', 'instructor', 'flight_type')
             .order_by('-scheduled_start')[:20])
 
@@ -4883,7 +4883,7 @@ def my_profile(request, club_slug):
     if member.is_instructor:
         upcoming_as_instructor = (Booking.objects
             .filter(club=club, instructor=request.user,
-                    status__in=('pending', 'confirmed', 'departed'),
+                    status__in=(BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED),
                     scheduled_start__gte=_now,
                     scheduled_start__lt=_now + timedelta(days=7))
             .select_related('aircraft', 'member__user', 'flight_type')
@@ -4927,7 +4927,7 @@ def my_profile(request, club_slug):
 
     watched_slots = (SlotWatch.objects
                      .filter(club_member=member,
-                             booking__status__in=('pending', 'confirmed'),
+                             booking__status__in=(BookingStatus.PENDING, BookingStatus.CONFIRMED),
                              booking__scheduled_start__gte=timezone.now())
                      .select_related('booking__aircraft', 'booking__member__user',
                                      'booking__flight_type')
@@ -4951,7 +4951,7 @@ def _recompute_conflicts_for_club(club):
     """After a blockout is created/edited/deleted, refresh conflict flags on all active bookings."""
     from .models import recompute_blockout_conflict as _rbc
     qs = (Booking.objects
-          .filter(club=club, status__in=['pending', 'confirmed', 'departed'])
+          .filter(club=club, status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED])
           .select_related('aircraft', 'instructor'))
     for b in qs:
         _rbc(b)
@@ -5494,7 +5494,7 @@ def manage_aircraft(request, club_slug):
                     future_count = Booking.objects.filter(
                         club=club, aircraft=ac,
                         scheduled_start__gt=timezone.now(),
-                    ).exclude(status='cancelled').count()
+                    ).exclude(status=BookingStatus.CANCELLED).count()
                     if future_count:
                         retire_error = (
                             f"{ac.registration} has "
@@ -5834,7 +5834,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
 
     from django.core.paginator import Paginator as _FHPag
     _fh_qs = (Booking.objects
-              .filter(club=club, aircraft=ac, status='completed')
+              .filter(club=club, aircraft=ac, status=BookingStatus.COMPLETED)
               .select_related('member__user', 'instructor', 'flight_type')
               .order_by('-scheduled_start'))
     flight_history = _FHPag(_fh_qs, 25).get_page(request.GET.get('fh_page'))
@@ -6059,7 +6059,7 @@ def manage_instructors(request, club_slug):
                 future_bookings = Booking.objects.filter(
                     club=club, instructor=member.user,
                     scheduled_end__gte=timezone.now(),
-                    status__in=['pending', 'confirmed'],
+                    status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED],
                 )
                 for b in future_bookings:
                     new_instr_id = request.POST.get(f'reassign_{b.id}', '').strip()
@@ -6096,7 +6096,7 @@ def manage_instructors(request, club_slug):
             Booking.objects
             .filter(club=club, instructor=instr.user,
                     scheduled_end__gte=timezone.now(),
-                    status__in=['pending', 'confirmed'])
+                    status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED])
             .select_related('member__user', 'aircraft')
             .order_by('scheduled_start')
         )
@@ -6274,7 +6274,7 @@ def manage_instructor_detail(request, club_slug, member_id):
 
     upcoming_bookings = (Booking.objects
                          .filter(club=club, instructor=instr.user)
-                         .exclude(status='cancelled')
+                         .exclude(status=BookingStatus.CANCELLED)
                          .filter(scheduled_start__gte=timezone.now())
                          .select_related('member__user', 'aircraft', 'flight_type')
                          .order_by('scheduled_start')[:10])
@@ -6608,9 +6608,9 @@ def booking_declaration(request, club_slug, booking_id):
 
     # Completed flights: declaration is always read-only for everyone
     # Departed flights: read-only for non-staff
-    readonly = (booking.status == 'completed') or \
+    readonly = (booking.status == BookingStatus.COMPLETED) or \
                (not is_own and not actor.is_admin and not actor.is_instructor) or \
-               (booking.status == 'departed' and not actor.is_admin and not actor.is_instructor)
+               (booking.status == BookingStatus.DEPARTED and not actor.is_admin and not actor.is_instructor)
 
     decl, _ = DepartureDeclaration.objects.get_or_create(
         booking=booking,
@@ -7128,8 +7128,8 @@ def generate_invoice(request, club_slug, booking_id):
         _ns.notify_invoice_issued(_combined_inv)
 
     # Mark booking completed on invoice generation
-    if created and booking.status == 'returned':
-        Booking.objects.filter(pk=booking.pk).update(status='completed')
+    if created and booking.status == BookingStatus.RETURNED:
+        Booking.objects.filter(pk=booking.pk).update(status=BookingStatus.COMPLETED)
 
     if created:
         import urllib.parse as _up2
@@ -7263,8 +7263,8 @@ def invoice_detail(request, club_slug, invoice_id):
                             )
                         _bk_linked = _fc_linked.booking
                         _bk_linked.refresh_from_db(fields=['status'])
-                        if _bk_linked.status == 'returned':
-                            Booking.objects.filter(pk=_bk_linked.pk).update(status='completed')
+                        if _bk_linked.status == BookingStatus.RETURNED:
+                            Booking.objects.filter(pk=_bk_linked.pk).update(status=BookingStatus.COMPLETED)
                     if invoice.subscription_expiry_date and invoice.member:
                         _sub_member = invoice.member
                         _old_exp = _sub_member.subscription_expires
@@ -8472,8 +8472,8 @@ def ai_ask(request, club_slug):
             'type': ac.aircraft_type.name if ac.aircraft_type else 'Unknown',
             'status': ac.status,
             'is_leased': ac.is_leased,
-            'overdue_maintenance': [m.name for m in items if getattr(m, 'urgency', '') == 'red'],
-            'warning_maintenance': [m.name for m in items if getattr(m, 'urgency', '') == 'amber'],
+            'overdue_maintenance': [m.name for m in items if getattr(m, 'urgency', '') == MaintenanceUrgency.RED],
+            'warning_maintenance': [m.name for m in items if getattr(m, 'urgency', '') == MaintenanceUrgency.AMBER],
         })
 
     # Account balances
@@ -8671,7 +8671,7 @@ def _instructor_cred_issues(club, on_date):
     instructor_ids = list(
         Booking.objects
         .filter(club=club, scheduled_start__date=on_date, instructor__isnull=False)
-        .exclude(status__in=['cancelled', 'completed'])
+        .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
         .values_list('instructor_id', flat=True)
         .distinct()
     )
@@ -8735,7 +8735,7 @@ def _instructor_cred_issues(club, on_date):
             day_bookings = list(
                 Booking.objects
                 .filter(club=club, instructor=instr.user, scheduled_start__date=on_date)
-                .exclude(status__in=['cancelled', 'completed'])
+                .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
                 .select_related('aircraft', 'member__user')
                 .order_by('scheduled_start')
             )
@@ -8759,7 +8759,7 @@ def manage_exceptions(request, club_slug):
     # 1. Unpaid completed flights
     unpaid_flights = (
         Booking.objects
-        .filter(club=club, status='completed',
+        .filter(club=club, status=BookingStatus.COMPLETED,
                 flight_completions__paid_at__isnull=True,
                 flight_completions__total_charge__gt=0,
                 flight_completions__invoices__isnull=True)
@@ -8790,13 +8790,13 @@ def manage_exceptions(request, club_slug):
     from django.db.models import Exists as _Exists, OuterRef as _OuterRef
     _ac_clash_sub = Booking.objects.filter(
         club=club, aircraft_id=_OuterRef('aircraft_id'),
-        status__in=['pending', 'confirmed', 'departed'],
+        status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED],
         scheduled_start__lt=_OuterRef('scheduled_end'),
         scheduled_end__gt=_OuterRef('scheduled_start'),
     ).exclude(pk=_OuterRef('pk'))
     _in_clash_sub = Booking.objects.filter(
         club=club, instructor_id=_OuterRef('instructor_id'),
-        status__in=['pending', 'confirmed', 'departed'],
+        status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED],
         scheduled_start__lt=_OuterRef('scheduled_end'),
         scheduled_end__gt=_OuterRef('scheduled_start'),
     ).exclude(pk=_OuterRef('pk'))
@@ -8804,7 +8804,7 @@ def manage_exceptions(request, club_slug):
     _today_start_exc = timezone.make_aware(_exc_dt.combine(today, _exc_t.min))
     _future_bks = (Booking.objects
         .filter(club=club, scheduled_start__gte=_today_start_exc)
-        .exclude(status__in=['cancelled', 'completed']))
+        .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED]))
     _ac_clash_ids = set(
         _future_bks.filter(aircraft__isnull=False)
         .annotate(_cl=_Exists(_ac_clash_sub)).filter(_cl=True)
@@ -8820,7 +8820,7 @@ def manage_exceptions(request, club_slug):
     _db_conflicts = list(
         Booking.objects
         .filter(club=club, scheduled_start__gte=_today_start_exc)
-        .exclude(status__in=['cancelled', 'completed'])
+        .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
         .filter(
             _Q(blockout_conflict=True) |
             _Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
@@ -8839,7 +8839,7 @@ def manage_exceptions(request, club_slug):
         b for b in (
             Booking.objects
             .filter(club=club, scheduled_start__gte=_today_start_exc, instructor__isnull=False)
-            .exclude(status__in=['cancelled', 'completed'])
+            .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
             .exclude(id__in=_seen_ids)
             .select_related('member__user', 'aircraft', 'flight_type', 'instructor')
             .order_by('scheduled_start')
@@ -8876,7 +8876,7 @@ def manage_exceptions(request, club_slug):
     future_member_ids = (
         Booking.objects
         .filter(club=club, scheduled_start__date__gte=today)
-        .exclude(status__in=['cancelled', 'completed'])
+        .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
         .values_list('member_id', flat=True)
         .distinct()
     )
@@ -8916,7 +8916,7 @@ def manage_exceptions(request, club_slug):
     _upcoming_bookings = (
         Booking.objects
         .filter(club=club, member_id__in=_lapsed_cm_ids, scheduled_start__date__gte=today)
-        .exclude(status__in=['cancelled', 'completed'])
+        .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
         .order_by('member_id', 'scheduled_start')
         .values('member_id', 'id', 'scheduled_start')
     )
@@ -8967,7 +8967,7 @@ def manage_exceptions(request, club_slug):
     _overdue_cutoff = timezone.now() - timedelta(hours=24)
     overdue_departures = list(
         Booking.objects
-        .filter(club=club, status='departed', departed_at__lt=_overdue_cutoff)
+        .filter(club=club, status=BookingStatus.DEPARTED, departed_at__lt=_overdue_cutoff)
         .select_related('member__user', 'aircraft')
         .order_by('departed_at')
     )
@@ -10041,7 +10041,7 @@ def export_data(request, club_slug, export_type):
                    .select_related('invoice')
                    .order_by('invoice__invoice_number', 'id')):
             line_rows.append([li.invoice.display_number, li.description,
-                              li.quantity, li.unit_price, li.total_price])
+                              li.quantity, li.rate, li.amount])
         return (inv_hdrs, inv_rows), (line_hdrs, line_rows)
 
     def occurrences_data():
@@ -10834,7 +10834,7 @@ def live_positions(request, club_slug):
     # Pilot names (when known) come from today's departed bookings.
     pilot_by_aircraft = {}
     for b in (Booking.objects
-              .filter(club=club, status='departed', scheduled_start__date=today)
+              .filter(club=club, status=BookingStatus.DEPARTED, scheduled_start__date=today)
               .select_related('member', 'member__user')
               .order_by('scheduled_start')):
         if b.member and b.member.user:
@@ -10979,7 +10979,7 @@ def occurrence_submit(request, club_slug):
     recent_bookings = (Booking.objects
                        .filter(club=club, member=actor,
                                scheduled_start__date__gte=timezone.localdate() - timedelta(days=30))
-                       .exclude(status='cancelled')
+                       .exclude(status=BookingStatus.CANCELLED)
                        .select_related('aircraft', 'flight_type')
                        .order_by('-scheduled_start')[:10])
 
@@ -11398,7 +11398,7 @@ def app_home(request, club_slug):
 
     next_booking = (Booking.objects
                     .filter(member=actor, club=club, scheduled_start__date__gte=today)
-                    .exclude(status='cancelled')
+                    .exclude(status=BookingStatus.CANCELLED)
                     .select_related('aircraft', 'flight_type', 'instructor')
                     .order_by('scheduled_start')
                     .first())
@@ -11406,7 +11406,7 @@ def app_home(request, club_slug):
     pending_count = 0
     if actor.is_instructor:
         pending_count = (Booking.objects
-                         .filter(club=club, status='pending',
+                         .filter(club=club, status=BookingStatus.PENDING,
                                  instructor=request.user,
                                  scheduled_start__date__gte=today)
                          .count())
@@ -11434,7 +11434,7 @@ def app_home(request, club_slug):
 
     # Last completed flight
     last_flight = (Booking.objects
-                   .filter(member=actor, club=club, status='completed')
+                   .filter(member=actor, club=club, status=BookingStatus.COMPLETED)
                    .select_related('aircraft')
                    .order_by('-scheduled_start')
                    .first())
@@ -11550,7 +11550,7 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
     # Bookings for the day
     day_bookings = (Booking.objects
                     .filter(club=club, scheduled_start__date=selected)
-                    .exclude(status='cancelled')
+                    .exclude(status=BookingStatus.CANCELLED)
                     .select_related('member__user', 'aircraft', 'flight_type', 'instructor')
                     .order_by('scheduled_start'))
 
@@ -11745,7 +11745,7 @@ def app_bookings(request, club_slug):
     if request.method == 'POST' and request.POST.get('action') == 'cancel_booking':
         booking_id = request.POST.get('booking_id')
         booking = get_object_or_404(Booking, id=booking_id, club=club, member=actor)
-        if booking.status in ('pending', 'confirmed'):
+        if booking.status in (BookingStatus.PENDING, BookingStatus.CONFIRMED):
             reason = request.POST.get('cancellation_reason', 'no_longer_required')
             result = booking_service.cancel(booking, request.user, reason=reason)
             if result.ok:
@@ -11756,13 +11756,13 @@ def app_bookings(request, club_slug):
 
     upcoming = (Booking.objects
                 .filter(member=actor, club=club, scheduled_start__date__gte=today)
-                .exclude(status='cancelled')
+                .exclude(status=BookingStatus.CANCELLED)
                 .select_related('aircraft', 'flight_type', 'instructor', 'declaration')
                 .order_by('scheduled_start')[:20])
 
     past = (Booking.objects
             .filter(member=actor, club=club, scheduled_start__date__lt=today)
-            .exclude(status='cancelled')
+            .exclude(status=BookingStatus.CANCELLED)
             .select_related('aircraft', 'flight_type')
             .order_by('-scheduled_start')[:20])
 
@@ -12016,7 +12016,7 @@ def app_credential_add(request, club_slug):
                 expiry_date=_pd(expiry_str),
                 notes=notes,
             )
-            if ac_type_id and ct_obj.category == 'type_rating':
+            if ac_type_id and ct_obj.category == CredentialCategory.TYPE_RATING:
                 try:
                     cred.aircraft_type_id = int(ac_type_id)
                 except (ValueError, TypeError):
@@ -12070,7 +12070,7 @@ def app_credential_edit(request, club_slug, cred_id):
         cred.expiry_date = _pd(expiry_str)
         cred.notes = notes
         cred.aircraft_type_id = None
-        if ac_type_id and ct_obj and ct_obj.category == 'type_rating':
+        if ac_type_id and ct_obj and ct_obj.category == CredentialCategory.TYPE_RATING:
             try:
                 cred.aircraft_type_id = int(ac_type_id)
             except (ValueError, TypeError):
@@ -12212,7 +12212,7 @@ def app_book_availability(request, club_slug):
     day_bookings = list(
         Booking.objects
         .filter(club=club, scheduled_start__date=selected)
-        .exclude(status='cancelled')
+        .exclude(status=BookingStatus.CANCELLED)
         .select_related('aircraft')
     )
 
@@ -12415,7 +12415,7 @@ def app_book_find(request, club_slug):
     all_bookings = list(
         Booking.objects
         .filter(club=club, scheduled_start__gte=_find_start, scheduled_start__lt=_find_end)
-        .exclude(status='cancelled')
+        .exclude(status=BookingStatus.CANCELLED)
         .select_related('aircraft')
     )
     bookings_by_date = defaultdict(list)
@@ -12599,7 +12599,7 @@ def app_book_confirm(request, club_slug):
                     instructor=inst_user,
                     scheduled_start=sched_start,
                     scheduled_end=sched_end,
-                    status='pending',
+                    status=BookingStatus.PENDING,
                     description=note,
                     created_by=request.user,
                 )
@@ -12689,7 +12689,7 @@ def app_book_confirm(request, club_slug):
         _conf_bookings = list(
             Booking.objects
             .filter(club=club, scheduled_start__date=_conf_date, instructor__isnull=False)
-            .exclude(status='cancelled')
+            .exclude(status=BookingStatus.CANCELLED)
             .values_list('instructor_id', 'scheduled_start', 'scheduled_end')
         )
         def _instr_ok(cm):

@@ -1,5 +1,5 @@
 from django.conf import settings as _settings
-from .models import Club, ClubConfig, AircraftStatus
+from .models import Club, ClubConfig, AircraftStatus, BookingStatus
 
 
 def theme(request):
@@ -84,24 +84,24 @@ def theme(request):
                     _n = 0
                     # Unpaid completed flights (no invoice)
                     _n += Booking.objects.filter(
-                        club=club, status='completed',
+                        club=club, status=BookingStatus.COMPLETED,
                         flight_completions__paid_at__isnull=True,
                         flight_completions__total_charge__gt=0,
                         flight_completions__invoices__isnull=True,
                     ).distinct().count()
                     # Booking conflicts — build one deduped set of IDs (mirrors manage_exceptions)
                     _future = Booking.objects.filter(
-                        club=club, status__in=['pending', 'confirmed'],
+                        club=club, status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED],
                         scheduled_start__gte=_today_start)
                     _ac_sub = Booking.objects.filter(
                         club=club, aircraft_id=OuterRef('aircraft_id'),
-                        status__in=['pending', 'confirmed', 'departed'],
+                        status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED],
                         scheduled_start__lt=OuterRef('scheduled_end'),
                         scheduled_end__gt=OuterRef('scheduled_start'),
                     ).exclude(pk=OuterRef('pk'))
                     _in_sub = Booking.objects.filter(
                         club=club, instructor_id=OuterRef('instructor_id'),
-                        status__in=['pending', 'confirmed', 'departed'],
+                        status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED],
                         scheduled_start__lt=OuterRef('scheduled_end'),
                         scheduled_end__gt=OuterRef('scheduled_start'),
                     ).exclude(pk=OuterRef('pk'))
@@ -117,7 +117,7 @@ def theme(request):
                     _conf_ids = set(
                         Booking.objects.filter(
                             club=club, scheduled_start__gte=_today_start,
-                        ).exclude(status__in=['cancelled', 'completed']).filter(
+                        ).exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED]).filter(
                             Q(blockout_conflict=True) |
                             Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
                             Q(member__standing='active',
@@ -141,7 +141,7 @@ def theme(request):
                         Booking.objects.filter(
                             club=club, instructor__isnull=False,
                             scheduled_start__gte=_today_start,
-                        ).exclude(status__in=['cancelled', 'completed'])
+                        ).exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
                         .exclude(id__in=_conf_ids)
                         .values_list('id', 'instructor_id', 'scheduled_start')
                     )
@@ -161,14 +161,14 @@ def theme(request):
                     ).count()
                     # Overdue returns (departed >24h)
                     _n += Booking.objects.filter(
-                        club=club, status='departed',
+                        club=club, status=BookingStatus.DEPARTED,
                         departed_at__lt=_tz.now() - timedelta(hours=24),
                     ).count()
                     # Lapsed credentials for members with upcoming bookings
                     _fut_user_ids = (
                         Booking.objects
                         .filter(club=club, scheduled_start__gte=_today_start)
-                        .exclude(status__in=['cancelled', 'completed'])
+                        .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
                         .values_list('member__user_id', flat=True).distinct()
                     )
                     _n += (
