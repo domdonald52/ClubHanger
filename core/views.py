@@ -8,7 +8,7 @@ from django.db import transaction
 from datetime import datetime, timedelta, time, date
 
 logger = logging.getLogger('clubhangar.audit')
-from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, Role, FlightType, BlockOutType,
+from .models import (Club, ClubMember, Booking, Aircraft, AircraftType, AircraftStatus, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem,
                      FlightCompletion, FlightSegment, AircraftMaintenanceItem, ChargeRate, FlightChargeItem,
@@ -89,7 +89,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         club=club, is_on_instructor_roster=True
     ).select_related('user').order_by('standing', 'user__last_name')
     
-    aircraft_list = Aircraft.objects.filter(club=club, status='online').order_by('registration')
+    aircraft_list = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).order_by('registration')
     all_aircraft = Aircraft.objects.filter(club=club).order_by('registration')
     
     # Get all bookings for day
@@ -157,7 +157,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         if b.member and not b.member.is_current:
             issues.append(('member', f"Member {b.member.get_standing_display()}"))
 
-        if b.aircraft and b.aircraft.status == 'retired':
+        if b.aircraft and b.aircraft.status == AircraftStatus.RETIRED:
             issues.append(('aircraft', f"Aircraft {b.aircraft.registration} is retired"))
 
         if b.instructor_id:
@@ -429,7 +429,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
 
     aircraft_rows = []
     for ac in all_aircraft:
-        is_online = ac.status == 'online'
+        is_online = ac.status == AircraftStatus.ONLINE
         ac_bookings = bookings.filter(aircraft=ac)
         if show_pending:
             ac_bookings = ac_bookings.filter(status='pending')
@@ -1195,7 +1195,7 @@ def availability_search(request, club_slug):
     
     config = get_config(club)
     instructors = ClubMember.objects.filter(club=club, is_on_instructor_roster=True).select_related('user')
-    aircraft_list = Aircraft.objects.filter(club=club, status='online')
+    aircraft_list = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE)
     aircraft_types = sorted(set(
         a.aircraft_type.name for a in aircraft_list if a.aircraft_type_id
     ))
@@ -1475,7 +1475,7 @@ def reschedule_options(request, booking_id):
     available_aircraft = Aircraft.objects.filter(
         club=club,
         aircraft_type=booking.aircraft.aircraft_type_id,
-        status='online'
+        status=AircraftStatus.ONLINE
     ).exclude(id__in=busy_aircraft)
     
     instructors_list = [
@@ -1980,7 +1980,7 @@ def club_settings(request, club_slug, mode='settings'):
             import calendar as _cal
             fy_year = int(request.POST.get('fy_year', 0) or 0)
             if fy_year:
-                ac_list = Aircraft.objects.filter(club=club).exclude(status='retired')
+                ac_list = Aircraft.objects.filter(club=club).exclude(status=AircraftStatus.RETIRED)
                 for ac in ac_list:
                     for m in range(1, 13):
                         key = f'budget_{ac.id}_{m}'
@@ -2226,7 +2226,7 @@ def club_settings(request, club_slug, mode='settings'):
         'renewal_fy_end': _next_fy_end(config),
         'renewal_fy_label': f'FY{str(_next_fy_end(config).year)[2:]}',
         # Budget
-        'budget_aircraft': Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration'),
+        'budget_aircraft': Aircraft.objects.filter(club=club).exclude(status=AircraftStatus.RETIRED).order_by('registration'),
         'budget_entries': {(b.aircraft_id, b.fy_year, b.month): b.budgeted_hours
                           for b in FlyingBudget.objects.filter(club=club)},
         'budget_fy_year': _budget_fy_year(config),
@@ -2316,7 +2316,7 @@ def manage_bookings(request, club_slug):
         Q(blockout_conflict=True) |
         Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
         Q(member__standing='active', member__subscription_expires__lt=today) |
-        Q(aircraft__status='retired')
+        Q(aircraft__status=AircraftStatus.RETIRED)
     )
 
     # Pre-load instructor availability windows for off-roster conflict detection
@@ -2350,7 +2350,7 @@ def manage_bookings(request, club_slug):
             reason = request.POST.get('bulk_cancel_reason', 'no_longer_required')
             qs.update(status='cancelled', cancellation_reason=reason)
         elif action == 'move_aircraft':
-            ac = Aircraft.objects.filter(club=club, id=request.POST.get('target_aircraft_id'), status='online').first()
+            ac = Aircraft.objects.filter(club=club, id=request.POST.get('target_aircraft_id'), status=AircraftStatus.ONLINE).first()
             if ac:
                 qs.update(aircraft=ac)
         elif action == 'move_instructor':
@@ -2399,7 +2399,7 @@ def manage_bookings(request, club_slug):
                 r.append(f'Member {b.member.get_standing_display()}')
             elif b.member.standing == 'active' and b.member.subscription_expires and b.member.subscription_expires < today:
                 r.append('Subscription expired')
-        if b.aircraft and b.aircraft.status == 'retired':
+        if b.aircraft and b.aircraft.status == AircraftStatus.RETIRED:
             r.append('Aircraft retired')
         if _instructor_off_roster(b):
             r.append('Instructor off roster')
@@ -2527,7 +2527,7 @@ def manage_bookings(request, club_slug):
     _paginator     = _Pag(_all_bookings, 50)
     bookings_page  = _paginator.get_page(request.GET.get('page'))
 
-    aircraft_list = Aircraft.objects.filter(club=club, status='online').order_by('registration')
+    aircraft_list = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).order_by('registration')
     instructors = ClubMember.objects.filter(club=club, is_on_instructor_roster=True).select_related('user')
     members_qs = ClubMember.objects.filter(club=club).select_related('user').order_by('user__last_name')
 
@@ -4043,7 +4043,7 @@ def booking_detail(request, club_slug, booking_id):
         'checkin_rates_json': checkin_rates_json,
         'rostered_instructors': rostered_instructors,
         'booking_instructor_off_roster': booking_instructor_off_roster,
-        'online_aircraft': Aircraft.objects.filter(club=club, status='online').order_by('registration'),
+        'online_aircraft': Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).order_by('registration'),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
         'inline_title': (
             'Check out' if booking.status == 'confirmed' else
@@ -4889,7 +4889,7 @@ def my_profile(request, club_slug):
             .select_related('aircraft', 'member__user', 'flight_type')
             .order_by('scheduled_start'))
 
-    club_aircraft = Aircraft.objects.filter(club=club, status='online').order_by('registration')
+    club_aircraft = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).order_by('registration')
     club_instructors = ClubMember.objects.filter(
         club=club, is_on_instructor_roster=True
     ).select_related('user').order_by('user__last_name')
@@ -5490,7 +5490,7 @@ def manage_aircraft(request, club_slug):
             force = request.POST.get('force') == '1'
             ac = Aircraft.objects.filter(club=club, id=ac_id).first()
             if ac and status in [s.value for s in AircraftStatus]:
-                if status == 'retired' and not force:
+                if status == AircraftStatus.RETIRED and not force:
                     future_count = Booking.objects.filter(
                         club=club, aircraft=ac,
                         scheduled_start__gt=timezone.now(),
@@ -5527,8 +5527,8 @@ def manage_aircraft(request, club_slug):
         if not retire_error:
             return redirect('core:manage_aircraft', club_slug=club_slug)
 
-    online_aircraft  = Aircraft.objects.filter(club=club, status='online').order_by('registration')
-    retired_aircraft = Aircraft.objects.filter(club=club, status='retired').order_by('registration')
+    online_aircraft  = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).order_by('registration')
+    retired_aircraft = Aircraft.objects.filter(club=club, status=AircraftStatus.RETIRED).order_by('registration')
     aircraft_list = list(online_aircraft) + list(retired_aircraft)
     # Attach aircraft-scoped block-outs to each aircraft (active/upcoming only)
     from .models import BlockOut
@@ -7538,7 +7538,7 @@ def reports(request, club_slug):
     month_labels = [d.strftime('%b %y') for d in months]
 
     aircraft_list = (Aircraft.objects.filter(club=club)
-                     .exclude(status='retired')
+                     .exclude(status=AircraftStatus.RETIRED)
                      .order_by('registration'))
 
     # hours[aircraft_id][month_index] = hours
@@ -8465,7 +8465,7 @@ def ai_ask(request, club_slug):
 
     # Aircraft
     aircraft_rows = []
-    for ac in Aircraft.objects.filter(club=club).exclude(status='retired').select_related('aircraft_type').prefetch_related('maintenance_items'):
+    for ac in Aircraft.objects.filter(club=club).exclude(status=AircraftStatus.RETIRED).select_related('aircraft_type').prefetch_related('maintenance_items'):
         items = list(ac.maintenance_items.all())
         aircraft_rows.append({
             'registration': ac.registration,
@@ -8827,7 +8827,7 @@ def manage_exceptions(request, club_slug):
             _Q(member__standing='active',
                member__subscription_expires__isnull=False,
                member__subscription_expires__lt=today) |
-            _Q(aircraft__status='retired') |
+            _Q(aircraft__status=AircraftStatus.RETIRED) |
             _Q(id__in=_clashing_ids)
         )
         .select_related('member__user', 'aircraft', 'flight_type', 'instructor')
@@ -8862,7 +8862,7 @@ def manage_exceptions(request, club_slug):
             elif (b.member.standing == 'active' and b.member.subscription_expires
                   and b.member.subscription_expires < today):
                 labels.append('Subscription expired')
-        if b.aircraft and b.aircraft.status == 'retired':
+        if b.aircraft and b.aircraft.status == AircraftStatus.RETIRED:
             labels.append('Aircraft retired')
         if _instr_off_roster(b):
             labels.append('Instructor off roster')
@@ -8941,7 +8941,7 @@ def manage_exceptions(request, club_slug):
     from django.db.models import Case, When, IntegerField as _IntF
     maint_items = (
         AircraftMaintenanceItem.objects
-        .filter(aircraft__club=club, aircraft__status='online',
+        .filter(aircraft__club=club, aircraft__status=AircraftStatus.ONLINE,
                 urgency__in=[MaintenanceUrgency.AMBER, MaintenanceUrgency.RED])
         .select_related('aircraft')
         .order_by(
@@ -9455,7 +9455,7 @@ def health_check(request, club_slug):
             return f"{ac_reg} {instrument}: overlap of {abs(gap):.2f} hrs — readings go backwards before flight on {date_str}"
         return f"{ac_reg} {instrument}: {gap:.2f} hrs unaccounted before flight on {date_str}"
 
-    for ac in Aircraft.objects.filter(club=club).exclude(status='retired'):
+    for ac in Aircraft.objects.filter(club=club).exclude(status=AircraftStatus.RETIRED):
         log_url = _rev('core:aircraft_maintenance_log', kwargs={'club_slug': club_slug, 'aircraft_id': ac.id})
         # Hobbs
         fcs = list(
@@ -9594,7 +9594,7 @@ def data_page(request, club_slug):
         ('maintenance', _ti('settings'),         'Maintenance',    'Per-aircraft maintenance hour log and scheduled items'),
         ('occurrences', _ti('alert-triangle'),   'Occurrences',    'Safety occurrence reports — type, date, description, status, review notes'),
     ]
-    aircraft_list = Aircraft.objects.filter(club=club).exclude(status='retired').order_by('registration')
+    aircraft_list = Aircraft.objects.filter(club=club).exclude(status=AircraftStatus.RETIRED).order_by('registration')
     return render(request, 'core/data_page.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'export_types': export_types,
@@ -10843,7 +10843,7 @@ def live_positions(request, club_slug):
 
     # Try to discover ALL active club aircraft on ADS-B, not just departed ones.
     aircraft_objs = list(
-        Aircraft.objects.filter(club=club).exclude(status='retired')
+        Aircraft.objects.filter(club=club).exclude(status=AircraftStatus.RETIRED)
         .select_related('aircraft_type')
     )
 
@@ -10972,7 +10972,7 @@ def occurrence_submit(request, club_slug):
 
     error = success = ''
     occ_types = OccurrenceType.objects.filter(club=club, is_active=True)
-    aircraft_list = _Aircraft.objects.filter(club=club, status='online').order_by('registration')
+    aircraft_list = _Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).order_by('registration')
 
     # Recent bookings for this member (last 30 days) for optional link
     from datetime import timedelta
@@ -11456,7 +11456,7 @@ def app_home(request, club_slug):
     ).order_by('-is_pinned', '-created_at')[:10])
 
     # Fleet / instructor summary
-    online_aircraft = list(Aircraft.objects.filter(club=club, status='online')
+    online_aircraft = list(Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE)
                            .select_related('aircraft_type'))
     ac_by_type = {}
     for ac in online_aircraft:
@@ -11543,7 +11543,7 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
 
     # Aircraft (online)
     aircraft_qs = (Aircraft.objects
-                   .filter(club=club, status='online')
+                   .filter(club=club, status=AircraftStatus.ONLINE)
                    .select_related('aircraft_type')
                    .order_by('registration'))
 
@@ -11704,7 +11704,7 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
     # Data for the inline new-booking sheet
     _hire_ac = list(
         Aircraft.objects
-        .filter(club=club, status='online', is_available_for_hire=True)
+        .filter(club=club, status=AircraftStatus.ONLINE, is_available_for_hire=True)
         .select_related('aircraft_type')
         .order_by('registration')
     )
@@ -12201,7 +12201,7 @@ def app_book_availability(request, club_slug):
 
     # Aircraft (online, for hire). Filter to rated types if member has any type ratings.
     ac_qs = (Aircraft.objects
-             .filter(club=club, status='online', is_available_for_hire=True)
+             .filter(club=club, status=AircraftStatus.ONLINE, is_available_for_hire=True)
              .select_related('aircraft_type')
              .order_by('registration'))
     if rated_type_ids:
@@ -12357,7 +12357,7 @@ def app_book_find(request, club_slug):
     )
     rated_type_ids.discard(None)
     ac_qs = (Aircraft.objects
-             .filter(club=club, status='online', is_available_for_hire=True)
+             .filter(club=club, status=AircraftStatus.ONLINE, is_available_for_hire=True)
              .select_related('aircraft_type')
              .order_by('registration'))
     if rated_type_ids:
@@ -12609,7 +12609,7 @@ def app_book_confirm(request, club_slug):
                 errors.append(str(e))
 
         # Fall through to re-render confirm with errors
-        _all_ac = Aircraft.objects.filter(club=club, status='online').select_related('aircraft_type').order_by('registration')
+        _all_ac = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).select_related('aircraft_type').order_by('registration')
         _ac_obj = Aircraft.objects.filter(club=club, id=int(ac_id)).select_related('aircraft_type').first() if ac_id else None
         _ac_list = _all_ac.filter(aircraft_type_id=_ac_obj.aircraft_type_id) if (_ac_obj and _ac_obj.aircraft_type_id) else _all_ac
         return render(request, 'core/app/book_confirm.html', {
@@ -12650,7 +12650,7 @@ def app_book_confirm(request, club_slug):
             pass
 
     # Aircraft list for the dropdown — same type as the pill tapped, or all if unknown
-    all_ac = Aircraft.objects.filter(club=club, status='online').select_related('aircraft_type').order_by('registration')
+    all_ac = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).select_related('aircraft_type').order_by('registration')
     if ac and ac.aircraft_type_id:
         aircraft_list = all_ac.filter(aircraft_type_id=ac.aircraft_type_id)
     elif ac_type:

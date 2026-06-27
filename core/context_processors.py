@@ -1,5 +1,5 @@
 from django.conf import settings as _settings
-from .models import Club, ClubConfig
+from .models import Club, ClubConfig, AircraftStatus
 
 
 def theme(request):
@@ -123,7 +123,7 @@ def theme(request):
                             Q(member__standing='active',
                               member__subscription_expires__isnull=False,
                               member__subscription_expires__lt=_today) |
-                            Q(aircraft__status='retired') |
+                            Q(aircraft__status=AircraftStatus.RETIRED) |
                             Q(id__in=_clash_ids)
                         ).values_list('id', flat=True)
                     )
@@ -152,7 +152,7 @@ def theme(request):
                     )
                     # Maintenance items (amber/red)
                     _n += AircraftMaintenanceItem.objects.filter(
-                        aircraft__club=club, aircraft__status='online',
+                        aircraft__club=club, aircraft__status=AircraftStatus.ONLINE,
                         urgency__in=[MaintenanceUrgency.AMBER, MaintenanceUrgency.RED],
                     ).count()
                     # Unpaid invoices (draft or sent)

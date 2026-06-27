@@ -1172,8 +1172,10 @@ body.dark-mode .part{color:#fb923c;}
       <p>From the admin side, you can see which members have push subscriptions under People → Members → member detail → Profile tab. There is no way to force a re-subscription on behalf of a member — they must do it from their own device.</p>
 
       <h3 id="tools-weather">Weather</h3>
-      <p>The Weather screen (accessible from the sidebar) shows the current METAR for your club's home aerodrome, refreshed automatically. It includes wind speed and direction, visibility, ceiling, temperature, dew point, and QNH. This is pulled from the AVWX API using the ICAO code of your home aerodrome (set under Manage → Aerodromes).</p>
-      <p>The weather screen is visible to all staff and is intended as a quick reference before confirming flights or assessing whether a departure should proceed. It is not a substitute for a full pre-flight weather brief — members should use the appropriate official meteorological services for flight planning.</p>
+      <p>The Weather screen (accessible from the sidebar) shows the current METAR and TAF for your club's home aerodrome. It includes wind speed and direction, visibility, ceiling, temperature, dew point, and QNH. Data is fetched via the <strong>AVWX REST API</strong> (<code>avwx.rest</code>) using the ICAO code of your home aerodrome (set under Manage → Aerodromes) and is cached for up to five minutes.</p>
+      <div class="callout warn">
+        <strong>Not for operational use.</strong> Weather data shown in Club Hangar is provided for general situational awareness only. It is sourced from a third-party API and may be delayed, incomplete, or unavailable. It must not be used as the sole source for flight planning, pre-flight weather assessment, or any operational decision. Pilots must obtain weather information from official sources — MetService, NAIPS, AviationWeather.gov, or equivalent — before every flight.
+      </div>
 
       <h3 id="tools-map">Live map / ADS-B</h3>
       <p>The Live map (Map, in the sidebar) shows real-time positions of aircraft in flight using ADS-B data. For an aircraft to appear on the map, its ADS-B hex code (ICAO 24-bit address, six hex digits) must be entered on its aircraft record in Fleet → Aircraft. Without the hex code, the aircraft will not be visible on the map even if it is airborne and transmitting.</p>

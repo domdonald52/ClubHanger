@@ -6,7 +6,7 @@ Finds free slots matching user criteria across date range.
 from datetime import datetime, timedelta, time
 from django.db.models import Q
 from django.utils import timezone
-from .models import Booking, Aircraft, ClubMember, Role
+from .models import Booking, Aircraft, AircraftStatus, ClubMember, Role
 
 
 def _subtract_intervals(span_start, span_end, busy):
@@ -121,9 +121,9 @@ def find_free_spans_with_instructors(club, date_start, date_end, aircraft=None,
     if aircraft:
         ac_list = [aircraft]
     elif aircraft_type:
-        ac_list = list(Aircraft.objects.filter(club=club, aircraft_type__name=aircraft_type, status='online'))
+        ac_list = list(Aircraft.objects.filter(club=club, aircraft_type__name=aircraft_type, status=AircraftStatus.ONLINE))
     else:
-        ac_list = list(Aircraft.objects.filter(club=club, status='online'))
+        ac_list = list(Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE))
 
     # Instructors to consider
     instr_members = ClubMember.objects.filter(club=club, role__name__iexact='instructor').select_related('user')
@@ -207,9 +207,9 @@ def find_free_spans(club, date_start, date_end, aircraft=None, aircraft_type=Non
     if aircraft:
         ac_list = [aircraft]
     elif aircraft_type:
-        ac_list = list(Aircraft.objects.filter(club=club, aircraft_type__name=aircraft_type, status='online'))
+        ac_list = list(Aircraft.objects.filter(club=club, aircraft_type__name=aircraft_type, status=AircraftStatus.ONLINE))
     else:
-        ac_list = list(Aircraft.objects.filter(club=club, status='online'))
+        ac_list = list(Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE))
 
     _now = timezone.now()
     _today = timezone.localdate()
@@ -287,10 +287,10 @@ def find_available_slots(club, date_start, date_end, aircraft=None, aircraft_typ
             aircraft_list = Aircraft.objects.filter(
                 club=club,
                 aircraft_type__name=aircraft_type,
-                status='online'
+                status=AircraftStatus.ONLINE
             )
         else:
-            aircraft_list = Aircraft.objects.filter(club=club, status='online')
+            aircraft_list = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE)
         
         # For each aircraft, find free slots
         for ac in aircraft_list:
