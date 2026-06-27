@@ -893,8 +893,8 @@
   }
 
   function makeInteractive(pill) {
-    let mode = null; // 'move' | 'resize'
-    let startX, startY, origLeft, origWidth, moved;
+    let mode = null;
+    let startX, startY, origLeft, moved;
     let origRowType, origParent;
     let cursorOffsetX, cursorOffsetY; // where in the pill the pointer went down
     let capturedPointerId = null;
@@ -932,7 +932,6 @@
 
     function cancelDrag() {
       _clearDragState();
-      pill.style.width = origWidth + "px"; // restore if resize was in progress
       pill.classList.remove("drag", "invalid");
       try { if (capturedPointerId !== null) pill.releasePointerCapture(capturedPointerId); } catch(_) {}
       mode = null; moved = false; capturedPointerId = null;
@@ -941,12 +940,12 @@
 
     pill.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
-      mode = e.target.hasAttribute("data-resize") ? "resize" : "move";
-      if (mode === "move" && pill.dataset.status === "departed") {
+      mode = "move";
+      if (pill.dataset.status === "departed") {
         mode = null; // pill became departed in-page without reload — let dblclick open check-in normally
         return;
       }
-      if (mode === "move" && pill.dataset.status === "completed") {
+      if (pill.dataset.status === "completed") {
         mode = null; // reset so pointerup won't set _didDrag and block the click
         return;
       }
@@ -956,7 +955,6 @@
       startX = e.clientX;
       startY = e.clientY;
       origLeft  = parseFloat(pill.style.left);
-      origWidth = parseFloat(pill.style.width);
       moved = false;
       origRowType = pill.parentElement.dataset.rowType;
       origParent  = pill.parentElement;
@@ -973,13 +971,6 @@
       if (!moved && (Math.abs(e.clientX - startX) > 3 || Math.abs(e.clientY - startY) > 3)) moved = true;
       if (!moved) return;
       e.preventDefault(); // prevent scroll/text-select while actually dragging
-
-      if (mode === "resize") {
-        const dx = e.clientX - startX;
-        pill.style.width = Math.max(minToPx(SLOT), origWidth + dx / (window._ganttScale || 1)) + "px";
-        pill.classList.toggle("invalid", overlapsInTrack(pill.parentElement, origLeft, parseFloat(pill.style.width), pill.dataset.id));
-        return;
-      }
 
       // move — spawn ghosts on first significant movement
       if (!dragGhost) {

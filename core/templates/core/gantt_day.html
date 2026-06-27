@@ -101,7 +101,6 @@
   .track.drag-over{outline:2px solid var(--primary);outline-offset:-2px}
   .pill.invalid{outline:2px solid var(--warning-border);outline-offset:-2px}
   .pill.override{box-shadow:0 0 0 2px var(--surface),0 0 8px 3px var(--accent)}
-  .pill .rs{position:absolute;right:0;top:0;width:7px;height:100%;cursor:ew-resize;z-index:6;}
   /* Overlapping pills on the same track — half-height stacked pair */
   .pill.stagger{height:18px;}
   .pill.stagger .sub,.pill.stagger .pill-wedge{display:none;}
@@ -206,7 +205,7 @@
       {% if wx.age_str %}<span class="wx-pill-age">issued {{ wx.age_str }} ago{% if wx.very_stale %} ⚠{% endif %}</span>{% endif %}
     </a>
     {% endif %}
-    {% if can_manage %}<span class="hint">Click track to book · drag to move · drag edge to resize</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
+    {% if can_manage %}<span class="hint">Click track to book · drag to move</span>{% elif can_book %}<span class="hint">Click track to book</span>{% endif %}
   </div>
 
   <div class="grid-scroll">

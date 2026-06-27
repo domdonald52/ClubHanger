@@ -38,5 +38,4 @@
   </div>
   {% if p.status == 'departed' %}<div class="pill-wedge dep"><i class="ti ti-plane-departure" aria-hidden="true"></i></div>{% elif p.status == 'returned' or p.status == 'completed' and not p.paid %}<div class="pill-wedge ret"><i class="ti ti-plane-arrival" aria-hidden="true"></i></div>{% endif %}
   {% if p.watcher_count %}<div class="pill-watch"><i class="ti ti-eye" aria-hidden="true"></i>{{ p.watcher_count }}</div>{% endif %}
-  <div class="rs" data-resize></div>
 </div>
