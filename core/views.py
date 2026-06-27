@@ -2974,7 +2974,6 @@ def booking_detail(request, club_slug, booking_id):
                             )
                         # Fuel surcharge (per segment)
                         if (_new_fc.fuel_surcharge_rate_snapshot and _seg_bill_hrs
-                                and not (_hire_rate and _hire_rate.includes_fuel)
                                 and _new_fc.fuel_surcharge_rate_snapshot > 0):
                             FlightChargeItem.objects.create(
                                 flight_completion=_new_fc, segment=_seg,
@@ -3011,7 +3010,6 @@ def booking_detail(request, club_slug, booking_id):
                             amount=round(float(_hire_rate.amount) * float(_hire_hours), 2),
                         )
                     if (_new_fc.fuel_surcharge_rate_snapshot and _hire_hours
-                            and not (_hire_rate and _hire_rate.includes_fuel)
                             and _new_fc.fuel_surcharge_rate_snapshot > 0):
                         FlightChargeItem.objects.create(
                             flight_completion=_new_fc, item_type='fuel',
@@ -3132,7 +3130,7 @@ def booking_detail(request, club_slug, booking_id):
                             description=f'Aircraft hire — {ac.registration}',
                             amount=round(float(hire_rate.amount) * float(hours), 2),
                         )
-                    if fc.fuel_surcharge_rate_snapshot and hours and not (hire_rate and hire_rate.includes_fuel) and fc.fuel_surcharge_rate_snapshot > 0:
+                    if fc.fuel_surcharge_rate_snapshot and hours and fc.fuel_surcharge_rate_snapshot > 0:
                         FlightChargeItem.objects.create(
                             flight_completion=fc, item_type='fuel',
                             description='Fuel charge',
@@ -4229,7 +4227,7 @@ def _generate_segment_charges(fc, segments, booking, config=None):
                 description=f'Aircraft hire — {ac.registration} ({seg.member.user.get_full_name()})',
                 amount=round(float(hire_rate.amount) * float(h), 2),
             )
-        if fc.fuel_surcharge_rate_snapshot and not (hire_rate and hire_rate.includes_fuel):
+        if fc.fuel_surcharge_rate_snapshot:
             _FCI.objects.create(
                 flight_completion=fc, segment=seg, item_type='fuel',
                 description=f'Fuel levy ({seg.member.user.get_full_name()})',
@@ -5759,7 +5757,6 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
             ac.save(update_fields=['default_hourly_rate'])
             for ft in FlightType.objects.filter(club=club):
                 amount = request.POST.get(f'rate_{ft.id}', '').strip()
-                includes_fuel = request.POST.get(f'wet_{ft.id}') == 'on'
                 instrument = request.POST.get(f'instrument_{ft.id}', ac.total_time_method)
                 if instrument not in ('hobbs', 'tacho', 'airswitch'):
                     instrument = ac.total_time_method
@@ -5767,7 +5764,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                 if amount:
                     ChargeRate.objects.create(
                         club=club, aircraft=ac, flight_type=ft,
-                        time_method=instrument, amount=amount, includes_fuel=includes_fuel
+                        time_method=instrument, amount=amount
                     )
             _saved = True
 

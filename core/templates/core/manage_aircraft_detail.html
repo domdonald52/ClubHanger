@@ -260,7 +260,6 @@
             <th>Flight type</th>
             <th style="width:7rem;text-align:right;">Rate/hr</th>
             <th style="width:9rem;">Instrument</th>
-            <th style="width:6rem;">Wet hire</th>
           </tr>
         </thead>
         <tbody>
@@ -286,13 +285,6 @@
                 {% if ac.records_airswitch %}<option value="airswitch" {% if m == 'airswitch' %}selected{% endif %}>Air switch</option>{% endif %}
               </select>
               {% endwith %}
-            </td>
-            <td>
-              <span class="rate-view">{% if rate and rate.includes_fuel %}<span class="hire-badge wet">Wet</span>{% else %}—{% endif %}</span>
-              <span class="rate-edit" hidden>
-                <input type="checkbox" name="wet_{{ ft.id }}" id="wet-chk-{{ ft.id }}" {% if rate and rate.includes_fuel %}checked{% endif %} style="display:none;">
-                <button type="button" class="sc-toggle {% if rate and rate.includes_fuel %}sc-on{% else %}sc-off{% endif %}" onclick="toggleWet(this,'wet-chk-{{ ft.id }}')"></button>
-              </span>
             </td>
           </tr>
           {% endfor %}
@@ -331,12 +323,6 @@
         if (!inp.value) inp.value = def;
       });
     };
-    window.toggleWet = function(btn, cbId) {
-      var cb = document.getElementById(cbId);
-      cb.checked = !cb.checked;
-      btn.classList.toggle('sc-on', cb.checked);
-      btn.classList.toggle('sc-off', !cb.checked);
-    };
     </script>
 
     <hr class="tab-hr">
@@ -344,7 +330,7 @@
     <div class="tab-section-header">
       <div>
         <h2 class="sh2" style="margin:0 0 .2rem;">Fuel charge rates</h2>
-        <p class="tab-desc">Automatically added to <strong>dry hire</strong> flights at check-in. Add a new entry whenever the rate changes — the most recent effective date applies.</p>
+        <p class="tab-desc">Automatically added at check-in whenever active. Add a new entry whenever the rate changes — the most recent effective date applies.</p>
       </div>
       {% if club_member.is_admin %}
       <button type="button" class="cbtn-add" onclick="document.getElementById('add-fuel-modal').hidden=false">+ Add fuel charge rate</button>
@@ -409,7 +395,7 @@
     {% endif %}
     {% else %}
     <div class="tab-empty">
-      <p>No fuel charge rates set. Fuel will not be charged on dry hire flights until a rate is added.</p>
+      <p>No fuel charge rates set. Fuel charges will not be added at check-in until a rate is added and activated.</p>
     </div>
     {% endif %}
 
