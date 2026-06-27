@@ -1128,9 +1128,9 @@ class ChargeRate(models.Model):
     
     # Time recording basis
     TIME_METHOD_CHOICES = [
-        ('hobbs',      'Hobbs Hour'),
-        ('tacho',      'Tachometer Hour'),
-        ('airswitch',  'Air Switch Hour'),
+        ('hobbs',      'Hobbs'),
+        ('tacho',      'Tacho'),
+        ('airswitch',  'Air switch'),
     ]
     time_method = models.CharField(max_length=20, choices=TIME_METHOD_CHOICES)
     
