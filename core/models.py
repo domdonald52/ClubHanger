@@ -798,6 +798,9 @@ class Aircraft(models.Model):
     # Fuel
     fuel_consumption_per_hour = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
+    # Default hire rate — used when no per-flight-type ChargeRate is configured
+    default_hourly_rate = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+
     # Starting meter readings when the aircraft was entered into the system
     hobbs_initial = models.DecimalField(
         max_digits=8, decimal_places=2, null=True, blank=True,
@@ -1090,16 +1093,11 @@ class FlightType(models.Model):
 class AircraftSurchargeType(models.Model):
     """
     Configurable surcharge types per club (e.g. 'twin surcharge').
-    Assigned to specific aircraft via M2M. Applied per flight or pro-rata per hour.
+    Assigned to specific aircraft via M2M. Applied per flight.
     """
-    RATE_EACH = 'each'
-    RATE_PER_HOUR = 'per_hour'
-    RATE_CHOICES = [('each', 'Per flight'), ('per_hour', 'Per hour')]
-
     club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name='surcharge_types')
     name = models.CharField(max_length=100)
     amount = models.DecimalField(max_digits=8, decimal_places=2)
-    rate_type = models.CharField(max_length=10, choices=RATE_CHOICES, default='each')
     description = models.CharField(max_length=255, blank=True)
 
     class Meta:

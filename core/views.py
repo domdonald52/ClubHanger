@@ -1822,14 +1822,11 @@ def club_settings(request, club_slug, mode='settings'):
             st_name = request.POST.get('st_name', '').strip()
             st_amount = request.POST.get('st_amount', '').strip()
             st_desc = request.POST.get('st_desc', '').strip()
-            st_rate_type = request.POST.get('st_rate_type', 'each')
-            if st_rate_type not in ('each', 'per_hour'):
-                st_rate_type = 'each'
             if st_name and st_amount:
                 try:
                     AircraftSurchargeType.objects.get_or_create(
                         club=club, name=st_name,
-                        defaults={'amount': st_amount, 'description': st_desc, 'rate_type': st_rate_type}
+                        defaults={'amount': st_amount, 'description': st_desc}
                     )
                 except Exception:
                     pass
@@ -1847,10 +1844,7 @@ def club_settings(request, club_slug, mode='settings'):
                     st.name = name
                 st.description = request.POST.get('st_desc', '').strip()
                 st.amount = request.POST.get('st_amount', st.amount)
-                st_rate_type = request.POST.get('st_rate_type', st.rate_type)
-                if st_rate_type in ('each', 'per_hour'):
-                    st.rate_type = st_rate_type
-                st.save(update_fields=['name', 'description', 'amount', 'rate_type'])
+                st.save(update_fields=['name', 'description', 'amount'])
             return redirect(_redir_name, club_slug=club_slug)
 
         elif action == 'add_aircraft_type':
@@ -2908,6 +2902,9 @@ def booking_detail(request, club_slug, booking_id):
                     aircraft=ac, flight_type=booking.flight_type,
                     time_method=ac.total_time_method,
                 ).first()
+                if not _hire_rate and ac.default_hourly_rate:
+                    from types import SimpleNamespace as _SN
+                    _hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False)
 
                 if use_splits:
                     # Create one FlightSegment per pilot with proportional meter readings
@@ -3113,6 +3110,9 @@ def booking_detail(request, club_slug, booking_id):
                         aircraft=ac, flight_type=booking.flight_type,
                         time_method=ac.total_time_method
                     ).first()
+                    if not hire_rate and ac.default_hourly_rate:
+                        from types import SimpleNamespace as _SN
+                        hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False)
                     if hire_rate and hours:
                         FlightChargeItem.objects.create(
                             flight_completion=fc, item_type='hire',
@@ -3926,6 +3926,9 @@ def booking_detail(request, club_slug, booking_id):
             aircraft=booking.aircraft, flight_type=booking.flight_type,
             time_method=booking.aircraft.total_time_method
         ).first()
+        if not _hire and booking.aircraft.default_hourly_rate:
+            from types import SimpleNamespace as _SN
+            _hire = _SN(amount=booking.aircraft.default_hourly_rate, includes_fuel=False)
         _instr_rate = None
         if booking.instructor:
             _im = ClubMember.objects.filter(user=booking.instructor, club=club).first()
@@ -4198,6 +4201,9 @@ def _generate_segment_charges(fc, segments, booking, config=None):
         aircraft=ac, flight_type=booking.flight_type,
         time_method=ac.total_time_method
     ).first()
+    if not hire_rate and ac.default_hourly_rate:
+        from types import SimpleNamespace as _SN
+        hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False)
     total_hours = sum(s.hours for s in segments) or _D('0')
 
     for seg in segments:
@@ -5725,30 +5731,23 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
             ac.maint_hours_initial = mhi or None
             ac.save()
 
-        elif action == 'save_hire_rate' and actor.is_admin:
-            ft_id = request.POST.get('ft_id')
-            time_method = request.POST.get('time_method', 'hobbs')
-            amount = request.POST.get('amount', '').strip()
-            includes_fuel = request.POST.get('includes_fuel') == 'on'
-            ft = FlightType.objects.filter(club=club, id=ft_id).first()
-            if ft and amount:
-                ChargeRate.objects.update_or_create(
-                    aircraft=ac, flight_type=ft, time_method=time_method,
-                    defaults={'club': club, 'amount': amount, 'includes_fuel': includes_fuel}
-                )
-
-        elif action == 'edit_hire_rate' and actor.is_admin:
-            rate_id = request.POST.get('rate_id')
-            rate = ChargeRate.objects.filter(club=club, aircraft=ac, id=rate_id).first()
-            if rate:
-                amount = request.POST.get('amount', '').strip()
+        elif action == 'save_hire_rates' and actor.is_admin:
+            default_rate = request.POST.get('default_rate', '').strip()
+            ac.default_hourly_rate = default_rate if default_rate else None
+            ac.save(update_fields=['default_hourly_rate'])
+            for ft in FlightType.objects.filter(club=club):
+                amount = request.POST.get(f'rate_{ft.id}', '').strip()
+                includes_fuel = request.POST.get(f'wet_{ft.id}') == 'on'
                 if amount:
-                    rate.amount = amount
-                rate.includes_fuel = request.POST.get('includes_fuel') == 'on'
-                rate.save(update_fields=['amount', 'includes_fuel'])
-
-        elif action == 'delete_hire_rate' and actor.is_admin:
-            ChargeRate.objects.filter(club=club, aircraft=ac, id=request.POST.get('rate_id')).delete()
+                    ChargeRate.objects.update_or_create(
+                        aircraft=ac, flight_type=ft, time_method=ac.total_time_method,
+                        defaults={'club': club, 'amount': amount, 'includes_fuel': includes_fuel}
+                    )
+                else:
+                    ChargeRate.objects.filter(
+                        aircraft=ac, flight_type=ft, time_method=ac.total_time_method
+                    ).delete()
+            _saved = True
 
         elif action == 'add_fuel_rate' and actor.is_admin:
             rate = request.POST.get('fuel_rate', '').strip()
@@ -5869,10 +5868,14 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         .order_by('recurrence', 'date', 'weekday', 'start_time')
     )
 
-    hire_rates = (ChargeRate.objects
-                  .filter(aircraft=ac)
-                  .select_related('flight_type')
-                  .order_by('flight_type__name', 'time_method'))
+    _hire_rate_map = {
+        cr.flight_type_id: cr
+        for cr in ChargeRate.objects.filter(aircraft=ac).select_related('flight_type')
+    }
+    hire_rate_rows = [
+        (ft, _hire_rate_map.get(ft.id))
+        for ft in FlightType.objects.filter(club=club).order_by('name')
+    ]
     fuel_rates = FuelSurchargeRate.objects.filter(aircraft=ac).order_by('-effective_from')
     all_surcharge_types = AircraftSurchargeType.objects.filter(club=club)
     assigned_surcharge_ids = set(ac.surcharges.values_list('id', flat=True))
@@ -5955,7 +5958,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'ac': ac,
         'ac_icon_type': _ac_icon_type,
-        'hire_rates': hire_rates,
+        'hire_rate_rows': hire_rate_rows,
         'fuel_rates': fuel_rates,
         'all_surcharge_types': all_surcharge_types,
         'assigned_surcharge_ids': assigned_surcharge_ids,
