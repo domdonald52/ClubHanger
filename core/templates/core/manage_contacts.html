@@ -43,7 +43,7 @@
         </td>
         <td style="color:var(--text-2);">
           {% if c.contact_type %}{{ c.contact_type.name }}{% else %}<span style="color:#bbb;">—</span>{% endif %}
-          {% if c.is_organisation %}<span style="font-size:.72rem;font-weight:600;padding:.08rem .35rem;background:#e8f0fe;color:#1a56db;border-radius:4px;margin-left:.25rem;">Org</span>{% endif %}
+          {% if c.is_organisation %}<span style="font-size:.72rem;font-weight:600;padding:.08rem .35rem;background:var(--info-bg);color:var(--info-text);border-radius:4px;margin-left:.25rem;">Org</span>{% endif %}
         </td>
         <td style="color:var(--text-3);">{{ c.organisation|default:"—" }}</td>
         <td style="color:var(--text-3);">{{ c.phone|default:"—" }}</td>

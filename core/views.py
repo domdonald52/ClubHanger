@@ -164,8 +164,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             instr_cm = next((i for i in instructors if i.user_id == b.instructor_id), None)
             if instr_cm:
                 roster = _av_cache.get(instr_cm.id)
-                # None = no schedule declared = always available (per the model).
-                # Only flag when the instructor HAS windows and none apply (False).
+                # False = no windows defined OR none apply today → off roster.
                 if roster is False:
                     issues.append(('instructor_roster', 'Instructor off roster'))
 
@@ -305,7 +304,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     for instr in instructors:
         windows = _av_by_cm.get(instr.id, [])
         if not windows:
-            _av_cache[instr.id] = None  # no schedule declared — treated as always available
+            _av_cache[instr.id] = False  # no schedule = not available
         else:
             _av_cache[instr.id] = any(w.applies_on(selected_date) for w in windows)
 
@@ -341,13 +340,12 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         if filter_aircraft:
             instr_bookings = instr_bookings.filter(aircraft_id=filter_aircraft)
 
-        on_roster = _av_cache.get(instr.id)   # None / True / False
+        on_roster = _av_cache.get(instr.id)   # True / False
         has_bookings = instr_bookings.exists()
         # Operationally active: not resigned (standing may be suspended/lapsed but
         # could still have bookings to honour; resigned is definitive departure)
         is_active = instr.standing not in ('resigned',)
 
-        # None means no availability schedule declared → treat as always available
         normal_show = is_active and on_roster is not False
         ghost = (not normal_show) and has_bookings
         if not normal_show and not ghost:
@@ -500,7 +498,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         {
             'id': i.user.id,
             'name': f"{i.user.first_name} {i.user.last_name}".strip(),
-            'on_roster': _av_cache.get(i.id),  # True / False / None (None = no schedule = always available)
+            'on_roster': _av_cache.get(i.id),  # True / False
         }
         for i in instructors
     ]
@@ -2336,7 +2334,7 @@ def manage_bookings(request, club_slug):
             return False
         windows = _av_windows.get(uid, [])
         if not windows:
-            return False  # no schedule declared = assumed available (per model)
+            return True  # no schedule = off roster
         bdate = timezone.localtime(booking.scheduled_start).date()
         return not any(w.applies_on(bdate) for w in windows)
 
@@ -3977,7 +3975,7 @@ def booking_detail(request, club_slug, booking_id):
         if uid in _pending_conflict_ids:
             return 'orange'
         wins = _bd_av_wins.get(uid, [])
-        if wins and not any(w.applies_on(_bdate) for w in wins):
+        if not (wins and any(w.applies_on(_bdate) for w in wins)):
             return 'unavailable'
         return 'green'
 
@@ -3990,7 +3988,7 @@ def booking_detail(request, club_slug, booking_id):
             booking_instructor_off_roster = True
         else:
             _wins = _bd_av_wins.get(booking.instructor_id, [])
-            if _wins and not any(w.applies_on(_bdate) for w in _wins):
+            if not (_wins and any(w.applies_on(_bdate) for w in _wins)):
                 booking_instructor_off_roster = True
 
     ctx = {
@@ -6159,7 +6157,7 @@ def manage_instructors(request, club_slug):
 
     def _on_roster_on(instr, day):
         if not instr._av_wins:
-            return True  # no schedule = always available
+            return False  # no schedule = not available
         return any(w.applies_on(day) for w in instr._av_wins)
 
     # Build 5 weeks of rows (Mon-first, no padding cells)
@@ -8785,7 +8783,7 @@ def manage_exceptions(request, club_slug):
             return False
         windows = _av_wins.get(uid, [])
         if not windows:
-            return False  # no schedule declared = assumed always available (per model)
+            return True  # no schedule = off roster
         return not any(w.applies_on(timezone.localtime(booking.scheduled_start).date()) for w in windows)
 
     # 2. Booking conflicts (future non-cancelled bookings with a flagged issue)
@@ -11671,7 +11669,7 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
         _initials = (_instr.user.first_name[:1] + _instr.user.last_name[:1]).upper() or '?'
         _av_wins  = list(_instr.availability_windows.all())
         if not _av_wins:
-            _bars = [{'top': 0, 'height': TL_HEIGHT}]
+            _bars = []
         else:
             _bars = []
             for _w in _av_wins:
@@ -12463,17 +12461,16 @@ def app_book_find(request, club_slug):
                 _slot_s_dt = timezone.make_aware(_fdt.combine(d, _ft(sh, sm)))
                 free_instr = []
                 for inst in instructors:
-                    # Availability windows — if any defined, slot must fall within one
+                    # Availability windows — slot must fall within a defined window
                     wins = list(inst.availability_windows.all())
-                    if wins:
-                        on_roster = False
-                        for w in wins:
-                            iv = w.interval_on(d, _day_s_dt, _day_e_dt)
-                            if iv and iv[0] <= _slot_s_dt < iv[1]:
-                                on_roster = True
-                                break
-                        if not on_roster:
-                            continue
+                    on_roster = False
+                    for w in wins:
+                        iv = w.interval_on(d, _day_s_dt, _day_e_dt)
+                        if iv and iv[0] <= _slot_s_dt < iv[1]:
+                            on_roster = True
+                            break
+                    if not on_roster:
+                        continue
                     # Block-outs
                     blocked = False
                     for bo in _day_bos:
@@ -12664,7 +12661,7 @@ def app_book_confirm(request, club_slug):
     flight_types = FlightType.objects.filter(club=club).order_by('name')
 
     # Filter instructors to those available at the requested slot start time.
-    # "Available" = on roster for that day (or no schedule defined) AND no block-out.
+    # "Available" = has a defined window covering that slot AND no block-out.
     from .models import BlockOut as _ConfBO
     from django.db.models import Q as _ConfQ
     from datetime import datetime as _cdt, time as _ct
@@ -12697,15 +12694,14 @@ def app_book_confirm(request, club_slug):
         )
         def _instr_ok(cm):
             wins = list(cm.availability_windows.all())
-            if wins:
-                on_roster = False
-                for w in wins:
-                    iv = w.interval_on(_conf_date, _conf_day_s, _conf_day_e)
-                    if iv and iv[0] <= _sched_s < iv[1]:
-                        on_roster = True
-                        break
-                if not on_roster:
-                    return False
+            on_roster = False
+            for w in wins:
+                iv = w.interval_on(_conf_date, _conf_day_s, _conf_day_e)
+                if iv and iv[0] <= _sched_s < iv[1]:
+                    on_roster = True
+                    break
+            if not on_roster:
+                return False
             for bo in _conf_bos:
                 if not bo.affects_instructor(cm.user):
                     continue

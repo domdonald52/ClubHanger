@@ -34,6 +34,15 @@
 .pill.pending{background:#fff3e0;color:#e65100;}
 .pill.active{background:#e6f4ea;color:var(--success);}
 @media(max-width:700px){.guide-wrap{flex-direction:column;}.guide-nav{width:auto;}}
+/* ── Dark mode overrides ── */
+body.dark-mode .guide-nav ul li a:hover{background:var(--surface-2);color:var(--text-1);}
+body.dark-mode .gsec h2{border-top-color:var(--border);}
+body.dark-mode .callout.info{background:rgba(59,130,246,.1);color:#93c5fd;}
+body.dark-mode .callout.warn{color:var(--warning-text);}
+body.dark-mode .callout.tip{background:rgba(34,197,94,.1);color:#86efac;}
+body.dark-mode .step-flow .step{background:var(--surface-2);border-color:var(--border);}
+body.dark-mode .pill.pending{background:rgba(180,83,9,.18);color:#fbbf24;}
+body.dark-mode .pill.active{background:var(--success-bg);color:var(--success-text);}
 </style>
 
 <div class="guide-wrap">

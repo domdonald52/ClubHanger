@@ -64,7 +64,7 @@
     </thead>
     <tbody>
       {% for r in rates %}
-      <tr {% if forloop.first %}style="background:#f0faf2;"{% endif %}>
+      <tr {% if forloop.first %}style="background:var(--success-bg);"{% endif %}>
         <td>
           {{ r.effective_from|date:"j M Y" }}
           {% if forloop.first %}<span style="font-size:.72rem;background:#2a7a3b;color:#fff;border-radius:10px;padding:.1rem .45rem;margin-left:.4rem;">current</span>{% endif %}

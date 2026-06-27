@@ -85,6 +85,30 @@
 .dot.green{background:#22c55e;}.dot.amber{background:#f59e0b;}.dot.red{background:#ef4444;}
 @media(max-width:700px){.guide-wrap{flex-direction:column;}.guide-nav{width:auto;}.role-cards{grid-template-columns:1fr 1fr;}}
 @media(max-width:460px){.role-cards{grid-template-columns:1fr;}}
+/* ── Dark mode overrides ── */
+body.dark-mode .guide-nav ul li a:hover,
+body.dark-mode .guide-nav ul li a.act{background:var(--surface-2);color:var(--text-1);}
+body.dark-mode .gsec h2{border-top-color:var(--border);}
+body.dark-mode .callout.info{background:rgba(59,130,246,.1);color:#93c5fd;}
+body.dark-mode .callout.warn{color:var(--warning-text);}
+body.dark-mode .callout.tip{background:rgba(34,197,94,.1);color:#86efac;}
+body.dark-mode .callout.danger{background:rgba(225,29,72,.1);color:#fda4af;}
+body.dark-mode .step-flow .step{background:var(--surface-2);border-color:var(--border);}
+body.dark-mode .pill.pending,
+body.dark-mode .pill.sent,
+body.dark-mode .pill.amber{background:rgba(180,83,9,.18);color:#fbbf24;}
+body.dark-mode .pill.active,
+body.dark-mode .pill.green,
+body.dark-mode .pill.paid{background:var(--success-bg);color:var(--success-text);}
+body.dark-mode .pill.transferred{background:rgba(91,33,182,.2);color:#c4b5fd;}
+body.dark-mode .guide-table td{border-bottom-color:var(--border);}
+body.dark-mode .dblock{border-color:var(--border);}
+body.dark-mode .dblock .dbody{border-top-color:var(--border);}
+body.dark-mode .role-card{border-color:var(--border);}
+body.dark-mode .badge.admin{background:rgba(91,33,182,.2);color:#c4b5fd;}
+body.dark-mode .badge.member{background:var(--success-bg);color:var(--success-text);}
+body.dark-mode .sshot{background:var(--surface-2);border-color:var(--border);}
+body.dark-mode .part{color:#fb923c;}
 </style>
 
 <div class="guide-wrap">
@@ -542,12 +566,12 @@
       <p>The instructor roster controls which instructors appear on the Gantt calendar as selectable rows, and which can be assigned to dual bookings. It is managed from <strong>People → Instructors</strong> in the management web app.</p>
       <p><strong>On-roster flag.</strong> Each instructor-role member has an <em>On instructor roster</em> checkbox on their member record (People → Members → [instructor] → Membership tab). When ticked, the instructor appears as a named row in the Gantt calendar, can be selected when creating a dual or instruction booking, and is included in the booking assignment check. Untick this to archive an instructor from the active roster without deleting their record — their past bookings and flight history are preserved.</p>
       <p><strong>People → Instructors page.</strong> This page shows all rostered instructors with a rolling 5-week calendar view. For each instructor you can see which days they are shown as available. From here you can also add a rostered instructor (from among members with an instructor-type role) or remove one from the roster. Adding/removing updates the On roster flag on the member record.</p>
-      <p><strong>Instructor availability windows.</strong> By default, an instructor with no availability windows configured is assumed available during all club operating hours on all days. To reflect a regular schedule — for example an instructor who only flies on Tuesdays and Saturdays — set up availability windows under People → Instructors → [instructor] → Availability. Windows can be:</p>
+      <p><strong>Instructor availability windows.</strong> An instructor with no availability windows is treated as <em>not available</em> — they will not appear in Find slots results for dual flights, and any existing bookings assigned to them will surface on the Attention page as off-roster conflicts. Every rostered instructor must have at least one window configured to be selectable in the booking flow. To reflect a regular schedule — for example an instructor who flies every Tuesday and Saturday — set up availability windows under People → Instructors → [instructor] → Availability. Windows can be:</p>
       <ul>
         <li><strong>Weekly recurring</strong> — e.g. every Tuesday all day, or every Saturday 09:00–13:00. The system uses this pattern when members search for available slots with a specific instructor.</li>
         <li><strong>One-off (specific date)</strong> — e.g. available this particular Saturday for a check flight, outside their usual pattern.</li>
       </ul>
-      <p>Availability windows drive the <a href="#book-findslots">Find slots</a> search when an instructor filter is applied. They do not hard-block bookings by themselves — a booking can still be created outside the window, but the mismatch will surface on the Attention page as a scheduling conflict.</p>
+      <p>Availability windows drive the <a href="#book-findslots">Find slots</a> search for dual flights — a slot is only offered if at least one rostered instructor has a window covering it. They do not hard-block manual booking creation — a booking can still be created and assigned to an off-roster instructor, but the mismatch will appear on the Attention page as a scheduling conflict. For the common case of an instructor who is always available (e.g. a full-time flying school instructor), add a weekly all-day window for each day of the week.</p>
       <p><strong>Removing an instructor from the roster.</strong> If an instructor is removed from the roster (or has the On roster flag unticked) after they have already been assigned to a booking, the system does not automatically cancel those bookings. The conflict appears on the Attention page under "Instructor off roster" and as a warning on the booking block in the Gantt. The assigned instructor must be changed or the bookings cancelled — they cannot proceed to Depart without resolution or a staff override.</p>
       <p><strong>Instructor block-outs vs availability windows.</strong> These serve different purposes: <em>availability windows</em> say when an instructor is generally available (used by Find slots); <em>block-outs</em> say when they are specifically not available (prevents booking assignment). Use availability windows for regular patterns, and instructor block-outs for one-off or temporary unavailability.</p>
 
@@ -558,7 +582,7 @@
         <div class="step"><span class="num">3</span>Confirmed</div><span class="arrow">→</span>
         <div class="step"><span class="num">4</span>Departed</div><span class="arrow">→</span>
         <div class="step"><span class="num">5</span>Returned</div><span class="arrow">→</span>
-        <div class="step" style="background:#e8f5e9;border-color:#81c784;color:#1b5e20;"><span class="num" style="background:#2e7d32;">6</span>Completed</div>
+        <div class="step" style="background:var(--success-bg);border-color:var(--success-border);color:var(--success-text);"><span class="num" style="background:#2e7d32;">6</span>Completed</div>
       </div>
       <p><strong>1 — Request booking.</strong> Anyone with booking access can request a booking — a member via the mobile app (Schedule → + button), or an instructor or admin from the management web app Gantt calendar on behalf of any member. The booking block is checked first: if the requesting member has an active block, the + button is disabled and the configured block message is shown. Fields: aircraft, date, time, flight type, and (for dual types) instructor.</p>
       <p style="font-size:.82rem;color:var(--text-3);margin-top:-.4rem;margin-bottom:.8rem;"><em>Who: Member (mobile app), instructor or admin (Gantt calendar)</em></p>
@@ -725,7 +749,7 @@
       </details>
 
       <!-- Payment flow diagram -->
-      <div style="margin:1.2rem 0;padding:1rem;background:#f8fafc;border:1px solid var(--border);border-radius:10px;overflow-x:auto;">
+      <div style="margin:1.2rem 0;padding:1rem;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;overflow-x:auto;">
         <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:.9rem;">Payment flow — single flight</div>
         <div style="display:flex;flex-direction:column;align-items:center;gap:0;min-width:340px;">
           <!-- Start node -->
@@ -738,9 +762,9 @@
             <!-- Three columns -->
             <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:0;">
               <div style="width:2px;height:18px;background:#94a3b8;"></div>
-              <div style="background:#dcfce7;border:1.5px solid #86efac;color:var(--success-text);border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Account credit</div>
+              <div style="background:var(--success-bg);border:1.5px solid var(--success-border);color:var(--success-text);border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Account credit</div>
               <div style="width:2px;height:14px;background:#86efac;"></div>
-              <div style="background:#f0fdf4;border:1px solid #bbf7d0;color:var(--success-text);border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Balance debited immediately</div>
+              <div style="background:var(--success-bg);border:1px solid var(--success-border);color:var(--success-text);border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Balance debited immediately</div>
               <div style="width:2px;height:14px;background:#86efac;"></div>
               <div style="background:#166534;color:#fff;border-radius:6px;padding:.35rem .7rem;font-size:.74rem;font-weight:700;text-align:center;">✓ Flight: Paid</div>
             </div>
@@ -754,7 +778,7 @@
             </div>
             <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;padding-top:0;">
               <div style="width:2px;height:18px;background:#94a3b8;"></div>
-              <div style="background:#fef3c7;border:1.5px solid #fcd34d;color:var(--warning-text);border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Invoice</div>
+              <div style="background:var(--warning-bg);border:1.5px solid #fcd34d;color:var(--warning-text);border-radius:8px;padding:.4rem .6rem;font-size:.78rem;font-weight:600;text-align:center;width:90%;max-width:160px;">Invoice</div>
               <div style="width:2px;height:14px;background:#fcd34d;"></div>
               <div style="background:var(--warning-bg);border:1px solid #fde68a;color:var(--warning-text);border-radius:6px;padding:.35rem .5rem;font-size:.74rem;text-align:center;width:90%;max-width:160px;">Tax invoice created (Sent)</div>
               <div style="width:2px;height:14px;background:#fcd34d;"></div>
@@ -763,15 +787,15 @@
                 <div style="position:absolute;top:0;left:25%;right:25%;height:2px;background:#fcd34d;"></div>
                 <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
                   <div style="width:2px;height:14px;background:#fcd34d;"></div>
-                  <div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:6px;padding:.3rem .4rem;font-size:.7rem;text-align:center;">Bank transfer<br><span style="font-size:.65rem;color:#c2410c;">(bookkeeper reconciles)</span></div>
+                  <div style="background:var(--warning-bg);border:1px solid #fed7aa;color:var(--warning-text);border-radius:6px;padding:.3rem .4rem;font-size:.7rem;text-align:center;">Bank transfer<br><span style="font-size:.65rem;color:var(--warning-text);">(bookkeeper reconciles)</span></div>
                 </div>
                 <div style="flex:1;display:flex;flex-direction:column;align-items:center;">
                   <div style="width:2px;height:14px;background:#fcd34d;"></div>
-                  <div style="background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:6px;padding:.3rem .4rem;font-size:.7rem;text-align:center;">Account credit<br><span style="font-size:.65rem;color:#c2410c;">(balance debited)</span></div>
+                  <div style="background:var(--warning-bg);border:1px solid #fed7aa;color:var(--warning-text);border-radius:6px;padding:.3rem .4rem;font-size:.7rem;text-align:center;">Account credit<br><span style="font-size:.65rem;color:var(--warning-text);">(balance debited)</span></div>
                 </div>
               </div>
               <div style="width:2px;height:14px;background:#fcd34d;"></div>
-              <div style="font-size:.7rem;color:#78350f;font-style:italic;text-align:center;">Record via Sales → Invoices</div>
+              <div style="font-size:.7rem;color:var(--warning-text);font-style:italic;text-align:center;">Record via Sales → Invoices</div>
               <div style="width:2px;height:10px;background:#fcd34d;"></div>
               <div style="background:#166534;color:#fff;border-radius:6px;padding:.35rem .7rem;font-size:.74rem;font-weight:700;text-align:center;">✓ Invoice: Paid</div>
             </div>
