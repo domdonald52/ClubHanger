@@ -43,6 +43,7 @@
   .tog-sw{position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;}
   .tog-sw input{opacity:0;width:0;height:0;}
   .tog-sw .tog-track{position:absolute;inset:0;border-radius:20px;background:#cdd2d8;transition:background .2s;cursor:pointer;}
+  body.dark-mode .tog-sw .tog-track{background:#444c56;}
   .tog-sw input:checked+.tog-track{background:var(--primary);}
   .tog-sw .tog-track::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
   .tog-sw input:checked+.tog-track::after{transform:translateX(16px);}
