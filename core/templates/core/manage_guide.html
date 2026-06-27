@@ -813,13 +813,20 @@ body.dark-mode .part{color:#fb923c;}
       </div>
 
       <details class="dblock">
-        <summary>Including outstanding amounts from previous unpaid flights</summary>
+        <summary>Outstanding amounts from previous flights</summary>
         <div class="dbody">
-          <p>When a member has previous completed flights that have not been fully paid, those flights appear in the <strong>Outstanding Charges</strong> section above the payee row. Tick the checkbox next to each flight you want to collect in this session; the grand total updates as you tick.</p>
-          <p>The list only shows flights that are safe to collect directly: flights with no invoice, flights whose invoice has been voided, and flights whose invoice is <strong>overdue</strong> (past its due date). Flights with a sent invoice that isn't overdue yet are deliberately excluded — the member may have already paid by bank transfer and the bookkeeper hasn't reconciled it yet. Overdue invoice rows are flagged with the invoice number so you can make an informed decision before collecting.</p>
-          <p>If you collect an overdue flight here, the payment is recorded against the flight completion directly. The outstanding invoice should then be voided to avoid confusion — go to Sales → Invoices, find the invoice, and void it.</p>
-          <p>Separately, if the member's account balance is negative (credit overdraft), an <strong>Account deficit (credit overdraft)</strong> row appears. Ticking it adds the deficit to the session total and, when payment is recorded, restores the account to zero. This is independent of the flight rows above it — it clears the running negative balance caused by previous credit-method payments that overdrew the account.</p>
-          <p>If a payment including outstanding flights or the deficit is later reversed, all collected amounts are fully restored and the rows reappear when you re-open the charges screen.</p>
+          <p>When a member has other completed flights with unsettled charges, the charges screen shows them in one of two sections depending on whether an invoice exists:</p>
+
+          <p><strong>Outstanding invoices</strong> (informational — no checkbox)</p>
+          <p>Flights that already have an active invoice (sent or overdue) appear here for information only. They cannot be bundled into the current payment or invoice — each must be paid by recording payment against its own invoice in <strong>Sales → Invoices</strong>. The balance due and a link to the invoice are shown. Flights with a current, not-yet-overdue invoice that may be awaiting bank transfer reconciliation are hidden entirely — they reappear once overdue.</p>
+
+          <p><strong>Outstanding charges</strong> (checkboxes — can be bundled)</p>
+          <p>Flights with no active invoice appear as pre-ticked checkboxes. Tick the ones you want to collect in this session; untick any you want to leave for later. The grand total updates as you tick. These flights can be settled alongside the current flight using any direct payment method, or included in the new invoice if you are issuing one.</p>
+
+          <p><strong>Account deficit</strong> (checkbox — can be bundled)</p>
+          <p>If the member's account balance is negative (credit overdraft), an <strong>Account deficit (credit overdraft)</strong> row appears. Ticking it adds the deficit to the session total; when payment is recorded, the account is restored to zero. This is separate from flight charges — it clears the running negative balance caused by previous credit payments that overdrew the account.</p>
+
+          <p>If a payment that included outstanding flights or an account deficit is later reversed, all collected amounts are restored and the rows reappear on the charges screen.</p>
         </div>
       </details>
 
