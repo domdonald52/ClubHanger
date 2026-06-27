@@ -8432,6 +8432,11 @@ def ai_ask(request, club_slug):
         return JsonResponse({'error': 'AI not configured — add GROQ_API_KEY to .env and restart the server.'}, status=503)
 
     # ── Build club data snapshot ──────────────────────────────────────────────
+    _cfg = ClubConfig.objects.get(club=club)
+    _today = timezone.localdate()
+    _fy = _today.year if _today.month >= _cfg.fy_start_month else _today.year - 1
+    _fy_start = date(_fy, _cfg.fy_start_month, 1)
+
     # Members
     members = ClubMember.objects.filter(club=club).select_related('role', 'user')
     member_rows = []
@@ -8443,12 +8448,13 @@ def ai_ask(request, club_slug):
             'subscription_expires': str(m.subscription_expires) if m.subscription_expires else None,
         })
 
-    # Completed flights — all time
+    # Completed flights — current financial year only (keeps prompt within token limits)
     fcs = (FlightCompletion.objects
-           .filter(booking__club=club, actual_flight_hours__isnull=False)
+           .filter(booking__club=club, actual_flight_hours__isnull=False,
+                   booking__arrived_at__date__gte=_fy_start)
            .select_related('booking__aircraft', 'booking__instructor', 'booking__member__user')
            .prefetch_related('charge_items')
-           .order_by('booking__arrived_at'))
+           .order_by('booking__arrived_at')[:500])
     flight_rows = []
     for fc in fcs:
         b = fc.booking
@@ -8499,10 +8505,7 @@ def ai_ask(request, club_slug):
         })
 
     # Budget vs actual (current FY)
-    _ai_cfg = ClubConfig.objects.get(club=club)
-    _ai_today = timezone.localdate()
-    _ai_fy = _ai_today.year if _ai_today.month >= _ai_cfg.fy_start_month else _ai_today.year - 1
-    _ai_budgets = list(FlyingBudget.objects.filter(club=club, fy_year=_ai_fy).select_related('aircraft'))
+    _ai_budgets = list(FlyingBudget.objects.filter(club=club, fy_year=_fy).select_related('aircraft'))
     budget_rows = [
         {'aircraft': b.aircraft.registration, 'month': b.month, 'fy_year': b.fy_year,
          'budgeted_hours': float(b.budgeted_hours)}
@@ -8512,12 +8515,13 @@ def ai_ask(request, club_slug):
     data_context = _json.dumps({
         'members': member_rows,
         'completed_flights': flight_rows,
+        'completed_flights_note': f'Current financial year only (from {_fy_start})',
         'aircraft': aircraft_rows,
         'account_balances': account_rows,
         'occurrences': occ_rows,
         'flying_budget': {
-            'fy_year': _ai_fy,
-            'fy_start_month': _ai_cfg.fy_start_month,
+            'fy_year': _fy,
+            'fy_start_month': _cfg.fy_start_month,
             'entries': budget_rows,
         },
     }, default=str)
