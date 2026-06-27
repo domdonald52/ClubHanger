@@ -353,12 +353,6 @@
         <button type="submit" class="sc-toggle {% if current.is_active %}sc-on{% else %}sc-off{% endif %}"
                 title="Fuel charging {% if current.is_active %}active — click to pause{% else %}paused — click to activate{% endif %}"></button>
       </form>
-      <form method="post" style="display:inline;" onsubmit="return dcModal(this,'Delete current rate?')">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="delete_fuel_rate">
-        <input type="hidden" name="rate_id" value="{{ current.id }}">
-        <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete current rate"><i class="ti ti-trash"></i></button>
-      </form>
       {% endif %}
     </div>
     {% endwith %}
@@ -368,7 +362,7 @@
         Rate history ({{ fuel_rate_history|length }} previous)
       </summary>
       <table class="ft-table" style="margin-top:.5rem;">
-        <thead><tr><th>From</th><th>To</th><th style="text-align:right;">Rate/hr</th><th>Notes</th><th></th></tr></thead>
+        <thead><tr><th>From</th><th>To</th><th style="text-align:right;">Rate/hr</th><th>Notes</th></tr></thead>
         <tbody>
           {% for r, valid_to in fuel_rate_history %}
           <tr>
@@ -376,20 +370,17 @@
             <td style="font-size:.85rem;">{{ valid_to }}</td>
             <td style="text-align:right;">${{ r.rate|currency }}</td>
             <td style="color:var(--text-3);font-size:.82rem;">{{ r.notes|default:"—" }}</td>
-            <td style="text-align:right;">
-              {% if club_member.is_admin %}
-              <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete this rate entry?')">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="delete_fuel_rate">
-                <input type="hidden" name="rate_id" value="{{ r.id }}">
-                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Delete"><i class="ti ti-trash"></i></button>
-              </form>
-              {% endif %}
-            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
+      {% if club_member.is_admin %}
+      <form method="post" style="margin-top:.4rem;" onsubmit="return dcModal(this,'Clear all rate history? The current rate will be kept.')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="clear_fuel_rate_history">
+        <button type="submit" class="cbtn-sm cbtn-danger" style="font-size:.78rem;">Clear history</button>
+      </form>
+      {% endif %}
     </details>
     {% endif %}
     {% else %}

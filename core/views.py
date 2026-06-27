@@ -5784,8 +5784,10 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                 r.is_active = not r.is_active
                 r.save(update_fields=['is_active'])
 
-        elif action == 'delete_fuel_rate' and actor.is_admin:
-            FuelSurchargeRate.objects.filter(club=club, aircraft=ac, id=request.POST.get('rate_id')).delete()
+        elif action == 'clear_fuel_rate_history' and actor.is_admin:
+            current = FuelSurchargeRate.objects.filter(aircraft=ac).order_by('-effective_from').first()
+            if current:
+                FuelSurchargeRate.objects.filter(aircraft=ac).exclude(id=current.id).delete()
 
         elif action == 'toggle_surcharge' and actor.is_admin:
             sc_id = request.POST.get('sc_id')
