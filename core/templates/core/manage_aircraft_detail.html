@@ -960,8 +960,10 @@
   const TABS = ['details','instruments','rates','surcharges','maintenance','live','history'];
   function activate(id) {
     TABS.forEach(t => {
-      document.getElementById('tab-'+t).classList.toggle('active', t===id);
-      document.getElementById('tabBtn-'+t).classList.toggle('active', t===id);
+      const panel = document.getElementById('tab-'+t);
+      const btn   = document.getElementById('tabBtn-'+t);
+      if (panel) panel.classList.toggle('active', t===id);
+      if (btn)   btn.classList.toggle('active', t===id);
     });
     if (id === 'live') {
       // Show spinner immediately — even before the ADS-B IIFE has loaded
@@ -976,7 +978,7 @@
     }
     try { localStorage.setItem('acDetailTab', id); } catch(e){}
   }
-  TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
+  TABS.forEach(t => { const btn = document.getElementById('tabBtn-'+t); if (btn) btn.addEventListener('click', () => activate(t)); });
   let init = new URLSearchParams(location.search).get('tab');
   if (!init) { try { init = localStorage.getItem('acDetailTab'); } catch(e){} }
   activate(init || 'details');

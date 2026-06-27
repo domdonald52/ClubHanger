@@ -77,7 +77,7 @@
       <button type="button" class="cbtn-add" onclick="document.getElementById('add-av-modal').hidden=false">+ Add</button>
     </div>
     <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .9rem;">
-      If no windows are set, this instructor is treated as available all operating hours.
+      Windows define when this instructor is available for rostered bookings. At least one window must be set for them to appear as available — no windows means not available.
       {% if past_av_count %}<span style="color:var(--text-3);">{{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }} not shown.</span>{% endif %}
     </p>
 
@@ -109,7 +109,7 @@
       </tbody>
     </table>
     {% else %}
-    <p style="color:var(--text-3);font-size:.85rem;margin-bottom:.8rem;">No windows set — treated as available all operating hours.</p>
+    <p style="color:var(--text-3);font-size:.85rem;margin-bottom:.8rem;">No windows set — instructor will appear as unavailable for rostered scheduling.</p>
     {% endif %}
 
     <hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;">
@@ -303,16 +303,18 @@
   const TABS = ['contact','availability','bookings'];
   function activate(id) {
     TABS.forEach(t => {
-      document.getElementById('tab-'+t).classList.toggle('active', t===id);
-      document.getElementById('tabBtn-'+t).classList.toggle('active', t===id);
+      const panel = document.getElementById('tab-'+t);
+      const btn   = document.getElementById('tabBtn-'+t);
+      if (panel) panel.classList.toggle('active', t===id);
+      if (btn)   btn.classList.toggle('active', t===id);
     });
     try { localStorage.setItem('instrDetailTab', id); } catch(e){}
   }
-  TABS.forEach(t => document.getElementById('tabBtn-'+t).addEventListener('click', () => activate(t)));
+  TABS.forEach(t => { const btn = document.getElementById('tabBtn-'+t); if (btn) btn.addEventListener('click', () => activate(t)); });
   const _qs = new URLSearchParams(location.search).get('tab');
   let init = (_qs && TABS.includes(_qs)) ? _qs : null;
   if (!init) { try { init = localStorage.getItem('instrDetailTab'); } catch(e){} }
-  activate(TABS.includes(init) ? init : 'availability');
+  activate(TABS.includes(init) ? init : 'contact');
 })();
 
 const instrBoModal = document.getElementById('add-instr-bo-modal');
