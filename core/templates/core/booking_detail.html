@@ -590,6 +590,35 @@
           </tfoot>
         </table>
 
+        {% if actor.is_admin or actor.is_instructor and booking.instructor == request.user %}
+        <details class="add-wrap" style="margin-top:.65rem;">
+          <summary class="add-toggle">{% if fc.time_if_simulated or fc.time_if_actual or fc.time_night or fc.time_low_flying or fc.time_terrain_awareness %}Edit{% else %}+{% endif %} Special hours</summary>
+          <form method="post" style="padding:.4rem .7rem .8rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_special_hours">
+            <p style="font-size:.78rem;color:var(--text-3);margin:0 0 .55rem;">Pilot logbook hours — values may overlap (e.g. a flight can be both night and I/F). Leave blank to clear.</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.35rem .6rem;margin-bottom:.6rem;">
+              <label class="flabel" style="font-size:.78rem;margin:0;">I/F simulated
+                <input type="number" name="time_if_simulated" step="0.1" min="0" class="finput" value="{{ fc.time_if_simulated|default:'' }}" placeholder="0.0">
+              </label>
+              <label class="flabel" style="font-size:.78rem;margin:0;">I/F actual
+                <input type="number" name="time_if_actual" step="0.1" min="0" class="finput" value="{{ fc.time_if_actual|default:'' }}" placeholder="0.0">
+              </label>
+              <label class="flabel" style="font-size:.78rem;margin:0;">Night
+                <input type="number" name="time_night" step="0.1" min="0" class="finput" value="{{ fc.time_night|default:'' }}" placeholder="0.0">
+              </label>
+              <label class="flabel" style="font-size:.78rem;margin:0;">Low flying
+                <input type="number" name="time_low_flying" step="0.1" min="0" class="finput" value="{{ fc.time_low_flying|default:'' }}" placeholder="0.0">
+              </label>
+              <label class="flabel" style="font-size:.78rem;margin:0;">Terrain awareness
+                <input type="number" name="time_terrain_awareness" step="0.1" min="0" class="finput" value="{{ fc.time_terrain_awareness|default:'' }}" placeholder="0.0">
+              </label>
+            </div>
+            <button type="submit" class="cbtn" style="font-size:.82rem;">Save special hours</button>
+          </form>
+        </details>
+        {% endif %}
+
         {% if not fc.is_paid and not fc_invoices %}
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:flex-start;margin:.6rem 0 .5rem;">
         <details class="add-wrap">

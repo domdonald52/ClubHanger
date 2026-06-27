@@ -2603,6 +2603,8 @@ def booking_detail(request, club_slug, booking_id):
 
     error = None
     success = None
+    if request.GET.get('saved') == '1':
+        success = 'Special hours saved.'
 
     if request.method == 'POST':
         action = request.POST.get('action', '')
@@ -3578,6 +3580,26 @@ def booking_detail(request, club_slug, booking_id):
                                 # Primary pays nothing — secondary covered the whole flight
                                 fc._sync_payment_cache()
                                 success = 'Split payment recorded.'
+
+        elif action == 'save_special_hours' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and fc:
+            _is_booking_instructor = (booking.instructor_id and booking.instructor == request.user)
+            if not (actor.is_admin or (actor.is_instructor and _is_booking_instructor)):
+                error = 'Permission denied.'
+            else:
+                _sph_fields = ['time_if_simulated', 'time_if_actual', 'time_night', 'time_low_flying', 'time_terrain_awareness']
+                _total = float(fc.actual_flight_hours or 0)
+                for _sf in _sph_fields:
+                    _sv = request.POST.get(_sf, '').strip()
+                    if _sv:
+                        try:
+                            _fval = max(0.0, float(_sv))
+                            setattr(fc, _sf, min(_fval, _total) if _total else _fval)
+                        except ValueError:
+                            pass
+                    else:
+                        setattr(fc, _sf, None)
+                fc.save(update_fields=_sph_fields)
+                return redirect(request.path + '?saved=1')
 
         elif action == 'void_checkin' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_admin:
             fc = booking.flight_completion
@@ -7238,6 +7260,13 @@ def invoice_detail(request, club_slug, invoice_id):
                 if pay_amt > invoice.balance_due:
                     error = f'Payment ${pay_amt:.2f} exceeds outstanding balance ${invoice.balance_due:.2f}.'
                     pay_amt = None
+            # Early-bird confirmation: require explicit acknowledgement
+            if pay_amt and not error and invoice.early_bird_amount and invoice.early_bird_cutoff:
+                from datetime import date as _dt
+                if _dt.today() <= invoice.early_bird_cutoff:
+                    if not request.POST.get('early_bird_confirm'):
+                        error = 'Please confirm this payment was received on or before the early-bird cutoff date.'
+                        pay_amt = None
             if pay_amt and not error and _pay_method == 'account_credit':
                 if not invoice.member:
                     error = 'Cannot use account credit — invoice has no member.'

@@ -265,7 +265,15 @@ window.bookSlotClick = function(e, el) {
   if (window.openNewBookingWith) {
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (po) { po.hidden = true; document.body.style.overflow = ''; }
+    if (po) {
+      po.hidden = true;
+      document.body.style.overflow = '';
+      // When booking modal closes without saving, re-open the find-slot overlay
+      window._afterBookingClose = function() {
+        po.hidden = false;
+        document.body.style.overflow = 'hidden';
+      };
+    }
     window.openNewBookingWith(aircraft, instructor, start, end, kind, instructorIds);
     return false;
   }

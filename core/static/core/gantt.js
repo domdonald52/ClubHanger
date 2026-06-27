@@ -611,6 +611,12 @@
     editFields.style.display = "";
     btnSave.hidden = false;
     btnDelete.hidden = false;
+    // Return to find-slot overlay if the booking was opened from there
+    if (typeof window._afterBookingClose === 'function') {
+      var cb = window._afterBookingClose;
+      window._afterBookingClose = null;
+      cb();
+    }
   }
   document.getElementById("m-cancel").addEventListener("click", closeModal);
   modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });

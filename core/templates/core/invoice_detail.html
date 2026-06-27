@@ -213,6 +213,12 @@
                  class="finput" style="width:160px;" id="inv-pay-ref">
           <button type="submit" name="action" value="mark_paid" class="cbtn primary">Record</button>
         </div>
+        {% if early_bird_active %}
+        <label style="display:flex;align-items:center;gap:.5rem;margin-top:.6rem;font-size:.85rem;cursor:pointer;">
+          <input type="checkbox" name="early_bird_confirm" value="1" id="inv-eb-confirm">
+          I confirm this payment was received on or before {{ invoice.early_bird_cutoff|date:"j N Y" }} (early-bird cutoff)
+        </label>
+        {% endif %}
         {% if member_account_balance is not None %}
         <div id="inv-credit-hint" style="display:none;font-size:.82rem;color:var(--text-2);margin-top:.4rem;">
           Account balance: <strong>${{ member_account_balance|floatformat:2 }}</strong>
