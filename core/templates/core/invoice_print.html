@@ -527,6 +527,12 @@ table.items tbody tr:last-child td { border-bottom: none; }
             <td class="lbl">Total</td>
             <td class="amt">${{ grand_total|currency }}</td>
           </tr>
+          {% if early_bird_active %}
+          <tr class="eb-row">
+            <td class="lbl" style="color:#1a7a3a;">Early-bird rate (pay by {{ invoice.early_bird_cutoff|date:"j N Y" }})</td>
+            <td class="amt" style="color:#1a7a3a;font-weight:700;">${{ invoice.early_bird_amount|currency }}</td>
+          </tr>
+          {% endif %}
           <tr class="balance-row">
             <td class="lbl">Balance due</td>
             <td class="amt">${{ grand_balance|currency }}</td>

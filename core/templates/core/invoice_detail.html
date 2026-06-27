@@ -81,6 +81,12 @@
             <td colspan="2" style="padding:.4rem .9rem;text-align:right;font-weight:650;">Invoice total</td>
             <td style="padding:.4rem .9rem;text-align:right;font-weight:700;font-size:1rem;">${{ invoice.total|currency }}</td>
           </tr>
+          {% if early_bird_active %}
+          <tr style="background:color-mix(in srgb,var(--success-bg) 50%,transparent);">
+            <td colspan="2" style="padding:.4rem .9rem;text-align:right;color:var(--success-text);font-size:.85rem;">Early-bird rate (pay by {{ invoice.early_bird_cutoff|date:"j N Y" }})</td>
+            <td style="padding:.4rem .9rem;text-align:right;font-weight:700;color:var(--success-text);">${{ invoice.early_bird_amount|currency }}</td>
+          </tr>
+          {% endif %}
           {% if invoice.amount_paid %}
           <tr>
             <td colspan="2" style="padding:.4rem .9rem;text-align:right;color:var(--success-text);">Payments received</td>
@@ -181,6 +187,11 @@
 
     {% elif invoice.status == 'sent' %}
     <div style="padding:.9rem;">
+      {% if early_bird_active %}
+      <div class="notice ok" style="margin-bottom:.8rem;">
+        <strong>Early-bird rate:</strong> ${{ invoice.early_bird_amount|currency }} accepted as payment in full if received by {{ invoice.early_bird_cutoff|date:"j N Y" }}. After that date the full amount of ${{ invoice.total|currency }} applies.
+      </div>
+      {% endif %}
       <form method="post" id="inv-pay-form">
         {% csrf_token %}
         <div class="flabel" style="margin:0 0 .4rem;">Record payment received</div>

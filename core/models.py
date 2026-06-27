@@ -2753,6 +2753,10 @@ class Invoice(models.Model):
     # Set on subscription invoices — copied to member.subscription_expires when invoice is marked paid
     subscription_expiry_date = models.DateField(null=True, blank=True)
 
+    # Early-bird pricing: accepted as full settlement if paid on or before cutoff
+    early_bird_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    early_bird_cutoff = models.DateField(null=True, blank=True)
+
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='invoices_created')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -2779,10 +2783,19 @@ class Invoice(models.Model):
         from decimal import Decimal
         return sum((item.amount for item in self.line_items.all()), Decimal('0'))
 
+    def effective_amount(self, as_of=None):
+        """Amount accepted as full settlement — early-bird rate before cutoff, total otherwise."""
+        from datetime import date as _date
+        if self.early_bird_amount and self.early_bird_cutoff:
+            check = as_of if as_of is not None else _date.today()
+            if check <= self.early_bird_cutoff:
+                return self.early_bird_amount
+        return self.total
+
     @property
     def balance_due(self):
         from decimal import Decimal
-        return max(Decimal('0'), self.total - self.amount_paid)
+        return max(Decimal('0'), self.effective_amount() - self.amount_paid)
 
     @property
     def gst_amount(self):
@@ -2822,7 +2835,7 @@ class Invoice(models.Model):
         total_paid = self.payments.aggregate(t=Sum('amount'))['t'] or Decimal('0')
         self.amount_paid = total_paid
         fields = ['amount_paid']
-        if total_paid > 0 and total_paid >= self.total and self.status == self.STATUS_SENT:
+        if total_paid > 0 and total_paid >= self.effective_amount() and self.status == self.STATUS_SENT:
             self.status = self.STATUS_PAID
             last = self.payments.order_by('-paid_at').first()
             self.paid_at = last.paid_at if last else _tz.now()

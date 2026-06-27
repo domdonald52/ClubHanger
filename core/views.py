@@ -2032,10 +2032,33 @@ def club_settings(request, club_slug, mode='settings'):
             from datetime import timedelta as _td
             from django.db.models import F as _F
             from django.contrib import messages as _msgs
+            from decimal import Decimal as _D
             fy_end = _next_fy_end(config)
             fy_label = f'FY{str(fy_end.year)[2:]}'
             candidates = _renewal_preview(club, config)
             today = timezone.localdate()
+            # Optional early-bird fields from POST
+            _eb_raw = request.POST.get('early_bird_amount', '').strip()
+            _eb_amount = None
+            if _eb_raw:
+                try:
+                    _eb_amount = _D(_eb_raw)
+                    if _eb_amount <= 0:
+                        _eb_amount = None
+                except Exception:
+                    pass
+            _eb_cutoff_raw = request.POST.get('early_bird_cutoff', '').strip()
+            _eb_cutoff = None
+            if _eb_cutoff_raw:
+                try:
+                    from datetime import date as _ddate
+                    _eb_cutoff = _ddate.fromisoformat(_eb_cutoff_raw)
+                except Exception:
+                    pass
+            # Only apply early-bird if both fields are provided and cutoff is in the future
+            if not (_eb_amount and _eb_cutoff and _eb_cutoff >= today):
+                _eb_amount = None
+                _eb_cutoff = None
             created = 0
             for m in candidates:
                 config.refresh_from_db()
@@ -2054,6 +2077,8 @@ def club_settings(request, club_slug, mode='settings'):
                     status='sent',
                     sent_at=timezone.now(),
                     subscription_expiry_date=fy_end,
+                    early_bird_amount=_eb_amount,
+                    early_bird_cutoff=_eb_cutoff,
                     created_by=request.user,
                 )
                 InvoiceLineItem.objects.create(
@@ -7356,6 +7381,10 @@ def invoice_detail(request, club_slug, invoice_id):
                 _det_arrears_flights.append(_fat)
                 _rem -= _Dd(str(_fat.amount))
 
+    _eb_active = bool(
+        invoice.early_bird_amount and invoice.early_bird_cutoff and
+        timezone.localdate() <= invoice.early_bird_cutoff
+    )
     return render(request, 'core/invoice_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'invoice': invoice, 'line_items': line_items, 'config': config,
@@ -7365,6 +7394,7 @@ def invoice_detail(request, club_slug, invoice_id):
         'session_payments': _det_session,
         'arrears_clearance_at': _det_arrears_at,
         'arrears_flights': _det_arrears_flights,
+        'early_bird_active': _eb_active,
     })
 
 
@@ -7438,9 +7468,14 @@ def invoice_print(request, club_slug, invoice_id):
                 _remaining -= _D(str(_at.amount))
 
     # session_total and arrears are already line items on the invoice — don't add again
+    _pr_today     = timezone.localdate()
+    _eb_active_pr = bool(
+        invoice.early_bird_amount and invoice.early_bird_cutoff and
+        _pr_today <= invoice.early_bird_cutoff
+    )
     grand_total   = _D(str(invoice.total or 0))
     grand_paid    = _D(str(invoice.amount_paid or 0))
-    grand_balance = grand_total - grand_paid
+    grand_balance = max(_D('0'), _D(str(invoice.effective_amount(_pr_today))) - grand_paid)
 
     _raw_p = list(invoice.line_items.select_related(
         'charge_item__flight_completion__booking__aircraft',
@@ -7460,6 +7495,7 @@ def invoice_print(request, club_slug, invoice_id):
         'grand_total': grand_total,
         'grand_paid': grand_paid,
         'grand_balance': grand_balance,
+        'early_bird_active': _eb_active_pr,
     })
 
 
