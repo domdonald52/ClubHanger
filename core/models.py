@@ -246,6 +246,11 @@ class ClubConfig(models.Model):
                   "Run manage.py update_lapsed_members (or use Settings) to apply."
     )
 
+    # Saved early-bird defaults for bulk renewal invoices
+    renewal_early_bird_amount = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True)
+    renewal_early_bird_cutoff = models.DateField(null=True, blank=True)
+
     # ── Booking blocks (financial) ────────────────────────────────────────────
     booking_block_enabled = models.BooleanField(
         default=False,

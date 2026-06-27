@@ -2028,6 +2028,23 @@ def club_settings(request, club_slug, mode='settings'):
             _msgs.success(request, msg)
             return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=membership&saved=1")
 
+        elif action == 'save_renewal_defaults':
+            from decimal import Decimal as _D
+            _eb_raw = request.POST.get('early_bird_amount', '').strip()
+            _eb_cutoff_raw = request.POST.get('early_bird_cutoff', '').strip()
+            try:
+                config.renewal_early_bird_amount = _D(_eb_raw) if _eb_raw else None
+            except Exception:
+                config.renewal_early_bird_amount = None
+            try:
+                from datetime import date as _ddate
+                config.renewal_early_bird_cutoff = _ddate.fromisoformat(_eb_cutoff_raw) if _eb_cutoff_raw else None
+            except Exception:
+                config.renewal_early_bird_cutoff = None
+            config.save(update_fields=['renewal_early_bird_amount', 'renewal_early_bird_cutoff'])
+            from django.urls import reverse as _rev_s
+            return redirect(_rev_s(_redir_name, kwargs={'club_slug': club_slug}) + '?tab=membership&saved=1')
+
         elif action == 'run_bulk_renewal':
             from datetime import timedelta as _td
             from django.db.models import F as _F
@@ -2059,6 +2076,10 @@ def club_settings(request, club_slug, mode='settings'):
             if not (_eb_amount and _eb_cutoff and _eb_cutoff >= today):
                 _eb_amount = None
                 _eb_cutoff = None
+            # Persist the early-bird defaults for next time
+            config.renewal_early_bird_amount = _eb_amount
+            config.renewal_early_bird_cutoff = _eb_cutoff
+            config.save(update_fields=['renewal_early_bird_amount', 'renewal_early_bird_cutoff'])
             created = 0
             for m in candidates:
                 config.refresh_from_db()
