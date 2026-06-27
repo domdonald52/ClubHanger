@@ -229,7 +229,7 @@
     <div class="tab-section-header">
       <div>
         <h2 class="sh2" style="margin:0 0 .2rem;">Hire rates</h2>
-        <p class="tab-desc">Billed on {{ ac.get_total_time_method_display }} hours. Set a default rate, then override per flight type as needed. Leave a row blank to use the default.</p>
+        <p class="tab-desc">Set a default rate, then override per flight type as needed. Leave a row blank to use the default. Instrument defaults to {{ ac.get_total_time_method_display }} but can be overridden per flight type.</p>
       </div>
       {% if club_member.is_admin %}
       <button type="button" class="cbtn" id="edit-rates-btn" onclick="startEditRates()"><i class="ti ti-pencil"></i> Edit rates</button>
@@ -258,27 +258,41 @@
         <thead>
           <tr>
             <th>Flight type</th>
-            <th>Rate/hr</th>
-            <th>Wet hire</th>
+            <th style="width:7rem;text-align:right;">Rate/hr</th>
+            <th style="width:9rem;">Instrument</th>
+            <th style="width:6rem;">Wet hire</th>
           </tr>
         </thead>
         <tbody>
           {% for ft, rate in hire_rate_rows %}
           <tr>
             <td>{{ ft.name }}</td>
-            <td>
+            <td style="text-align:right;">
               <span class="rate-view">{% if rate %}${{ rate.amount|currency }}{% else %}<span style="color:var(--text-3)">(default)</span>{% endif %}</span>
-              <div class="money-wrap rate-edit" hidden>
+              <div class="money-wrap rate-edit" hidden style="justify-content:flex-end;">
                 <span class="money-sym">$</span>
                 <input type="number" name="rate_{{ ft.id }}" value="{{ rate.amount|default:'' }}"
-                       min="0" step="0.01" class="money-input" placeholder="default">
+                       min="0" step="0.01" class="money-input" placeholder="default" style="width:6rem;">
               </div>
             </td>
             <td>
+              {% with m=rate.time_method|default:ac.total_time_method %}
+              <span class="rate-view" style="font-size:.82rem;color:var(--text-3);">
+                {% if rate %}{{ rate.get_time_method_display }}{% else %}<span style="color:var(--text-3)">(default)</span>{% endif %}
+              </span>
+              <select name="instrument_{{ ft.id }}" class="finput rate-edit" hidden style="width:auto;font-size:.82rem;">
+                {% for val, label in ac.TOTAL_TIME_METHOD_CHOICES %}
+                <option value="{{ val }}" {% if val == m %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              {% endwith %}
+            </td>
+            <td>
               <span class="rate-view">{% if rate and rate.includes_fuel %}<span class="hire-badge wet">Wet</span>{% else %}—{% endif %}</span>
-              <label class="rate-edit" hidden style="display:inline-flex;align-items:center;gap:.35rem;font-size:.85rem;">
-                <input type="checkbox" name="wet_{{ ft.id }}" {% if rate and rate.includes_fuel %}checked{% endif %}> Wet hire
-              </label>
+              <span class="rate-edit" hidden>
+                <input type="checkbox" name="wet_{{ ft.id }}" id="wet-chk-{{ ft.id }}" {% if rate and rate.includes_fuel %}checked{% endif %} style="display:none;">
+                <button type="button" class="sc-toggle {% if rate and rate.includes_fuel %}sc-on{% else %}sc-off{% endif %}" onclick="toggleWet(this,'wet-chk-{{ ft.id }}')"></button>
+              </span>
             </td>
           </tr>
           {% endfor %}
@@ -316,6 +330,12 @@
       document.querySelectorAll('input[name^="rate_"]').forEach(function(inp) {
         if (!inp.value) inp.value = def;
       });
+    };
+    window.toggleWet = function(btn, cbId) {
+      var cb = document.getElementById(cbId);
+      cb.checked = !cb.checked;
+      btn.classList.toggle('sc-on', cb.checked);
+      btn.classList.toggle('sc-off', !cb.checked);
     };
     </script>
 

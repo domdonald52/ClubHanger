@@ -2906,11 +2906,15 @@ def booking_detail(request, club_slug, booking_id):
 
                 _hire_rate = ChargeRate.objects.filter(
                     aircraft=ac, flight_type=booking.flight_type,
-                    time_method=ac.total_time_method,
                 ).first()
                 if not _hire_rate and ac.default_hourly_rate:
                     from types import SimpleNamespace as _SN
-                    _hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False)
+                    _hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False, time_method=ac.total_time_method)
+                # Pick billing hours based on the rate's instrument
+                _hire_method = getattr(_hire_rate, 'time_method', ac.total_time_method) if _hire_rate else ac.total_time_method
+                _hire_hours = (_total_hobbs if _hire_method == 'hobbs' else
+                               _total_tacho if _hire_method == 'tacho' else
+                               _total_airswitch if _hire_method == 'airswitch' else _fc_hours)
 
                 if use_splits:
                     # Create one FlightSegment per pilot with proportional meter readings
@@ -3000,19 +3004,19 @@ def booking_detail(request, club_slug, booking_id):
                         )
                 else:
                     # Single pilot — charge items directly on FC (no segments)
-                    if _hire_rate and _fc_hours:
+                    if _hire_rate and _hire_hours:
                         FlightChargeItem.objects.create(
                             flight_completion=_new_fc, item_type='hire',
                             description=f'Aircraft hire — {ac.registration}',
-                            amount=round(float(_hire_rate.amount) * float(_fc_hours), 2),
+                            amount=round(float(_hire_rate.amount) * float(_hire_hours), 2),
                         )
-                    if (_new_fc.fuel_surcharge_rate_snapshot and _fc_hours
+                    if (_new_fc.fuel_surcharge_rate_snapshot and _hire_hours
                             and not (_hire_rate and _hire_rate.includes_fuel)
                             and _new_fc.fuel_surcharge_rate_snapshot > 0):
                         FlightChargeItem.objects.create(
                             flight_completion=_new_fc, item_type='fuel',
                             description='Fuel charge',
-                            amount=round(float(_new_fc.fuel_surcharge_rate_snapshot) * float(_fc_hours), 2),
+                            amount=round(float(_new_fc.fuel_surcharge_rate_snapshot) * float(_hire_hours), 2),
                         )
                     if _new_fc.instructor_rate_snapshot and _fc_hours and booking.instructor:
                         FlightChargeItem.objects.create(
@@ -3118,11 +3122,10 @@ def booking_detail(request, club_slug, booking_id):
                     hours = fc.actual_flight_hours
                     hire_rate = ChargeRate.objects.filter(
                         aircraft=ac, flight_type=booking.flight_type,
-                        time_method=ac.total_time_method
                     ).first()
                     if not hire_rate and ac.default_hourly_rate:
                         from types import SimpleNamespace as _SN
-                        hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False)
+                        hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False, time_method=ac.total_time_method)
                     if hire_rate and hours:
                         FlightChargeItem.objects.create(
                             flight_completion=fc, item_type='hire',
@@ -3936,11 +3939,10 @@ def booking_detail(request, club_slug, booking_id):
     if booking.status in (BookingStatus.DEPARTED, BookingStatus.RETURNED):
         _hire = ChargeRate.objects.filter(
             aircraft=booking.aircraft, flight_type=booking.flight_type,
-            time_method=booking.aircraft.total_time_method
         ).first()
         if not _hire and booking.aircraft.default_hourly_rate:
             from types import SimpleNamespace as _SN
-            _hire = _SN(amount=booking.aircraft.default_hourly_rate, includes_fuel=False)
+            _hire = _SN(amount=booking.aircraft.default_hourly_rate, includes_fuel=False, time_method=booking.aircraft.total_time_method)
         _instr_rate = None
         if booking.instructor:
             _im = ClubMember.objects.filter(user=booking.instructor, club=club).first()
@@ -4211,11 +4213,10 @@ def _generate_segment_charges(fc, segments, booking, config=None):
     ac = booking.aircraft
     hire_rate = ChargeRate.objects.filter(
         aircraft=ac, flight_type=booking.flight_type,
-        time_method=ac.total_time_method
     ).first()
     if not hire_rate and ac.default_hourly_rate:
         from types import SimpleNamespace as _SN
-        hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False)
+        hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False, time_method=ac.total_time_method)
     total_hours = sum(s.hours for s in segments) or _D('0')
 
     for seg in segments:
@@ -5759,15 +5760,15 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
             for ft in FlightType.objects.filter(club=club):
                 amount = request.POST.get(f'rate_{ft.id}', '').strip()
                 includes_fuel = request.POST.get(f'wet_{ft.id}') == 'on'
+                instrument = request.POST.get(f'instrument_{ft.id}', ac.total_time_method)
+                if instrument not in ('hobbs', 'tacho', 'airswitch'):
+                    instrument = ac.total_time_method
+                ChargeRate.objects.filter(aircraft=ac, flight_type=ft).delete()
                 if amount:
-                    ChargeRate.objects.update_or_create(
-                        aircraft=ac, flight_type=ft, time_method=ac.total_time_method,
-                        defaults={'club': club, 'amount': amount, 'includes_fuel': includes_fuel}
+                    ChargeRate.objects.create(
+                        club=club, aircraft=ac, flight_type=ft,
+                        time_method=instrument, amount=amount, includes_fuel=includes_fuel
                     )
-                else:
-                    ChargeRate.objects.filter(
-                        aircraft=ac, flight_type=ft, time_method=ac.total_time_method
-                    ).delete()
             _saved = True
 
         elif action == 'add_fuel_rate' and actor.is_admin:
