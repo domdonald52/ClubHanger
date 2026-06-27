@@ -13,6 +13,14 @@
 
   <!-- Booking info strip -->
   <div style="background:var(--surface-2);border-radius:8px;padding:.6rem .9rem;margin-bottom:1rem;font-size:.86rem;">
+    <!-- Identity row -->
+    <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:1px solid var(--border);">
+      <span style="font-weight:700;font-size:.92rem;color:var(--text-1);">{{ booking.member.user.get_full_name }}</span>
+      <span style="color:var(--text-3);">·</span>
+      <span style="font-weight:600;color:var(--primary);">{{ booking.aircraft.registration }}</span>
+      {% if booking.flight_type %}<span style="color:var(--text-3);">·</span><span style="color:var(--text-2);">{{ booking.flight_type.name }}</span>{% endif %}
+      {% if booking.instructor %}<span style="color:var(--text-3);">·</span><span style="color:var(--text-2);"><i class="ti ti-school" style="font-size:.8rem;opacity:.6;"></i> {{ booking.instructor.get_full_name }}</span>{% endif %}
+    </div>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;">
       <span class="bk-time">{{ booking.scheduled_start|date:"D j M Y, H:i" }} – {{ booking.scheduled_end|time:"H:i" }}</span>
       <span class="status-chip status-{{ booking.display_status_key }}" style="flex-shrink:0;">{% if booking.display_status_key == 'pending' %}<i class="ti ti-clock"></i> {% elif booking.display_status_key == 'confirmed' %}<i class="ti ti-check"></i> {% elif booking.display_status_key == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif booking.display_status_key == 'returned' %}<i class="ti ti-plane-arrival"></i>{% elif booking.display_status_key == 'completed' %}<i class="ti ti-circle-check"></i> {% elif booking.display_status_key == 'cancelled' %}<i class="ti ti-ban"></i> {% endif %}{{ booking.display_status }}</span>

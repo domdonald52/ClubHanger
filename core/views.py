@@ -4048,12 +4048,10 @@ def booking_detail(request, club_slug, booking_id):
         'online_aircraft': Aircraft.objects.filter(club=club, status='online').order_by('registration'),
         'base_template': 'core/base_inline.html' if is_inline else 'core/base.html',
         'inline_title': (
-            f'{booking.member.user.get_full_name()} · {booking.aircraft.registration}'
-            + (f' · {booking.flight_type.name}' if booking.flight_type else '')
-            + (f' · {booking.instructor.get_full_name()}' if booking.instructor else '')
-            + (' — Check out' if booking.status == 'confirmed' else
-               ' — Check in' if booking.status == 'departed' else
-               ' — Charges' if booking.status in ('returned', 'completed') else '')
+            'Check out' if booking.status == 'confirmed' else
+            'Check in' if booking.status == 'departed' else
+            'Charges' if booking.status in ('returned', 'completed') else
+            'Booking'
         ),
         'watchers': list(SlotWatch.objects.filter(booking=booking).select_related('club_member__user')) if actor.can_access_manage else [],
         'is_watching': actor.can_access_manage and SlotWatch.objects.filter(booking=booking, club_member=actor).exists(),
