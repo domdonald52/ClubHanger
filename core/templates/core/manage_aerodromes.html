@@ -232,7 +232,7 @@ window.setAllAe = function(collapse) {
     var id = card.id.replace('ae-card-', '');
     try { localStorage.setItem('ae-col-' + id, collapse ? '1' : '0'); } catch(x) {}
   });
-}
+};
 
 (function(){
   // Restore collapsed state from localStorage
