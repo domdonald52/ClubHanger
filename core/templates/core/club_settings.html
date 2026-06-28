@@ -132,7 +132,7 @@
         <textarea name="billing_address" class="finput" rows="3">{{ config.billing_address }}</textarea>
       </label>
 
-      <div style="margin-top:.4rem;">
+      <div style="margin-top:.4rem;display:flex;justify-content:flex-end;">
         <button type="submit" name="_tab" value="general" class="btn">Save</button>
       </div>
     </div><!-- /tab-general -->
@@ -196,7 +196,7 @@
           </label>
         </div>
 
-        <div style="margin-top:1.6rem;">
+        <div style="margin-top:1.6rem;display:flex;justify-content:flex-end;">
           <button type="submit" name="_tab" value="bookings" class="btn">Save</button>
         </div>
     </div><!-- /tab-bookings -->
@@ -421,7 +421,7 @@
         {% endfor %}
       </fieldset>
 
-      <button type="submit" name="_tab" value="appearance" class="btn secondary" id="save-appearance-btn">Save appearance</button>
+      <div style="display:flex;justify-content:flex-end;"><button type="submit" name="_tab" value="appearance" class="btn secondary" id="save-appearance-btn">Save appearance</button></div>
       <script>
       (function(){
         /* Dark mode toggle — immediate preview */
@@ -1152,7 +1152,7 @@
         </div>
       </div>
 
-      <button type="submit" class="btn">Save</button>
+      <div style="display:flex;justify-content:flex-end;margin-top:1rem;"><button type="submit" class="btn">Save</button></div>
     </form>
   </div><!-- /tab-billing -->
 
@@ -1257,7 +1257,7 @@
             </div>
           </label>
         </div>
-        <button type="submit" class="btn" style="margin-bottom:0;">Save defaults</button>
+        <div style="display:flex;justify-content:flex-end;"><button type="submit" class="btn">Save defaults</button></div>
       </div>
       {% if renewal_eb_cutoff_computed %}
       <p style="font-size:.8rem;color:var(--text-3);margin:.3rem 0 0;">Early-bird cutoff for the current FY: <strong>{{ renewal_eb_cutoff_computed|date:"j N Y" }}</strong>. Payments received at the early-bird rate on or before this date are accepted as payment in full.</p>
@@ -1496,9 +1496,9 @@
             </tbody>
           </table>
         </div>
-        <div style="margin-top:1rem;display:flex;gap:.6rem;align-items:center;">
+        <p style="font-size:.78rem;color:var(--text-3);margin:.6rem 0 .5rem;">Enter 0 to explicitly budget zero hours; leave blank to exclude from calculations.</p>
+        <div style="display:flex;justify-content:flex-end;">
           <button type="submit" class="cbtn primary">Save budget</button>
-          <span style="font-size:.78rem;color:var(--text-3);">Enter 0 to explicitly budget zero hours; leave blank to exclude from calculations.</span>
         </div>
       </form>
     </div>
