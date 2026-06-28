@@ -24,7 +24,7 @@
         <td style="color:var(--text-2);">{{ instr.instructor_grade.name|default:"—" }}</td>
         <td style="color:var(--text-3);font-size:.85rem;">{% if instr.instructor_grade %}${{ instr.instructor_grade.hourly_rate|currency }}/hr{% else %}—{% endif %}</td>
         <td style="color:var(--text-3);font-size:.82rem;">
-          {% if instr.av_count %}{{ instr.av_count }} window{{ instr.av_count|pluralize }}{% elif instr.av_has_any %}<span style="color:var(--warning-text);font-size:.78rem;font-weight:600;">All expired — unavailable</span>{% else %}<span style="color:var(--danger);font-size:.78rem;font-weight:600;">No windows — unavailable</span>{% endif %}
+          {% if instr.av_count %}{{ instr.av_count }} window{{ instr.av_count|pluralize }}{% else %}<span style="color:var(--danger);font-size:.78rem;font-weight:600;">Unavailable</span>{% endif %}
         </td>
         <td style="text-align:right;">
           <div style="display:inline-flex;gap:.3rem;">
