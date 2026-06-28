@@ -80,6 +80,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         year, month, day = today.year, today.month, today.day
     
     selected_date = datetime(year, month, day).date()
+    is_past_day = selected_date < timezone.localdate()
     day_start = _aware(datetime.combine(selected_date, config.operating_hours_start))
     day_end = _aware(datetime.combine(selected_date, config.operating_hours_end))
     slot_minutes = config.time_slot_interval
@@ -347,11 +348,13 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         is_active = instr.standing not in (ClubMember.STANDING_RESIGNED,)
 
         normal_show = is_active and on_roster is not False
-        ghost = (not normal_show) and has_bookings
+        ghost = (not normal_show) and has_bookings and not is_past_day
         if not normal_show and not ghost:
             continue
 
-        if instr.standing in (ClubMember.STANDING_RESIGNED, ClubMember.STANDING_LAPSED):
+        if is_past_day:
+            ghost_reason = None
+        elif instr.standing in (ClubMember.STANDING_RESIGNED, ClubMember.STANDING_LAPSED):
             ghost_reason = 'inactive'
         elif on_roster is False:
             ghost_reason = 'off_roster'
@@ -403,8 +406,8 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
                 'bands': [],
                 'is_current_user': user == request.user,
                 'on_roster': None,
-                'ghost': True,
-                'ghost_reason': 'role_changed',
+                'ghost': not is_past_day,
+                'ghost_reason': None if is_past_day else 'role_changed',
                 'has_hard_blockout': False,
                 'has_soft_blockout': False,
             })
@@ -601,6 +604,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         'can_manage': can_manage,
         'current_user_id': request.user.id,
         'selected_date': selected_date,
+        'is_past_day': is_past_day,
         'today': today,
         'prev_date': prev_date,
         'next_date': next_date,
