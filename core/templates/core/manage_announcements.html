@@ -175,7 +175,7 @@ document.addEventListener('keydown', e => {
   if(e.key==='Escape') document.querySelectorAll('.modal-back').forEach(m => m.hidden=true);
 });
 
-window.openEdit(id, type, title, body, evDate, exDate, pinned) {
+window.openEdit = function(id, type, title, body, evDate, exDate, pinned) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-type').value = type;
   document.getElementById('edit-title').value = title;
@@ -186,7 +186,7 @@ window.openEdit(id, type, title, body, evDate, exDate, pinned) {
   document.getElementById('edit-ann-modal').hidden = false;
 }
 
-window.openDel(id, title) {
+window.openDel = function(id, title) {
   document.getElementById('del-id').value = id;
   document.getElementById('del-title').textContent = title;
   document.getElementById('del-ann-modal').hidden = false;

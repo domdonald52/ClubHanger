@@ -313,7 +313,7 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') {
   document.getElementById('registrar-modal').hidden=true;
 }});
 
-window.toggleAddInvite(chk) {
+window.toggleAddInvite = function(chk) {
   var nameWrap = document.getElementById('add-name-wrap');
   var pwWrap = document.getElementById('add-pw-wrap');
   var btn = document.getElementById('add-submit-btn');
@@ -339,7 +339,7 @@ toggleAddInvite(document.getElementById('add-send-invite-chk'));
 const REG_URL = '{% url "core:registrar_export" club.slug %}';
 const REG_LABELS = {name:'Name',email:'Email',role:'Role',standing:'Standing',join_date:'Joined',resigned_at:'Resigned',date_of_birth:'DOB',address:'Address',phone_mobile:'Mobile'};
 
-window.regPreview() {
+window.regPreview = function() {
   const asOf = document.getElementById('reg-as-of').value;
   document.getElementById('reg-result').textContent = 'Loading…';
   document.getElementById('reg-table-wrap').style.display = 'none';

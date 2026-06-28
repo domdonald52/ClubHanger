@@ -313,12 +313,12 @@
   };
 })();
 
-window.toggleBoRecur(sel, dateFieldId, weekdayFieldId) {
+window.toggleBoRecur = function(sel, dateFieldId, weekdayFieldId) {
   document.getElementById(dateFieldId).style.display = sel.value === 'one_off' ? '' : 'none';
   document.getElementById(weekdayFieldId).style.display = sel.value === 'weekly' ? '' : 'none';
 }
 
-window.toggleBoTime(cb, timesId) {
+window.toggleBoTime = function(cb, timesId) {
   document.getElementById(timesId).style.display = cb.checked ? 'none' : 'flex';
 }
 </script>

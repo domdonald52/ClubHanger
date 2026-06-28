@@ -1486,12 +1486,12 @@
 </div>
 
 <script>
-window.toggleOutcomeNotes(sel) {
+window.toggleOutcomeNotes = function(sel) {
   const wrap = document.getElementById('outcome-notes-wrap');
   if (wrap) wrap.style.display = sel.value === 'completed' ? 'none' : 'block';
 }
 
-window.ciPayMethodChange(sel) {
+window.ciPayMethodChange = function(sel) {
   const amtWrap = document.getElementById('ci-pay-amount-wrap');
   if (!amtWrap) return;
   amtWrap.style.display = sel.value ? '' : 'none';

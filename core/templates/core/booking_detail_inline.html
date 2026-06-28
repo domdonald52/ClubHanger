@@ -39,7 +39,7 @@
   .money-input:focus{outline:2px solid var(--primary,#2563eb);outline-offset:-1px;border-radius:0 5px 5px 0!important;}
 </style>
 <script>
-window.fmtMoney(el) { const v=parseFloat(el.value); if(!isNaN(v)) el.value=v.toFixed(2); }
+window.fmtMoney = function(el) { const v=parseFloat(el.value); if(!isNaN(v)) el.value=v.toFixed(2); }
 document.addEventListener('DOMContentLoaded',function(){
   document.querySelectorAll('.money-input').forEach(function(el){el.addEventListener('blur',function(){fmtMoney(el);});});
 });

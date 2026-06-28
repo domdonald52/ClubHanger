@@ -111,7 +111,7 @@
 
 <script>
 var _pendingCompleteId = null;
-window.confirmComplete(id) {
+window.confirmComplete = function(id) {
   _pendingCompleteId = id;
   document.getElementById('complete-confirm-strip').hidden = false;
 }
@@ -126,7 +126,7 @@ document.getElementById('complete-confirm-no').addEventListener('click', functio
   document.getElementById('complete-confirm-strip').hidden = true;
 });
 
-window.openOverride(id, desc) {
+window.openOverride = function(id, desc) {
   document.getElementById('override-id').value = id;
   document.getElementById('override-desc').textContent = desc;
   document.getElementById('override-note').value = '';

@@ -998,7 +998,7 @@ document.addEventListener('keydown', e => {
 
 // Assign to window so onclick="" attributes find them when this page
 // is loaded via overlay (new Function re-execution scopes declarations locally).
-window._maintDueHint(pfx) {
+window._maintDueHint = function(pfx) {
   var lastH = parseFloat(document.getElementById(pfx+'-last-hours').value);
   var intH  = parseFloat(document.getElementById(pfx+'-interval-hours').value);
   var dueH  = parseFloat(document.getElementById(pfx+'-due-hours').value);
@@ -1042,8 +1042,8 @@ window._maintDueHint(pfx) {
   }
 }
 
-window.emmUpdateThresh() { _maintDueHint('emm'); }
-window.ammUpdateThresh() { _maintDueHint('amm'); }
+window.emmUpdateThresh = function() { _maintDueHint('emm'); }
+window.ammUpdateThresh = function() { _maintDueHint('amm'); }
 ['emm-due-date','emm-due-hours','emm-last-date','emm-last-hours','emm-interval-days','emm-interval-hours'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) el.addEventListener('input', emmUpdateThresh);

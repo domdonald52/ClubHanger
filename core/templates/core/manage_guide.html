@@ -566,14 +566,60 @@ body.dark-mode .part{color:#fb923c;}
       <p>The instructor roster controls which instructors appear on the Gantt calendar as selectable rows, and which can be assigned to dual bookings. It is managed from <strong>People → Instructors</strong> in the management web app.</p>
       <p><strong>On-roster flag.</strong> Each instructor-role member has an <em>On instructor roster</em> checkbox on their member record (People → Members → [instructor] → Membership tab). When ticked, the instructor appears as a named row in the Gantt calendar, can be selected when creating a dual or instruction booking, and is included in the booking assignment check. Untick this to archive an instructor from the active roster without deleting their record — their past bookings and flight history are preserved.</p>
       <p><strong>People → Instructors page.</strong> This page shows all rostered instructors with a rolling 5-week calendar view. For each instructor you can see which days they are shown as available. From here you can also add a rostered instructor (from among members with an instructor-type role) or remove one from the roster. Adding/removing updates the On roster flag on the member record.</p>
-      <p><strong>Instructor availability windows.</strong> An instructor with no availability windows is treated as <em>not available</em> — they will not appear in Find slots results for dual flights, and any existing bookings assigned to them will surface on the Attention page as off-roster conflicts. Every rostered instructor must have at least one window configured to be selectable in the booking flow. To reflect a regular schedule — for example an instructor who flies every Tuesday and Saturday — set up availability windows under People → Instructors → [instructor] → Availability. Windows can be:</p>
+      <p><strong>Removing an instructor from the roster.</strong> If an instructor is removed from the roster (or has the On roster flag unticked) after they have already been assigned to a booking, the system does not automatically cancel those bookings. The conflict appears on the Attention page under "Instructor off roster" and as a warning on the booking block in the Gantt. The assigned instructor must be changed or the bookings cancelled — they cannot proceed to Depart without resolution or a staff override.</p>
+
+      <h4>Availability windows</h4>
+      <p>An instructor with no <em>active</em> availability windows is treated as <strong>unavailable</strong> — they will not appear in Find slots results for dual flights. Every rostered instructor must have at least one active window configured. To reflect a regular schedule, set up availability windows under People → Instructors → [instructor] → Availability tab. Windows can be:</p>
       <ul>
-        <li><strong>Weekly recurring</strong> — e.g. every Tuesday all day, or every Saturday 09:00–13:00. The system uses this pattern when members search for available slots with a specific instructor.</li>
-        <li><strong>One-off (specific date)</strong> — e.g. available this particular Saturday for a check flight, outside their usual pattern.</li>
+        <li><strong>Weekly recurring</strong> — e.g. every Tuesday all day, every Mon/Wed/Fri 09:00–13:00. The system uses this pattern when members search for available slots. You can set an <em>active-from</em> date (when the pattern starts) and an <em>active-until</em> date (when it ends). Leave active-until blank for an open-ended ongoing pattern.</li>
+        <li><strong>One-off (specific date)</strong> — e.g. available this coming Saturday for a check flight, outside their usual pattern.</li>
       </ul>
       <p>Availability windows drive the <a href="#book-findslots">Find slots</a> search for dual flights — a slot is only offered if at least one rostered instructor has a window covering it. They do not hard-block manual booking creation — a booking can still be created and assigned to an off-roster instructor, but the mismatch will appear on the Attention page as a scheduling conflict. For the common case of an instructor who is always available (e.g. a full-time flying school instructor), add a weekly all-day window for each day of the week.</p>
-      <p><strong>Removing an instructor from the roster.</strong> If an instructor is removed from the roster (or has the On roster flag unticked) after they have already been assigned to a booking, the system does not automatically cancel those bookings. The conflict appears on the Attention page under "Instructor off roster" and as a warning on the booking block in the Gantt. The assigned instructor must be changed or the bookings cancelled — they cannot proceed to Depart without resolution or a staff override.</p>
-      <p><strong>Instructor block-outs vs availability windows.</strong> These serve different purposes: <em>availability windows</em> say when an instructor is generally available (used by Find slots); <em>block-outs</em> say when they are specifically not available (prevents booking assignment). Use availability windows for regular patterns, and instructor block-outs for one-off or temporary unavailability.</p>
+
+      <div class="callout info">
+        <strong>How windows are displayed.</strong> Multiple weekly windows with the same time settings are grouped into a single display row — for example, three separate windows for Mon, Wed, and Fri all day appear as one row labelled "Mon, Wed, Fri | All day." This makes the list easy to read without hiding the underlying detail. Each row has its own edit and delete controls that act on all windows in the group.
+      </div>
+
+      <h4>Active vs past windows</h4>
+      <p>A window is <strong>active</strong> if it can still apply to a future date:</p>
+      <ul>
+        <li>A <em>weekly recurring</em> window is active if its active-until date is blank (ongoing) or has not yet passed.</li>
+        <li>A <em>one-off</em> window is active if the specific date is today or in the future.</li>
+      </ul>
+      <p>Windows that no longer apply to any future date automatically move into the <strong>past</strong> list and are hidden from the active table. The past list is still accessible via the "Show N past entries" toggle at the bottom of the Availability tab — useful for reviewing your configuration history. Past windows have no effect on availability searching or the Find slots results.</p>
+
+      <h4>Editing a window</h4>
+      <p>Clicking the edit button on an availability window opens the add form pre-filled with that window's settings. Saving an edit <strong>deletes the original window(s) and creates new ones</strong> in their place. This is a forward-only operation: it changes the scheduled availability pattern from now on, but it does not alter any bookings that were already made when the old window was in effect. Past bookings are independent records — they do not "check" the availability window list at completion time, only at the point a slot is searched or offered.</p>
+      <div class="callout tip">
+        <strong>Editing is safe for historical records.</strong> If an instructor changed from flying every Monday to flying every Tuesday, edit the window freely. Every booking that was made based on the old Monday availability remains untouched — it was a real booking created by a real person, and it lives in the booking table independently of any window settings.
+      </div>
+
+      <h4>Deleting a past window</h4>
+      <p>Deleting a past window has no effect on historical bookings or the Gantt. Bookings made during the period that window was active are real records — they exist in the bookings table and are not linked to or dependent on the availability window that made the instructor visible at search time. Removing a past window from the Availability tab just tidies the display; it changes nothing in the flight history.</p>
+
+      <h4>Block-outs layered on top of availability windows</h4>
+      <p>Availability windows and block-outs operate as two separate layers, and both must be satisfied for an instructor to appear available:</p>
+      <ul>
+        <li><strong>Availability windows</strong> — the baseline pattern of <em>when this instructor is generally available</em>. Set once and updated infrequently.</li>
+        <li><strong>Block-outs</strong> — specific periods of <em>unavailability</em> overlaid on top of the baseline. Created for one-off absences (leave, training, illness) without changing the standing availability pattern.</li>
+      </ul>
+      <p>A day that falls within an availability window <em>and</em> within a block-out is treated as unavailable — the block-out takes precedence. This means you can set a standing weekly pattern and then apply individual block-outs for the exceptions, rather than deleting and recreating the window each time something changes. See also <a href="#book-blockouts">Block-outs</a> for the full block-out model.</p>
+      <div class="callout tip">
+        <strong>Instructor block-outs vs editing availability windows.</strong> Use a <em>block-out</em> for a temporary absence (holiday, training course) — it suppresses the instructor for a defined period without touching the underlying availability pattern. Use <em>editing the availability window</em> when the instructor's regular schedule has permanently changed — for example, swapping from Tuesday/Thursday to Wednesday/Friday. Don't add recurring block-outs to simulate a permanent change; that creates ongoing clutter to manage.
+      </div>
+
+      <details class="dblock">
+        <summary>Worked example — a full year with a schedule change and holiday</summary>
+        <div class="dbody">
+          <p><strong>Setup (January):</strong> Alice is added to the roster. You add a weekly availability window: Mon, Wed, Fri | All day | active from 1 Jan. The window appears as a single grouped row in the Availability tab. The roster calendar shows her initials on every Mon/Wed/Fri for the next five weeks.</p>
+          <p><strong>Easter block-out (March):</strong> Alice is unavailable Easter weekend (Fri–Mon). You add an instructor block-out for those four days. The Find slots search no longer offers Alice on those specific dates, even though a Mon/Fri window covers them. The availability window is untouched — it still shows her as available for all other Mon/Wed/Fri dates.</p>
+          <p><strong>Schedule change (June):</strong> Alice changes her flying days to Tue/Thu. You click Edit on the Mon/Wed/Fri grouped row, change the days to Tue/Thu, and save. The old windows are removed and two new windows (Tue and Thu) are created. Past bookings made on Mondays and Fridays before June are completely unaffected — they are independent booking records. The Attention page does not flag them because the bookings themselves were not changed.</p>
+          <p><strong>Active-until expiry (December):</strong> Alice goes on extended leave. Rather than deleting her windows, you set active-until to her last available day. After that date, the windows automatically move to the past list and she shows as Unavailable on the roster. When she returns, you add a new window with a fresh active-from date.</p>
+          <p><strong>Viewing history:</strong> In the Availability tab, clicking "Show N past entries" reveals the old Mon/Wed/Fri windows (now past) alongside the January–June booking history. The past windows are greyed out and have no effect on current searches.</p>
+        </div>
+      </details>
+
+      <p><strong>Instructor block-outs vs availability windows — summary.</strong> <em>Availability windows</em> say when an instructor is generally available (used by Find slots and the roster calendar); <em>block-outs</em> say when they are specifically not available (suppresses them for a defined period without changing the pattern). Use availability windows for regular recurring schedules, and instructor block-outs for one-off or temporary unavailability.</p>
 
       <h3 id="book-lifecycle">Booking lifecycle</h3>
       <div class="step-flow">

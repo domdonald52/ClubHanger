@@ -604,7 +604,7 @@
 })();
 
 // CHART_PALETTE injected globally by base.html from ClubConfig.chart_colors
-window._applyColors(datasets) {
+window._applyColors = function(datasets) {
   return datasets.map((ds,i) => ({
     ...ds,
     backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length],
@@ -613,7 +613,7 @@ window._applyColors(datasets) {
   }));
 }
 // Single-series helper (convenience, picks from palette by index)
-window._themeColors(n) {
+window._themeColors = function(n) {
   return Array.from({length:n}, (_,i) => CHART_PALETTE[i % CHART_PALETTE.length]);
 }
 
@@ -621,13 +621,13 @@ const _legendFont = { size: 11 };
 
 // ── Chart registry + pop-out ─────────────────────────────────────────────────
 const _chartConfigs = {};
-window._mkChart(id, config) {
+window._mkChart = function(id, config) {
   const el = document.getElementById(id);
   if (!el) return;
   _chartConfigs[id] = config;
   return new Chart(el, config);
 }
-window.openChartModal(id, title) {
+window.openChartModal = function(id, title) {
   const cfg = _chartConfigs[id];
   if (!cfg) return;
   document.getElementById('chart-modal-title').textContent = title;
@@ -642,13 +642,13 @@ window.openChartModal(id, title) {
   new Chart(mc, cloned);
   document.getElementById('chart-modal').hidden = false;
 }
-window.closeChartModal() {
+window.closeChartModal = function() {
   const mc = document.getElementById('chart-modal-canvas');
   const existing = Chart.getChart(mc);
   if (existing) existing.destroy();
   document.getElementById('chart-modal').hidden = true;
 }
-window.copyChartToClipboard() {
+window.copyChartToClipboard = function() {
   const mc = document.getElementById('chart-modal-canvas');
   const btn = document.getElementById('chart-copy-btn');
   mc.toBlob(async function(blob) {
@@ -1133,7 +1133,7 @@ const _stackedOpts = {
 })();
 
 // ── Ask AI ───────────────────────────────────────────────────────────────────
-window.askAI() {
+window.askAI = function() {
   const q = document.getElementById('ai-question').value.trim();
   if (!q) return;
   document.getElementById('ai-response').style.display = 'none';

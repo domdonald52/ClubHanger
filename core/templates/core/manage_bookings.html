@@ -256,7 +256,7 @@
 })();
 
 // ── Date range interlock ────────────────────────────────────────────────
-window.syncDates() {
+window.syncDates = function() {
   const from = document.getElementById('date_from');
   const to   = document.getElementById('date_to');
   if (!from || !to) return;

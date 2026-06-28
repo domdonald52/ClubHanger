@@ -175,7 +175,7 @@
 
 <script>
 const _availForm = document.getElementById('avail-form');
-window.avSubmit() {
+window.avSubmit = function() {
   if (!_availForm) return;
   // requestSubmit() fires the submit event (caught by overlay's attachHandlers);
   // plain .submit() bypasses listeners and triggers real page navigation.
@@ -240,7 +240,7 @@ window.avSubmit = avSubmit;
 })();
 
 // Offset anchor scrolling so day headers land below the sticky bar
-window.fixScrollMargins() {
+window.fixScrollMargins = function() {
   const sticky = document.querySelector('.avail-sticky');
   if (!sticky) return;
   const inOverlay = !!document.getElementById('page-overlay-body');

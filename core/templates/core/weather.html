@@ -379,7 +379,7 @@ window.confirmRemoveWc = function(id, name){
   });
 })();
 
-window.refreshWcImg(btn){
+window.refreshWcImg = function(btn){
   var img = btn.closest('.wc-img-wrap').querySelector('.wc-img');
   var wrap = btn.closest('.wc-img-wrap');
   wrap.classList.remove('wc-img-fail');

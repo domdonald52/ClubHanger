@@ -134,13 +134,13 @@
   </div>
 </div>
 <script>
-window.applyVoucherType(sel) {
+window.applyVoucherType = function(sel) {
   var opt = sel.options[sel.selectedIndex];
   var val = opt.dataset.value, desc = opt.dataset.desc;
   if (val) document.getElementById('voucher-value').value = val;
   if (desc !== undefined) document.getElementById('voucher-desc').value = desc;
 }
-window.openRedeem(id, code, value) {
+window.openRedeem = function(id, code, value) {
   document.getElementById('redeem-voucher-id').value = id;
   document.getElementById('redeem-desc').textContent = 'Voucher ' + code + ' · $' + value + ' will be credited to the member\'s account.';
   document.getElementById('redeem-modal').hidden = false;
