@@ -2405,7 +2405,7 @@ class InstructorAvailability(models.Model):
     """
     Declares when an instructor is on-roster and available to be booked.
     The availability search intersects aircraft free time with this schedule.
-    An instructor with no records here is assumed available during all operating hours.
+    An instructor with no records here is treated as unavailable for rostered scheduling.
     """
     RECURRENCE_CHOICES = [
         ('weekly', 'Weekly (recurring)'),
