@@ -344,14 +344,14 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         has_bookings = instr_bookings.exists()
         # Operationally active: not resigned (standing may be suspended/lapsed but
         # could still have bookings to honour; resigned is definitive departure)
-        is_active = instr.standing not in ('resigned',)
+        is_active = instr.standing not in (ClubMember.STANDING_RESIGNED,)
 
         normal_show = is_active and on_roster is not False
         ghost = (not normal_show) and has_bookings
         if not normal_show and not ghost:
             continue
 
-        if instr.standing in ('resigned', 'lapsed'):
+        if instr.standing in (ClubMember.STANDING_RESIGNED, ClubMember.STANDING_LAPSED):
             ghost_reason = 'inactive'
         elif on_roster is False:
             ghost_reason = 'off_roster'
@@ -479,7 +479,7 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         # Badge shown next to the member name in the booking modal
         if m.is_current:
             badge = 'current'
-        elif m.standing == 'non_member':
+        elif m.standing == ClubMember.STANDING_NON_MEMBER:
             badge = 'non_member'
         else:
             badge = 'lapsed'   # suspended / lapsed / resigned / pending
@@ -1554,7 +1554,7 @@ def _lapse_preview(club, config):
     cutoff = timezone.localdate() - _td(days=config.lapse_grace_days)
     return list(
         ClubMember.objects.filter(
-            club=club, standing='active',
+            club=club, standing=ClubMember.STANDING_ACTIVE,
             subscription_expires__lt=cutoff,
         ).select_related('user').order_by('subscription_expires')
     )
@@ -1584,12 +1584,12 @@ def _renewal_preview(club, config):
         Invoice.objects.filter(
             club=club,
             description__startswith='Membership subscription',
-        ).exclude(status__in=('paid', 'void')).values_list('member_id', flat=True)
+        ).exclude(status__in=(Invoice.STATUS_PAID, Invoice.STATUS_VOID)).values_list('member_id', flat=True)
     )
     return list(
         ClubMember.objects.filter(
             club=club,
-            standing='active',
+            standing=ClubMember.STANDING_ACTIVE,
             role__renewal_required=True,
             role__annual_renewal_fee__isnull=False,
         ).exclude(id__in=already_invoiced)
@@ -2008,22 +2008,22 @@ def club_settings(request, club_slug, mode='settings'):
             _now = timezone.localdate()
             cutoff = _now - _td(days=grace)
             candidates = ClubMember.objects.filter(
-                club=club, standing='active',
+                club=club, standing=ClubMember.STANDING_ACTIVE,
                 subscription_expires__lt=cutoff,
             ).select_related('user')
             lapsed_names = []
             for m in candidates:
                 days_over = (_now - m.subscription_expires).days
-                m.standing    = 'lapsed'
+                m.standing    = ClubMember.STANDING_LAPSED
                 m.resigned_at = m.resigned_at or _now
                 m.save(update_fields=['standing', 'resigned_at'])
                 if m.user:
                     m.user.is_active = False
                     m.user.save(update_fields=['is_active'])
                 _MHE.objects.create(
-                    club_member=m, event_type='standing_change',
+                    club_member=m, event_type=MembershipHistoryEntry.EVENT_STANDING_CHANGE,
                     changed_by=request.user,
-                    old_value='active', new_value='lapsed',
+                    old_value=ClubMember.STANDING_ACTIVE, new_value=ClubMember.STANDING_LAPSED,
                     note=f'Auto-lapsed via Settings — subscription expired {m.subscription_expires} '
                          f'({days_over} days ago, grace period {grace} days)',
                 )
@@ -2083,7 +2083,7 @@ def club_settings(request, club_slug, mode='settings'):
                     description=desc,
                     gst_rate=config.gst_rate,
                     amount_paid=0,
-                    status='sent',
+                    status=Invoice.STATUS_SENT,
                     sent_at=timezone.now(),
                     subscription_expiry_date=fy_end,
                     early_bird_amount=_eb_amount,
@@ -2220,9 +2220,9 @@ def club_settings(request, club_slug, mode='settings'):
     _BOOL_PERM_NAMES = ['can_access_manage', 'can_access_safety', 'can_access_fleet', 'can_access_reports', 'can_access_settings', 'is_superadmin', 'renewal_required']
     from django.db.models import Count as _Count, Case as _Case, When as _When, IntegerField as _IntF, Value as _Val
     _sys_order = _Case(
-        _When(system_role_type='member',     then=_Val(0)),
-        _When(system_role_type='instructor', then=_Val(1)),
-        _When(system_role_type='admin',      then=_Val(2)),
+        _When(system_role_type=Role.SYSTEM_MEMBER,     then=_Val(0)),
+        _When(system_role_type=Role.SYSTEM_INSTRUCTOR, then=_Val(1)),
+        _When(system_role_type=Role.SYSTEM_ADMIN,      then=_Val(2)),
         default=_Val(3), output_field=_IntF(),
     )
     roles = Role.objects.filter(club=club).annotate(
@@ -2242,9 +2242,9 @@ def club_settings(request, club_slug, mode='settings'):
         'config': config,
         'font_options': font_options,
         'color_fields': color_fields,
-        'all_blockout_types': BlockOutType.objects.filter(club=club, target='all'),
-        'instructor_blockout_types': BlockOutType.objects.filter(club=club, target='instructor'),
-        'aircraft_blockout_types': BlockOutType.objects.filter(club=club, target='aircraft'),
+        'all_blockout_types': BlockOutType.objects.filter(club=club, target=BlockOutType.TARGET_ALL),
+        'instructor_blockout_types': BlockOutType.objects.filter(club=club, target=BlockOutType.TARGET_INSTRUCTOR),
+        'aircraft_blockout_types': BlockOutType.objects.filter(club=club, target=BlockOutType.TARGET_AIRCRAFT),
         'flight_types': FlightType.objects.filter(club=club),
         'ig_sort': (_ig_sort := request.GET.get('ig_sort', 'name')),
         'ig_sort_dir': (_ig_dir := request.GET.get('ig_dir', 'asc') if request.GET.get('ig_dir') in ('asc', 'desc') else 'asc'),
@@ -2359,8 +2359,8 @@ def manage_bookings(request, club_slug):
 
     _conflict_q = (
         Q(blockout_conflict=True) |
-        Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
-        Q(member__standing='active', member__subscription_expires__lt=today) |
+        Q(member__standing__in=[ClubMember.STANDING_SUSPENDED, ClubMember.STANDING_LAPSED, ClubMember.STANDING_RESIGNED]) |
+        Q(member__standing=ClubMember.STANDING_ACTIVE, member__subscription_expires__lt=today) |
         Q(aircraft__status=AircraftStatus.RETIRED)
     )
 
@@ -2437,12 +2437,12 @@ def manage_bookings(request, club_slug):
                 r.append('Aircraft double-booked')
             if b.id in _in_clash_bids:
                 r.append('Instructor double-booked')
-        if b.blockout_conflict and b.status not in ('departed', 'completed'):
+        if b.blockout_conflict and b.status not in (BookingStatus.DEPARTED, BookingStatus.COMPLETED):
             r.append(b.blockout_conflict_reason or 'Block-out conflict')
         if b.member:
-            if b.member.standing in ('suspended', 'lapsed', 'resigned'):
+            if b.member.standing in (ClubMember.STANDING_SUSPENDED, ClubMember.STANDING_LAPSED, ClubMember.STANDING_RESIGNED):
                 r.append(f'Member {b.member.get_standing_display()}')
-            elif b.member.standing == 'active' and b.member.subscription_expires and b.member.subscription_expires < today:
+            elif b.member.standing == ClubMember.STANDING_ACTIVE and b.member.subscription_expires and b.member.subscription_expires < today:
                 r.append('Subscription expired')
         if b.aircraft and b.aircraft.status == AircraftStatus.RETIRED:
             r.append('Aircraft retired')
@@ -2676,7 +2676,7 @@ def booking_detail(request, club_slug, booking_id):
             else:
                 fuel_rate = FuelSurchargeRate.current_rate(club, booking.aircraft)
                 _depart_vals = {
-                    'status': 'departed',
+                    'status': BookingStatus.DEPARTED,
                     'departed_at': timezone.now(),
                     'fuel_rate_snapshot': fuel_rate.rate if fuel_rate else None,
                     'departed_aircraft_id': booking.aircraft_id,
@@ -2975,7 +2975,7 @@ def booking_detail(request, club_slug, booking_id):
                         if _hire_rate and _seg_bill_hrs:
                             FlightChargeItem.objects.create(
                                 flight_completion=_new_fc, segment=_seg,
-                                item_type='hire',
+                                item_type=FlightChargeItem.ITEM_HIRE,
                                 description=f'Aircraft hire — {ac.registration}',
                                 amount=round(float(_hire_rate.amount) * _seg_bill_hrs, 2),
                             )
@@ -2984,7 +2984,7 @@ def booking_detail(request, club_slug, booking_id):
                                 and _new_fc.fuel_surcharge_rate_snapshot > 0):
                             FlightChargeItem.objects.create(
                                 flight_completion=_new_fc, segment=_seg,
-                                item_type='fuel', description='Fuel charge',
+                                item_type=FlightChargeItem.ITEM_FUEL, description='Fuel charge',
                                 amount=round(float(_new_fc.fuel_surcharge_rate_snapshot) * _seg_bill_hrs, 2),
                             )
 
@@ -2997,43 +2997,43 @@ def booking_detail(request, club_slug, booking_id):
                     if _new_fc.instructor_rate_snapshot and _fc_hours and booking.instructor:
                         FlightChargeItem.objects.create(
                             flight_completion=_new_fc, segment=None,
-                            item_type='instructor',
+                            item_type=FlightChargeItem.ITEM_INSTRUCTOR,
                             description=f'Instructor fee — {booking.instructor.get_full_name()}',
                             amount=round(float(_new_fc.instructor_rate_snapshot) * float(_fc_hours), 2),
                         )
                     for _sc in ac.surcharges.all():
                         _sc_amt = (round(float(_sc.amount) * float(_fc_hours), 2)
-                                   if _sc.rate_type == 'per_hour' else float(_sc.amount))
+                                   if _sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR else float(_sc.amount))
                         FlightChargeItem.objects.create(
                             flight_completion=_new_fc, segment=None,
-                            item_type='surcharge', description=_sc.name, amount=_sc_amt,
+                            item_type=FlightChargeItem.ITEM_SURCHARGE, description=_sc.name, amount=_sc_amt,
                         )
                 else:
                     # Single pilot — charge items directly on FC (no segments)
                     if _hire_rate and _hire_hours:
                         FlightChargeItem.objects.create(
-                            flight_completion=_new_fc, item_type='hire',
+                            flight_completion=_new_fc, item_type=FlightChargeItem.ITEM_HIRE,
                             description=f'Aircraft hire — {ac.registration}',
                             amount=round(float(_hire_rate.amount) * float(_hire_hours), 2),
                         )
                     if (_new_fc.fuel_surcharge_rate_snapshot and _hire_hours
                             and _new_fc.fuel_surcharge_rate_snapshot > 0):
                         FlightChargeItem.objects.create(
-                            flight_completion=_new_fc, item_type='fuel',
+                            flight_completion=_new_fc, item_type=FlightChargeItem.ITEM_FUEL,
                             description='Fuel charge',
                             amount=round(float(_new_fc.fuel_surcharge_rate_snapshot) * float(_hire_hours), 2),
                         )
                     if _new_fc.instructor_rate_snapshot and _fc_hours and booking.instructor:
                         FlightChargeItem.objects.create(
-                            flight_completion=_new_fc, item_type='instructor',
+                            flight_completion=_new_fc, item_type=FlightChargeItem.ITEM_INSTRUCTOR,
                             description=f'Instructor fee — {booking.instructor.get_full_name()}',
                             amount=round(float(_new_fc.instructor_rate_snapshot) * float(_fc_hours), 2),
                         )
                     for _sc in ac.surcharges.all():
                         _sc_amt = (round(float(_sc.amount) * float(_fc_hours), 2)
-                                   if _sc.rate_type == 'per_hour' else float(_sc.amount))
+                                   if _sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR else float(_sc.amount))
                         FlightChargeItem.objects.create(
-                            flight_completion=_new_fc, item_type='surcharge',
+                            flight_completion=_new_fc, item_type=FlightChargeItem.ITEM_SURCHARGE,
                             description=_sc.name, amount=_sc_amt,
                         )
 
@@ -3122,7 +3122,7 @@ def booking_detail(request, club_slug, booking_id):
                     # Clear segments — edit_checkin always produces non-segmented charges.
                     fc.segments.all().delete()
                     fc.charge_items.filter(
-                        item_type__in=['hire', 'fuel', 'instructor', 'surcharge']
+                        item_type__in=[FlightChargeItem.ITEM_HIRE, FlightChargeItem.ITEM_FUEL, FlightChargeItem.ITEM_INSTRUCTOR, FlightChargeItem.ITEM_SURCHARGE]
                     ).delete()
                     hours = fc.actual_flight_hours
                     hire_rate = ChargeRate.objects.filter(
@@ -3133,27 +3133,27 @@ def booking_detail(request, club_slug, booking_id):
                         hire_rate = _SN(amount=ac.default_hourly_rate, includes_fuel=False, time_method=ac.total_time_method)
                     if hire_rate and hours:
                         FlightChargeItem.objects.create(
-                            flight_completion=fc, item_type='hire',
+                            flight_completion=fc, item_type=FlightChargeItem.ITEM_HIRE,
                             description=f'Aircraft hire — {ac.registration}',
                             amount=round(float(hire_rate.amount) * float(hours), 2),
                         )
                     if fc.fuel_surcharge_rate_snapshot and hours and fc.fuel_surcharge_rate_snapshot > 0:
                         FlightChargeItem.objects.create(
-                            flight_completion=fc, item_type='fuel',
+                            flight_completion=fc, item_type=FlightChargeItem.ITEM_FUEL,
                             description='Fuel charge',
                             amount=round(float(fc.fuel_surcharge_rate_snapshot) * float(hours), 2),
                         )
                     if fc.instructor_rate_snapshot and hours and booking.instructor:
                         FlightChargeItem.objects.create(
-                            flight_completion=fc, item_type='instructor',
+                            flight_completion=fc, item_type=FlightChargeItem.ITEM_INSTRUCTOR,
                             description=f'Instructor fee — {booking.instructor.get_full_name()}',
                             amount=round(float(fc.instructor_rate_snapshot) * float(hours), 2),
                         )
                     for sc in ac.surcharges.all():
                         _sc_amt = (round(float(sc.amount) * float(hours), 2)
-                                   if sc.rate_type == 'per_hour' else float(sc.amount))
+                                   if sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR else float(sc.amount))
                         FlightChargeItem.objects.create(
-                            flight_completion=fc, item_type='surcharge',
+                            flight_completion=fc, item_type=FlightChargeItem.ITEM_SURCHARGE,
                             description=sc.name, amount=_sc_amt,
                         )
                     _update_total(fc)
@@ -3175,14 +3175,14 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'add_charge' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and (actor.is_admin or actor.is_instructor):
             fc = booking.flight_completion
             if fc:
-                _active_inv = fc.invoices.exclude(status='void')
+                _active_inv = fc.invoices.exclude(status=Invoice.STATUS_VOID)
                 if _active_inv.filter(amount_paid__gt=0).exists():
                     error = ('Cannot add a charge — a payment has been recorded against an invoice for this flight. '
                              'Issue a separate invoice for any additional charges.')
                 else:
                     _voided_inv = _active_inv.count()
                     if _voided_inv:
-                        _active_inv.update(status='void')
+                        _active_inv.update(status=Invoice.STATUS_VOID)
                         fc.invoice_issued = False
                         fc.save(update_fields=['invoice_issued'])
                     item_type = request.POST.get('item_type', 'one_off')
@@ -3215,14 +3215,14 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'delete_charge' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc:
-                _active_inv = fc.invoices.exclude(status='void')
+                _active_inv = fc.invoices.exclude(status=Invoice.STATUS_VOID)
                 if _active_inv.filter(amount_paid__gt=0).exists():
                     error = ('Cannot remove a charge — a payment has been recorded against an invoice for this flight. '
                              'Reverse the invoice payment first.')
                 else:
                     _voided_inv = _active_inv.count()
                     if _voided_inv:
-                        _active_inv.update(status='void')
+                        _active_inv.update(status=Invoice.STATUS_VOID)
                         fc.invoice_issued = False
                         fc.save(update_fields=['invoice_issued'])
                     result = charging_service.delete_charge(fc, request.POST.get('item_id'))
@@ -3252,7 +3252,7 @@ def booking_detail(request, club_slug, booking_id):
             if fc:
                 _pid_for_check = request.POST.get('payment_id', '').strip()
                 _fp_for_check = fc.payments.filter(id=_pid_for_check).first()
-                _fc_inv = (fc.invoices.filter(member=_fp_for_check.member, status__in=['draft', 'sent']).first()
+                _fc_inv = (fc.invoices.filter(member=_fp_for_check.member, status__in=[Invoice.STATUS_DRAFT, Invoice.STATUS_SENT]).first()
                            if _fp_for_check else None)
                 if _fc_inv:
                     error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
@@ -3358,7 +3358,7 @@ def booking_detail(request, club_slug, booking_id):
             fc = booking.flight_completion
             if fc:
                 _mid_for_check = request.POST.get('member_id', '').strip()
-                _fc_inv = fc.invoices.filter(member_id=_mid_for_check, status__in=['draft', 'sent']).first()
+                _fc_inv = fc.invoices.filter(member_id=_mid_for_check, status__in=[Invoice.STATUS_DRAFT, Invoice.STATUS_SENT]).first()
                 if _fc_inv:
                     error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
@@ -3462,7 +3462,7 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'record_multi_payment' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED):
             fc = booking.flight_completion
             if fc:
-                _fc_inv = fc.invoices.filter(member=booking.member, status__in=['draft', 'sent']).first()
+                _fc_inv = fc.invoices.filter(member=booking.member, status__in=[Invoice.STATUS_DRAFT, Invoice.STATUS_SENT]).first()
                 if _fc_inv:
                     error = f'Payment is via invoice {_fc_inv.display_number}. Record payment against the invoice.'
                 else:
@@ -3527,7 +3527,7 @@ def booking_detail(request, club_slug, booking_id):
                             _invoiced_ids = set(
                                 Invoice.objects.filter(
                                     flight_completion__in=_other_fcs,
-                                ).exclude(status='void').values_list('flight_completion_id', flat=True)
+                                ).exclude(status=Invoice.STATUS_VOID).values_list('flight_completion_id', flat=True)
                             )
                             for _ofc in _other_fcs:
                                 if _ofc.id in _invoiced_ids:
@@ -3603,14 +3603,14 @@ def booking_detail(request, club_slug, booking_id):
                                             _AT.objects.create(
                                                 account=_acct2,
                                                 transaction_type='deposit',
-                                                direction='credit',
+                                                direction=AccountTransaction.DIRECTION_CREDIT,
                                                 amount=arrears_clear_amt,
                                                 payment_method=_pmeth,
                                                 description='Arrears clearance — collected with flight payment',
                                                 flight_completion=fc,
                                                 created_by=request.user,
                                             )
-                                            _acct2.apply_transaction(arrears_clear_amt, 'credit')
+                                            _acct2.apply_transaction(arrears_clear_amt, AccountTransaction.DIRECTION_CREDIT)
                                         except Exception:
                                             pass
                                     success = result.data['message']
@@ -3644,7 +3644,7 @@ def booking_detail(request, club_slug, booking_id):
         elif action == 'void_checkin' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_admin:
             fc = booking.flight_completion
             if fc:
-                _active_invoices = fc.invoices.exclude(status='void')
+                _active_invoices = fc.invoices.exclude(status=Invoice.STATUS_VOID)
                 _inv_paid = _active_invoices.filter(amount_paid__gt=0).exists()
                 if (fc.amount_paid and fc.amount_paid > 0) or _inv_paid:
                     error = ('Cannot void check-in — a payment has been recorded against this flight or one of its invoices. '
@@ -3652,7 +3652,7 @@ def booking_detail(request, club_slug, booking_id):
                 else:
                     # Void any outstanding invoices first
                     _voided_count = _active_invoices.count()
-                    _active_invoices.update(status='void')
+                    _active_invoices.update(status=Invoice.STATUS_VOID)
                     # Delete all flight completions (aircraft is returned but flights need re-logging)
                     for _vfc in list(booking.flight_completions.all()):
                         _vfc.charge_items.all().delete()
@@ -3681,9 +3681,9 @@ def booking_detail(request, club_slug, booking_id):
                 if payment_id:
                     _rfp = _FP2.objects.filter(id=payment_id, completion=fc).first()
                     if _rfp:
-                        _Inv.objects.filter(flight_completion=fc).exclude(status='void').update(status='void')
+                        _Inv.objects.filter(flight_completion=fc).exclude(status=Invoice.STATUS_VOID).update(status=Invoice.STATUS_VOID)
                 else:
-                    _Inv.objects.filter(flight_completion=fc).exclude(status='void').update(status='void')
+                    _Inv.objects.filter(flight_completion=fc).exclude(status=Invoice.STATUS_VOID).update(status=Invoice.STATUS_VOID)
                 result = charging_service.reverse_payment(fc, booking, request.user, payment_id=payment_id)
                 if result.ok:
                     success = result.data['message']
@@ -3802,7 +3802,7 @@ def booking_detail(request, club_slug, booking_id):
     )
 
     # Build per-member invoice lookup (ForeignKey now, one per member per FC)
-    _fc_invoices = list(fc.invoices.exclude(status='void')) if fc else []
+    _fc_invoices = list(fc.invoices.exclude(status=Invoice.STATUS_VOID)) if fc else []
     fc_invoices = _fc_invoices
     _invoice_by_member = {inv.member_id: inv for inv in _fc_invoices}
     # Attach invoice to each FlightPayment for template convenience
@@ -3810,14 +3810,14 @@ def booking_detail(request, club_slug, booking_id):
         _fp.flight_invoice = _invoice_by_member.get(_fp.member_id)
 
     # True if any active invoice has a payment recorded (blocks void_checkin)
-    fc_any_invoice_paid = any(inv.amount_paid > 0 for inv in _fc_invoices if inv.status != 'void')
+    fc_any_invoice_paid = any(inv.amount_paid > 0 for inv in _fc_invoices if inv.status != Invoice.STATUS_VOID)
 
     # True if any payee with a non-zero payment has no invoice yet
     fc_has_uninvoiced_payees = any(
         fp.amount > 0 and not _invoice_by_member.get(fp.member_id)
         for fp in fc_payments
     ) if fc_payments else (fc and not _fc_invoices)
-    club_members = list(ClubMember.objects.filter(club=club).exclude(standing='resigned').select_related('user').order_by('user__last_name', 'user__first_name'))
+    club_members = list(ClubMember.objects.filter(club=club).exclude(standing=ClubMember.STANDING_RESIGNED).select_related('user').order_by('user__last_name', 'user__first_name'))
     from .models import Contact as _Cont
     contacts = list(_Cont.objects.filter(club=club, converted_to_member__isnull=True).order_by('name'))
 
@@ -3834,7 +3834,7 @@ def booking_detail(request, club_slug, booking_id):
         _has_current_invoice = _Exists(
             Invoice.objects.filter(
                 flight_completion=_OR('pk'),
-                status='sent',
+                status=Invoice.STATUS_SENT,
                 due_date__gte=_today,
             )
         )
@@ -3846,7 +3846,7 @@ def booking_detail(request, club_slug, booking_id):
         if _unpaid_ids:
             for _inv in Invoice.objects.filter(
                 flight_completion_id__in=_unpaid_ids,
-                status='sent',
+                status=Invoice.STATUS_SENT,
             ).order_by('invoice_number'):
                 _overdue_inv_map.setdefault(_inv.flight_completion_id, _inv)
         for _fc_item in _all_unpaid:
@@ -3861,7 +3861,7 @@ def booking_detail(request, club_slug, booking_id):
         if _outstanding_ids:
             for _inv in Invoice.objects.filter(
                 flight_completion_id__in=_outstanding_ids,
-            ).exclude(status='void').order_by('invoice_number'):
+            ).exclude(status=Invoice.STATUS_VOID).order_by('invoice_number'):
                 _outstanding_inv_map.setdefault(_inv.flight_completion_id, _inv)
         for _fc_item in _all_outstanding:
             _fc_item.active_invoice = _outstanding_inv_map.get(_fc_item.pk)
@@ -4000,7 +4000,7 @@ def booking_detail(request, club_slug, booking_id):
         arrears_clearance_at = _AT3.objects.filter(
             flight_completion=fc,
             transaction_type='deposit',
-            direction='credit',
+            direction=AccountTransaction.DIRECTION_CREDIT,
             description__startswith='Arrears clearance',
         ).first()
     arrears_flights = []
@@ -4010,8 +4010,8 @@ def booking_detail(request, club_slug, booking_id):
         _flight_ats = list(
             _AT3.objects.filter(
                 account=arrears_clearance_at.account,
-                transaction_type='flight',
-                direction='debit',
+                transaction_type=AccountTransaction.TYPE_FLIGHT,
+                direction=AccountTransaction.DIRECTION_DEBIT,
                 created_at__lt=arrears_clearance_at.created_at,
             ).select_related('flight_completion__booking__aircraft', 'flight_completion__booking')
             .order_by('-created_at')
@@ -4028,7 +4028,7 @@ def booking_detail(request, club_slug, booking_id):
     if fc and fc.is_paid:
         _receipted_fc_ids = set(
             Invoice.objects.filter(member=booking.member, club=club)
-            .exclude(status='void')
+            .exclude(status=Invoice.STATUS_VOID)
             .values_list('flight_completion_id', flat=True)
         )
         member_copaid_fcs = list(
@@ -4042,7 +4042,7 @@ def booking_detail(request, club_slug, booking_id):
         )
 
     # Instructor availability at this booking's time slot (two queries, not N+1)
-    _active_statuses = ['confirmed', 'departed']
+    _active_statuses = [BookingStatus.CONFIRMED, BookingStatus.DEPARTED]
     _confirmed_conflict_ids = set(
         Booking.objects.filter(
             club=club,
@@ -4230,13 +4230,13 @@ def _generate_segment_charges(fc, segments, booking, config=None):
             continue
         if hire_rate:
             _FCI.objects.create(
-                flight_completion=fc, segment=seg, item_type='hire',
+                flight_completion=fc, segment=seg, item_type=FlightChargeItem.ITEM_HIRE,
                 description=f'Aircraft hire — {ac.registration} ({seg.member.user.get_full_name()})',
                 amount=round(float(hire_rate.amount) * float(h), 2),
             )
         if fc.fuel_surcharge_rate_snapshot:
             _FCI.objects.create(
-                flight_completion=fc, segment=seg, item_type='fuel',
+                flight_completion=fc, segment=seg, item_type=FlightChargeItem.ITEM_FUEL,
                 description=f'Fuel levy ({seg.member.user.get_full_name()})',
                 amount=round(float(fc.fuel_surcharge_rate_snapshot) * float(h), 2),
             )
@@ -4251,7 +4251,7 @@ def _generate_segment_charges(fc, segments, booking, config=None):
                 amt = round(float(fc.instructor_rate_snapshot) * float(total_hours) * float(seg.hours) / float(student_total), 2)
                 if amt > 0:
                     _FCI.objects.create(
-                        flight_completion=fc, segment=seg, item_type='instructor',
+                        flight_completion=fc, segment=seg, item_type=FlightChargeItem.ITEM_INSTRUCTOR,
                         description=f'Instructor fee — {booking.instructor.get_full_name()} ({seg.member.user.get_full_name()})',
                         amount=amt,
                     )
@@ -4259,11 +4259,11 @@ def _generate_segment_charges(fc, segments, booking, config=None):
     # Surcharges — per-hour billed by each pilot's hours; per-flight split proportionally
     if total_hours:
         for sc in ac.surcharges.all():
-            if sc.rate_type == 'per_hour':
+            if sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR:
                 for seg in segments:
                     if seg.hours:
                         _FCI.objects.create(
-                            flight_completion=fc, segment=seg, item_type='surcharge',
+                            flight_completion=fc, segment=seg, item_type=FlightChargeItem.ITEM_SURCHARGE,
                             description=f'{sc.name} ({seg.member.user.get_full_name()})',
                             amount=round(float(sc.amount) * float(seg.hours), 2),
                         )
@@ -4273,7 +4273,7 @@ def _generate_segment_charges(fc, segments, booking, config=None):
                 for seg, amt in zip(segments, amounts):
                     if amt > 0:
                         _FCI.objects.create(
-                            flight_completion=fc, segment=seg, item_type='surcharge',
+                            flight_completion=fc, segment=seg, item_type=FlightChargeItem.ITEM_SURCHARGE,
                             description=f'{sc.name} ({seg.member.user.get_full_name()})',
                             amount=amt,
                         )
@@ -4334,7 +4334,7 @@ def manage_member_detail(request, club_slug, member_id):
             standing = request.POST.get('standing')
             if standing in dict(ClubMember.STANDING_CHOICES):
                 member.standing = standing
-                if standing in ('resigned', 'lapsed') and not member.resigned_at:
+                if standing in (ClubMember.STANDING_RESIGNED, ClubMember.STANDING_LAPSED) and not member.resigned_at:
                     member.resigned_at = timezone.localdate()
             sub_exp = request.POST.get('subscription_expires')
             member.subscription_expires = sub_exp or None
@@ -4361,26 +4361,26 @@ def manage_member_detail(request, club_slug, member_id):
             _sc = dict(ClubMember.STANDING_CHOICES)
             if member.standing != _old_standing:
                 MembershipHistoryEntry.objects.create(
-                    club_member=member, event_type='standing_change', changed_by=request.user,
+                    club_member=member, event_type=MembershipHistoryEntry.EVENT_STANDING_CHANGE, changed_by=request.user,
                     old_value=_sc.get(_old_standing, _old_standing),
                     new_value=_sc.get(member.standing, member.standing),
                 )
                 if member.user:
-                    if member.standing in ('lapsed', 'resigned', 'suspended'):
+                    if member.standing in (ClubMember.STANDING_LAPSED, ClubMember.STANDING_RESIGNED, ClubMember.STANDING_SUSPENDED):
                         member.user.is_active = False
                         member.user.save(update_fields=['is_active'])
-                    elif member.standing == 'active':
+                    elif member.standing == ClubMember.STANDING_ACTIVE:
                         member.user.is_active = True
                         member.user.save(update_fields=['is_active'])
             if member.role != _old_role:
                 MembershipHistoryEntry.objects.create(
-                    club_member=member, event_type='role_change', changed_by=request.user,
+                    club_member=member, event_type=MembershipHistoryEntry.EVENT_ROLE_CHANGE, changed_by=request.user,
                     old_value=_old_role.name if _old_role else '—',
                     new_value=member.role.name if member.role else '—',
                 )
             if member.subscription_expires != _old_sub_exp:
                 MembershipHistoryEntry.objects.create(
-                    club_member=member, event_type='subscription_renewed', changed_by=request.user,
+                    club_member=member, event_type=MembershipHistoryEntry.EVENT_SUBSCRIPTION_RENEWED, changed_by=request.user,
                     old_value=str(_old_sub_exp) if _old_sub_exp else '—',
                     new_value=str(member.subscription_expires) if member.subscription_expires else '—',
                 )
@@ -4452,24 +4452,24 @@ def manage_member_detail(request, club_slug, member_id):
                 try:
                     acct, _ = member.account.__class__.objects.get_or_create(club_member=member, defaults={'balance': 0})
                     AccountTransaction.objects.create(
-                        account=acct, transaction_type='top_up', direction='credit',
+                        account=acct, transaction_type=AccountTransaction.TYPE_TOP_UP, direction=AccountTransaction.DIRECTION_CREDIT,
                         amount=amount, description=desc,
                         payment_method=pay_method, reference=ref, created_by=request.user,
                     )
-                    acct.apply_transaction(amount, 'credit')
+                    acct.apply_transaction(amount, AccountTransaction.DIRECTION_CREDIT)
                 except Exception:
                     pass
 
         elif action == 'account_adjustment' and actor.is_admin:
             from .models import AccountTransaction
             amount = request.POST.get('amount', '').strip()
-            direction = request.POST.get('direction', 'credit')
+            direction = request.POST.get('direction', AccountTransaction.DIRECTION_CREDIT)
             desc = request.POST.get('description', '').strip()
             if amount and desc:
                 try:
                     acct = member.account
                     AccountTransaction.objects.create(
-                        account=acct, transaction_type='adjustment', direction=direction,
+                        account=acct, transaction_type=AccountTransaction.TYPE_ADJUSTMENT, direction=direction,
                         amount=amount, description=desc, created_by=request.user,
                     )
                     acct.apply_transaction(amount, direction)
@@ -4487,17 +4487,17 @@ def manage_member_detail(request, club_slug, member_id):
                     src_acct = member.account
                     dst_acct = dest.account
                     AccountTransaction.objects.create(
-                        account=src_acct, transaction_type='adjustment', direction='debit',
+                        account=src_acct, transaction_type=AccountTransaction.TYPE_ADJUSTMENT, direction=AccountTransaction.DIRECTION_DEBIT,
                         amount=amount, description=f'Transfer to {dest.user.get_full_name()} — {desc}',
                         created_by=request.user,
                     )
-                    src_acct.apply_transaction(amount, 'debit')
+                    src_acct.apply_transaction(amount, AccountTransaction.DIRECTION_DEBIT)
                     AccountTransaction.objects.create(
-                        account=dst_acct, transaction_type='adjustment', direction='credit',
+                        account=dst_acct, transaction_type=AccountTransaction.TYPE_ADJUSTMENT, direction=AccountTransaction.DIRECTION_CREDIT,
                         amount=amount, description=f'Transfer from {member.user.get_full_name()} — {desc}',
                         created_by=request.user,
                     )
-                    dst_acct.apply_transaction(amount, 'credit')
+                    dst_acct.apply_transaction(amount, AccountTransaction.DIRECTION_CREDIT)
                 except Exception:
                     pass
 
@@ -4523,7 +4523,7 @@ def manage_member_detail(request, club_slug, member_id):
             existing = Invoice.objects.filter(
                 club=club, member=member,
                 description__startswith='Membership subscription',
-            ).exclude(status__in=['paid', 'void']).first()
+            ).exclude(status__in=[Invoice.STATUS_PAID, Invoice.STATUS_VOID]).first()
             if existing:
                 _msgs.error(request,
                     f'An unpaid subscription invoice already exists ({existing.display_number}). '
@@ -4563,7 +4563,7 @@ def manage_member_detail(request, club_slug, member_id):
                 notes=notes,
                 gst_rate=config.gst_rate,
                 amount_paid=0,
-                status='sent',
+                status=Invoice.STATUS_SENT,
                 sent_at=timezone.now(),
                 subscription_expiry_date=expiry_date,
                 created_by=request.user,
@@ -4682,7 +4682,7 @@ def manage_member_detail(request, club_slug, member_id):
     _existing_sub_inv = Invoice.objects.filter(
         club=club, member=member,
         description__startswith='Membership subscription',
-    ).exclude(status__in=['paid', 'void']).first()
+    ).exclude(status__in=[Invoice.STATUS_PAID, Invoice.STATUS_VOID]).first()
 
     from .models import LessonNote as _LN
     lesson_notes = (_LN.objects.filter(booking__member=member, booking__club=club)
@@ -5186,7 +5186,7 @@ def manage_blockouts(request, club_slug):
                      .select_related('blockout_type')
                      .order_by('recurrence', 'date', 'weekday', 'start_time'))
     past_count = BlockOut.objects.filter(club=club, scope='all').exclude(_active_q).count()
-    blockout_types = BlockOutType.objects.filter(club=club, target='all')
+    blockout_types = BlockOutType.objects.filter(club=club, target=BlockOutType.TARGET_ALL)
     return render(request, 'core/manage_blockouts.html', {
         'club': club,
         'club_member': actor,
@@ -5249,7 +5249,7 @@ def manage_members(request, club_slug):
                 )
                 new_cm = ClubMember.objects.create(club=club, user=user)
                 MembershipHistoryEntry.objects.create(
-                    club_member=new_cm, event_type='joined',
+                    club_member=new_cm, event_type=MembershipHistoryEntry.EVENT_JOINED,
                     changed_by=request.user, new_value=email,
                 )
                 if auto_generated:
@@ -5267,11 +5267,11 @@ def manage_members(request, club_slug):
                     if standing in dict(ClubMember.STANDING_CHOICES):
                         old_standing = cm.standing
                         cm.standing = standing
-                        if standing in ('resigned', 'lapsed') and not cm.resigned_at:
+                        if standing in (ClubMember.STANDING_RESIGNED, ClubMember.STANDING_LAPSED) and not cm.resigned_at:
                             cm.resigned_at = timezone.localdate()
                         cm.save(update_fields=['standing', 'resigned_at'])
                         MembershipHistoryEntry.objects.create(
-                            club_member=cm, event_type='standing_change',
+                            club_member=cm, event_type=MembershipHistoryEntry.EVENT_STANDING_CHANGE,
                             changed_by=request.user,
                             old_value=dict(ClubMember.STANDING_CHOICES).get(old_standing, old_standing),
                             new_value=dict(ClubMember.STANDING_CHOICES).get(standing, standing),
@@ -5280,7 +5280,7 @@ def manage_members(request, club_slug):
                     role_id = request.POST.get('role_id')
                     new_role = Role.objects.filter(club=club, id=role_id).first() if role_id else None
                     # Guard: must always have at least one member on the admin system role
-                    _admin_role = Role.objects.filter(club=club, system_role_type='admin').first()
+                    _admin_role = Role.objects.filter(club=club, system_role_type=Role.SYSTEM_ADMIN).first()
                     if _admin_role and cm.role == _admin_role and new_role != _admin_role:
                         _remaining_admins = ClubMember.objects.filter(
                             club=club, role=_admin_role).exclude(id=cm.id).count()
@@ -5292,7 +5292,7 @@ def manage_members(request, club_slug):
                     cm.role = new_role
                     cm.save(update_fields=['role'])
                     MembershipHistoryEntry.objects.create(
-                        club_member=cm, event_type='role_change',
+                        club_member=cm, event_type=MembershipHistoryEntry.EVENT_ROLE_CHANGE,
                         changed_by=request.user,
                         old_value=old_role.name if old_role else '—',
                         new_value=new_role.name if new_role else '—',
@@ -5466,10 +5466,10 @@ def accept_invite(request, token):
         if action == 'join' and request.user.is_authenticated:
             cm, created = ClubMember.objects.get_or_create(
                 club=club, user=request.user,
-                defaults={'standing': 'pending'},
+                defaults={'standing': ClubMember.STANDING_PENDING},
             )
-            if not created and cm.standing == 'resigned':
-                cm.standing = 'pending'
+            if not created and cm.standing == ClubMember.STANDING_RESIGNED:
+                cm.standing = ClubMember.STANDING_PENDING
                 cm.save(update_fields=['standing'])
             if invite.role and not cm.role:
                 cm.role = invite.role
@@ -5478,7 +5478,7 @@ def accept_invite(request, token):
             invite.club_member = cm
             invite.save(update_fields=['accepted_at', 'club_member'])
             MembershipHistoryEntry.objects.create(
-                club_member=cm, event_type='joined',
+                club_member=cm, event_type=MembershipHistoryEntry.EVENT_JOINED,
                 changed_by=request.user, new_value='via invite',
             )
             return redirect('core:app_home', club_slug=club.slug)
@@ -5507,13 +5507,13 @@ def accept_invite(request, token):
                 first_name=first, last_name=last, password=pw,
             )
             cm = ClubMember.objects.create(
-                club=club, user=user, standing='pending', role=invite.role,
+                club=club, user=user, standing=ClubMember.STANDING_PENDING, role=invite.role,
             )
             invite.accepted_at = timezone.now()
             invite.club_member = cm
             invite.save(update_fields=['accepted_at', 'club_member'])
             MembershipHistoryEntry.objects.create(
-                club_member=cm, event_type='joined',
+                club_member=cm, event_type=MembershipHistoryEntry.EVENT_JOINED,
                 changed_by=user, new_value='via invite',
             )
             _login(request, user, backend='django.contrib.auth.backends.ModelBackend')
@@ -5523,7 +5523,7 @@ def accept_invite(request, token):
     if request.user.is_authenticated:
         try:
             existing_cm = ClubMember.objects.get(club=club, user=request.user)
-            if existing_cm.standing not in ('resigned',):
+            if existing_cm.standing not in (ClubMember.STANDING_RESIGNED,):
                 return _render('already_member')
         except ClubMember.DoesNotExist:
             pass
@@ -5689,7 +5689,7 @@ def manage_aircraft(request, club_slug):
         ac.bo_list = bo_by_ac.get(ac.id, [])
         ac.past_bo_count = past_bo_count_by_ac.get(ac.id, 0)
 
-    aircraft_blockout_types = BlockOutType.objects.filter(club=club, target='aircraft')
+    aircraft_blockout_types = BlockOutType.objects.filter(club=club, target=BlockOutType.TARGET_AIRCRAFT)
     return render(request, 'core/manage_aircraft.html', {
         'club': club,
         'club_member': actor,
@@ -5960,7 +5960,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                 _m.progress_pct = min(100, max(0, round(_elapsed_h / _total_h * 100)))
     maintenance_items.sort(key=lambda _m: (_UPR.get(_m.urgency, 3), str(_m.due_date or ''), str(_m.due_hours or '')))
     flight_types = FlightType.objects.filter(club=club, is_billable=True)
-    aircraft_blockout_types = BlockOutType.objects.filter(club=club, target='aircraft')
+    aircraft_blockout_types = BlockOutType.objects.filter(club=club, target=BlockOutType.TARGET_AIRCRAFT)
 
     from django.core.paginator import Paginator as _FHPag
     _fh_qs = (Booking.objects
@@ -6234,13 +6234,13 @@ def manage_instructors(request, club_slug):
 
     # Members eligible to add: have instructor-type role, active standing, not already on roster
     roster_ids = set(instructors.values_list('id', flat=True))
-    # Use system_role_type='instructor' if set, fall back to permission flags for legacy roles
+    # Use system_role_type=Role.SYSTEM_INSTRUCTOR if set, fall back to permission flags for legacy roles
     from django.db.models import Q as _Q
-    _instr_q = _Q(role__system_role_type='instructor') | _Q(
+    _instr_q = _Q(role__system_role_type=Role.SYSTEM_INSTRUCTOR) | _Q(
         role__bookings_access='manage_all', role__can_access_manage=True
     )
     eligible_members = (ClubMember.objects
-                        .filter(_instr_q, club=club, standing='current')
+                        .filter(_instr_q, club=club, standing=ClubMember.STANDING_ACTIVE)
                         .exclude(id__in=roster_ids)
                         .select_related('user', 'role')
                         .order_by('user__last_name', 'user__first_name'))
@@ -6401,7 +6401,7 @@ def manage_instructor_detail(request, club_slug, member_id):
                    .select_related('credential_type', 'aircraft_type')
                    .order_by('credential_type__display_order', 'expiry_date'))
     instructor_grades = InstructorGrade.objects.filter(club=club).order_by('display_order')
-    instructor_blockout_types = BlockOutType.objects.filter(club=club).exclude(target='aircraft')
+    instructor_blockout_types = BlockOutType.objects.filter(club=club).exclude(target=BlockOutType.TARGET_AIRCRAFT)
 
     upcoming_bookings = (Booking.objects
                          .filter(club=club, instructor=instr.user)
@@ -6549,12 +6549,12 @@ def contact_detail(request, club_slug, contact_id):
                     password=make_password(secrets.token_hex(20)),
                 )
                 member_role = ClubMember.objects.filter(
-                    club=club, role__system_role_type='member'
+                    club=club, role__system_role_type=Role.SYSTEM_MEMBER
                 ).values_list('role_id', flat=True).first()
                 new_member = ClubMember.objects.create(
                     club=club, user=user,
                     role_id=member_role,
-                    standing='current',
+                    standing=ClubMember.STANDING_ACTIVE,
                 )
                 contact.converted_to_member = new_member
                 contact.save(update_fields=['converted_to_member'])
@@ -7036,7 +7036,7 @@ def generate_invoice(request, club_slug, booking_id):
     # Tuple: (member, invoice_total, amount_paid, paid_at, fp_method)
     _FP_METHOD_MAP = {'cash': 'cash', 'eftpos': 'eftpos', 'credit': 'account_credit'}
     fp_list = list(fc.payments.all())
-    existing_member_ids = set(fc.invoices.exclude(status='void').values_list('member_id', flat=True))
+    existing_member_ids = set(fc.invoices.exclude(status=Invoice.STATUS_VOID).values_list('member_id', flat=True))
     _for_member_id = request.POST.get('for_member_id', '').strip()
     # Read other_fc_ids early so we can skip the early-exit when they're present
     _other_fc_ids = request.POST.getlist('other_fc_ids')
@@ -7089,7 +7089,7 @@ def generate_invoice(request, club_slug, booking_id):
             ClubConfig.objects.filter(pk=config.pk).update(invoice_number_next=inv_number + 1)
             config.invoice_number_next = inv_number + 1  # keep in-memory copy in sync for multi-payee loops
             # Clear any voided invoice for this member so the unique constraint doesn't block recreation
-            fc.invoices.filter(member=member, status='void').delete()
+            fc.invoices.filter(member=member, status=Invoice.STATUS_VOID).delete()
             try:
                 invoice = Invoice.objects.create(
                     club=club,
@@ -7101,7 +7101,7 @@ def generate_invoice(request, club_slug, booking_id):
                     description=description,
                     gst_rate=config.gst_rate,
                     created_by=request.user,
-                    status='sent',
+                    status=Invoice.STATUS_SENT,
                     sent_at=_now,
                 )
             except _IErr:
@@ -7164,14 +7164,14 @@ def generate_invoice(request, club_slug, booking_id):
                 _AT2.objects.create(
                     account=_acct2,
                     transaction_type='deposit',
-                    direction='credit',
+                    direction=AccountTransaction.DIRECTION_CREDIT,
                     amount=_arrears_clear_amt,
                     payment_method='bank_transfer',
                     description='Arrears clearance — invoice issued',
                     flight_completion=fc,
                     created_by=request.user,
                 )
-                _acct2.apply_transaction(_arrears_clear_amt, 'credit')
+                _acct2.apply_transaction(_arrears_clear_amt, AccountTransaction.DIRECTION_CREDIT)
             except Exception:
                 pass
             # total is a computed property from line_items — no stored field to update
@@ -7216,7 +7216,7 @@ def generate_invoice(request, club_slug, booking_id):
                     flight_completion=None,
                     invoice_number=_onum, issue_date=today, due_date=due,
                     description='Outstanding flights', gst_rate=config.gst_rate,
-                    created_by=request.user, status='sent', sent_at=_now,
+                    created_by=request.user, status=Invoice.STATUS_SENT, sent_at=_now,
                 )
             created.append(_combined_inv)
             _sort_offset = 0
@@ -7227,7 +7227,7 @@ def generate_invoice(request, club_slug, booking_id):
                     id=_ofc_id, booking__member=_receipt_member, booking__club=club)
             except FlightCompletion.DoesNotExist:
                 continue
-            if Invoice.objects.filter(flight_completion=_ofc).exclude(status='void').exists():
+            if Invoice.objects.filter(flight_completion=_ofc).exclude(status=Invoice.STATUS_VOID).exists():
                 continue  # already invoiced separately
             if not _ofc.charge_items.exists():
                 continue
@@ -7284,8 +7284,8 @@ def invoice_detail(request, club_slug, invoice_id):
     error = success = ''
 
     # Auto-issue draft membership invoices — they should never sit in draft
-    if request.method == 'GET' and invoice.status == 'draft' and invoice.subscription_expiry_date:
-        invoice.status = 'sent'
+    if request.method == 'GET' and invoice.status == Invoice.STATUS_DRAFT and invoice.subscription_expiry_date:
+        invoice.status = Invoice.STATUS_SENT
         invoice.sent_at = timezone.now()
         invoice.save(update_fields=['status', 'sent_at'])
 
@@ -7297,15 +7297,15 @@ def invoice_detail(request, club_slug, invoice_id):
 
         # Description only editable while draft
         _desc = request.POST.get('description', None)
-        if _desc is not None and invoice.status == 'draft':
+        if _desc is not None and invoice.status == Invoice.STATUS_DRAFT:
             invoice.description = _desc.strip()
             invoice.save(update_fields=['description'])
 
         if action == 'update_details':
             return redirect(_stay_url)
 
-        if action == 'mark_sent' and invoice.status == 'draft':
-            invoice.status = 'sent'
+        if action == 'mark_sent' and invoice.status == Invoice.STATUS_DRAFT:
+            invoice.status = Invoice.STATUS_SENT
             invoice.sent_at = timezone.now()
             invoice.save(update_fields=['status', 'sent_at'])
             from .services import notification_service as _ns
@@ -7375,15 +7375,15 @@ def invoice_detail(request, club_slug, invoice_id):
                     _acct, _ = _Acct.objects.get_or_create(club_member=invoice.member, defaults={'balance': 0})
                     _AT.objects.create(
                         account=_acct,
-                        transaction_type='flight',
-                        direction='debit',
+                        transaction_type=AccountTransaction.TYPE_FLIGHT,
+                        direction=AccountTransaction.DIRECTION_DEBIT,
                         amount=pay_amt,
                         description=f'Invoice {invoice.display_number}',
                         flight_completion=invoice.flight_completion,
                         payment_method='account',
                         created_by=request.user,
                     )
-                    _acct.apply_transaction(pay_amt, 'debit')
+                    _acct.apply_transaction(pay_amt, AccountTransaction.DIRECTION_DEBIT)
                 _now_fully_paid = invoice._sync_payment_cache()
                 if _now_fully_paid:
                     _fc_linked = invoice.flight_completion
@@ -7408,14 +7408,14 @@ def invoice_detail(request, club_slug, invoice_id):
                         _old_exp = _sub_member.subscription_expires
                         _sub_member.subscription_expires = invoice.subscription_expiry_date
                         _upd = ['subscription_expires']
-                        _was_pending = _sub_member.standing == 'pending'
+                        _was_pending = _sub_member.standing == ClubMember.STANDING_PENDING
                         if _was_pending:
-                            _sub_member.standing = 'active'
+                            _sub_member.standing = ClubMember.STANDING_ACTIVE
                             _upd.append('standing')
                         _sub_member.save(update_fields=_upd)
                         MembershipHistoryEntry.objects.create(
                             club_member=_sub_member,
-                            event_type='subscription_renewed',
+                            event_type=MembershipHistoryEntry.EVENT_SUBSCRIPTION_RENEWED,
                             changed_by=request.user,
                             old_value=str(_old_exp) if _old_exp else '—',
                             new_value=str(invoice.subscription_expiry_date),
@@ -7423,9 +7423,9 @@ def invoice_detail(request, club_slug, invoice_id):
                         if _was_pending:
                             MembershipHistoryEntry.objects.create(
                                 club_member=_sub_member,
-                                event_type='standing_change',
+                                event_type=MembershipHistoryEntry.EVENT_STANDING_CHANGE,
                                 changed_by=request.user,
-                                old_value='pending', new_value='active',
+                                old_value=ClubMember.STANDING_PENDING, new_value=ClubMember.STANDING_ACTIVE,
                                 note='Standing set to Active — initial subscription invoice paid',
                             )
                             if _sub_member.user and not _sub_member.user.is_active:
@@ -7434,12 +7434,12 @@ def invoice_detail(request, club_slug, invoice_id):
                 return redirect(_stay_url)
 
         elif action == 'void' and invoice.status in ('draft', 'sent'):
-            invoice.status = 'void'
+            invoice.status = Invoice.STATUS_VOID
             invoice.save(update_fields=['status'])
             # Clear invoice_issued on the FC if no active invoices remain
             if invoice.flight_completion_id:
                 _fc_v = invoice.flight_completion
-                if not _fc_v.invoices.exclude(status='void').exists():
+                if not _fc_v.invoices.exclude(status=Invoice.STATUS_VOID).exists():
                     _fc_v.invoice_issued = False
                     _fc_v.save(update_fields=['invoice_issued'])
             return redirect(_stay_url)
@@ -7474,14 +7474,14 @@ def invoice_detail(request, club_slug, invoice_id):
                 .order_by('paid_at'))
         _det_arrears_at = _ATd.objects.filter(
             flight_completion_id=invoice.flight_completion_id,
-            transaction_type='deposit', direction='credit',
+            transaction_type='deposit', direction=AccountTransaction.DIRECTION_CREDIT,
             description__startswith='Arrears clearance',
         ).first()
         if _det_arrears_at:
             import re as _re_d
             _rem = _Dd(str(_det_arrears_at.amount))
             for _fat in _ATd.objects.filter(
-                account=_det_arrears_at.account, transaction_type='flight', direction='debit',
+                account=_det_arrears_at.account, transaction_type=AccountTransaction.TYPE_FLIGHT, direction=AccountTransaction.DIRECTION_DEBIT,
                 created_at__lt=_det_arrears_at.created_at,
             ).select_related('flight_completion__booking__aircraft', 'flight_completion__booking__flight_type',
                               'flight_completion').order_by('-created_at'):
@@ -7551,7 +7551,7 @@ def invoice_print(request, club_slug, invoice_id):
         arrears_clearance_at = _AT4.objects.filter(
             flight_completion_id=invoice.flight_completion_id,
             transaction_type='deposit',
-            direction='credit',
+            direction=AccountTransaction.DIRECTION_CREDIT,
             description__startswith='Arrears clearance',
         ).first()
         if arrears_clearance_at:
@@ -7559,8 +7559,8 @@ def invoice_print(request, club_slug, invoice_id):
             _flight_ats = list(
                 _AT4.objects.filter(
                     account=arrears_clearance_at.account,
-                    transaction_type='flight',
-                    direction='debit',
+                    transaction_type=AccountTransaction.TYPE_FLIGHT,
+                    direction=AccountTransaction.DIRECTION_DEBIT,
                     created_at__lt=arrears_clearance_at.created_at,
                 ).select_related(
                     'flight_completion__booking__aircraft',
@@ -7815,17 +7815,17 @@ def reports(request, club_slug):
     dash_flights_count     = sum(1 for _ in all_qs)
     dash_solo_count        = sum(1 for fc in all_qs if not fc.booking.instructor_id)
     dash_dual_count        = sum(1 for fc in all_qs if fc.booking.instructor_id)
-    active_members_count   = ClubMember.objects.filter(club=club, standing='active').count()
+    active_members_count   = ClubMember.objects.filter(club=club, standing=ClubMember.STANDING_ACTIVE).count()
 
     # Members card extras
     from django.db.models import Count as _MCount
     dash_new_members_count = ClubMember.objects.filter(club=club, join_date__gte=fy_start_date).count()
-    _sex_active = ClubMember.objects.filter(club=club, standing='active').exclude(sex='')
+    _sex_active = ClubMember.objects.filter(club=club, standing=ClubMember.STANDING_ACTIVE).exclude(sex='')
     dash_sex_m   = _sex_active.filter(sex='M').count()
     dash_sex_f   = _sex_active.filter(sex='F').count()
     dash_sex_set = dash_sex_m + dash_sex_f
     _cat_qs = (ClubMember.objects
-               .filter(club=club, standing='active', membership_category__isnull=False)
+               .filter(club=club, standing=ClubMember.STANDING_ACTIVE, membership_category__isnull=False)
                .values('membership_category__name')
                .annotate(cnt=_MCount('id'))
                .order_by('-cnt')[:4])
@@ -7853,11 +7853,11 @@ def reports(request, club_slug):
     dash_outstanding_debt = abs(round(float(_debt_agg['total'] or 0), 2))
     dash_debtor_count     = _debt_agg['cnt'] or 0
 
-    _inv_agg = (Invoice.objects.filter(club=club, status='sent')
+    _inv_agg = (Invoice.objects.filter(club=club, status=Invoice.STATUS_SENT)
                 .aggregate(total=_DSum('line_items__amount'), cnt=_DCnt('id', distinct=True)))
     dash_unpaid_invoices       = round(float(_inv_agg['total'] or 0), 2)
     dash_overdue_invoice_count = (Invoice.objects.filter(
-        club=club, status='sent', due_date__lt=today).count())
+        club=club, status=Invoice.STATUS_SENT, due_date__lt=today).count())
 
     # Current-month hours KPI
     cm_start = date(today.year, today.month, 1)
@@ -8407,7 +8407,7 @@ def reports_pivot(request, club_slug):
         _cimap = _dd(lambda: {'landing': 0.0, 'sundry': 0.0})
         _ci_qs = (FlightChargeItem.objects
                   .filter(flight_completion__booking__club=club,
-                          item_type__in=['landing', 'one_off'])
+                          item_type__in=[FlightChargeItem.ITEM_LANDING, FlightChargeItem.ITEM_ONE_OFF])
                   .values_list('flight_completion_id', 'item_type', 'amount'))
         for fc_id, itype, amt in _ci_qs:
             if itype == 'landing':
@@ -8785,14 +8785,14 @@ def manage_invoices(request, club_slug):
     today = timezone.localdate()
 
     if f_status == 'overdue':
-        qs = qs.filter(status='sent', due_date__lt=today)
+        qs = qs.filter(status=Invoice.STATUS_SENT, due_date__lt=today)
     elif f_status:
         qs = qs.filter(status=f_status)
     if f_member:
         qs = qs.filter(member__user_id=f_member)
 
     members_qs = ClubMember.objects.filter(club=club).select_related('user').order_by('user__last_name')
-    overdue_count = Invoice.objects.filter(club=club, status='sent', due_date__lt=today).count()
+    overdue_count = Invoice.objects.filter(club=club, status=Invoice.STATUS_SENT, due_date__lt=today).count()
     _paginator  = _Pag(qs, 50)
     invoices_page = _paginator.get_page(request.GET.get('page'))
     _filter_qs  = _ue({k: v for k, v in request.GET.items() if k != 'page' and v})
@@ -8976,8 +8976,8 @@ def manage_exceptions(request, club_slug):
         .exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED])
         .filter(
             _Q(blockout_conflict=True) |
-            _Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
-            _Q(member__standing='active',
+            _Q(member__standing__in=[ClubMember.STANDING_SUSPENDED, ClubMember.STANDING_LAPSED, ClubMember.STANDING_RESIGNED]) |
+            _Q(member__standing=ClubMember.STANDING_ACTIVE,
                member__subscription_expires__isnull=False,
                member__subscription_expires__lt=today) |
             _Q(aircraft__status=AircraftStatus.RETIRED) |
@@ -9010,9 +9010,9 @@ def manage_exceptions(request, club_slug):
         if b.blockout_conflict:
             labels.append(b.blockout_conflict_reason or 'Block-out conflict')
         if b.member:
-            if b.member.standing in ('suspended', 'lapsed', 'resigned'):
+            if b.member.standing in (ClubMember.STANDING_SUSPENDED, ClubMember.STANDING_LAPSED, ClubMember.STANDING_RESIGNED):
                 labels.append(f'Member {b.member.get_standing_display()}')
-            elif (b.member.standing == 'active' and b.member.subscription_expires
+            elif (b.member.standing == ClubMember.STANDING_ACTIVE and b.member.subscription_expires
                   and b.member.subscription_expires < today):
                 labels.append('Subscription expired')
         if b.aircraft and b.aircraft.status == AircraftStatus.RETIRED:
@@ -9287,17 +9287,17 @@ def manage_vouchers(request, club_slug):
                 )
                 AccountTransaction.objects.create(
                     account=acct,
-                    transaction_type='top_up',
-                    direction='credit',
+                    transaction_type=AccountTransaction.TYPE_TOP_UP,
+                    direction=AccountTransaction.DIRECTION_CREDIT,
                     amount=v.value,
                     description=f'Voucher {v.code} redeemed — {v.description or "credit"}',
                     payment_method='other',
                     created_by=request.user,
                 )
                 from django.db.models import Sum as _Sum
-                acct.balance = acct.transactions.filter(direction='credit').aggregate(
+                acct.balance = acct.transactions.filter(direction=AccountTransaction.DIRECTION_CREDIT).aggregate(
                     s=_Sum('amount'))['s'] or 0
-                acct.balance -= acct.transactions.filter(direction='debit').aggregate(
+                acct.balance -= acct.transactions.filter(direction=AccountTransaction.DIRECTION_DEBIT).aggregate(
                     s=_Sum('amount'))['s'] or 0
                 acct.save(update_fields=['balance'])
                 v.is_redeemed = True
@@ -9357,8 +9357,8 @@ def manage_sundry(request, club_slug):
             account, _ = Account.objects.get_or_create(club_member=member)
             _AT.objects.create(
                 account=account,
-                transaction_type='sale',
-                direction='debit',
+                transaction_type=AccountTransaction.TYPE_SALE,
+                direction=AccountTransaction.DIRECTION_DEBIT,
                 amount=amount,
                 description=description,
                 reference=reference,
@@ -9370,7 +9370,7 @@ def manage_sundry(request, club_slug):
 
     members = (ClubMember.objects
                .filter(club=club)
-               .exclude(standing='resigned')
+               .exclude(standing=ClubMember.STANDING_RESIGNED)
                .select_related('user')
                .order_by('user__last_name', 'user__first_name'))
 
@@ -9392,7 +9392,7 @@ def manage_sundry(request, club_slug):
     if sort_dir == 'desc':
         _sd_order = tuple(f[1:] if f.startswith('-') else '-'+f for f in _sd_order)
     sales_qs = (_AT.objects
-                .filter(account__club_member__club=club, transaction_type='sale')
+                .filter(account__club_member__club=club, transaction_type=AccountTransaction.TYPE_SALE)
                 .select_related('account__club_member__user', 'created_by')
                 .order_by(*_sd_order))
     if q_sales:
@@ -9463,10 +9463,10 @@ def health_check(request, club_slug):
     if request.method == 'POST' and request.POST.get('action') == 'mark_lapsed':
         _today = timezone.localdate()
         lapsed_count = ClubMember.objects.filter(
-            club=club, standing='active',
+            club=club, standing=ClubMember.STANDING_ACTIVE,
             subscription_expires__isnull=False,
             subscription_expires__lt=_today,
-        ).update(standing='lapsed')
+        ).update(standing=ClubMember.STANDING_LAPSED)
         return redirect(request.path + '?lapsed=' + str(lapsed_count))
 
     from django.urls import reverse as _rev
@@ -9578,7 +9578,7 @@ def health_check(request, club_slug):
     from .models import Invoice as _InvH
     inv_fc_drifts = []
     for _inv in (_InvH.objects
-                 .filter(club=club, status='paid')
+                 .filter(club=club, status=Invoice.STATUS_PAID)
                  .select_related('flight_completion__booking__aircraft',
                                  'flight_completion__booking__member__user')
                  .exclude(flight_completion__isnull=True)):
@@ -9653,7 +9653,7 @@ def health_check(request, club_slug):
     today = timezone.localdate()
     lapsed_active = list(
         ClubMember.objects.filter(
-            club=club, standing='active',
+            club=club, standing=ClubMember.STANDING_ACTIVE,
             subscription_expires__isnull=False,
             subscription_expires__lt=today,
         ).select_related('user').order_by('subscription_expires')
@@ -11583,7 +11583,7 @@ def app_home(request, club_slug):
     from decimal import Decimal as _D
     flight_debt  = max(_D('0'), (_fc_agg['total'] or _D('0')) - (_fc_agg['paid'] or _D('0')))
     flight_count = _fc_agg['cnt'] or 0
-    invoice_count = _Inv.objects.filter(member=actor, club=club, status='sent').count()
+    invoice_count = _Inv.objects.filter(member=actor, club=club, status=Invoice.STATUS_SENT).count()
 
     # Last completed flight
     last_flight = (Booking.objects
@@ -12099,7 +12099,7 @@ def app_account(request, club_slug):
 
     unpaid_invoices = list(
         _Inv.objects
-        .filter(member=actor, club=club, status='sent')
+        .filter(member=actor, club=club, status=Invoice.STATUS_SENT)
         .select_related('flight_completion__booking__aircraft__aircraft_type',
                         'flight_completion__booking__instructor',
                         'flight_completion__booking__flight_type')
@@ -12111,7 +12111,7 @@ def app_account(request, club_slug):
 
     paid_receipts = list(
         _Inv.objects
-        .filter(member=actor, club=club, status='paid')
+        .filter(member=actor, club=club, status=Invoice.STATUS_PAID)
         .select_related('flight_completion__booking')
         .order_by('-paid_at')[:10]
     )

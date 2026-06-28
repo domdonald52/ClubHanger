@@ -50,7 +50,7 @@ class Command(BaseCommand):
 
             candidates = ClubMember.objects.filter(
                 club=club,
-                standing='active',
+                standing=ClubMember.STANDING_ACTIVE,
                 subscription_expires__lt=cutoff,
             ).select_related('user')
 
@@ -63,7 +63,7 @@ class Command(BaseCommand):
                     f"(expired {m.subscription_expires}, {days_over}d ago)"
                 )
                 if not dry_run:
-                    m.standing   = 'lapsed'
+                    m.standing   = ClubMember.STANDING_LAPSED
                     m.resigned_at = m.resigned_at or today
                     m.save(update_fields=['standing', 'resigned_at'])
                     if m.user and m.user.is_active:
@@ -71,9 +71,9 @@ class Command(BaseCommand):
                         m.user.save(update_fields=['is_active'])
                     MembershipHistoryEntry.objects.create(
                         club_member=m,
-                        event_type='standing_change',
-                        old_value='active',
-                        new_value='lapsed',
+                        event_type=MembershipHistoryEntry.EVENT_STANDING_CHANGE,
+                        old_value=ClubMember.STANDING_ACTIVE,
+                        new_value=ClubMember.STANDING_LAPSED,
                         note=f'Auto-lapsed — subscription expired {m.subscription_expires} '
                              f'({days_over} days ago, grace period {grace} days)',
                     )

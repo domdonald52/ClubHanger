@@ -22,6 +22,8 @@ from typing import Any, Dict, List, Optional
 from django.db import transaction as _transaction
 from django.utils import timezone
 
+from ..models import BookingStatus, AircraftSurchargeType, ClubMember, FlightChargeItem
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Return type
@@ -72,7 +74,7 @@ def confirm(booking, user) -> ServiceResult:
     """
     from ..models import Booking as _Booking
     _Booking.objects.filter(pk=booking.pk).update(
-        status='confirmed',
+        status=BookingStatus.CONFIRMED,
         confirmed_by=user,
         confirmed_at=timezone.now(),
     )
@@ -89,13 +91,13 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
     """
     from ..models import FlightCompletion, FuelSurchargeRate
 
-    if booking.status != 'confirmed':
+    if booking.status != BookingStatus.CONFIRMED:
         return ServiceResult(ok=False, error='Booking is not confirmed')
 
     # Subscription / standing gate — must be enforced here, not only at the view layer
     from datetime import date as _date
     _bm = booking.member
-    if _bm.standing in ('suspended', 'lapsed', 'resigned'):
+    if _bm.standing in (ClubMember.STANDING_SUSPENDED, ClubMember.STANDING_LAPSED, ClubMember.STANDING_RESIGNED):
         return ServiceResult(
             ok=False,
             error=f'Member standing is {_bm.get_standing_display()} — departure blocked.',
@@ -107,7 +109,7 @@ def depart(booking, user, no_declaration_reason: str = '') -> ServiceResult:
         )
 
     from ..models import Booking as _Booking, Booking
-    _active = _Booking.objects.filter(status='departed', club=booking.club).exclude(id=booking.id)
+    _active = _Booking.objects.filter(status=BookingStatus.DEPARTED, club=booking.club).exclude(id=booking.id)
     _hint = ' Find it in Bookings → Active tab, then check it in or contact the club.'
 
     _ac_clash = _active.filter(aircraft=booking.aircraft).select_related('member__user').first()
@@ -180,7 +182,7 @@ def check_in(
     """
     from ..models import FlightCompletion, FlightChargeItem, ChargeRate, ClubMember
 
-    if booking.status != 'departed':
+    if booking.status != BookingStatus.DEPARTED:
         return ServiceResult(ok=False, error='Booking has not departed')
 
     ac = booking.aircraft
@@ -242,27 +244,27 @@ def check_in(
         ).first()
         if hire_rate:
             FlightChargeItem.objects.get_or_create(
-                flight_completion=fc, item_type='hire',
+                flight_completion=fc, item_type=FlightChargeItem.ITEM_HIRE,
                 defaults={'description': f'Aircraft hire — {ac.registration}',
                           'amount': round(float(hire_rate.amount) * float(hours), 2)}
             )
         if fc.fuel_surcharge_rate_snapshot:
             FlightChargeItem.objects.get_or_create(
-                flight_completion=fc, item_type='fuel',
+                flight_completion=fc, item_type=FlightChargeItem.ITEM_FUEL,
                 defaults={'description': 'Fuel levy',
                           'amount': round(float(fc.fuel_surcharge_rate_snapshot) * float(hours), 2)}
             )
         if fc.instructor_rate_snapshot and booking.instructor:
             FlightChargeItem.objects.get_or_create(
-                flight_completion=fc, item_type='instructor',
+                flight_completion=fc, item_type=FlightChargeItem.ITEM_INSTRUCTOR,
                 defaults={'description': f'Instructor fee — {booking.instructor.get_full_name()}',
                           'amount': round(float(fc.instructor_rate_snapshot) * float(hours), 2)}
             )
         for sc in ac.surcharges.all():
             sc_amount = (round(float(sc.amount) * float(hours), 2)
-                         if sc.rate_type == 'per_hour' else float(sc.amount))
+                         if sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR else float(sc.amount))
             FlightChargeItem.objects.get_or_create(
-                flight_completion=fc, item_type='surcharge', description=sc.name,
+                flight_completion=fc, item_type=FlightChargeItem.ITEM_SURCHARGE, description=sc.name,
                 defaults={'amount': sc_amount}
             )
 
@@ -283,7 +285,7 @@ def cancel(booking, user, release_slot: bool = False,
     Cancel a booking (also used for member self-cancellation / instructor rejection).
     Caller verifies actor permission.
     """
-    if booking.status == 'departed':
+    if booking.status == BookingStatus.DEPARTED:
         return ServiceResult(
             ok=False,
             error='Cannot cancel a flight that has departed. Use "Undo departure" to return it to confirmed, then cancel.'
@@ -387,7 +389,7 @@ def create(club, actor, aircraft, start_dt, end_dt, flight_type, instructor=None
 
     # Standing guard — suspended/lapsed/resigned members cannot self-book
     if (not (actor.is_admin or actor.is_instructor)
-            and booking_member.standing not in ('active', 'non_member')):
+            and booking_member.standing not in (ClubMember.STANDING_ACTIVE, ClubMember.STANDING_NON_MEMBER)):
         return ServiceResult(
             ok=False,
             error=f'Bookings are not available — membership status is {booking_member.get_standing_display()}.'
@@ -408,8 +410,8 @@ def create(club, actor, aircraft, start_dt, end_dt, flight_type, instructor=None
     if Booking.objects.filter(
         club=club, aircraft=aircraft,
         scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
-    ).exclude(status='cancelled').exclude(
-        status='completed', arrived_at__isnull=False, arrived_at__lte=start_dt,
+    ).exclude(status=BookingStatus.CANCELLED).exclude(
+        status=BookingStatus.COMPLETED, arrived_at__isnull=False, arrived_at__lte=start_dt,
     ).exists():
         return ServiceResult(ok=False, error='Aircraft already booked at that time')
 
@@ -417,8 +419,8 @@ def create(club, actor, aircraft, start_dt, end_dt, flight_type, instructor=None
     if instructor and Booking.objects.filter(
         club=club, instructor=instructor,
         scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
-    ).exclude(status='cancelled').exclude(
-        status='completed', arrived_at__isnull=False, arrived_at__lte=start_dt,
+    ).exclude(status=BookingStatus.CANCELLED).exclude(
+        status=BookingStatus.COMPLETED, arrived_at__isnull=False, arrived_at__lte=start_dt,
     ).exists():
         return ServiceResult(ok=False, error='Instructor already booked at that time')
 
@@ -443,7 +445,7 @@ def create(club, actor, aircraft, start_dt, end_dt, flight_type, instructor=None
         scheduled_end=end_dt,
         created_by=actor.user,
         instructor=instructor,
-        status='pending',
+        status=BookingStatus.PENDING,
         flight_type=flight_type,
         description=description,
         blockout_override=bool(hits and override),
@@ -475,8 +477,8 @@ def edit(booking, actor, aircraft, start_dt, end_dt, flight_type=None,
     if Booking.objects.filter(
         club=club, aircraft=aircraft,
         scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
-    ).exclude(id=booking.id).exclude(status='cancelled').exclude(
-        status='completed', arrived_at__isnull=False, arrived_at__lte=start_dt,
+    ).exclude(id=booking.id).exclude(status=BookingStatus.CANCELLED).exclude(
+        status=BookingStatus.COMPLETED, arrived_at__isnull=False, arrived_at__lte=start_dt,
     ).exists():
         return ServiceResult(ok=False, error='Aircraft already booked at that time')
 
@@ -484,8 +486,8 @@ def edit(booking, actor, aircraft, start_dt, end_dt, flight_type=None,
     if instructor and Booking.objects.filter(
         club=club, instructor=instructor,
         scheduled_start__lt=end_dt, scheduled_end__gt=start_dt,
-    ).exclude(id=booking.id).exclude(status='cancelled').exclude(
-        status='completed', arrived_at__isnull=False, arrived_at__lte=start_dt,
+    ).exclude(id=booking.id).exclude(status=BookingStatus.CANCELLED).exclude(
+        status=BookingStatus.COMPLETED, arrived_at__isnull=False, arrived_at__lte=start_dt,
     ).exists():
         return ServiceResult(ok=False, error='Instructor already booked at that time')
 
@@ -549,8 +551,8 @@ def reschedule(booking, actor, new_start_dt, duration_minutes,
     _ac_conflict = Booking.objects.filter(
         club=club, aircraft=target_aircraft,
         scheduled_start__lt=new_end_dt, scheduled_end__gt=new_start_dt,
-    ).exclude(id=booking.id).exclude(status='cancelled').exclude(
-        status='completed', arrived_at__isnull=False, arrived_at__lte=new_start_dt,
+    ).exclude(id=booking.id).exclude(status=BookingStatus.CANCELLED).exclude(
+        status=BookingStatus.COMPLETED, arrived_at__isnull=False, arrived_at__lte=new_start_dt,
     ).first()
     if _ac_conflict:
         from django.utils import timezone as _tz
@@ -563,8 +565,8 @@ def reschedule(booking, actor, new_start_dt, duration_minutes,
     if instructor is not None and instructor and Booking.objects.filter(
         club=club, instructor=instructor,
         scheduled_start__lt=new_end_dt, scheduled_end__gt=new_start_dt,
-    ).exclude(id=booking.id).exclude(status='cancelled').exclude(
-        status='completed', arrived_at__isnull=False, arrived_at__lte=new_start_dt,
+    ).exclude(id=booking.id).exclude(status=BookingStatus.CANCELLED).exclude(
+        status=BookingStatus.COMPLETED, arrived_at__isnull=False, arrived_at__lte=new_start_dt,
     ).exists():
         return ServiceResult(ok=False, error='Instructor not available at new time')
 

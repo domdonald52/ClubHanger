@@ -272,8 +272,14 @@
   <!-- Add credential modal -->
   <div id="add-cred-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(560px,96vw);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
-        <h2 style="margin:0;">Add credential — {{ member.user.get_full_name }}</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Members</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ member.user.get_full_name }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Add credential</span>
+        </div>
         <button type="button" class="pi-close" onclick="document.getElementById('add-cred-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post" enctype="multipart/form-data">
@@ -327,7 +333,16 @@
   <!-- Edit credential modal -->
   <div id="edit-cred-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(560px,96vw);">
-      <h2>Edit credential</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Members</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ member.user.get_full_name }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Edit credential</span>
+        </div>
+        <button type="button" class="pi-close" onclick="document.getElementById('edit-cred-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="hidden" name="action" value="edit_credential">
@@ -382,7 +397,16 @@
   {% if club_member.is_admin %}
   <div id="sub-inv-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(500px,96vw);">
-      <h2>Generate subscription invoice</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Members</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ member.user.get_full_name }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Generate subscription invoice</span>
+        </div>
+        <button type="button" class="pi-close" onclick="document.getElementById('sub-inv-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="raise_subscription_invoice">

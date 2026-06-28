@@ -400,14 +400,22 @@ class ClubMember(models.Model):
     A person's membership at a club. Holds personal details, standing, and subscription info.
     A User can have memberships at multiple clubs (one ClubMember per club).
     """
+    STANDING_PENDING     = 'pending'
+    STANDING_ACTIVE      = 'active'
+    STANDING_SUSPENDED   = 'suspended'
+    STANDING_LAPSED      = 'lapsed'
+    STANDING_RESIGNED    = 'resigned'
+    STANDING_TRANSFERRED = 'transferred'
+    STANDING_NON_MEMBER  = 'non_member'
+
     STANDING_CHOICES = [
-        ('pending',     'Pending Approval'),
-        ('active',      'Active'),
-        ('suspended',   'Suspended'),
-        ('lapsed',      'Lapsed'),
-        ('resigned',    'Resigned'),
-        ('transferred', 'Transferred'),
-        ('non_member',  'Non-member'),   # Young Eagles, trial flights, etc.
+        (STANDING_PENDING,     'Pending Approval'),
+        (STANDING_ACTIVE,      'Active'),
+        (STANDING_SUSPENDED,   'Suspended'),
+        (STANDING_LAPSED,      'Lapsed'),
+        (STANDING_RESIGNED,    'Resigned'),
+        (STANDING_TRANSFERRED, 'Transferred'),
+        (STANDING_NON_MEMBER,  'Non-member'),   # Young Eagles, trial flights, etc.
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='club_memberships', null=True, blank=True)
@@ -471,7 +479,7 @@ class ClubMember(models.Model):
     @property
     def is_current(self):
         """True when the member is active AND their subscription has not expired."""
-        if self.standing != 'active':
+        if self.standing != self.STANDING_ACTIVE:
             return False
         if self.subscription_expires and self.subscription_expires < date.today():
             return False
@@ -479,7 +487,7 @@ class ClubMember(models.Model):
 
     @property
     def is_member(self):
-        return self.standing != 'non_member'
+        return self.standing != self.STANDING_NON_MEMBER
 
     @property
     def is_instructor(self):
@@ -518,13 +526,19 @@ class ClubMember(models.Model):
 
 class MembershipHistoryEntry(models.Model):
     """Append-only audit log of membership state changes — ISA 2022 s.26 cessation date and 7-year retention."""
+    EVENT_JOINED               = 'joined'
+    EVENT_STANDING_CHANGE      = 'standing_change'
+    EVENT_CATEGORY_CHANGE      = 'category_change'
+    EVENT_ROLE_CHANGE          = 'role_change'
+    EVENT_SUBSCRIPTION_RENEWED = 'subscription_renewed'
+    EVENT_NOTE                 = 'note'
     EVENT_CHOICES = [
-        ('joined',               'Joined'),
-        ('standing_change',      'Standing changed'),
-        ('category_change',      'Membership category changed'),
-        ('role_change',          'Role changed'),
-        ('subscription_renewed', 'Subscription renewed'),
-        ('note',                 'Note'),
+        (EVENT_JOINED,               'Joined'),
+        (EVENT_STANDING_CHANGE,      'Standing changed'),
+        (EVENT_CATEGORY_CHANGE,      'Membership category changed'),
+        (EVENT_ROLE_CHANGE,          'Role changed'),
+        (EVENT_SUBSCRIPTION_RENEWED, 'Subscription renewed'),
+        (EVENT_NOTE,                 'Note'),
     ]
     club_member = models.ForeignKey(ClubMember, on_delete=models.CASCADE, related_name='membership_history')
     event_type  = models.CharField(max_length=30, choices=EVENT_CHOICES)
@@ -793,12 +807,15 @@ class Aircraft(models.Model):
     records_airswitch = models.BooleanField(default=False)
     
     # Time calculation
+    TIME_METHOD_HOBBS     = 'hobbs'
+    TIME_METHOD_TACHO     = 'tacho'
+    TIME_METHOD_AIRSWITCH = 'airswitch'
     TOTAL_TIME_METHOD_CHOICES = [
-        ('hobbs',      'Hobbs Meter'),
-        ('tacho',      'Tachometer'),
-        ('airswitch',  'Air Switch'),
+        (TIME_METHOD_HOBBS,     'Hobbs Meter'),
+        (TIME_METHOD_TACHO,     'Tachometer'),
+        (TIME_METHOD_AIRSWITCH, 'Air Switch'),
     ]
-    total_time_method = models.CharField(max_length=20, choices=TOTAL_TIME_METHOD_CHOICES, default='hobbs')
+    total_time_method = models.CharField(max_length=20, choices=TOTAL_TIME_METHOD_CHOICES, default=TIME_METHOD_HOBBS)
     
     # Fuel
     fuel_consumption_per_hour = models.DecimalField(max_digits=5, decimal_places=2, default=0)
@@ -1127,10 +1144,13 @@ class ChargeRate(models.Model):
     flight_type = models.ForeignKey(FlightType, on_delete=models.CASCADE, related_name='charge_rates')
     
     # Time recording basis
+    TIME_METHOD_HOBBS     = 'hobbs'
+    TIME_METHOD_TACHO     = 'tacho'
+    TIME_METHOD_AIRSWITCH = 'airswitch'
     TIME_METHOD_CHOICES = [
-        ('hobbs',      'Hobbs'),
-        ('tacho',      'Tacho'),
-        ('airswitch',  'Air switch'),
+        (TIME_METHOD_HOBBS,     'Hobbs'),
+        (TIME_METHOD_TACHO,     'Tacho'),
+        (TIME_METHOD_AIRSWITCH, 'Air switch'),
     ]
     time_method = models.CharField(max_length=20, choices=TIME_METHOD_CHOICES)
     
@@ -1193,10 +1213,11 @@ class Account(models.Model):
         return self.balance < -self.credit_limit
 
     def apply_transaction(self, amount, direction):
-        """Update balance in-place. Call inside an atomic block."""
+        """Update balance in-place. Call inside an atomic block.
+        direction should be AccountTransaction.DIRECTION_CREDIT or DIRECTION_DEBIT."""
         from decimal import Decimal
         amount = Decimal(str(amount))
-        if direction == 'credit':
+        if direction == AccountTransaction.DIRECTION_CREDIT:
             self.balance += amount
         else:
             self.balance -= amount
@@ -1205,8 +1226,8 @@ class Account(models.Model):
     def recompute_balance(self):
         """Recompute balance from transaction history. Returns computed value."""
         from django.db.models import Sum
-        credits = self.transactions.filter(direction='credit').aggregate(t=Sum('amount'))['t'] or 0
-        debits  = self.transactions.filter(direction='debit').aggregate(t=Sum('amount'))['t'] or 0
+        credits = self.transactions.filter(direction=AccountTransaction.DIRECTION_CREDIT).aggregate(t=Sum('amount'))['t'] or 0
+        debits  = self.transactions.filter(direction=AccountTransaction.DIRECTION_DEBIT).aggregate(t=Sum('amount'))['t'] or 0
         return credits - debits
 
 
@@ -1217,16 +1238,23 @@ class AccountTransaction(models.Model):
     cancellation fees, and manual adjustments.
     Account.balance is a cached sum; recompute_balance() verifies it.
     """
+    TYPE_TOP_UP       = 'top_up'
+    TYPE_FLIGHT       = 'flight'
+    TYPE_CANCELLATION = 'cancellation'
+    TYPE_ADJUSTMENT   = 'adjustment'
+    TYPE_SALE         = 'sale'
     TYPE_CHOICES = [
-        ('top_up',       'Account top-up'),
-        ('flight',       'Flight charge'),
-        ('cancellation', 'Cancellation fee'),
-        ('adjustment',   'Manual adjustment'),
-        ('sale',         'Sundry sale'),
+        (TYPE_TOP_UP,       'Account top-up'),
+        (TYPE_FLIGHT,       'Flight charge'),
+        (TYPE_CANCELLATION, 'Cancellation fee'),
+        (TYPE_ADJUSTMENT,   'Manual adjustment'),
+        (TYPE_SALE,         'Sundry sale'),
     ]
+    DIRECTION_CREDIT = 'credit'
+    DIRECTION_DEBIT  = 'debit'
     DIRECTION_CHOICES = [
-        ('credit', 'Credit'),
-        ('debit',  'Debit'),
+        (DIRECTION_CREDIT, 'Credit'),
+        (DIRECTION_DEBIT,  'Debit'),
     ]
     PAYMENT_METHOD_CHOICES = [
         ('bank_transfer', 'Bank transfer'),
@@ -2130,7 +2158,7 @@ def members_to_notify_for_release(booking):
     # General preference matches, excluding watchers (they're already included)
     prefs = (
         NotificationPreference.objects
-        .filter(club_member__club=booking.club, club_member__standing='active')
+        .filter(club_member__club=booking.club, club_member__standing=self.STANDING_ACTIVE)
         .exclude(club_member=booking.member)
         .exclude(club_member_id__in=already_notified)
         .exclude(club_member_id__in=watcher_set)
@@ -2311,7 +2339,7 @@ class BlockOut(models.Model):
         affected = Booking.objects.filter(
             club=self.club,
             scheduled_end__gte=today_start,
-        ).exclude(status='cancelled')
+        ).exclude(status=BookingStatus.CANCELLED)
         for b in affected:
             recompute_blockout_conflict(b)
 
@@ -2459,7 +2487,7 @@ def _blockout_saved(sender, instance, **kwargs):
 def _blockout_deleted(sender, instance, **kwargs):
     # On delete, re-evaluate all upcoming bookings so stale flags clear.
     from django.utils import timezone as _tz
-    for b in Booking.objects.filter(club=instance.club, scheduled_end__gte=_tz.now()).exclude(status='cancelled'):
+    for b in Booking.objects.filter(club=instance.club, scheduled_end__gte=_tz.now()).exclude(status=BookingStatus.CANCELLED):
         recompute_blockout_conflict(b)
 
 
@@ -2652,13 +2680,19 @@ class FlightChargeItem(models.Model):
     The sum of all items for a FlightCompletion = FlightCompletion.total_charge.
     One-off/sundry items require a description.
     """
+    ITEM_HIRE       = 'hire'
+    ITEM_FUEL       = 'fuel'
+    ITEM_INSTRUCTOR = 'instructor'
+    ITEM_SURCHARGE  = 'surcharge'
+    ITEM_LANDING    = 'landing'
+    ITEM_ONE_OFF    = 'one_off'
     ITEM_TYPE_CHOICES = [
-        ('hire',       'Aircraft hire'),
-        ('fuel',       'Fuel'),
-        ('instructor', 'Instructor fee'),
-        ('surcharge',  'Aircraft surcharge'),
-        ('landing',    'Landing fee'),
-        ('one_off',    'Sundry / one-off'),
+        (ITEM_HIRE,       'Aircraft hire'),
+        (ITEM_FUEL,       'Fuel'),
+        (ITEM_INSTRUCTOR, 'Instructor fee'),
+        (ITEM_SURCHARGE,  'Aircraft surcharge'),
+        (ITEM_LANDING,    'Landing fee'),
+        (ITEM_ONE_OFF,    'Sundry / one-off'),
     ]
 
     flight_completion = models.ForeignKey(

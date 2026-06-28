@@ -30,8 +30,10 @@
   /* Modal */
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;}
   .modal-box{background:#fff;border-radius:12px;padding:1.4rem 1.5rem 1.2rem;width:100%;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.18);}
-  .modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
-  .modal-hdr h2{font-size:1rem;font-weight:700;margin:0;}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin:-1.4rem -1.5rem 1.2rem;padding:.8rem 1.2rem;border-bottom:1px solid #e5e7eb;background:#f8f9fa;border-radius:12px 12px 0 0;}
+  .modal-nav{font-size:.82rem;font-weight:500;color:#6b7280;display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;}
+  .modal-nav .crumb-cur{color:#111827;font-weight:650;}
+  .modal-nav .crumb-sep{opacity:.5;}
   .pi-close{background:none;border:1px solid var(--input-border);border-radius:6px;padding:0;width:28px;height:28px;cursor:pointer;font-size:1rem;color:var(--text-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
   .flabel{display:flex;flex-direction:column;gap:.25rem;font-size:.8rem;font-weight:500;color:var(--text-2);}
   .finput:focus{outline:2px solid #3b82f6;outline-offset:1px;border-color:#3b82f6;}
@@ -142,8 +144,14 @@
 <!-- Amend readings modal -->
 <div id="amend-modal" class="modal-backdrop" hidden>
   <div class="modal-box">
-    <div class="modal-hdr">
-      <h2>Amend readings</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Aircraft</span>
+        <span class="crumb-sep"> ›</span>
+        <span>{{ ac.registration }}</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Amend readings</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('amend-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <p class="amend-note">Corrects a data-entry error. Charges are <strong>not</strong> recomputed. Amending an end reading may resolve or create integrity warnings — the integrity screen will reflect changes immediately.</p>

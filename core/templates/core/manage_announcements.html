@@ -57,7 +57,14 @@
 <!-- ── Add modal ── -->
 <div id="add-ann-modal" class="modal-back" hidden>
   <div class="modal">
-    <h2>New notice</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Announcements</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Add announcement</span>
+      </div>
+      <button type="button" class="pi-close" onclick="document.getElementById('add-ann-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="create">
@@ -96,7 +103,14 @@
 <!-- ── Edit modal ── -->
 <div id="edit-ann-modal" class="modal-back" hidden>
   <div class="modal">
-    <h2>Edit notice</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Announcements</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Edit announcement</span>
+      </div>
+      <button type="button" class="pi-close" onclick="document.getElementById('edit-ann-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="edit">

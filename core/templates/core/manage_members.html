@@ -207,8 +207,12 @@
 <!-- Invite member modal -->
 <div id="invite-modal" class="modal-back" hidden>
   <div class="modal">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="margin:0;">Invite member</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Members</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Invite</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('invite-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <p style="font-size:.84rem;color:var(--text-2);margin:0 0 1rem;">Sends a 7-day sign-up link to the recipient's email. They create their own account and are added with Pending standing.</p>
@@ -233,8 +237,12 @@
 <!-- Add member modal -->
 <div id="add-member-modal" class="modal-back" hidden>
   <div class="modal">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="margin:0;">Add member</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Members</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Add member</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('add-member-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <form method="post">
@@ -271,8 +279,12 @@
 <!-- Registrar export modal -->
 <div id="registrar-modal" class="modal-back" hidden>
   <div class="modal" style="max-width:520px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="margin:0;">Registrar export</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Members</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Registrar export</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('registrar-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <p style="font-size:.85rem;color:var(--text-2);margin:0 0 1rem;">Generates a point-in-time list of all members active on a chosen date.</p>

@@ -75,8 +75,12 @@
 <!-- New sale modal -->
 <div id="new-sale-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(480px,95vw);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="margin:0;font-size:1.05rem;">New sundry sale</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Sundry charges</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">New sale</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('new-sale-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <form method="post">

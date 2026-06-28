@@ -88,8 +88,12 @@
 <!-- Add aerodrome modal -->
 <div id="add-ae-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(500px,94vw);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="margin:0;">Add aerodrome</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Aerodromes</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Add aerodrome</span>
+      </div>
       <button type="button" class="pi-close" id="add-ae-cancel" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <form method="post">
@@ -118,8 +122,12 @@
 <!-- Edit fees modal -->
 <div id="fees-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(520px,94vw);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 id="fm-title" style="margin:0;">Edit fees</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Aerodromes</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur" id="fm-title">Edit fees</span>
+      </div>
       <button type="button" class="pi-close" id="fm-cancel" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <p style="font-size:.8rem;color:var(--text-3);margin:-.3rem 0 .9rem;">Add, edit or remove landing fee rates for this aerodrome.</p>
@@ -139,8 +147,12 @@
 <!-- Edit aerodrome modal -->
 <div id="edit-ae-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(500px,94vw);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 id="eam-title" style="margin:0;">Edit aerodrome</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Aerodromes</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur" id="eam-title">Edit aerodrome</span>
+      </div>
       <button type="button" class="pi-close" id="eam-cancel" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <form method="post">

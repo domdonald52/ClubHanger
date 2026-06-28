@@ -28,7 +28,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        from core.models import Club, Booking, MemberCredential, ClubMember
+        from core.models import Club, Booking, MemberCredential, ClubMember, BookingStatus
         from core.email_notifications import (
             booking_reminder,
             credential_expiry_warning,
@@ -48,7 +48,7 @@ class Command(BaseCommand):
 
             # Booking reminders — confirmed flights tomorrow
             bookings = (Booking.objects
-                        .filter(club=club, status='confirmed',
+                        .filter(club=club, status=BookingStatus.CONFIRMED,
                                 scheduled_start__date=tomorrow)
                         .select_related('member__user', 'member__notification_prefs',
                                         'aircraft', 'instructor', 'flight_type'))
@@ -83,7 +83,7 @@ class Command(BaseCommand):
             for days in (30, 7):
                 target = timezone.localdate() + timedelta(days=days)
                 members = (ClubMember.objects
-                           .filter(club=club, standing='active',
+                           .filter(club=club, standing=ClubMember.STANDING_ACTIVE,
                                    role__renewal_required=True,
                                    subscription_expires=target)
                            .select_related('user', 'notification_prefs'))
@@ -98,7 +98,7 @@ class Command(BaseCommand):
 
             # Payment reminders — active members with negative account balance
             neg_members = (ClubMember.objects
-                           .filter(club=club, standing='active',
+                           .filter(club=club, standing=ClubMember.STANDING_ACTIVE,
                                    account__balance__lt=0)
                            .select_related('user', 'account', 'notification_prefs'))
             for m in neg_members:

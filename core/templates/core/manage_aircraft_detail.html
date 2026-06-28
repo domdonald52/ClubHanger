@@ -594,8 +594,14 @@
   <!-- Add fuel charge rate modal -->
   <div id="amend-fuel-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(420px,95vw);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 style="margin:0;">Amend fuel charge rate</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Aircraft</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ ac.registration }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Amend fuel charge rate</span>
+        </div>
         <button type="button" class="pi-close" onclick="document.getElementById('amend-fuel-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post">
@@ -621,8 +627,14 @@
   <!-- Add maintenance item modal -->
   <div id="add-maint-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(540px,95vw);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 style="margin:0;">Add maintenance item</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Aircraft</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ ac.registration }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Add maintenance item</span>
+        </div>
         <button type="button" class="pi-close" onclick="document.getElementById('add-maint-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post">
@@ -671,8 +683,14 @@
   <!-- Edit maintenance item modal -->
   <div id="edit-maint-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(540px,95vw);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 style="margin:0;">Edit maintenance item</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Aircraft</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ ac.registration }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Edit maintenance item</span>
+        </div>
         <button type="button" class="pi-close" onclick="document.getElementById('edit-maint-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post">
@@ -735,8 +753,14 @@
   <!-- Add block-out modal (aircraft) -->
   <div id="add-ac-bo-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(480px,94vw);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 style="margin:0;">Add block-out — {{ ac.registration }}</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Aircraft</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ ac.registration }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Add block-out</span>
+        </div>
         <button type="button" class="pi-close" onclick="document.getElementById('add-ac-bo-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post">

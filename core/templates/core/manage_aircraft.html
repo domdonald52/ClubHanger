@@ -77,7 +77,14 @@
 {% if club_member.is_admin %}
 <div id="add-ac-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(460px,94vw);">
-    <h2>Add aircraft</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Aircraft</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Add aircraft</span>
+      </div>
+      <button type="button" class="pi-close" id="add-ac-cancel" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <input type="hidden" name="action" value="add_aircraft">
@@ -96,9 +103,7 @@
         <span style="font-size:.78rem;color:var(--warning-text);margin-top:.2rem;display:block;">No aircraft types defined — add them in Settings → Aircraft types first.</span>
         {% endif %}
       </label>
-      <div class="modal-actions" style="margin-top:.9rem;">
-        <button type="button" class="cbtn" id="add-ac-cancel">Close</button>
-        <span style="flex:1"></span>
+      <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Add aircraft</button>
       </div>
     </form>

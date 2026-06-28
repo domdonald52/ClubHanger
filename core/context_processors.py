@@ -61,9 +61,9 @@ def theme(request):
                 ctx['open_occurrences_count'] = _OR.objects.filter(
                     club=club, status=_OR.STATUS_SUBMITTED).count() if cm.can_access_manage else 0
                 ctx['open_actions_count'] = (
-                    _OA.objects.filter(report__club=club, status='open').count()
+                    _OA.objects.filter(report__club=club, status=_OA.STATUS_OPEN).count()
                     if cm.can_access_manage else
-                    _OA.objects.filter(assigned_to=cm, status='open').count()
+                    _OA.objects.filter(assigned_to=cm, status=_OA.STATUS_OPEN).count()
                 )
             except Exception:
                 ctx['open_occurrences_count'] = 0
@@ -119,8 +119,8 @@ def theme(request):
                             club=club, scheduled_start__gte=_today_start,
                         ).exclude(status__in=[BookingStatus.CANCELLED, BookingStatus.COMPLETED]).filter(
                             Q(blockout_conflict=True) |
-                            Q(member__standing__in=['suspended', 'lapsed', 'resigned']) |
-                            Q(member__standing='active',
+                            Q(member__standing__in=[ClubMember.STANDING_SUSPENDED, ClubMember.STANDING_LAPSED, ClubMember.STANDING_RESIGNED]) |
+                            Q(member__standing=ClubMember.STANDING_ACTIVE,
                               member__subscription_expires__isnull=False,
                               member__subscription_expires__lt=_today) |
                             Q(aircraft__status=AircraftStatus.RETIRED) |

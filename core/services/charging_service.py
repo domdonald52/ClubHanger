@@ -45,9 +45,9 @@ def add_charge(
     if amount_d <= 0:
         return ServiceResult(ok=False, error='Charge amount must be greater than zero')
 
-    if item_type == 'one_off' and description:
+    if item_type == FlightChargeItem.ITEM_ONE_OFF and description:
         if FlightChargeItem.objects.filter(
-            flight_completion=fc, item_type='one_off', description__iexact=description
+            flight_completion=fc, item_type=FlightChargeItem.ITEM_ONE_OFF, description__iexact=description
         ).exists():
             return ServiceResult(ok=False, error=f'A charge "{description}" already exists. Delete it first to add a new one.')
 
@@ -59,7 +59,7 @@ def add_charge(
         segment=segment,
     )
 
-    if item_type == 'landing':
+    if item_type == FlightChargeItem.ITEM_LANDING:
         FlightLandingEntry.objects.create(
             flight_completion=fc,
             aerodrome=aerodrome,
@@ -94,15 +94,15 @@ def _debit_account(acct, booking, fc, pay_amount, method, user):
     from ..models import AccountTransaction
     AccountTransaction.objects.create(
         account=acct,
-        transaction_type='flight',
-        direction='debit',
+        transaction_type=AccountTransaction.TYPE_FLIGHT,
+        direction=AccountTransaction.DIRECTION_DEBIT,
         amount=pay_amount,
         description=f'Flight {booking.aircraft.registration} {booking.scheduled_start.date()}',
         flight_completion=fc,
         payment_method=method,
         created_by=user,
     )
-    acct.apply_transaction(pay_amount, 'debit')
+    acct.apply_transaction(pay_amount, AccountTransaction.DIRECTION_DEBIT)
 
 
 def _check_credit_headroom(acct, pay_amount):
@@ -276,8 +276,8 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
             acct, _ = Account.objects.get_or_create(club_member=fp.member, defaults={'balance': 0})
             AccountTransaction.objects.create(
                 account=acct,
-                transaction_type='adjustment',
-                direction='credit',
+                transaction_type=AccountTransaction.TYPE_ADJUSTMENT,
+                direction=AccountTransaction.DIRECTION_CREDIT,
                 amount=fp.amount,
                 description=(
                     f'Payment reversal — {booking.aircraft.registration} '
@@ -287,7 +287,7 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
                 payment_method=fp.method,
                 created_by=user,
             )
-            acct.apply_transaction(fp.amount, 'credit')
+            acct.apply_transaction(fp.amount, AccountTransaction.DIRECTION_CREDIT)
         fp.delete()
 
     fc._sync_payment_cache()
@@ -308,8 +308,8 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
                 _sbk = _sfp.completion.booking
                 AccountTransaction.objects.create(
                     account=_sacct,
-                    transaction_type='adjustment',
-                    direction='credit',
+                    transaction_type=AccountTransaction.TYPE_ADJUSTMENT,
+                    direction=AccountTransaction.DIRECTION_CREDIT,
                     amount=_sfp.amount,
                     description=(
                         f'Payment reversal — {_sbk.aircraft.registration} '
@@ -319,7 +319,7 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
                     payment_method=_sfp.method,
                     created_by=user,
                 )
-                _sacct.apply_transaction(_sfp.amount, 'credit')
+                _sacct.apply_transaction(_sfp.amount, AccountTransaction.DIRECTION_CREDIT)
             _sfp.delete()
             _sfp.completion._sync_payment_cache()
             total_reversed += _sfp.amount
@@ -338,15 +338,15 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
         AccountTransaction.objects.filter(
             flight_completion=fc,
             transaction_type='deposit',
-            direction='credit',
+            direction=AccountTransaction.DIRECTION_CREDIT,
             description__startswith='Arrears clearance',
         ).select_related('account')
     )
     for _at in arrears_ats:
         AccountTransaction.objects.create(
             account=_at.account,
-            transaction_type='adjustment',
-            direction='debit',
+            transaction_type=AccountTransaction.TYPE_ADJUSTMENT,
+            direction=AccountTransaction.DIRECTION_DEBIT,
             amount=_at.amount,
             description=(
                 f'Arrears clearance reversal — {booking.aircraft.registration} '
@@ -355,7 +355,7 @@ def reverse_payment(fc, booking, user, payment_id=None) -> ServiceResult:
             flight_completion=fc,
             created_by=user,
         )
-        _at.account.apply_transaction(_at.amount, 'debit')
+        _at.account.apply_transaction(_at.amount, AccountTransaction.DIRECTION_DEBIT)
         _at.delete()
 
     msg = f'Payment of ${total_reversed:.2f} reversed. Flight is now unpaid.'
@@ -464,8 +464,8 @@ def record_refund(fc, booking, user, amount, method: str) -> ServiceResult:
     if method == 'credit':
         AccountTransaction.objects.create(
             account=acct,
-            transaction_type='adjustment',
-            direction='credit',
+            transaction_type=AccountTransaction.TYPE_ADJUSTMENT,
+            direction=AccountTransaction.DIRECTION_CREDIT,
             amount=refund_amount,
             description=(
                 f'Overpayment refund — {booking.aircraft.registration} '
@@ -475,7 +475,7 @@ def record_refund(fc, booking, user, amount, method: str) -> ServiceResult:
             payment_method='account',
             created_by=user,
         )
-        acct.apply_transaction(refund_amount, 'credit')
+        acct.apply_transaction(refund_amount, AccountTransaction.DIRECTION_CREDIT)
         msg = f'${refund_amount:.2f} credited to member account.'
     else:
         msg = f'${refund_amount:.2f} refund recorded ({method}). Physical refund handled offline.'

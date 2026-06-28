@@ -71,7 +71,14 @@
 <!-- Add contact modal -->
 <div id="add-contact-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(520px,95vw);">
-    <h2 style="margin:0 0 .9rem;font-size:1.05rem;">Add contact</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Contacts</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Add contact</span>
+      </div>
+      <button type="button" class="pi-close" onclick="document.getElementById('add-contact-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">
       {% csrf_token %}
       <div style="display:flex;gap:.7rem;flex-wrap:wrap;">

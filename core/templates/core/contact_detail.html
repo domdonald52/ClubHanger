@@ -103,8 +103,14 @@
 {% if contact.can_convert %}
 <div id="convert-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(460px,95vw);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="margin:0;font-size:1.05rem;">Convert to member</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Contacts</span>
+        <span class="crumb-sep"> ›</span>
+        <span>{{ contact.name }}</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Convert to member</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('convert-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <p style="font-size:.84rem;color:var(--text-2);margin:0 0 .9rem;">

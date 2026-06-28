@@ -153,8 +153,14 @@
   <!-- Add availability window modal -->
   <div id="add-av-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(520px,95vw);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 style="margin:0;">Add availability window</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Instructors</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ instr.user.get_full_name }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Add availability window</span>
+        </div>
         <button type="button" class="pi-close" onclick="document.getElementById('add-av-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post">{% csrf_token %}
@@ -206,8 +212,14 @@
   <!-- Add block-out modal (instructor) -->
   <div id="add-instr-bo-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(480px,94vw);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 style="margin:0;">Add block-out — {{ instr.user.get_full_name }}</h2>
+      <div class="modal-header">
+        <div class="modal-nav">
+          <span>Instructors</span>
+          <span class="crumb-sep"> ›</span>
+          <span>{{ instr.user.get_full_name }}</span>
+          <span class="crumb-sep"> ›</span>
+          <span class="crumb-cur">Add block-out</span>
+        </div>
         <button type="button" class="pi-close" onclick="document.getElementById('add-instr-bo-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post">

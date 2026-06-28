@@ -119,8 +119,12 @@
 <!-- Remove from roster modal -->
 <div id="remove-instr-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(560px,95vw);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 id="remove-title" style="margin:0;font-size:1.05rem;"></h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Instructors</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur" id="remove-title">Remove instructor</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('remove-instr-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <p id="remove-desc" style="font-size:.84rem;color:var(--text-2);margin:0 0 .9rem;"></p>
@@ -152,8 +156,12 @@
 <!-- Add to roster modal -->
 <div id="add-instr-modal" class="modal-back" hidden>
   <div class="modal">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="margin:0;">Add to instructor roster</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Instructors</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Add instructor</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('add-instr-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     {% if eligible_members %}

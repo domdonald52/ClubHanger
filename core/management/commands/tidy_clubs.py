@@ -118,7 +118,7 @@ class Command(BaseCommand):
                     admin_role = Role.objects.filter(club=new_club, name='Admin').first()
                     ClubMember.objects.create(
                         user=admin_user, club=new_club, role=admin_role,
-                        standing='active', has_admin_access=True)
+                        standing=ClubMember.STANDING_ACTIVE, has_admin_access=True)
                     self.stdout.write(self.style.SUCCESS(
                         f"  emptied; {admin_user.username} re-added as admin."))
 

@@ -63,8 +63,12 @@
 <!-- Create modal -->
 <div id="create-modal" hidden style="position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:500;">
   <div style="background:var(--surface);border-radius:10px;width:min(440px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="font-size:1rem;font-weight:650;margin:0;">New voucher</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Vouchers</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">New voucher</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('create-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <form method="post">
@@ -102,8 +106,12 @@
 <!-- Redeem modal -->
 <div id="redeem-modal" hidden style="position:fixed;inset:0;background:var(--modal-backdrop);display:flex;align-items:center;justify-content:center;z-index:500;">
   <div style="background:var(--surface);border-radius:10px;width:min(400px,96vw);padding:1.5rem;box-shadow:0 12px 40px rgba(16,24,40,.25);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-      <h2 style="font-size:1rem;font-weight:650;margin:0;">Redeem voucher</h2>
+    <div class="modal-header">
+      <div class="modal-nav">
+        <span>Vouchers</span>
+        <span class="crumb-sep"> ›</span>
+        <span class="crumb-cur">Redeem voucher</span>
+      </div>
       <button type="button" class="pi-close" onclick="document.getElementById('redeem-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
     <p id="redeem-desc" style="font-size:.85rem;color:var(--text-2);margin:0 0 1rem;"></p>
