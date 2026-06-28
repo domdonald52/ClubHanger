@@ -386,33 +386,33 @@ if (instrBoModal) {
   instrBoModal.addEventListener('click', e => { if (e.target === instrBoModal) instrBoModal.hidden = true; });
   document.addEventListener('keydown', e => { if (e.key==='Escape') instrBoModal.hidden = true; });
 }
-function toggleBoRecur(sel) {
-  const form = sel.closest('form');
-  const v = sel.value;
-  form.querySelectorAll('.bo-date-field').forEach(el => el.style.display = v==='one_off' ? '' : 'none');
-  form.querySelectorAll('.bo-weekday-field').forEach(el => el.style.display = v==='weekly' ? '' : 'none');
-}
-function toggleBoTime(cb) {
-  const form = cb.closest('form');
-  form.querySelectorAll('.bo-time-fields').forEach(el => el.style.display = cb.checked ? 'none' : 'flex');
-}
-function toggleAvDate(sel) {
-  const form = sel.closest('form');
-  const isOneOff = sel.value === 'one_off';
-  form.querySelectorAll('.av-weekly').forEach(el => el.style.display = isOneOff ? 'none' : '');
-  form.querySelectorAll('.av-oneoff').forEach(el => el.style.display = isOneOff ? '' : 'none');
-}
-function toggleAvTime(cb) {
-  const tf = document.getElementById('av-time-fields');
+window.toggleBoRecur = function(sel) {
+  var form = sel.closest('form');
+  var v = sel.value;
+  form.querySelectorAll('.bo-date-field').forEach(function(el){ el.style.display = v==='one_off' ? '' : 'none'; });
+  form.querySelectorAll('.bo-weekday-field').forEach(function(el){ el.style.display = v==='weekly' ? '' : 'none'; });
+};
+window.toggleBoTime = function(cb) {
+  var form = cb.closest('form');
+  form.querySelectorAll('.bo-time-fields').forEach(function(el){ el.style.display = cb.checked ? 'none' : 'flex'; });
+};
+window.toggleAvDate = function(sel) {
+  var form = sel.closest('form');
+  var isOneOff = sel.value === 'one_off';
+  form.querySelectorAll('.av-weekly').forEach(function(el){ el.style.display = isOneOff ? 'none' : ''; });
+  form.querySelectorAll('.av-oneoff').forEach(function(el){ el.style.display = isOneOff ? '' : 'none'; });
+};
+window.toggleAvTime = function(cb) {
+  var tf = document.getElementById('av-time-fields');
   if (tf) tf.style.display = cb.checked ? 'none' : 'flex';
-}
-function validateAvForm(form) {
-  const isWeekly = form.querySelector('[name=av_recurrence]').value === 'weekly';
+};
+window.validateAvForm = function(form) {
+  var isWeekly = form.querySelector('[name=av_recurrence]').value === 'weekly';
   if (!isWeekly) return true;
-  const anyChecked = [...form.querySelectorAll('[name=av_weekdays]')].some(cb => cb.checked);
+  var anyChecked = [].slice.call(form.querySelectorAll('[name=av_weekdays]')).some(function(cb){ return cb.checked; });
   form.querySelector('.av-day-err').style.display = anyChecked ? 'none' : '';
   return anyChecked;
-}
+};
 
 window.closeAvModal = function() {
   var modal = document.getElementById('add-av-modal');
