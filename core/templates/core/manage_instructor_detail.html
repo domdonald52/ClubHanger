@@ -410,49 +410,62 @@ function validateAvForm(form) {
   return anyChecked;
 }
 
-const avModal = document.getElementById('add-av-modal');
-function closeAvModal() {
-  avModal.hidden = true;
-  // Reset to add mode
+window.closeAvModal = function() {
+  var modal = document.getElementById('add-av-modal');
+  if (!modal) return;
+  modal.hidden = true;
   document.getElementById('av-action-input').value = 'add_instructor_availability';
   document.getElementById('edit-av-ids').value = '';
   document.getElementById('av-modal-title').textContent = 'Add availability window';
-  avModal.querySelector('form').reset();
-  const recSel = avModal.querySelector('[name=av_recurrence]');
-  toggleAvDate(recSel);
-  toggleAvTime(document.getElementById('av-allday'));
-}
-if (avModal) {
-  avModal.addEventListener('click', e => { if (e.target === avModal) closeAvModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !avModal.hidden) closeAvModal(); });
-}
-function openEditAv(btn) {
-  const d = btn.dataset;
+  var form = modal.querySelector('form');
+  if (form) {
+    form.reset();
+    var recSel = form.querySelector('[name=av_recurrence]');
+    if (recSel) toggleAvDate(recSel);
+    var alldayCb = document.getElementById('av-allday');
+    if (alldayCb) toggleAvTime(alldayCb);
+  }
+};
+window.openEditAv = function(btn) {
+  var modal = document.getElementById('add-av-modal');
+  if (!modal) return;
+  var d = btn.dataset;
   document.getElementById('av-action-input').value = 'edit_instructor_availability';
-  document.getElementById('edit-av-ids').value = d.avIds;
+  document.getElementById('edit-av-ids').value = d.avIds || '';
   document.getElementById('av-modal-title').textContent = 'Edit availability window';
-  const form = avModal.querySelector('form');
-  const recSel = form.querySelector('[name=av_recurrence]');
-  recSel.value = d.recurrence;
+  var form = modal.querySelector('form');
+  var recSel = form.querySelector('[name=av_recurrence]');
+  recSel.value = d.recurrence || 'weekly';
   toggleAvDate(recSel);
-  if (d.recurrence === 'weekly') {
-    const wds = d.weekdays ? d.weekdays.split(',').map(Number) : [];
-    form.querySelectorAll('[name=av_weekdays]').forEach(cb => { cb.checked = wds.includes(parseInt(cb.value)); });
+  if (d.recurrence !== 'one_off') {
+    var wds = d.weekdays ? d.weekdays.split(',').map(Number) : [];
+    form.querySelectorAll('[name=av_weekdays]').forEach(function(cb) { cb.checked = wds.indexOf(parseInt(cb.value)) >= 0; });
   } else {
-    form.querySelector('[name=av_date]').value = d.date || '';
+    var dateEl = form.querySelector('[name=av_date]');
+    if (dateEl) dateEl.value = d.date || '';
   }
-  const allDay = d.allDay === 'true';
-  const alldayCb = document.getElementById('av-allday');
-  alldayCb.checked = allDay;
-  toggleAvTime(alldayCb);
+  var allDay = d.allDay === 'true';
+  var alldayCb = document.getElementById('av-allday');
+  if (alldayCb) { alldayCb.checked = allDay; toggleAvTime(alldayCb); }
   if (!allDay) {
-    form.querySelector('[name=av_start_time]').value = d.startTime || '';
-    form.querySelector('[name=av_end_time]').value = d.endTime || '';
+    var stEl = form.querySelector('[name=av_start_time]');
+    var etEl = form.querySelector('[name=av_end_time]');
+    if (stEl) stEl.value = d.startTime || '';
+    if (etEl) etEl.value = d.endTime || '';
   }
-  form.querySelector('[name=av_active_from]').value = d.activeFrom || '';
-  form.querySelector('[name=av_active_until]').value = d.activeUntil || '';
-  form.querySelector('[name=av_notes]').value = d.notes || '';
-  avModal.hidden = false;
-}
+  var afEl = form.querySelector('[name=av_active_from]');
+  var auEl = form.querySelector('[name=av_active_until]');
+  var notesEl = form.querySelector('[name=av_notes]');
+  if (afEl) afEl.value = d.activeFrom || '';
+  if (auEl) auEl.value = d.activeUntil || '';
+  if (notesEl) notesEl.value = d.notes || '';
+  modal.hidden = false;
+};
+(function() {
+  var modal = document.getElementById('add-av-modal');
+  if (!modal) return;
+  modal.addEventListener('click', function(e) { if (e.target === modal) closeAvModal(); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !modal.hidden) closeAvModal(); });
+})();
 </script>
 {% endblock %}
