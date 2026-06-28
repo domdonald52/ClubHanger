@@ -68,9 +68,9 @@ def theme(request):
             except Exception:
                 ctx['open_occurrences_count'] = 0
                 ctx['open_actions_count'] = 0
-            _on_manage_page = rm and rm.url_name and (
-                rm.url_name.startswith('manage_') or 'manage' in (rm.namespace or '')
-                or (rm.kwargs.get('club_slug') and request.path.startswith(f"/manage/"))
+            _on_manage_page = (
+                rm and rm.kwargs.get('club_slug')
+                and not request.path.startswith('/app/')
             )
             if cm.can_access_manage and _on_manage_page:
                 try:
