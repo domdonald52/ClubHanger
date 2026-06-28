@@ -240,21 +240,25 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="save_hire_rates">
 
-      <div class="frow" style="margin-bottom:.8rem;align-items:flex-end;gap:1.5rem;flex-wrap:wrap;">
-        <label class="flabel" style="margin:0;min-width:160px;">
-          Default rate
-          <span id="default-rate-view">{% if ac.default_hourly_rate %}<strong>${{ ac.default_hourly_rate|currency }}/hr</strong>{% else %}<span style="color:var(--text-3)">—</span>{% endif %}</span>
-          <div class="money-wrap" id="default-rate-edit" hidden>
+      <div id="default-rate-view" class="current-rate-card" style="margin-bottom:.8rem;">
+        <span class="current-rate-label">Default rate</span>
+        {% if ac.default_hourly_rate %}
+        <span class="current-rate-amount">${{ ac.default_hourly_rate|currency }}/hr</span>
+        {% else %}
+        <span class="current-rate-amount" style="color:var(--text-3);">—</span>
+        {% endif %}
+        <span class="current-rate-label" style="margin-left:.5rem;">Billing instrument</span>
+        <span style="font-size:.85rem;font-weight:600;color:var(--text-2);">{{ ac.get_total_time_method_display }} — <a href="#tab-instruments" onclick="document.querySelector('[data-tab=instruments]').click()" style="font-size:.8rem;">change</a></span>
+      </div>
+      <div id="default-rate-edit" hidden style="display:flex;align-items:center;gap:1.2rem;margin-bottom:.8rem;flex-wrap:wrap;">
+        <label class="flabel" style="margin:0;">Default rate
+          <div class="money-wrap">
             <span class="money-sym">$</span>
             <input type="number" name="default_rate" id="default-rate-input"
                    value="{{ ac.default_hourly_rate|default:'' }}"
                    min="0" step="0.01" class="money-input" placeholder="0.00" style="width:8rem;">
           </div>
         </label>
-        <div class="flabel" style="margin:0;">
-          Billing instrument
-          <span style="color:var(--text-2);">{{ ac.get_total_time_method_display }} — <a href="#tab-instruments" onclick="document.querySelector('[data-tab=instruments]').click()" style="font-size:.8rem;">change</a></span>
-        </div>
       </div>
 
       <table class="ft-table" id="rates-grid">
