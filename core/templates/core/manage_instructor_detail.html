@@ -112,7 +112,7 @@
     {% endif %}
 
     {% if past_av_count %}
-    <button type="button" id="past-av-toggle" onclick="(function(){var s=document.getElementById('past-av');s.hidden=!s.hidden;document.getElementById('past-av-toggle').textContent=s.hidden?'Show {{ past_av_count }} past {{ past_av_count|pluralize:\"entry,entries\" }}':'Hide past entries';})()" style="background:none;border:none;padding:0;font-size:.78rem;color:var(--text-3);cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-bottom:.8rem;">Show {{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }}</button>
+    <button type="button" id="past-av-toggle" data-show-text="Show {{ past_av_count }} past {{ past_av_count|pluralize:'entry,entries' }}" onclick="(function(){var btn=this,s=document.getElementById('past-av');s.hidden=!s.hidden;btn.textContent=s.hidden?btn.getAttribute('data-show-text'):'Hide past entries';})()" style="background:none;border:none;padding:0;font-size:.78rem;color:var(--text-3);cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-bottom:.8rem;">Show {{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }}</button>
     <div id="past-av" hidden style="opacity:.55;margin-bottom:.8rem;">
       <table class="ft-table">
         <thead><tr><th>When</th><th>Hours</th><th>Valid</th><th>Notes</th></tr></thead>
