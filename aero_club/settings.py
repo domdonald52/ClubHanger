@@ -198,8 +198,8 @@ if _s3_key:
     AWS_S3_REGION_NAME      = os.environ.get('AWS_DEFAULT_REGION', 'auto')
     AWS_S3_FILE_OVERWRITE   = False
     AWS_DEFAULT_ACL         = None
-    AWS_QUERYSTRING_AUTH    = False
-    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=31536000, public'}
+    AWS_QUERYSTRING_EXPIRE  = 604800
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400, public'}
     MEDIA_URL               = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/"
 
 # ── Security ──────────────────────────────────────────────────────────────────
