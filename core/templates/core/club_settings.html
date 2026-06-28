@@ -1960,8 +1960,8 @@ const S_MODALS = ['add-ft-modal','edit-ft-modal','add-ig-modal','edit-ig-modal',
                   'add-sc-modal','edit-sc-modal','add-bot-modal','edit-bot-modal',
                   'edit-at-modal','role-del-modal'];
 
-function sOpenModal(id) { document.getElementById(id).hidden = false; }
-function sCloseModal(id) { document.getElementById(id).hidden = true; }
+window.sOpenModal(id) { document.getElementById(id).hidden = false; }
+window.sCloseModal(id) { document.getElementById(id).hidden = true; }
 
 S_MODALS.forEach(id => {
   const m = document.getElementById(id);
@@ -1974,18 +1974,18 @@ document.addEventListener('keydown', e => {
   });
 });
 
-function sOpenEditFt(id, name) {
+window.sOpenEditFt(id, name) {
   document.getElementById('eft-id').value = id;
   document.getElementById('eft-name').value = name;
   sOpenModal('edit-ft-modal');
 }
-function sOpenEditIg(id, name, rate) {
+window.sOpenEditIg(id, name, rate) {
   document.getElementById('eig-id').value = id;
   document.getElementById('eig-name').value = name;
   document.getElementById('eig-rate').value = rate;
   sOpenModal('edit-ig-modal');
 }
-function sOpenEditSc(id, name, desc, amount, rateType) {
+window.sOpenEditSc(id, name, desc, amount, rateType) {
   document.getElementById('esc-id').value = id;
   document.getElementById('esc-name').value = name;
   document.getElementById('esc-desc').value = desc;
@@ -1993,7 +1993,7 @@ function sOpenEditSc(id, name, desc, amount, rateType) {
   document.getElementById('esc-rate-type').value = rateType || 'per_flight';
   sOpenModal('edit-sc-modal');
 }
-function sOpenAddBot(target, defaultColor, showHard) {
+window.sOpenAddBot(target, defaultColor, showHard) {
   const titles = { aircraft:'Add aircraft block-out type', instructor:'Add instructor block-out type', all:'Add all-resource block-out type' };
   document.getElementById('add-bot-title').textContent = titles[target] || 'Add block-out type';
   document.getElementById('add-bot-target').value = target;
@@ -2002,13 +2002,13 @@ function sOpenAddBot(target, defaultColor, showHard) {
   hw.style.display = showHard ? '' : 'none';
   sOpenModal('add-bot-modal');
 }
-function sOpenEditBot(id, name, color) {
+window.sOpenEditBot(id, name, color) {
   document.getElementById('ebt-id').value = id;
   document.getElementById('ebt-name').value = name;
   document.getElementById('ebt-color').value = color;
   sOpenModal('edit-bot-modal');
 }
-function openEditAircraftType(id, name, icao) {
+window.openEditAircraftType(id, name, icao) {
   document.getElementById('eat-id').value = id;
   document.getElementById('eat-name').value = name;
   document.getElementById('eat-icao').value = icao;
@@ -2016,7 +2016,7 @@ function openEditAircraftType(id, name, icao) {
 }
 
 // ── Role delete modal ──────────────────────────────────────────────────────
-function openRoleDelModal(id, name, memberCount) {
+window.openRoleDelModal(id, name, memberCount) {
   document.getElementById('role-del-id').value = id;
   const msg = memberCount > 0
     ? `"${name}" has ${memberCount} member${memberCount !== 1 ? 's' : ''}. They will lose this role and drop to no access.`
@@ -2074,7 +2074,7 @@ document.querySelectorAll('.fee-amend-btn').forEach(btn => {
 });
 
 // ── Budget grid row totals ──────────────────────────────────────────────────
-function updateRowTotal(inp) {
+window.updateRowTotal(inp) {
   const row = inp.closest('tr');
   if (!row) return;
   let sum = 0;

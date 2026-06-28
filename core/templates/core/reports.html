@@ -604,7 +604,7 @@
 })();
 
 // CHART_PALETTE injected globally by base.html from ClubConfig.chart_colors
-function _applyColors(datasets) {
+window._applyColors(datasets) {
   return datasets.map((ds,i) => ({
     ...ds,
     backgroundColor: CHART_PALETTE[i % CHART_PALETTE.length],
@@ -613,7 +613,7 @@ function _applyColors(datasets) {
   }));
 }
 // Single-series helper (convenience, picks from palette by index)
-function _themeColors(n) {
+window._themeColors(n) {
   return Array.from({length:n}, (_,i) => CHART_PALETTE[i % CHART_PALETTE.length]);
 }
 
@@ -621,13 +621,13 @@ const _legendFont = { size: 11 };
 
 // ── Chart registry + pop-out ─────────────────────────────────────────────────
 const _chartConfigs = {};
-function _mkChart(id, config) {
+window._mkChart(id, config) {
   const el = document.getElementById(id);
   if (!el) return;
   _chartConfigs[id] = config;
   return new Chart(el, config);
 }
-function openChartModal(id, title) {
+window.openChartModal(id, title) {
   const cfg = _chartConfigs[id];
   if (!cfg) return;
   document.getElementById('chart-modal-title').textContent = title;
@@ -642,13 +642,13 @@ function openChartModal(id, title) {
   new Chart(mc, cloned);
   document.getElementById('chart-modal').hidden = false;
 }
-function closeChartModal() {
+window.closeChartModal() {
   const mc = document.getElementById('chart-modal-canvas');
   const existing = Chart.getChart(mc);
   if (existing) existing.destroy();
   document.getElementById('chart-modal').hidden = true;
 }
-function copyChartToClipboard() {
+window.copyChartToClipboard() {
   const mc = document.getElementById('chart-modal-canvas');
   const btn = document.getElementById('chart-copy-btn');
   mc.toBlob(async function(blob) {
@@ -1133,7 +1133,7 @@ const _stackedOpts = {
 })();
 
 // ── Ask AI ───────────────────────────────────────────────────────────────────
-function askAI() {
+window.askAI() {
   const q = document.getElementById('ai-question').value.trim();
   if (!q) return;
   document.getElementById('ai-response').style.display = 'none';

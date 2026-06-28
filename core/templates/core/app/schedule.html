@@ -603,13 +603,13 @@ if (outer && heads) {
 })();
 
 // ── New-booking sheet form logic ─────────────────────────────────────────
-function closeLpSheet() {
+window.closeLpSheet() {
   document.getElementById('lp-sheet').style.display = 'none';
   document.getElementById('lp-submit').disabled = false;
   document.getElementById('lp-submit').textContent = 'Request booking';
 }
 
-function setLpMode(mode) {
+window.setLpMode(mode) {
   if (window._lpState) window._lpState.mode = mode;
   document.getElementById('lp-instr-wrap').style.display = mode === 'dual' ? '' : 'none';
   document.getElementById('lp-solo-btn').className = 'app-btn' + (mode === 'solo' ? '' : ' secondary');
@@ -628,7 +628,7 @@ function setLpMode(mode) {
   }
 }
 
-function submitLpBooking() {
+window.submitLpBooking() {
   const st = window._lpState || {};
   const mode = st.mode || 'solo';
   const errEl = document.getElementById('lp-error');
@@ -680,7 +680,7 @@ function submitLpBooking() {
   });
 }
 
-function showLpToast(msg, ok) {
+window.showLpToast(msg, ok) {
   const el = document.createElement('div');
   el.style.cssText = 'position:fixed;bottom:calc(80px + var(--safe-bottom));left:50%;transform:translateX(-50%);' +
     'background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:.5rem .9rem;' +
@@ -771,7 +771,7 @@ const STATUS_BG = {
   completed: '#b4b2a9',
 };
 
-function openBookingSheet(el) {
+window.openBookingSheet(el) {
   _bkSheetId = el.dataset.bookingId;
   _bkWatched = el.dataset.watched === 'true';
   const isMine    = el.dataset.isMine === 'true';
@@ -820,7 +820,7 @@ function openBookingSheet(el) {
   document.getElementById('bk-sheet').style.display = '';
 }
 
-function _updateWatchBtn() {
+window._updateWatchBtn() {
   const btn = document.getElementById('bks-watch-btn');
   if (_bkWatched) {
     btn.textContent = 'Watching ✓  (tap to stop)';
@@ -835,7 +835,7 @@ function _updateWatchBtn() {
   }
 }
 
-function toggleWatch() {
+window.toggleWatch() {
   if (!_bkSheetId) return;
   fetch('/api/booking/' + _bkSheetId + '/watch/', {
     method: 'POST',
@@ -850,7 +850,7 @@ function toggleWatch() {
   }).catch(() => {});
 }
 
-function closeBkSheet() {
+window.closeBkSheet() {
   document.getElementById('bk-sheet').style.display = 'none';
 }
 </script>

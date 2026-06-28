@@ -309,12 +309,12 @@ document.querySelectorAll('.tl-col').forEach(col => {
   });
 });
 
-function slotToStr(slot) {
+window.slotToStr(slot) {
   const h = Math.floor(slot);
   const m = (slot % 1) * 60;
   return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
 }
-function closeSheet() {
+window.closeSheet() {
   document.getElementById('slot-sheet').classList.remove('open');
   document.querySelectorAll('.tl-select-overlay').forEach(o => o.style.display = 'none');
   selAcId = null;

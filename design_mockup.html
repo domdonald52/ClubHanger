@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClubHangar — Design Exploration</title>
+<style>
+/* ── Switcher (always visible, outside the app) ─────────────────── */
+.switcher {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  display: flex; align-items: center; gap: .5rem;
+  padding: .5rem 1rem;
+  background: #18181b; border-bottom: 1px solid #3f3f46;
+  font-family: -apple-system, sans-serif; font-size: .78rem;
+}
+.switcher-label { color: #71717a; margin-right: .25rem; }
+.sw-btn {
+  padding: .3rem .85rem; border-radius: 5px; border: 1px solid #3f3f46;
+  background: none; color: #a1a1aa; cursor: pointer; font-size: .78rem;
+  font-family: inherit; transition: all .15s;
+}
+.sw-btn:hover { border-color: #71717a; color: #e4e4e7; }
+.sw-btn.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.switcher-note { margin-left: auto; color: #52525b; font-size: .72rem; }
+
+/* ── Theme variables ────────────────────────────────────────────── */
+[data-theme="linear"] {
+  --bg:           #ffffff;
+  --surface:      #ffffff;
+  --surface-2:    #f9f9f9;
+  --border:       #ebebeb;
+  --sidebar-bg:   #fafafa;
+  --sidebar-w:    210px;
+  --hdr-bg:       #ffffff;
+  --hdr-border:   #ebebeb;
+  --hdr-h:        48px;
+  --text:         #111111;
+  --text-2:       #737373;
+  --text-3:       #b5b5b5;
+  --accent:       #2563eb;
+  --accent-bg:    #eff6ff;
+  --accent-text:  #1d4ed8;
+  --radius:       5px;
+  --radius-pill:  4px;
+  --shadow:       none;
+  --shadow-card:  none;
+  --nav-active-bg: #f0f0f0;
+  --nav-hover-bg:  #f5f5f5;
+  --table-hdr-bg:  #ffffff;
+  --btn-primary:   #111111;
+  --btn-primary-text: #ffffff;
+}
+[data-theme="stripe"] {
+  --bg:           #f6f9fc;
+  --surface:      #ffffff;
+  --surface-2:    #f6f9fc;
+  --border:       #e3e8ef;
+  --sidebar-bg:   #ffffff;
+  --sidebar-w:    240px;
+  --hdr-bg:       #ffffff;
+  --hdr-border:   #e3e8ef;
+  --hdr-h:        56px;
+  --text:         #1a2332;
+  --text-2:       #697386;
+  --text-3:       #b0bac9;
+  --accent:       #635bff;
+  --accent-bg:    #f3f2ff;
+  --accent-text:  #4f46e5;
+  --radius:       10px;
+  --radius-pill:  20px;
+  --shadow:       0 1px 3px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.03);
+  --shadow-card:  0 2px 8px rgba(0,0,0,.06), 0 0 1px rgba(0,0,0,.04);
+  --nav-active-bg: #f3f2ff;
+  --nav-hover-bg:  #f9f9ff;
+  --table-hdr-bg:  #f6f9fc;
+  --btn-primary:   #635bff;
+  --btn-primary-text: #ffffff;
+}
+[data-theme="dark"] {
+  --bg:           #0d1117;
+  --surface:      #161b22;
+  --surface-2:    #21262d;
+  --border:       #30363d;
+  --sidebar-bg:   #161b22;
+  --sidebar-w:    220px;
+  --hdr-bg:       #161b22;
+  --hdr-border:   #21262d;
+  --hdr-h:        48px;
+  --text:         #e6edf3;
+  --text-2:       #8b949e;
+  --text-3:       #484f58;
+  --accent:       #58a6ff;
+  --accent-bg:    #1c2d3f;
+  --accent-text:  #79c0ff;
+  --radius:       6px;
+  --radius-pill:  4px;
+  --shadow:       0 1px 3px rgba(0,0,0,.4);
+  --shadow-card:  0 0 0 1px rgba(255,255,255,.05);
+  --nav-active-bg: #21262d;
+  --nav-hover-bg:  #1c2128;
+  --table-hdr-bg:  #161b22;
+  --btn-primary:   #238636;
+  --btn-primary-text: #ffffff;
+}
+
+/* ── Reset ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin-top: 41px; /* switcher height */
+  transition: background .2s, color .2s;
+}
+
+/* ── App shell ──────────────────────────────────────────────────── */
+.app { display: flex; height: calc(100vh - 41px); overflow: hidden; }
+
+/* ── Sidebar ────────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0; overflow-y: auto;
+  transition: background .2s, border-color .2s;
+}
+[data-theme="linear"] .sidebar { border-right: 1px solid #ebebeb; }
+[data-theme="dark"]   .sidebar { border-right: none; box-shadow: 1px 0 0 var(--border); }
+
+.sidebar-head {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .85rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: .88rem; font-weight: 650; color: var(--text);
+}
+[data-theme="linear"] .sidebar-head { border-bottom: 1px solid #ebebeb; font-weight: 700; letter-spacing: -.02em; }
+[data-theme="dark"]   .sidebar-head { border-bottom: 1px solid var(--border); }
+
+.sidebar-icon {
+  width: 26px; height: 26px; border-radius: var(--radius);
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+[data-theme="linear"] .sidebar-icon { background: #111; border-radius: 5px; }
+[data-theme="stripe"]  .sidebar-icon { background: var(--accent); border-radius: 8px; }
+[data-theme="dark"]    .sidebar-icon { background: var(--accent-bg); border-radius: 6px; }
+.sidebar-icon svg { color: #fff; }
+[data-theme="dark"] .sidebar-icon svg { color: var(--accent); }
+
+.nav-section { padding: .6rem 0; }
+.nav-section + .nav-section { border-top: 1px solid var(--border); }
+[data-theme="linear"] .nav-section + .nav-section { border-top: none; }
+
+.nav-label {
+  font-size: .65rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-3);
+  padding: .5rem 1rem .2rem;
+}
+[data-theme="linear"] .nav-label { display: none; }
+
+.nav-item {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .38rem 1rem; font-size: .82rem; color: var(--text-2);
+  cursor: pointer; border-radius: 0; text-decoration: none;
+  transition: background .1s, color .1s;
+  position: relative;
+}
+[data-theme="linear"] .nav-item { padding: .32rem .85rem; border-radius: 5px; margin: 0 .35rem; font-size: .83rem; }
+[data-theme="stripe"]  .nav-item { padding: .45rem 1rem; border-radius: var(--radius); margin: 0 .4rem; }
+[data-theme="dark"]    .nav-item { padding: .38rem .85rem; }
+
+.nav-item:hover { background: var(--nav-hover-bg); color: var(--text); }
+.nav-item.active { background: var(--nav-active-bg); color: var(--text); font-weight: 600; }
+[data-theme="linear"] .nav-item.active { color: var(--text); font-weight: 600; background: #f0f0f0; }
+[data-theme="stripe"]  .nav-item.active { color: var(--accent); background: var(--nav-active-bg); }
+[data-theme="dark"]    .nav-item.active { color: var(--text); background: var(--nav-active-bg); }
+
+.nav-badge {
+  margin-left: auto; background: #e53e3e; color: #fff;
+  font-size: .6rem; font-weight: 700; padding: .1rem .35rem;
+  border-radius: 10px; line-height: 1.4;
+}
+[data-theme="dark"] .nav-badge { background: #b91c1c; }
+
+/* ── Main area ──────────────────────────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Header ─────────────────────────────────────────────────────── */
+.header {
+  height: var(--hdr-h);
+  background: var(--hdr-bg);
+  border-bottom: 1px solid var(--hdr-border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.5rem; flex-shrink: 0;
+  transition: background .2s;
+}
+[data-theme="linear"] .header { border-bottom: 1px solid #ebebeb; }
+[data-theme="stripe"]  .header { box-shadow: 0 1px 0 var(--border); border-bottom: none; }
+[data-theme="dark"]    .header { border-bottom: 1px solid var(--border); }
+
+.header-left { display: flex; align-items: center; gap: .75rem; }
+.page-title { font-size: 1rem; font-weight: 650; letter-spacing: -.01em; color: var(--text); }
+[data-theme="linear"] .page-title { font-size: .95rem; font-weight: 700; }
+[data-theme="stripe"]  .page-title { font-size: .95rem; font-weight: 700; }
+
+.header-right { display: flex; align-items: center; gap: .5rem; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .38rem .85rem; border-radius: var(--radius);
+  font-size: .8rem; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-2); transition: all .15s; font-family: inherit;
+}
+.btn:hover { background: var(--surface-2); color: var(--text); }
+.btn-primary {
+  background: var(--btn-primary); color: var(--btn-primary-text);
+  border-color: var(--btn-primary);
+}
+.btn-primary:hover { filter: brightness(1.08); }
+[data-theme="linear"] .btn { border-radius: 5px; font-size: .8rem; }
+[data-theme="linear"] .btn-primary { background: #111; border-color: #111; }
+[data-theme="stripe"]  .btn { border-radius: 8px; padding: .42rem .9rem; }
+[data-theme="dark"]    .btn { border-color: var(--border); background: var(--surface-2); color: var(--text-2); }
+[data-theme="dark"]    .btn:hover { background: var(--surface); color: var(--text); }
+
+.user-chip {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .25rem .5rem .25rem .25rem;
+  border-radius: 20px; cursor: pointer;
+  border: 1px solid var(--border);
+  font-size: .8rem; color: var(--text-2);
+}
+[data-theme="linear"] .user-chip { border: none; }
+[data-theme="dark"]   .user-chip { border-color: var(--border); }
+.user-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--accent); display: flex; align-items: center;
+  justify-content: center; font-size: .7rem; font-weight: 700; color: #fff;
+}
+[data-theme="linear"] .user-avatar { background: #111; }
+[data-theme="dark"]   .user-avatar { background: var(--accent); }
+
+/* ── Content ────────────────────────────────────────────────────── */
+.content { flex: 1; overflow-y: auto; padding: 1.5rem; }
+[data-theme="stripe"]  .content { padding: 1.75rem 2rem; }
+
+/* ── Tabs ───────────────────────────────────────────────────────── */
+.tabs {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  margin-bottom: 1.25rem;
+}
+[data-theme="linear"] .tabs { border-bottom: 1px solid #ebebeb; gap: 0; }
+[data-theme="stripe"]  .tabs { border-bottom: none; gap: .35rem; margin-bottom: 1.25rem; }
+[data-theme="dark"]    .tabs { border-bottom: 1px solid var(--border); }
+
+.tab {
+  padding: .5rem 1rem; font-size: .82rem; font-weight: 500;
+  color: var(--text-2); cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+[data-theme="stripe"] .tab {
+  padding: .4rem .85rem; border-radius: 8px; border-bottom: none;
+  background: none; margin-bottom: 0;
+}
+[data-theme="stripe"] .tab:hover { background: var(--surface-2); color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+[data-theme="linear"] .tab.active { color: var(--text); border-bottom-color: var(--text); }
+[data-theme="stripe"] .tab.active { background: var(--surface); color: var(--accent); border-bottom: none; box-shadow: var(--shadow); }
+[data-theme="dark"]   .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.tab-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  background: var(--surface-2); color: var(--text-2);
+  border-radius: 10px; font-size: .65rem; font-weight: 700;
+  margin-left: .3rem;
+}
+[data-theme="stripe"] .tab-count { background: var(--surface-2); }
+[data-theme="dark"]   .tab-count { background: var(--surface-2); }
+
+/* ── Table card ─────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+}
+[data-theme="linear"] .card { border: none; border-radius: 0; box-shadow: none; background: transparent; }
+[data-theme="stripe"]  .card { border-radius: var(--radius); }
+[data-theme="dark"]    .card { border: 1px solid var(--border); background: var(--surface); }
+
+.card-toolbar {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .7rem 1rem; border-bottom: 1px solid var(--border);
+  background: var(--table-hdr-bg);
+}
+[data-theme="linear"] .card-toolbar { border-bottom: 1px solid #ebebeb; background: transparent; padding: 0 0 .75rem 0; }
+[data-theme="stripe"]  .card-toolbar { border-bottom: 1px solid var(--border); background: var(--table-hdr-bg); }
+
+.search-input {
+  padding: .35rem .7rem; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text); font-size: .8rem; font-family: inherit; width: 200px;
+}
+[data-theme="linear"] .search-input { border-radius: 5px; border-color: #e0e0e0; }
+[data-theme="stripe"]  .search-input { border-radius: 8px; padding: .4rem .75rem; }
+[data-theme="dark"]    .search-input { background: var(--surface-2); border-color: var(--border); color: var(--text); }
+.search-input::placeholder { color: var(--text-3); }
+
+table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+thead th {
+  text-align: left; padding: .55rem 1rem;
+  font-size: .72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-2);
+  background: var(--table-hdr-bg);
+  border-bottom: 1px solid var(--border);
+}
+[data-theme="linear"] thead th {
+  background: transparent; border-bottom: 1px solid #ebebeb;
+  text-transform: none; letter-spacing: 0; font-size: .75rem;
+  font-weight: 600; padding: .4rem 0; color: var(--text-2);
+}
+[data-theme="stripe"] thead th { font-size: .7rem; letter-spacing: .06em; }
+[data-theme="dark"]   thead th { background: var(--surface); }
+
+tbody tr { border-bottom: 1px solid var(--border); }
+[data-theme="linear"] tbody tr { border-bottom: 1px solid #f0f0f0; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--nav-hover-bg); }
+[data-theme="linear"] tbody tr:hover { background: #fafafa; }
+
+td { padding: .65rem 1rem; color: var(--text); vertical-align: middle; }
+[data-theme="linear"] td { padding: .65rem 0; }
+[data-theme="stripe"]  td { padding: .75rem 1rem; }
+
+.td-reg { font-weight: 700; font-size: .85rem; letter-spacing: .02em; color: var(--text); }
+[data-theme="linear"] .td-reg { font-weight: 700; }
+[data-theme="dark"]   .td-reg { color: var(--accent-text); font-weight: 600; }
+
+.td-member { font-weight: 500; }
+.td-meta { color: var(--text-2); font-size: .78rem; margin-top: .1rem; }
+
+.td-time { font-size: .81rem; color: var(--text); white-space: nowrap; }
+.td-time .time-date { font-size: .74rem; color: var(--text-2); }
+
+/* ── Status pills ───────────────────────────────────────────────── */
+.pill {
+  display: inline-flex; align-items: center; gap: .3rem;
+  padding: .18rem .55rem; border-radius: var(--radius-pill);
+  font-size: .72rem; font-weight: 600; white-space: nowrap;
+}
+[data-theme="stripe"]  .pill { padding: .22rem .65rem; }
+
+.pill-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+
+.pill-confirmed {
+  background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+}
+[data-theme="stripe"] .pill-confirmed { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
+[data-theme="dark"]   .pill-confirmed { background: #1c2d3f; color: #79c0ff; border: 1px solid #1f4068; }
+.pill-confirmed .pill-dot { background: #3b82f6; }
+
+.pill-departed {
+  background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
+}
+[data-theme="stripe"] .pill-departed { background: #fffbeb; color: #78350f; border-color: #fde68a; }
+[data-theme="dark"]   .pill-departed { background: #2d2008; color: #fbbf24; border: 1px solid #451a03; }
+.pill-departed .pill-dot { background: #f59e0b; }
+
+.pill-pending {
+  background: #f4f4f5; color: #52525b; border: 1px solid #e4e4e7;
+}
+[data-theme="stripe"] .pill-pending { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+[data-theme="dark"]   .pill-pending { background: #21262d; color: #8b949e; border: 1px solid #30363d; }
+.pill-pending .pill-dot { background: #a1a1aa; }
+
+.pill-completed {
+  background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;
+}
+[data-theme="dark"] .pill-completed { background: #12261a; color: #3fb950; border: 1px solid #1b4332; }
+.pill-completed .pill-dot { background: #22c55e; }
+
+/* ── Action buttons in table ────────────────────────────────────── */
+.row-actions { display: flex; align-items: center; gap: .3rem; }
+.icon-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-2); cursor: pointer;
+  transition: all .15s;
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text); }
+[data-theme="linear"] .icon-btn { border: none; border-radius: 4px; color: var(--text-3); }
+[data-theme="linear"] .icon-btn:hover { background: #f0f0f0; color: var(--text); }
+[data-theme="stripe"]  .icon-btn { border-radius: 6px; }
+[data-theme="dark"]    .icon-btn { background: var(--surface-2); border-color: var(--border); }
+
+/* ── Empty / meta row ───────────────────────────────────────────── */
+.table-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .5rem 0; font-size: .76rem; color: var(--text-3); margin-top: .5rem;
+}
+[data-theme="linear"] .table-meta { padding: .5rem 0; }
+
+/* ── Theme label overlay ────────────────────────────────────────── */
+.theme-label {
+  position: fixed; bottom: 1rem; right: 1rem; z-index: 999;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: .5rem .9rem;
+  font-size: .75rem; color: var(--text-2);
+  box-shadow: var(--shadow);
+}
+[data-theme="linear"] .theme-label { border-radius: 5px; font-weight: 600; }
+</style>
+</head>
+<body data-theme="linear">
+
+<!-- ── Theme switcher ── -->
+<div class="switcher">
+  <span class="switcher-label">Design theme:</span>
+  <button class="sw-btn active" onclick="setTheme('linear', this)">A — Linear / Notion</button>
+  <button class="sw-btn" onclick="setTheme('stripe', this)">B — Stripe</button>
+  <button class="sw-btn" onclick="setTheme('dark', this)">C — Dark / GitHub</button>
+  <span class="switcher-note">Mockup based on the Bookings page — same data, three different feels</span>
+</div>
+
+<!-- ── App ── -->
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-icon">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="currentColor"><path d="M16 9L3 3l2 5H1.5L3.5 9l-2 1H5l-2 5 13-5z"/></svg>
+      </div>
+      Wellington Aero Club
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Operations</div>
+      <a class="nav-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><rect x="1" y="2" width="13" height="12" rx="1.5"/><path d="M1 6h13M5 1v2.5M10 1v2.5"/></svg>
+        Calendar
+      </a>
+      <a class="nav-item active">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><path d="M2 3h11M2 7h11M2 11h7"/></svg>
+        Bookings
+        <span class="nav-badge">5</span>
+      </a>
+      <a class="nav-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><circle cx="7.5" cy="6" r="3"/><path d="M1.5 13c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        Members
+      </a>
+      <a class="nav-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><path d="M13 7.5l-4-4-4 4"/><path d="M9 3.5v8M3 12.5h9"/></svg>
+        Attention
+        <span class="nav-badge">196</span>
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Fleet</div>
+      <a class="nav-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><path d="M7.5 2L2 8h2v5h7V8h2L7.5 2z"/></svg>
+        Aircraft
+      </a>
+      <a class="nav-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5"/><path d="M7.5 5v3l2 1"/></svg>
+        Maintenance
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Finance</div>
+      <a class="nav-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><rect x="1" y="3" width="13" height="10" rx="1.5"/><path d="M1 6h13"/></svg>
+        Invoices
+      </a>
+      <a class="nav-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><path d="M3 7.5h9M7.5 3v9"/></svg>
+        Accounts
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Reporting</div>
+      <a class="nav-item">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><rect x="1" y="8" width="3" height="5"/><rect x="6" y="5" width="3" height="8"/><rect x="11" y="2" width="3" height="11"/></svg>
+        Analytics
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="page-title">Bookings</div>
+      </div>
+      <div class="header-right">
+        <button class="btn">Export</button>
+        <button class="btn btn-primary">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10"/></svg>
+          New booking
+        </button>
+        <div class="user-chip">
+          <div class="user-avatar">DD</div>
+          Dominic Donald
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active">Active <span class="tab-count">5</span></div>
+        <div class="tab">All bookings <span class="tab-count">142</span></div>
+        <div class="tab">Departed <span class="tab-count">2</span></div>
+      </div>
+
+      <!-- Table card -->
+      <div class="card">
+        <div class="card-toolbar">
+          <input class="search-input" placeholder="Search member, aircraft…">
+          <button class="btn" style="margin-left:auto;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 12 12"><path d="M1 3h10M3 6h6M5 9h2"/></svg>
+            Filter
+          </button>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Aircraft</th>
+              <th>Member</th>
+              <th>Time</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="td-reg">ZK-WAC</span></td>
+              <td>
+                <div class="td-member">Emma Bradley</div>
+                <div class="td-meta">Cessna 172 · Solo</div>
+              </td>
+              <td>
+                <div class="td-time">09:00 – 11:00</div>
+                <div class="td-time time-date">Today</div>
+              </td>
+              <td><span style="font-size:.8rem;color:var(--text-2);">Solo circuit</span></td>
+              <td><span class="pill pill-confirmed"><span class="pill-dot"></span>Confirmed</span></td>
+              <td>
+                <div class="row-actions">
+                  <div class="icon-btn" title="View">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5"/><path d="M7.5 5v3l2 1"/></svg>
+                  </div>
+                  <div class="icon-btn" title="Depart">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><path d="M13 7.5l-4-4-4 4"/><path d="M9 3.5v8M3 12.5h9"/></svg>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="td-reg">ZK-WAC</span></td>
+              <td>
+                <div class="td-member">James Wilson</div>
+                <div class="td-meta">Dual · CFI: D. Smith</div>
+              </td>
+              <td>
+                <div class="td-time">11:00 – 13:00</div>
+                <div class="td-time time-date">Today</div>
+              </td>
+              <td><span style="font-size:.8rem;color:var(--text-2);">General flying</span></td>
+              <td><span class="pill pill-departed"><span class="pill-dot"></span>Departed</span></td>
+              <td>
+                <div class="row-actions">
+                  <div class="icon-btn" title="View">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5"/><path d="M7.5 5v3l2 1"/></svg>
+                  </div>
+                  <div class="icon-btn" title="Check in">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><path d="M2.5 7.5l3 3 7-7"/></svg>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="td-reg">ZK-RFT</span></td>
+              <td>
+                <div class="td-member">Marcus Chen</div>
+                <div class="td-meta">Cessna 172 · Solo</div>
+              </td>
+              <td>
+                <div class="td-time">14:00 – 16:00</div>
+                <div class="td-time time-date">Today</div>
+              </td>
+              <td><span style="font-size:.8rem;color:var(--text-2);">Solo nav</span></td>
+              <td><span class="pill pill-pending"><span class="pill-dot"></span>Pending</span></td>
+              <td>
+                <div class="row-actions">
+                  <div class="icon-btn" title="View">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5"/><path d="M7.5 5v3l2 1"/></svg>
+                  </div>
+                  <div class="icon-btn" title="Confirm">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><path d="M2.5 7.5l3 3 7-7"/></svg>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="td-reg">ZK-WAC</span></td>
+              <td>
+                <div class="td-member">Sarah Park</div>
+                <div class="td-meta">Dual · CFI: D. Smith</div>
+              </td>
+              <td>
+                <div class="td-time">09:00 – 11:00</div>
+                <div class="td-time time-date">Tomorrow</div>
+              </td>
+              <td><span style="font-size:.8rem;color:var(--text-2);">Trial flight</span></td>
+              <td><span class="pill pill-confirmed"><span class="pill-dot"></span>Confirmed</span></td>
+              <td>
+                <div class="row-actions">
+                  <div class="icon-btn" title="View">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5"/><path d="M7.5 5v3l2 1"/></svg>
+                  </div>
+                  <div class="icon-btn" title="Depart">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><path d="M13 7.5l-4-4-4 4"/><path d="M9 3.5v8M3 12.5h9"/></svg>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><span class="td-reg">ZK-LMN</span></td>
+              <td>
+                <div class="td-member">Tom Bradley</div>
+                <div class="td-meta">Piper PA-28 · Solo</div>
+              </td>
+              <td>
+                <div class="td-time">14:00 – 16:00</div>
+                <div class="td-time time-date">Tomorrow</div>
+              </td>
+              <td><span style="font-size:.8rem;color:var(--text-2);">Solo nav</span></td>
+              <td><span class="pill pill-completed"><span class="pill-dot"></span>Paid</span></td>
+              <td>
+                <div class="row-actions">
+                  <div class="icon-btn" title="View">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5"/><path d="M7.5 5v3l2 1"/></svg>
+                  </div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-meta">
+        <span>5 bookings · showing active only</span>
+        <span>Page 1 of 1</span>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="theme-label" id="theme-label">A — Linear / Notion</div>
+
+<script>
+const labels = {
+  linear: 'A — Linear / Notion',
+  stripe:  'B — Stripe',
+  dark:    'C — Dark / GitHub',
+};
+function setTheme(t, btn) {
+  document.body.dataset.theme = t;
+  document.getElementById('theme-label').textContent = labels[t];
+  document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+</script>
+</body>
+</html>

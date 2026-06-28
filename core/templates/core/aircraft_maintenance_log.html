@@ -188,7 +188,7 @@
 </div>
 
 <script>
-function openAmend(mleId, hobbsStart, hobbsEnd, tachoStart, tachoEnd, asStart, asEnd) {
+window.openAmend(mleId, hobbsStart, hobbsEnd, tachoStart, tachoEnd, asStart, asEnd) {
   document.getElementById('amend-mle-id').value = mleId;
   var set = function(id, val) { var el = document.getElementById(id); if (el) el.value = val || ''; };
   set('amend-hobbs-start', hobbsStart);

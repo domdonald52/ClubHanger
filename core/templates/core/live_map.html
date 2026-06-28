@@ -113,7 +113,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 // ── Icon builder ─────────────────────────────────────────────────────────────
 // Container is 80×80 (diagonal of 56×51 Cessna ≈ 76px → fits in 80).
 // SVG rotates around its own centre; container stays at anchor [40,40].
-function makeIcon(iconType, track, stale) {
+window.makeIcon(iconType, track, stale) {
   const deg = (track != null) ? track : 0;
   let pathD, vb, w, h;
   if (iconType === 'twin') {
@@ -140,12 +140,12 @@ const markers = {};
 const lastKnown = {};
 const STALE_MS  = 15 * 60 * 1000;
 
-function labelHtml(ac) {
+window.labelHtml(ac) {
   const type = ac.aircraft_type ? ` · ${ac.aircraft_type}` : '';
   return `<b>${ac.registration}</b>${type}`;
 }
 
-function buildPopup(ac) {
+window.buildPopup(ac) {
   const alt = ac.alt_ft   != null ? ac.alt_ft.toLocaleString() + ' ft' : '—';
   const spd = ac.speed_kt != null ? ac.speed_kt + ' kt'               : '—';
   const trk = ac.track    != null ? ac.track + '°'                    : '—';
@@ -158,7 +158,7 @@ function buildPopup(ac) {
   </div>`;
 }
 
-function updateMap(aircraft) {
+window.updateMap(aircraft) {
   const seen   = new Set();
   const bounds = [];
   const now    = Date.now();
@@ -211,7 +211,7 @@ function updateMap(aircraft) {
   document.getElementById('map-empty').style.display = (bounds.length === 0) ? 'block' : 'none';
 }
 
-function updatePanel(aircraft) {
+window.updatePanel(aircraft) {
   const body = document.getElementById('mp-body');
   const now  = Date.now();
   if (!aircraft.length) {
@@ -253,7 +253,7 @@ let countdown = REFRESH;
 const dot = document.getElementById('badge-dot');
 const txt = document.getElementById('badge-txt');
 
-function fetchPositions() {
+window.fetchPositions() {
   dot.style.background = '#f59e0b';
   txt.textContent = 'Querying ADS-B sources…';
   fetch(API_URL)

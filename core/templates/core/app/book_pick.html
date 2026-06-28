@@ -98,11 +98,11 @@
 </form>
 
 <script>
-function setMode(m) {
+window.setMode(m) {
   document.getElementById('mode-input').value = m;
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('selected', b.dataset.mode === m));
 }
-function setDate(el) {
+window.setDate(el) {
   document.getElementById('date-input').value = el.dataset.date;
   document.querySelectorAll('.date-chip').forEach(c => c.classList.remove('selected'));
   el.classList.add('selected');

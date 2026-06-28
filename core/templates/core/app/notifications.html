@@ -46,7 +46,7 @@
 var CSRF = '{{ csrf_token }}';
 var DISMISS_URL = '{% url "core:app_notifications" club.slug %}';
 
-function dismiss(row) {
+window.dismiss(row) {
   var id = row.dataset.id;
   row.style.transition = 'max-height .25s,opacity .25s,padding .25s';
   row.style.maxHeight = row.offsetHeight + 'px';
@@ -65,10 +65,10 @@ function dismiss(row) {
   });
 }
 
-function clearAll() {
+window.clearAll() {
   document.getElementById('clear-all-confirm').style.display = 'flex';
 }
-function doClearAll() {
+window.doClearAll() {
   document.getElementById('clear-all-confirm').style.display = 'none';
   var rows = document.querySelectorAll('.notif-row');
   rows.forEach(function(r) { r.style.opacity = '0'; });
@@ -80,7 +80,7 @@ function doClearAll() {
   }).then(function() { location.reload(); });
 }
 
-function checkEmpty() {
+window.checkEmpty() {
   if (!document.querySelector('.notif-row')) {
     var list = document.getElementById('notif-list');
     if (list) {

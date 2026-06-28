@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClubHangar — Gantt (Dark Theme Mockup)</title>
+<style>
+:root {
+  --sidebar-w: 220px;
+  --label-w: 150px;
+  --track-w: 1400px;   /* 06:00–20:00, 100px/hr */
+  --hdr-h:   48px;
+
+  /* Dark GitHub palette */
+  --bg:        #0d1117;
+  --surface:   #161b22;
+  --surface-2: #21262d;
+  --border:    #30363d;
+  --text:      #e6edf3;
+  --text-2:    #8b949e;
+  --text-3:    #484f58;
+  --accent:    #58a6ff;
+  --accent-bg: #1c2d3f;
+  --radius:    6px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text);
+  height: 100vh; overflow: hidden;
+}
+
+/* ── Shell ─────────────────────────────────────── */
+.app { display: flex; height: 100vh; }
+
+/* ── Sidebar ────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w); background: var(--surface);
+  box-shadow: 1px 0 0 var(--border);
+  display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+}
+.sidebar-head {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .85rem 1rem; border-bottom: 1px solid var(--border);
+  font-size: .88rem; font-weight: 650; color: var(--text);
+}
+.sidebar-icon {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: var(--accent-bg); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.nav-section { padding: .5rem 0; }
+.nav-section + .nav-section { border-top: 1px solid var(--border); }
+.nav-label {
+  font-size: .65rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-3);
+  padding: .4rem 1rem .15rem;
+}
+.nav-item {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .38rem .85rem; font-size: .82rem; color: var(--text-2);
+  cursor: pointer; text-decoration: none;
+}
+.nav-item:hover { background: #1c2128; color: var(--text); }
+.nav-item.active { background: var(--surface-2); color: var(--text); font-weight: 600; }
+.nav-badge {
+  margin-left: auto; background: #b91c1c; color: #fff;
+  font-size: .6rem; font-weight: 700; padding: .1rem .35rem;
+  border-radius: 10px; line-height: 1.4;
+}
+
+/* ── Main ───────────────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+/* ── Header ─────────────────────────────────────── */
+.header {
+  height: var(--hdr-h); background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1.25rem; flex-shrink: 0; gap: .75rem;
+}
+.hdr-left  { display: flex; align-items: center; gap: .85rem; }
+.hdr-right { display: flex; align-items: center; gap: .4rem; }
+.page-title { font-size: .95rem; font-weight: 700; letter-spacing: -.01em; }
+
+/* Date nav */
+.date-nav { display: flex; align-items: center; gap: .3rem; }
+.today-btn {
+  padding: .25rem .65rem; border-radius: 5px;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-2); font-size: .76rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.today-btn:hover { background: #2d333b; color: var(--text); }
+.date-text { font-size: .88rem; font-weight: 600; min-width: 16ch; text-align: center; }
+.icon-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 5px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-2); cursor: pointer;
+}
+.icon-btn:hover { background: #2d333b; color: var(--text); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .3rem .75rem; border-radius: 5px;
+  font-size: .78rem; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-2); font-family: inherit;
+}
+.btn:hover { background: #2d333b; color: var(--text); }
+.btn-primary { background: #238636; color: #fff; border-color: #238636; }
+.btn-primary:hover { background: #2ea043; border-color: #2ea043; }
+
+/* Weather pill */
+.wx-pill {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .22rem .65rem; border-radius: 20px;
+  border: 1px solid #2d3e1a; background: #1a2812;
+  font-size: .75rem; color: #7ec950; cursor: pointer; white-space: nowrap;
+}
+.wx-vfr { background: #1a2812; border-color: #2d5a18; color: #7ec950; }
+.wx-label { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; opacity: .7; }
+.wx-badge { font-size: .65rem; font-weight: 700; padding: .1rem .3rem; border-radius: 4px; background: #238636; color: #fff; }
+
+.user-chip {
+  display: flex; align-items: center; gap: .4rem;
+  padding: .2rem .5rem .2rem .22rem;
+  border-radius: 20px; border: 1px solid var(--border);
+  font-size: .78rem; color: var(--text-2); cursor: pointer;
+}
+.user-avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .65rem; font-weight: 700;
+}
+
+/* ── Content ─────────────────────────────────────── */
+.content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+/* ── Grid scroll ────────────────────────────────── */
+.grid-scroll { flex: 1; overflow-x: auto; overflow-y: auto; }
+
+.grid {
+  display: block;
+  min-width: calc(var(--label-w) + var(--track-w));
+}
+
+/* Axis (sticky top) */
+.axis-row {
+  display: flex; align-items: stretch;
+  border-bottom: 2px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+  background: var(--surface);
+}
+.axis-cell {
+  flex: 0 0 var(--label-w); width: var(--label-w);
+  background: var(--surface); border-right: 1px solid var(--border);
+  position: sticky; left: 0; z-index: 11;
+  padding: .35rem .6rem;
+  font-size: .64rem; font-weight: 600; color: var(--text-3);
+  display: flex; align-items: center;
+}
+.axis-track {
+  position: relative;
+  width: var(--track-w); height: 28px; flex-shrink: 0;
+  background: var(--surface);
+}
+.tick {
+  position: absolute; top: 0; height: 100%;
+  border-left: 1px solid var(--border);
+}
+.tick span {
+  position: absolute; top: 7px; left: 4px;
+  font-size: .62rem; color: var(--text-3); white-space: nowrap;
+}
+
+/* Section dividers */
+.section-row {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+.section-row.inst { border-top: 2px solid rgba(88, 166, 255, 0.2); }
+.section-row.acft { border-top: 2px solid rgba(180, 190, 200, 0.15); }
+.section-cell {
+  flex: 0 0 var(--label-w); width: var(--label-w);
+  padding: .28rem .65rem;
+  font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .09em;
+  border-right: 1px solid var(--border);
+  position: sticky; left: 0; z-index: 3;
+  display: flex; align-items: center;
+}
+.section-row.inst .section-cell { background: rgba(88, 166, 255, 0.06); color: #58a6ff; }
+.section-row.acft .section-cell { background: rgba(180, 190, 200, 0.05); color: var(--text-2); }
+.section-track {
+  width: var(--track-w); flex-shrink: 0; flex: 1;
+}
+.section-row.inst .section-track { background: rgba(88, 166, 255, 0.02); }
+.section-row.acft .section-track { background: rgba(180, 190, 200, 0.02); }
+
+/* Grid rows */
+.grid-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
+.grid-row:last-child { border-bottom: none; }
+
+.row-label {
+  flex: 0 0 var(--label-w); width: var(--label-w);
+  padding: .3rem .55rem;
+  background: var(--surface); border-right: 1px solid var(--border);
+  position: sticky; left: 0; z-index: 3;
+  display: flex; align-items: center; gap: .25rem; overflow: hidden;
+}
+.row-label.inst { border-left: 3px solid rgba(88, 166, 255, 0.35); }
+.row-label.acft { border-left: 3px solid rgba(255,255,255, 0.08); }
+.row-label.ghost { background: var(--surface); }
+.row-label.ghost .lbl-main { color: var(--text-3); text-decoration: line-through; text-decoration-color: var(--text-3); }
+
+.lbl-info { flex: 1; min-width: 0; }
+.lbl-main { font-size: .77rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.lbl-sub  { font-size: .62rem; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.roster-on  { font-size: .58rem; font-weight: 700; color: #3fb950; flex-shrink: 0; margin-left: auto; }
+.roster-off { font-size: .58rem; font-weight: 700; color: var(--text-3); flex-shrink: 0; margin-left: auto; }
+
+/* Track */
+.track {
+  position: relative;
+  width: var(--track-w); height: 44px; flex-shrink: 0;
+  /* off-hours dark, typical-hours 07:00(100px)–17:00(1100px) slightly lighter */
+  background: linear-gradient(to right,
+    #0a0e14   0px,
+    #0a0e14   100px,
+    #121b28   100px,
+    #121b28   1100px,
+    #0a0e14   1100px,
+    #0a0e14   100%
+  );
+}
+.track.ghost { opacity: .5; }
+
+.gridline {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: rgba(48, 54, 61, 0.6); pointer-events: none;
+}
+
+/* Now line (injected into each track row + axis) */
+.now-line {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: #f85149; z-index: 4; pointer-events: none;
+}
+.now-line.axis-marker::before {
+  content: '';
+  position: absolute; top: 16px; left: -5px;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #f85149;
+}
+
+/* ── Pills ──────────────────────────────────────── */
+.pill {
+  position: absolute; top: 4px; height: 36px;
+  border-radius: 5px; overflow: hidden; cursor: grab;
+  display: flex; align-items: stretch;
+  z-index: 5; box-shadow: 0 1px 4px rgba(0,0,0,.45);
+}
+.pill.pending  { background: rgba(22,42,64,.95); border: 1.5px dashed #3a7bd5; color: #79c0ff; }
+.pill.confirmed { background: #1a3a6c; border: 1px solid #2d62b8; color: #cae1ff; }
+.pill.departed  { background: #1f5499; border: 1px solid #3478c9; color: #e6f2ff; }
+.pill.completed { background: #191e24; border: 1px solid #2c333b; color: #586069; }
+
+.pill-spine { flex: 0 0 5px; width: 5px; align-self: stretch; }
+.pill-spine.conflict { background: #f85149; }
+.pill-spine.decl {
+  background-image: repeating-linear-gradient(135deg, #b8870d 0, #b8870d 3px, #e8b84b 3px, #e8b84b 6px);
+}
+
+.pill-body {
+  flex: 1; min-width: 0; padding: .2rem .35rem;
+  display: flex; flex-direction: column; justify-content: center; overflow: hidden;
+}
+.pill .nm  { font-size: .72rem; font-weight: 650; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill .sub { font-size: .62rem; opacity: .75; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pill-wedge {
+  flex: 0 0 28px; width: 28px; align-self: stretch;
+  clip-path: polygon(30% 0, 100% 0, 100% 100%, 30% 100%);
+  display: flex; align-items: center; justify-content: flex-end; padding-right: 5px;
+}
+.pill.departed .pill-wedge { background: rgba(255,255,255,.12); color: rgba(255,255,255,.7); }
+
+/* Block-out band */
+.blockout {
+  position: absolute; top: 0; bottom: 0; z-index: 3; pointer-events: none;
+  border-left: 2px solid rgba(248,81,73,.7);
+  border-right: 2px solid rgba(248,81,73,.7);
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(248,81,73,.07) 0,
+    rgba(248,81,73,.07) 4px,
+    transparent 4px,
+    transparent 10px
+  );
+}
+.blockout span {
+  position: absolute; top: 3px; left: 6px;
+  font-size: .58rem; font-weight: 700;
+  color: #f85149; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
+}
+
+/* ── Legend bar ─────────────────────────────────── */
+.legend-bar {
+  padding: .45rem 1.25rem;
+  border-top: 1px solid var(--border); background: var(--surface);
+  flex-shrink: 0; display: flex; align-items: center; gap: 1.2rem; flex-wrap: wrap;
+  font-size: .72rem; color: var(--text-2);
+}
+.lg { display: inline-flex; align-items: center; gap: .35rem; }
+.lg-swatch {
+  display: inline-block; width: 18px; height: 10px; border-radius: 2px; flex-shrink: 0;
+}
+.lg-line { display: inline-block; width: 3px; height: 12px; border-radius: 1px; background: #f85149; flex-shrink: 0; }
+.lg-hint { margin-left: auto; color: var(--text-3); font-size: .68rem; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── Sidebar ─────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-head">
+    <div class="sidebar-icon">
+      <!-- Club Hangar / airplane icon -->
+      <svg width="14" height="14" viewBox="0 0 15 15" fill="currentColor">
+        <path d="M7.5 1L6 5.5H1V7H6L5 12L3.5 13V14.5L7.5 13.5L11.5 14.5V13L10 12L9 7H14V5.5H9L7.5 1Z"/>
+      </svg>
+    </div>
+    Wellington Aero Club
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Operations</div>
+    <a class="nav-item">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><rect x="1" y="2" width="13" height="12" rx="1.5"/><path d="M1 6h13M5 1v2.5M10 1v2.5"/></svg>
+      Calendar
+    </a>
+    <a class="nav-item active">
+      <!-- Gantt/timeline icon -->
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 15 15">
+        <rect x="1" y="3" width="7" height="3" rx="1"/>
+        <rect x="5" y="9" width="9" height="3" rx="1"/>
+        <path d="M1 7.5h13"/>
+      </svg>
+      Gantt
+    </a>
+    <a class="nav-item">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><path d="M2 3h11M2 7h11M2 11h7"/></svg>
+      Bookings
+    </a>
+    <a class="nav-item">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><circle cx="7.5" cy="5" r="3"/><path d="M1.5 13c0-3 2.7-5 6-5s6 2 6 5"/></svg>
+      Members
+    </a>
+    <a class="nav-item">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><path d="M7.5 2L1 13h13L7.5 2z"/><path d="M7.5 6v3.5"/><circle cx="7.5" cy="11.5" r=".6" fill="currentColor" stroke="none"/></svg>
+      Attention
+      <span class="nav-badge">196</span>
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Fleet</div>
+    <a class="nav-item">
+      <!-- Top-down aircraft silhouette -->
+      <svg width="14" height="14" viewBox="0 0 15 15" fill="currentColor">
+        <path d="M7.5 1L6 5.5H1V7H6L5 12L3.5 12.8V14L7.5 13.2L11.5 14V12.8L10 12L9 7H14V5.5H9L7.5 1Z"/>
+      </svg>
+      Aircraft
+    </a>
+    <a class="nav-item">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><circle cx="7.5" cy="7.5" r="5"/><path d="M7.5 5v3l2 1"/></svg>
+      Maintenance
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Finance</div>
+    <a class="nav-item">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><rect x="1" y="3" width="13" height="10" rx="1.5"/><path d="M1 6h13"/></svg>
+      Invoices
+    </a>
+    <a class="nav-item">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><path d="M3 7.5h9M7.5 3v9"/></svg>
+      Accounts
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Reporting</div>
+    <a class="nav-item">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 15 15"><rect x="1" y="8" width="3" height="5"/><rect x="6" y="5" width="3" height="8"/><rect x="11" y="2" width="3" height="11"/></svg>
+      Analytics
+    </a>
+  </div>
+</aside>
+
+<!-- ── Main ────────────────────────────────────── -->
+<div class="main">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="hdr-left">
+      <span class="page-title">Gantt</span>
+      <div class="date-nav">
+        <button class="today-btn">Today</button>
+        <div class="icon-btn" title="Previous">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 11 11"><path d="M7 2L4 5.5l3 3.5"/></svg>
+        </div>
+        <span class="date-text">Thu 26 Jun 2025</span>
+        <div class="icon-btn" title="Next">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 11 11"><path d="M4 2l3 3.5-3 3.5"/></svg>
+        </div>
+      </div>
+
+      <!-- METAR weather pill -->
+      <div class="wx-pill wx-vfr" title="Wellington METAR">
+        <span class="wx-label">METAR</span>
+        <span class="wx-badge">VFR</span>
+        NZWN &nbsp;·&nbsp; 200/12 kts &nbsp;·&nbsp; Q1012
+        <span style="opacity:.55;font-size:.68rem">· 4 min ago</span>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <button class="btn">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4"/><path d="M6 4v2l1.5 1"/></svg>
+        Find slot
+      </button>
+      <button class="btn btn-primary">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 12 12"><path d="M6 1v10M1 6h10"/></svg>
+        New booking
+      </button>
+      <div class="user-chip">
+        <div class="user-avatar">DD</div>
+        Dominic
+      </div>
+    </div>
+  </header>
+
+  <!-- Gantt content -->
+  <div class="content">
+    <div class="grid-scroll">
+      <div class="grid" id="g">
+
+        <!-- Axis -->
+        <div class="axis-row">
+          <div class="axis-cell">06:00 → 20:00</div>
+          <div class="axis-track" id="axis-track"></div>
+        </div>
+
+        <!-- INSTRUCTORS section -->
+        <div class="section-row inst">
+          <div class="section-cell">Instructors</div>
+          <div class="section-track"></div>
+        </div>
+
+        <!-- D. Smith — 2 bookings -->
+        <div class="grid-row">
+          <div class="row-label inst">
+            <div class="lbl-info">
+              <div class="lbl-main">D. Smith</div>
+              <div class="lbl-sub">CFI · 86 hrs YTD</div>
+            </div>
+            <span class="roster-on">On</span>
+          </div>
+          <div class="track" id="t-smith">
+            <!-- Emma Bradley confirmed 09:00–11:00 → left:300 width:200 -->
+            <div class="pill confirmed" style="left:300px;width:200px">
+              <div class="pill-body">
+                <div class="nm">Emma Bradley</div>
+                <div class="sub">Solo circuit · ZK-WAC</div>
+              </div>
+            </div>
+            <!-- Sarah Park departed 14:00–16:00 → left:800 width:200 -->
+            <div class="pill departed" style="left:800px;width:200px">
+              <div class="pill-body">
+                <div class="nm">Sarah Park</div>
+                <div class="sub">Trial flight · ZK-WAC</div>
+              </div>
+              <div class="pill-wedge">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 11 11"><path d="M2 5.5h7M6 2l3 3.5-3 3.5"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- M. Johnson — 1 booking -->
+        <div class="grid-row">
+          <div class="row-label inst">
+            <div class="lbl-info">
+              <div class="lbl-main">M. Johnson</div>
+              <div class="lbl-sub">CFI · 62 hrs YTD</div>
+            </div>
+            <span class="roster-on">On</span>
+          </div>
+          <div class="track" id="t-johnson">
+            <!-- James Wilson departed 10:00–12:00 → left:400 width:200 -->
+            <div class="pill departed" style="left:400px;width:200px">
+              <div class="pill-body">
+                <div class="nm">James Wilson</div>
+                <div class="sub">Dual · ZK-RFT</div>
+              </div>
+              <div class="pill-wedge">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 11 11"><path d="M2 5.5h7M6 2l3 3.5-3 3.5"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- K. Fraser — off roster, ghost -->
+        <div class="grid-row">
+          <div class="row-label inst ghost">
+            <div class="lbl-info">
+              <div class="lbl-main">K. Fraser</div>
+              <div class="lbl-sub">CFI</div>
+            </div>
+            <span class="roster-off">Off</span>
+          </div>
+          <div class="track ghost" id="t-fraser"></div>
+        </div>
+
+        <!-- AIRCRAFT section -->
+        <div class="section-row acft">
+          <div class="section-cell">Aircraft</div>
+          <div class="section-track"></div>
+        </div>
+
+        <!-- ZK-WAC -->
+        <div class="grid-row">
+          <div class="row-label acft">
+            <div class="lbl-info">
+              <div class="lbl-main">ZK-WAC</div>
+              <div class="lbl-sub">Cessna 172S</div>
+            </div>
+          </div>
+          <div class="track" id="t-wac">
+            <div class="pill confirmed" style="left:300px;width:200px">
+              <div class="pill-body">
+                <div class="nm">Emma Bradley</div>
+                <div class="sub">Solo circuit</div>
+              </div>
+            </div>
+            <div class="pill departed" style="left:800px;width:200px">
+              <div class="pill-body">
+                <div class="nm">Sarah Park</div>
+                <div class="sub">Trial flight</div>
+              </div>
+              <div class="pill-wedge">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 11 11"><path d="M2 5.5h7M6 2l3 3.5-3 3.5"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ZK-RFT -->
+        <div class="grid-row">
+          <div class="row-label acft">
+            <div class="lbl-info">
+              <div class="lbl-main">ZK-RFT</div>
+              <div class="lbl-sub">Cessna 172N</div>
+            </div>
+          </div>
+          <div class="track" id="t-rft">
+            <div class="pill departed" style="left:400px;width:200px">
+              <div class="pill-body">
+                <div class="nm">James Wilson</div>
+                <div class="sub">Dual · M. Johnson</div>
+              </div>
+              <div class="pill-wedge">
+                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 11 11"><path d="M2 5.5h7M6 2l3 3.5-3 3.5"/></svg>
+              </div>
+            </div>
+            <!-- Marcus pending 13:30–15:30 → left:750 width:200, with conflict spine -->
+            <div class="pill pending" style="left:750px;width:200px">
+              <div class="pill-spine conflict"></div>
+              <div class="pill-body">
+                <div class="nm">Marcus Chen</div>
+                <div class="sub">Solo nav · Pending</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ZK-LMN -->
+        <div class="grid-row">
+          <div class="row-label acft">
+            <div class="lbl-info">
+              <div class="lbl-main">ZK-LMN</div>
+              <div class="lbl-sub">Piper PA-28</div>
+            </div>
+          </div>
+          <div class="track" id="t-lmn">
+            <!-- Tom Bradley completed/paid 08:00–09:30 → left:200 width:150 -->
+            <div class="pill completed" style="left:200px;width:152px">
+              <div class="pill-body">
+                <div class="nm">Tom Bradley</div>
+                <div class="sub">Solo nav · Paid ✓</div>
+              </div>
+            </div>
+            <!-- Hard block-out 10:00–14:00 → left:400 width:400 -->
+            <div class="blockout" style="left:400px;width:400px">
+              <span>Annual Inspection</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ZK-PDQ — available all day (empty) -->
+        <div class="grid-row">
+          <div class="row-label acft">
+            <div class="lbl-info">
+              <div class="lbl-main">ZK-PDQ</div>
+              <div class="lbl-sub">Piper PA-28-161</div>
+            </div>
+          </div>
+          <div class="track" id="t-pdq">
+            <!-- nothing booked — shows "click to book" cursor on hover -->
+          </div>
+        </div>
+
+      </div><!-- /grid -->
+    </div><!-- /grid-scroll -->
+
+    <!-- Legend bar -->
+    <div class="legend-bar">
+      <span class="lg">
+        <span class="lg-swatch" style="background:#1a3a6c;border:1px solid #2d62b8;"></span>
+        Confirmed
+      </span>
+      <span class="lg">
+        <span class="lg-swatch" style="background:#1f5499;border:1px solid #3478c9;"></span>
+        Departed (airborne)
+      </span>
+      <span class="lg">
+        <span class="lg-swatch" style="background:rgba(22,42,64,.95);border:1.5px dashed #3a7bd5;"></span>
+        Pending
+      </span>
+      <span class="lg">
+        <span class="lg-swatch" style="background:#191e24;border:1px solid #2c333b;"></span>
+        Completed / paid
+      </span>
+      <span class="lg">
+        <span class="lg-line"></span>
+        Now
+      </span>
+      <span class="lg">
+        <span class="lg-swatch" style="background:rgba(248,81,73,.12);border:1px solid rgba(248,81,73,.7);width:10px;"></span>
+        Block-out
+      </span>
+      <span class="lg">
+        <span class="lg-swatch" style="background:#f85149;width:4px;border-radius:1px;height:10px;"></span>
+        Conflict
+      </span>
+      <span class="lg-hint">Click any track to create a booking · drag pill to move · drag right edge to resize</span>
+    </div>
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+(function () {
+  const START = 6, END = 20, PX = 100; // 100px per hour, 06:00 start
+
+  // ── Axis ticks ──────────────────────────────────
+  const axisTrack = document.getElementById('axis-track');
+  for (let h = START; h <= END; h++) {
+    const left = (h - START) * PX;
+    const d = document.createElement('div');
+    d.className = 'tick';
+    d.style.left = left + 'px';
+    const s = document.createElement('span');
+    s.textContent = String(h).padStart(2, '0') + ':00';
+    d.appendChild(s);
+    axisTrack.appendChild(d);
+  }
+
+  // ── Gridlines + now-line in every track ─────────
+  // Now = 11:30 → (11.5 - 6) * 100 = 550px
+  const NOW_PX = 550;
+
+  document.querySelectorAll('.track').forEach(track => {
+    // Gridlines
+    for (let h = START; h <= END; h++) {
+      const gl = document.createElement('div');
+      gl.className = 'gridline';
+      gl.style.left = (h - START) * PX + 'px';
+      track.insertBefore(gl, track.firstChild);
+    }
+    // Now-line
+    const nl = document.createElement('div');
+    nl.className = 'now-line';
+    nl.style.left = NOW_PX + 'px';
+    track.appendChild(nl);
+  });
+
+  // Axis now-marker (with arrow)
+  const an = document.createElement('div');
+  an.className = 'now-line axis-marker';
+  an.style.left = NOW_PX + 'px';
+  axisTrack.appendChild(an);
+
+  // ── Track hover cursor ───────────────────────────
+  document.querySelectorAll('.track:not(.ghost)').forEach(t => {
+    t.style.cursor = 'copy';
+    t.addEventListener('mouseenter', () => t.style.outline = '');
+    t.querySelectorAll('.pill').forEach(p => {
+      p.addEventListener('mouseenter', e => { e.stopPropagation(); });
+    });
+  });
+})();
+</script>
+</body>
+</html>

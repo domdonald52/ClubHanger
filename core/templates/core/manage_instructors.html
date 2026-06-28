@@ -210,7 +210,7 @@ const _otherInstrs = {
   {% endfor %}
 };
 
-function openRemove(memberId, name, bookingCount) {
+window.openRemove(memberId, name, bookingCount) {
   document.getElementById('remove-member-id').value = memberId;
   document.getElementById('remove-title').textContent = 'Remove ' + name + ' from roster?';
   const desc = document.getElementById('remove-desc');

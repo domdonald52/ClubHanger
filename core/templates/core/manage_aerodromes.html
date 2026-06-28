@@ -219,14 +219,14 @@
 </style>
 
 <script>
-function toggleAe(e, id) {
+window.toggleAe(e, id) {
   if (e.target.closest('.ae-actions')) return;
   var card = document.getElementById('ae-card-' + id);
   var collapsed = card.classList.toggle('ae-collapsed');
   try { localStorage.setItem('ae-col-' + id, collapsed ? '1' : '0'); } catch(x) {}
 }
 
-function setAllAe(collapse) {
+window.setAllAe(collapse) {
   document.querySelectorAll('.ae-card[id^="ae-card-"]').forEach(function(card) {
     card.classList.toggle('ae-collapsed', collapse);
     var id = card.id.replace('ae-card-', '');
@@ -291,10 +291,10 @@ function setAllAe(collapse) {
   });
 })();
 
-function escAttr(s) {
+window.escAttr(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-function makeFeeRow(id, name, amount) {
+window.makeFeeRow(id, name, amount) {
   var div = document.createElement('div');
   div.className = 'fm-fee-row';
   var idInput   = id ? '<input type="hidden" name="fee_id" value="' + escAttr(id) + '">' : '';
