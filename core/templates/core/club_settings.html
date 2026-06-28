@@ -1437,9 +1437,9 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="delete_role">
         <input id="role-del-id" type="hidden" name="role_id" value="">
-        <div class="modal-actions">
-          <button type="submit" class="cbtn danger">Delete</button>
+        <div class="modal-actions" style="justify-content:flex-end;">
           <button type="button" class="cbtn" onclick="document.getElementById('role-del-modal').hidden=true">Cancel</button>
+          <button type="submit" class="cbtn danger">Delete</button>
         </div>
       </form>
     </div>
