@@ -6350,19 +6350,26 @@ def manage_instructor_detail(request, club_slug, member_id):
         elif action == 'add_instructor_availability':
             recurrence = request.POST.get('av_recurrence', 'weekly')
             all_day = request.POST.get('av_all_day') == 'on'
-            av = InstructorAvailability(club_member=instr, recurrence=recurrence, all_day=all_day)
+            active_from  = request.POST.get('av_active_from') or None
+            active_until = request.POST.get('av_active_until') or None
+            notes = request.POST.get('av_notes', '').strip()
+            start_time = None if all_day else (request.POST.get('av_start_time') or None)
+            end_time   = None if all_day else (request.POST.get('av_end_time') or None)
             if recurrence == 'weekly':
-                wd = request.POST.get('av_weekday', '0')
-                av.weekday = int(wd) if wd.isdigit() else 0
+                weekdays = [int(w) for w in request.POST.getlist('av_weekdays') if w.isdigit()]
+                for wd in weekdays:
+                    InstructorAvailability.objects.create(
+                        club_member=instr, recurrence='weekly', weekday=wd,
+                        all_day=all_day, start_time=start_time, end_time=end_time,
+                        active_from=active_from, active_until=active_until, notes=notes,
+                    )
             else:
-                av.date = request.POST.get('av_date') or None
-            if not all_day:
-                av.start_time = request.POST.get('av_start_time') or None
-                av.end_time = request.POST.get('av_end_time') or None
-            av.active_from = request.POST.get('av_active_from') or None
-            av.active_until = request.POST.get('av_active_until') or None
-            av.notes = request.POST.get('av_notes', '').strip()
-            av.save()
+                InstructorAvailability.objects.create(
+                    club_member=instr, recurrence='one_off',
+                    date=request.POST.get('av_date') or None,
+                    all_day=all_day, start_time=start_time, end_time=end_time,
+                    active_from=active_from, active_until=active_until, notes=notes,
+                )
 
         elif action == 'delete_instructor_availability':
             InstructorAvailability.objects.filter(club_member=instr, id=request.POST.get('av_id')).delete()
@@ -6416,6 +6423,7 @@ def manage_instructor_detail(request, club_slug, member_id):
         'instr': instr,
         'av_windows': av_windows,
         'past_av_count': past_av_count,
+        'day_choices': InstructorAvailability.WEEKDAY_CHOICES,
         'instr_blockouts': instr_blockouts,
         'credentials': credentials,
         'instructor_grades': instructor_grades,

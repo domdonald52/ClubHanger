@@ -163,35 +163,39 @@
         </div>
         <button type="button" class="pi-close" onclick="document.getElementById('add-av-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
       </div>
-      <form method="post">{% csrf_token %}
+      <form method="post" onsubmit="return validateAvForm(this)">{% csrf_token %}
         <input type="hidden" name="action" value="add_instructor_availability">
-        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-          <label class="flabel">Recurrence
-            <select name="av_recurrence" class="finput" onchange="toggleAvDate(this)">
-              <option value="weekly">Weekly</option>
-              <option value="one_off">Specific date</option>
-            </select>
-          </label>
-          <label class="flabel av-weekly">Day
-            <select name="av_weekday" class="finput">
-              <option value="0">Monday</option><option value="1">Tuesday</option>
-              <option value="2">Wednesday</option><option value="3">Thursday</option>
-              <option value="4">Friday</option><option value="5">Saturday</option>
-              <option value="6">Sunday</option>
-            </select>
-          </label>
-          <label class="flabel av-oneoff" style="display:none;">Date
+        <label class="flabel" style="margin-bottom:.6rem;">Recurrence
+          <select name="av_recurrence" class="finput" onchange="toggleAvDate(this)">
+            <option value="weekly">Weekly (recurring)</option>
+            <option value="one_off">Specific date</option>
+          </select>
+        </label>
+        <div class="av-weekly">
+          <div class="flabel" style="margin-bottom:.35rem;">Days</div>
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.7rem;">
+            {% for val, label in day_choices %}
+            <label class="av-day-pill">
+              <input type="checkbox" name="av_weekdays" value="{{ val }}">
+              <span>{{ label|slice:":3" }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <div class="av-day-err" style="display:none;font-size:.78rem;color:var(--danger);margin-top:-.4rem;margin-bottom:.5rem;">Select at least one day.</div>
+        </div>
+        <div class="av-oneoff" style="display:none;margin-bottom:.6rem;">
+          <label class="flabel">Date
             <input type="date" name="av_date" class="finput">
           </label>
         </div>
-        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin:.4rem 0;">
+        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;">
           <input type="checkbox" name="av_all_day" id="av-allday" checked onchange="toggleAvTime(this)"> All day
         </label>
-        <div id="av-time-fields" style="display:none;gap:.7rem;flex-wrap:wrap;">
+        <div id="av-time-fields" style="display:none;gap:.7rem;flex-wrap:wrap;margin-bottom:.5rem;">
           <label class="flabel">From <input type="time" name="av_start_time" class="finput" value="08:30"></label>
           <label class="flabel">To   <input type="time" name="av_end_time"   class="finput" value="17:00"></label>
         </div>
-        <div style="display:flex;gap:.7rem;flex-wrap:wrap;margin-top:.1rem;">
+        <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
           <label class="flabel">Active from <span style="font-weight:400;">(optional)</span>
             <input type="date" name="av_active_from" class="finput">
           </label>
@@ -199,11 +203,11 @@
             <input type="date" name="av_active_until" class="finput">
           </label>
         </div>
-        <label class="flabel" style="margin-top:.1rem;">Notes
+        <label class="flabel" style="margin-top:.4rem;">Notes
           <input type="text" name="av_notes" class="finput" placeholder="e.g. summer roster">
         </label>
         <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
-          <button type="submit" class="cbtn primary">Save window</button>
+          <button type="submit" class="cbtn primary">Save</button>
         </div>
       </form>
     </div>
@@ -308,6 +312,12 @@
   .add-toggle::-webkit-details-marker{display:none;}
 
   /* status-chip colours defined in base.html */
+  .av-day-pill{display:inline-flex;cursor:pointer;}
+  .av-day-pill input{position:absolute;opacity:0;width:0;height:0;}
+  .av-day-pill span{display:inline-block;padding:.3rem .6rem;border-radius:6px;border:1px solid var(--input-border);background:var(--surface);color:var(--text-2);font-size:.8rem;font-weight:600;transition:background .1s,color .1s,border-color .1s;user-select:none;}
+  .av-day-pill input:checked+span{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .av-day-pill span:hover{background:var(--surface-3);}
+  .av-day-pill input:checked+span:hover{filter:brightness(1.08);}
 </style>
 
 <script>
@@ -353,6 +363,13 @@ function toggleAvDate(sel) {
 function toggleAvTime(cb) {
   const tf = document.getElementById('av-time-fields');
   if (tf) tf.style.display = cb.checked ? 'none' : 'flex';
+}
+function validateAvForm(form) {
+  const isWeekly = form.querySelector('[name=av_recurrence]').value === 'weekly';
+  if (!isWeekly) return true;
+  const anyChecked = [...form.querySelectorAll('[name=av_weekdays]')].some(cb => cb.checked);
+  form.querySelector('.av-day-err').style.display = anyChecked ? 'none' : '';
+  return anyChecked;
 }
 
 const avModal = document.getElementById('add-av-modal');
