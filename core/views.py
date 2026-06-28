@@ -6216,6 +6216,12 @@ def manage_instructors(request, club_slug):
     av_counts = {}
     for av in InstructorAvailability.objects.filter(club_member__club=club).filter(_active_q):
         av_counts[av.club_member_id] = av_counts.get(av.club_member_id, 0) + 1
+    av_any = set(
+        InstructorAvailability.objects
+        .filter(club_member__club=club)
+        .values_list('club_member_id', flat=True)
+        .distinct()
+    )
 
     instructors = (ClubMember.objects
                    .filter(club=club, is_on_instructor_roster=True)
@@ -6223,6 +6229,7 @@ def manage_instructors(request, club_slug):
                    .order_by('user__last_name'))
     for instr in instructors:
         instr.av_count = av_counts.get(instr.id, 0)
+        instr.av_has_any = instr.id in av_any
         instr.future_bookings = list(
             Booking.objects
             .filter(club=club, instructor=instr.user,
