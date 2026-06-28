@@ -4302,7 +4302,13 @@ def manage_member_detail(request, club_slug, member_id):
             u = member.user
             u.first_name = request.POST.get('first_name', '').strip()
             u.last_name = request.POST.get('last_name', '').strip()
-            u.email = request.POST.get('email', '').strip()
+            _new_email = request.POST.get('email', '').strip()
+            if _new_email and _new_email != u.email and \
+                    User.objects.filter(email=_new_email).exclude(pk=u.pk).exists():
+                return _inline_redirect(request, 'core:manage_member_detail',
+                                        club_slug=club_slug, member_id=member_id,
+                                        error='That email address is already used by another member.')
+            u.email = _new_email
             u.save(update_fields=['first_name', 'last_name', 'email'])
             member.phone_mobile = request.POST.get('phone_mobile', '').strip()
             member.phone_home = request.POST.get('phone_home', '').strip()
@@ -4955,7 +4961,11 @@ def my_profile(request, club_slug):
             u = request.user
             u.first_name = request.POST.get('first_name', '').strip()
             u.last_name = request.POST.get('last_name', '').strip()
-            u.email = request.POST.get('email', '').strip()
+            _new_email = request.POST.get('email', '').strip()
+            if _new_email and _new_email != u.email and \
+                    User.objects.filter(email=_new_email).exclude(pk=u.pk).exists():
+                return redirect(_profile_url + '?error=email_taken')
+            u.email = _new_email
             u.save(update_fields=['first_name', 'last_name', 'email'])
             member.phone_mobile = request.POST.get('phone_mobile', '').strip()
             member.phone_home = request.POST.get('phone_home', '').strip()
