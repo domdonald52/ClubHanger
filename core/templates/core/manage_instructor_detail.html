@@ -96,12 +96,26 @@
           </td>
           <td style="color:var(--text-3);">{{ grp.notes }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:contents;" data-confirm="{% if grp.av_ids|length > 1 %}Remove all {{ grp.av_ids|length }} windows in this group?{% else %}Remove this window?{% endif %}">
-              {% csrf_token %}
-              <input type="hidden" name="action" value="delete_instructor_availability">
-              {% for av_id in grp.av_ids %}<input type="hidden" name="av_id" value="{{ av_id }}">{% endfor %}
-              <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Remove"><i class="ti ti-user-minus"></i></button>
-            </form>
+            <div style="display:inline-flex;gap:.3rem;">
+              <button type="button" class="cbtn-sm cbtn-icon" title="Edit"
+                data-av-ids="{{ grp.av_ids|join:',' }}"
+                data-recurrence="{% if grp.weekdays %}weekly{% else %}one_off{% endif %}"
+                data-weekdays="{{ grp.weekdays|join:',' }}"
+                data-date="{{ grp.date_val }}"
+                data-all-day="{{ grp.all_day|yesno:'true,false' }}"
+                data-start-time="{% if grp.start_time %}{{ grp.start_time|time:'H:i' }}{% endif %}"
+                data-end-time="{% if grp.end_time %}{{ grp.end_time|time:'H:i' }}{% endif %}"
+                data-active-from="{{ grp.active_from|default:'' }}"
+                data-active-until="{{ grp.active_until|default:'' }}"
+                data-notes="{{ grp.notes|escapejs }}"
+                onclick="openEditAv(this)"><i class="ti ti-pencil"></i></button>
+              <form method="post" style="display:contents;" data-confirm="{% if grp.av_ids|length > 1 %}Remove all {{ grp.av_ids|length }} windows in this group?{% else %}Remove this window?{% endif %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_instructor_availability">
+                {% for av_id in grp.av_ids %}<input type="hidden" name="av_id" value="{{ av_id }}">{% endfor %}
+                <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Remove"><i class="ti ti-user-minus"></i></button>
+              </form>
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -182,12 +196,13 @@
           <span class="crumb-sep"> ›</span>
           <span>{{ instr.user.get_full_name }}</span>
           <span class="crumb-sep"> ›</span>
-          <span class="crumb-cur">Add availability window</span>
+          <span class="crumb-cur" id="av-modal-title">Add availability window</span>
         </div>
-        <button type="button" class="pi-close" onclick="document.getElementById('add-av-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+        <button type="button" class="pi-close" onclick="closeAvModal()" title="Close"><i class="ti ti-x"></i></button>
       </div>
       <form method="post" onsubmit="return validateAvForm(this)">{% csrf_token %}
-        <input type="hidden" name="action" value="add_instructor_availability">
+        <input type="hidden" name="action" id="av-action-input" value="add_instructor_availability">
+        <input type="hidden" name="edit_av_ids" id="edit-av-ids" value="">
         <label class="flabel" style="margin-bottom:.6rem;">Recurrence
           <select name="av_recurrence" class="finput" onchange="toggleAvDate(this)">
             <option value="weekly">Weekly (recurring)</option>
@@ -396,9 +411,48 @@ function validateAvForm(form) {
 }
 
 const avModal = document.getElementById('add-av-modal');
+function closeAvModal() {
+  avModal.hidden = true;
+  // Reset to add mode
+  document.getElementById('av-action-input').value = 'add_instructor_availability';
+  document.getElementById('edit-av-ids').value = '';
+  document.getElementById('av-modal-title').textContent = 'Add availability window';
+  avModal.querySelector('form').reset();
+  const recSel = avModal.querySelector('[name=av_recurrence]');
+  toggleAvDate(recSel);
+  toggleAvTime(document.getElementById('av-allday'));
+}
 if (avModal) {
-  avModal.addEventListener('click', e => { if (e.target === avModal) avModal.hidden = true; });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') avModal.hidden = true; });
+  avModal.addEventListener('click', e => { if (e.target === avModal) closeAvModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !avModal.hidden) closeAvModal(); });
+}
+function openEditAv(btn) {
+  const d = btn.dataset;
+  document.getElementById('av-action-input').value = 'edit_instructor_availability';
+  document.getElementById('edit-av-ids').value = d.avIds;
+  document.getElementById('av-modal-title').textContent = 'Edit availability window';
+  const form = avModal.querySelector('form');
+  const recSel = form.querySelector('[name=av_recurrence]');
+  recSel.value = d.recurrence;
+  toggleAvDate(recSel);
+  if (d.recurrence === 'weekly') {
+    const wds = d.weekdays ? d.weekdays.split(',').map(Number) : [];
+    form.querySelectorAll('[name=av_weekdays]').forEach(cb => { cb.checked = wds.includes(parseInt(cb.value)); });
+  } else {
+    form.querySelector('[name=av_date]').value = d.date || '';
+  }
+  const allDay = d.allDay === 'true';
+  const alldayCb = document.getElementById('av-allday');
+  alldayCb.checked = allDay;
+  toggleAvTime(alldayCb);
+  if (!allDay) {
+    form.querySelector('[name=av_start_time]').value = d.startTime || '';
+    form.querySelector('[name=av_end_time]').value = d.endTime || '';
+  }
+  form.querySelector('[name=av_active_from]').value = d.activeFrom || '';
+  form.querySelector('[name=av_active_until]').value = d.activeUntil || '';
+  form.querySelector('[name=av_notes]').value = d.notes || '';
+  avModal.hidden = false;
 }
 </script>
 {% endblock %}

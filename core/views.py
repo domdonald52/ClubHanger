@@ -6375,6 +6375,31 @@ def manage_instructor_detail(request, club_slug, member_id):
                     active_from=active_from, active_until=active_until, notes=notes,
                 )
 
+        elif action == 'edit_instructor_availability':
+            old_ids = [x for x in request.POST.get('edit_av_ids', '').split(',') if x.strip().isdigit()]
+            InstructorAvailability.objects.filter(club_member=instr, id__in=old_ids).delete()
+            recurrence = request.POST.get('av_recurrence', 'weekly')
+            all_day = request.POST.get('av_all_day') == 'on'
+            active_from  = request.POST.get('av_active_from') or None
+            active_until = request.POST.get('av_active_until') or None
+            notes = request.POST.get('av_notes', '').strip()
+            start_time = None if all_day else (request.POST.get('av_start_time') or None)
+            end_time   = None if all_day else (request.POST.get('av_end_time') or None)
+            if recurrence == 'weekly':
+                for wd in [int(w) for w in request.POST.getlist('av_weekdays') if w.isdigit()]:
+                    InstructorAvailability.objects.create(
+                        club_member=instr, recurrence='weekly', weekday=wd,
+                        all_day=all_day, start_time=start_time, end_time=end_time,
+                        active_from=active_from, active_until=active_until, notes=notes,
+                    )
+            else:
+                InstructorAvailability.objects.create(
+                    club_member=instr, recurrence='one_off',
+                    date=request.POST.get('av_date') or None,
+                    all_day=all_day, start_time=start_time, end_time=end_time,
+                    active_from=active_from, active_until=active_until, notes=notes,
+                )
+
         elif action == 'delete_instructor_availability':
             InstructorAvailability.objects.filter(club_member=instr, id__in=request.POST.getlist('av_id')).delete()
 
@@ -6409,6 +6434,7 @@ def manage_instructor_detail(request, club_slug, member_id):
             else:
                 one_offs.append({
                     'av_ids': [av.id], 'days_label': str(av.date) if av.date else '—',
+                    'weekdays': [], 'date_val': str(av.date) if av.date else '',
                     'all_day': av.all_day, 'start_time': av.start_time, 'end_time': av.end_time,
                     'active_from': av.active_from, 'active_until': av.active_until, 'notes': av.notes or '',
                 })
@@ -6419,6 +6445,7 @@ def manage_instructor_detail(request, club_slug, member_id):
             label = (avs[0].get_weekday_display() + 's') if len(avs) == 1 else ', '.join(w.get_weekday_display()[:3] for w in avs)
             weekly.append({
                 'av_ids': [w.id for w in avs], 'days_label': label,
+                'weekdays': [w.weekday for w in avs], 'date_val': '',
                 'all_day': all_day, 'start_time': st, 'end_time': et,
                 'active_from': af, 'active_until': au, 'notes': notes,
             })
