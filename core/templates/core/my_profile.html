@@ -68,7 +68,7 @@
         <label class="flabel">Suburb<input type="text" name="suburb" value="{{ member.suburb }}" class="finput"></label>
         <label class="flabel">Postcode<input type="text" name="postcode" value="{{ member.postcode }}" class="finput"></label>
       </div>
-      <button type="submit" class="btn" style="margin-top:.5rem;">Save</button>
+      <div style="display:flex;justify-content:flex-end;margin-top:.5rem;"><button type="submit" class="btn">Save</button></div>
     </form>
   </section>
 
@@ -270,7 +270,7 @@
       </label>
       {% endif %}
 
-      <button type="submit" class="btn">Save</button>
+      <div style="display:flex;justify-content:flex-end;"><button type="submit" class="btn">Save</button></div>
     </form>
     {% endwith %}
 
