@@ -1097,6 +1097,7 @@ body.dark-mode .part{color:#fb923c;}
       </div>
 
       <h3 id="ac-maint">Maintenance items</h3>
+      <p>The maintenance items list gives staff advance notice of when scheduled work is coming due, so flights can be planned around it and the aircraft can be made available to the engineer at the right time.</p>
       <p>Open Fleet → Aircraft → [aircraft] and select the <strong>Maintenance</strong> tab. The tab is laid out in three sections: <strong>Block-outs</strong> (any active maintenance block-outs for the aircraft — check this first before scheduling maintenance), a <strong>Current meters</strong> strip showing the highest recorded hobbs/tacho/airswitch readings from the maintenance log alongside the total accumulated maintenance hours, and then the <strong>Maintenance items</strong> list and log. Verify the current meter readings against the physical aircraft at your next inspection — discrepancies indicate a gap in the log.</p>
       <p>Each aircraft has a list of recurring maintenance items — tasks that come due on a schedule. Common examples: 100-hour check, oil change, annual inspection, pitot-static check, ELT battery. Each item is configured independently.</p>
       <p>An item can have <strong>either or both</strong> of two scheduling methods:</p>
@@ -1107,12 +1108,12 @@ body.dark-mode .part{color:#fb923c;}
           <tr>
             <td><strong>Hours-based</strong></td>
             <td>Due hours, Interval hours</td>
-            <td>Item is due when accumulated maintenance hours reach the <em>due hours</em> value. After completing, set the next <em>due hours</em> = current hours + interval. E.g. next 100-hour check at 1,234.5h.</td>
+            <td>Item is due when accumulated maintenance hours reach the <em>due hours</em> value. When marked done, the system sets <em>due hours</em> = current hours + interval automatically. E.g. next 100-hour check at 1,234.5h.</td>
           </tr>
           <tr>
             <td><strong>Calendar-based</strong></td>
             <td>Due date, Interval days</td>
-            <td>Item is due on a fixed date. After completing, advance the due date by the interval. E.g. annual inspection due 15 Oct 2026, interval 365 days → next due 15 Oct 2027.</td>
+            <td>Item is due on a fixed date. When marked done, the system advances the due date by the interval automatically. E.g. annual inspection due 15 Oct 2026, interval 365 days → next due 15 Oct 2027.</td>
           </tr>
         </tbody>
       </table>
@@ -1129,7 +1130,7 @@ body.dark-mode .part{color:#fb923c;}
             <li><strong>Due date</strong> = date of next annual (e.g., 15 Oct 2026)</li>
             <li><strong>Interval days</strong> = 365</li>
           </ul>
-          <p>When either limit is reached, the urgency turns Amber then Red. After completing the inspection, update <em>both</em> the due hours (current + 100) and the due date (completed date + 365) to reset the clock.</p>
+          <p>When either limit is reached, the urgency turns Amber then Red. After completing the inspection, click the <strong>✓ Mark done</strong> button — the system resets both the due hours (current + 100) and the due date (today + 365) automatically.</p>
         </div>
       </details>
 
@@ -1138,10 +1139,10 @@ body.dark-mode .part{color:#fb923c;}
         <div class="dbody">
           <p>Each maintenance item has optional per-item alert thresholds. If left blank, the global defaults from Settings → Billing are used:</p>
           <ul>
-            <li><strong>Warn hours</strong> (amber) — turns amber when this many maintenance hours remain before due. Default: 5 hours.</li>
-            <li><strong>Alert hours</strong> (red) — turns red when this few maintenance hours remain. Default: set per item (e.g. 0 = only red when overdue).</li>
-            <li><strong>Warn days</strong> (amber) — turns amber when this many days remain before due date. Default: 14 days.</li>
-            <li><strong>Alert days</strong> (red) — turns red when this few days remain.</li>
+            <li><strong>Warn hours</strong> (amber) — turns amber when this many maintenance hours remain before due. Default: 20 hours.</li>
+            <li><strong>Alert hours</strong> (red) — turns red when this few maintenance hours remain. Default: 5 hours.</li>
+            <li><strong>Warn days</strong> (amber) — turns amber when this many days remain before due date. Default: 30 days.</li>
+            <li><strong>Alert days</strong> (red) — turns red when this few days remain. Default: 14 days.</li>
           </ul>
           <p>Set tighter thresholds on items that need more lead time to organise (e.g. a pitot-static recheck that requires booking an avionics shop weeks in advance).</p>
         </div>
