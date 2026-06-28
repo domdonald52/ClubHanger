@@ -6376,7 +6376,7 @@ def manage_instructor_detail(request, club_slug, member_id):
                 )
 
         elif action == 'delete_instructor_availability':
-            InstructorAvailability.objects.filter(club_member=instr, id=request.POST.get('av_id')).delete()
+            InstructorAvailability.objects.filter(club_member=instr, id__in=request.POST.getlist('av_id')).delete()
 
         elif action == 'add_instructor_blockout':
             _create_blockout_from_post(request, club, scope='instructors', instructor_user=instr.user)
@@ -6394,7 +6394,38 @@ def manage_instructor_detail(request, club_slug, member_id):
         Q(recurrence='weekly', active_until__gte=_today)
     )
     av_windows = InstructorAvailability.objects.filter(club_member=instr).filter(_active_q).order_by('weekday', 'date')
-    past_av_count = InstructorAvailability.objects.filter(club_member=instr).exclude(_active_q).count()
+    past_av_windows = InstructorAvailability.objects.filter(club_member=instr).exclude(_active_q).order_by('weekday', 'date')
+    past_av_count = past_av_windows.count()
+
+    def _group_av(qs):
+        one_offs, buckets, bucket_order = [], {}, []
+        for av in qs:  # ordered by weekday, date — first seen per key = lowest weekday
+            if av.recurrence == 'weekly':
+                key = (av.all_day, av.start_time, av.end_time, av.active_from, av.active_until, av.notes or '')
+                if key not in buckets:
+                    buckets[key] = []
+                    bucket_order.append(key)
+                buckets[key].append(av)
+            else:
+                one_offs.append({
+                    'av_ids': [av.id], 'days_label': str(av.date) if av.date else '—',
+                    'all_day': av.all_day, 'start_time': av.start_time, 'end_time': av.end_time,
+                    'active_from': av.active_from, 'active_until': av.active_until, 'notes': av.notes or '',
+                })
+        weekly = []
+        for key in bucket_order:
+            avs = buckets[key]
+            all_day, st, et, af, au, notes = key
+            label = (avs[0].get_weekday_display() + 's') if len(avs) == 1 else ', '.join(w.get_weekday_display()[:3] for w in avs)
+            weekly.append({
+                'av_ids': [w.id for w in avs], 'days_label': label,
+                'all_day': all_day, 'start_time': st, 'end_time': et,
+                'active_from': af, 'active_until': au, 'notes': notes,
+            })
+        return one_offs + weekly
+
+    grouped_av_windows = _group_av(av_windows)
+    grouped_past_av_windows = _group_av(past_av_windows)
 
     _bo_active_q = (
         Q(recurrence='one_off', date__gte=_today) |
@@ -6425,7 +6456,8 @@ def manage_instructor_detail(request, club_slug, member_id):
     return render(request, 'core/manage_instructor_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'instr': instr,
-        'av_windows': av_windows,
+        'grouped_av_windows': grouped_av_windows,
+        'grouped_past_av_windows': grouped_past_av_windows,
         'past_av_count': past_av_count,
         'day_choices': InstructorAvailability.WEEKDAY_CHOICES,
         'instr_blockouts': instr_blockouts,

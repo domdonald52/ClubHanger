@@ -78,29 +78,28 @@
     </div>
     <p style="font-size:.82rem;color:var(--text-3);margin:.1rem 0 .9rem;">
       Windows define when this instructor is available for rostered bookings. At least one window must be set for them to appear as available — no windows means not available.
-      {% if past_av_count %}<span style="color:var(--text-3);">{{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }} not shown.</span>{% endif %}
     </p>
 
-    {% if av_windows %}
+    {% if grouped_av_windows %}
     <table class="ft-table">
       <thead><tr><th>When</th><th>Hours</th><th>Valid</th><th>Notes</th><th></th></tr></thead>
       <tbody>
-        {% for av in av_windows %}
+        {% for grp in grouped_av_windows %}
         <tr>
-          <td>{% if av.recurrence == 'weekly' %}{{ av.get_weekday_display }}s{% else %}{{ av.date }}{% endif %}</td>
-          <td>{% if av.all_day %}All day{% else %}{{ av.start_time|time:'H:i' }}–{{ av.end_time|time:'H:i' }}{% endif %}</td>
+          <td>{{ grp.days_label }}</td>
+          <td>{% if grp.all_day %}All day{% else %}{{ grp.start_time|time:'H:i' }}–{{ grp.end_time|time:'H:i' }}{% endif %}</td>
           <td style="color:var(--text-3);font-size:.78rem;">
-            {% if av.active_from or av.active_until %}
-              {% if av.active_from %}from {{ av.active_from }}{% endif %}
-              {% if av.active_until %}until {{ av.active_until }}{% endif %}
+            {% if grp.active_from or grp.active_until %}
+              {% if grp.active_from %}from {{ grp.active_from }}{% endif %}
+              {% if grp.active_until %}until {{ grp.active_until }}{% endif %}
             {% else %}—{% endif %}
           </td>
-          <td style="color:var(--text-3);">{{ av.notes }}</td>
+          <td style="color:var(--text-3);">{{ grp.notes }}</td>
           <td style="text-align:right;">
-            <form method="post" style="display:contents;" data-confirm="Remove this window?">
+            <form method="post" style="display:contents;" data-confirm="{% if grp.av_ids|length > 1 %}Remove all {{ grp.av_ids|length }} windows in this group?{% else %}Remove this window?{% endif %}">
               {% csrf_token %}
               <input type="hidden" name="action" value="delete_instructor_availability">
-              <input type="hidden" name="av_id" value="{{ av.id }}">
+              {% for av_id in grp.av_ids %}<input type="hidden" name="av_id" value="{{ av_id }}">{% endfor %}
               <button type="submit" class="cbtn-sm cbtn-danger cbtn-icon" title="Remove"><i class="ti ti-user-minus"></i></button>
             </form>
           </td>
@@ -110,6 +109,30 @@
     </table>
     {% else %}
     <p style="color:var(--text-3);font-size:.85rem;margin-bottom:.8rem;">No windows set — instructor will appear as unavailable for rostered scheduling.</p>
+    {% endif %}
+
+    {% if past_av_count %}
+    <button type="button" id="past-av-toggle" onclick="(function(){var s=document.getElementById('past-av');s.hidden=!s.hidden;document.getElementById('past-av-toggle').textContent=s.hidden?'Show {{ past_av_count }} past {{ past_av_count|pluralize:\"entry,entries\" }}':'Hide past entries';})()" style="background:none;border:none;padding:0;font-size:.78rem;color:var(--text-3);cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-bottom:.8rem;">Show {{ past_av_count }} past {{ past_av_count|pluralize:"entry,entries" }}</button>
+    <div id="past-av" hidden style="opacity:.55;margin-bottom:.8rem;">
+      <table class="ft-table">
+        <thead><tr><th>When</th><th>Hours</th><th>Valid</th><th>Notes</th></tr></thead>
+        <tbody>
+          {% for grp in grouped_past_av_windows %}
+          <tr>
+            <td>{{ grp.days_label }}</td>
+            <td>{% if grp.all_day %}All day{% else %}{{ grp.start_time|time:'H:i' }}–{{ grp.end_time|time:'H:i' }}{% endif %}</td>
+            <td style="color:var(--text-3);font-size:.78rem;">
+              {% if grp.active_from or grp.active_until %}
+                {% if grp.active_from %}from {{ grp.active_from }}{% endif %}
+                {% if grp.active_until %}until {{ grp.active_until }}{% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td style="color:var(--text-3);">{{ grp.notes }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% endif %}
 
     <hr style="border:none;border-top:1px solid var(--border);margin:1.5rem 0;">
