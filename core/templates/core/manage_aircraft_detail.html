@@ -1042,8 +1042,8 @@ window._maintDueHint = function(pfx) {
   }
 }
 
-window.emmUpdateThresh = function() { _maintDueHint('emm'); }
-window.ammUpdateThresh = function() { _maintDueHint('amm'); }
+window.emmUpdateThresh = function() { _maintDueHint('emm'); };
+window.ammUpdateThresh = function() { _maintDueHint('amm'); };
 ['emm-due-date','emm-due-hours','emm-last-date','emm-last-hours','emm-interval-days','emm-interval-hours'].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) el.addEventListener('input', emmUpdateThresh);
