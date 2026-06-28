@@ -272,7 +272,10 @@
   <!-- Add credential modal -->
   <div id="add-cred-modal" class="modal-back" hidden>
     <div class="modal" style="width:min(560px,96vw);">
-      <h2>Add credential — {{ member.user.get_full_name }}</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <h2 style="margin:0;">Add credential — {{ member.user.get_full_name }}</h2>
+        <button type="button" class="pi-close" onclick="document.getElementById('add-cred-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+      </div>
       <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="hidden" name="action" value="add_credential">
@@ -314,9 +317,7 @@
         <label class="flabel" style="margin-top:.4rem;">Evidence photo/scan <span style="font-weight:400;">(optional — JPG, PNG or PDF)</span>
           <input type="file" name="evidence" accept="image/*,.pdf" class="finput">
         </label>
-        <div class="modal-actions" style="margin-top:1rem;">
-          <button type="button" class="cbtn" onclick="document.getElementById('add-cred-modal').hidden=true">Close</button>
-          <span style="flex:1"></span>
+        <div class="modal-actions" style="margin-top:1rem;justify-content:flex-end;">
           <button type="submit" class="cbtn primary">Add credential</button>
         </div>
       </form>
