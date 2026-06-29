@@ -232,7 +232,7 @@
         <p class="tab-desc">Set a default rate, then override per flight type as needed. Leave a row blank to use the default. Instrument defaults to {{ ac.get_total_time_method_display }} but can be overridden per flight type.</p>
       </div>
       {% if club_member.is_admin %}
-      <button type="button" class="cbtn" id="edit-rates-btn" onclick="startEditRates()"><i class="ti ti-pencil"></i> Edit rates</button>
+      <button type="button" class="cbtn-add" id="edit-rates-btn" onclick="startEditRates()"><i class="ti ti-pencil"></i> Edit rates</button>
       {% endif %}
     </div>
 
@@ -265,7 +265,7 @@
         <thead>
           <tr>
             <th>Flight type</th>
-            <th style="width:5rem;text-align:center;">Billable</th>
+            <th style="width:7rem;text-align:center;">Billable</th>
             <th style="width:7rem;text-align:right;">Rate/hr</th>
             <th style="width:9rem;">Instrument</th>
           </tr>
@@ -278,7 +278,7 @@
               {% if ft.is_billable %}
                 <span style="color:var(--success,#22c55e);font-size:.8rem;">✓</span>
               {% else %}
-                <span style="background:var(--warning-bg,#fef3c7);color:var(--warning-text,#92400e);font-size:.72rem;font-weight:650;padding:.1rem .4rem;border-radius:6px;">No billing</span>
+                <span style="background:var(--warning-bg,#fef3c7);color:var(--warning-text,#92400e);font-size:.72rem;font-weight:650;padding:.1rem .4rem;border-radius:6px;white-space:nowrap;">No billing</span>
               {% endif %}
             </td>
             <td style="text-align:right;">
