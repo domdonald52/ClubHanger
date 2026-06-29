@@ -496,6 +496,7 @@
         <th data-sc="2" style="white-space:nowrap;">Due maint hrs</th>
         <th data-sc="3" style="white-space:nowrap;">Last done</th>
         <th data-sc="4">Status</th>
+        <th title="Recurring" style="width:1.6rem;text-align:center;"></th>
         <th style="min-width:90px;"></th>
         <th></th>
       </tr></thead>
@@ -503,13 +504,14 @@
         {% for m in maintenance_items %}
         <tr>
           <td data-v="{{ m.name|lower }}"><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:var(--text-3);font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
-          <td data-v="{{ m.due_date|date:'Y-m-d'|default:'9999' }}" style="white-space:nowrap;">{{ m.due_date|default:"—" }}</td>
+          <td data-v="{{ m.due_date|date:'Y-m-d'|default:'9999' }}" style="white-space:nowrap;">{{ m.due_date|date:"j M Y"|default:"—" }}</td>
           <td data-v="{{ m.due_hours|default:'999999' }}" style="white-space:nowrap;">
             {{ m.due_hours|default:"—" }}
             {% if m.est_due_date %}<br><span style="font-size:.72rem;color:var(--text-3);" title="Estimated at {{ m.run_rate_per_week }} hrs/week (90-day avg)">~{{ m.est_due_date|date:"j M Y" }}</span>{% endif %}
           </td>
-          <td data-v="{{ m.last_completed_date|date:'Y-m-d'|default:'9999' }}" style="white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
+          <td data-v="{{ m.last_completed_date|date:'Y-m-d'|default:'9999' }}" style="white-space:nowrap;">{{ m.last_completed_date|date:"j M Y"|default:"—" }}</td>
           <td data-v="{% if m.urgency == 'overdue' %}2{% elif m.urgency == 'due_soon' %}1{% else %}0{% endif %}"><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
+          <td style="text-align:center;">{% if m.interval_days or m.interval_hours %}<i class="ti ti-repeat" style="color:var(--text-3);font-size:.85rem;" title="Recurring{% if m.interval_days %} every {{ m.interval_days }} days{% endif %}{% if m.interval_hours %} / {{ m.interval_hours }} hrs{% endif %}"></i>{% endif %}</td>
           <td>
             {% if m.progress_pct is not None %}
             <div class="maint-bar-wrap" title="{{ m.progress_pct }}% through interval">
