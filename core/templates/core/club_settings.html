@@ -1188,7 +1188,10 @@
     <!-- Edit maintenance type modal -->
     <div id="edit-mt-modal" class="modal-back" hidden>
       <div class="modal" style="width:min(520px,95vw);">
-        <h2>Edit maintenance type</h2>
+        <div class="modal-header">
+          <h2 style="margin:0;font-size:1rem;">Edit maintenance type</h2>
+          <button type="button" class="pi-close" onclick="document.getElementById('edit-mt-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+        </div>
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="edit_maint_type">
@@ -1204,8 +1207,6 @@
             <label class="flabel" style="flex:1;min-width:calc(33% - .4rem);">Alert days<input type="number" name="mt_alert_days" id="edit-mt-alert-days" class="finput" min="0" step="1" placeholder="e.g. 14"></label>
           </div>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-mt-modal').hidden=true">Close</button>
-            <span style="flex:1"></span>
             <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
           </div>
         </form>
