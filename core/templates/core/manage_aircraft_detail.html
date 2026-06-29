@@ -503,7 +503,7 @@
       <tbody>
         {% for m in maintenance_items %}
         <tr>
-          <td data-v="{{ m.name|lower }}"><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:var(--text-3);font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
+          <td data-v="{{ m.name|lower }}"><strong>{{ m.name }}</strong></td>
           <td data-v="{{ m.due_date|date:'Y-m-d'|default:'9999' }}" style="white-space:nowrap;">{{ m.due_date|date:"j M Y"|default:"—" }}</td>
           <td data-v="{{ m.due_hours|default:'999999' }}" style="white-space:nowrap;">
             {{ m.due_hours|default:"—" }}
