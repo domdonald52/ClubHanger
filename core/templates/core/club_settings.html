@@ -1165,13 +1165,13 @@
       <button type="submit" class="cbtn primary" style="margin-bottom:1px;">Add type</button>
     </form>
     <div id="add-mt-advanced" hidden style="margin-top:.8rem;padding:.8rem;border:1px solid var(--border);border-radius:var(--radius);">
-      <div class="fgrid">
-        <label class="flabel" style="margin:0;">Every (days)<input type="number" name="mt_interval_days" class="finput" min="1" step="1" placeholder="e.g. 365"></label>
-        <label class="flabel" style="margin:0;">Every (hours)<input type="number" name="mt_interval_hours" class="finput" min="0.1" step="0.1" placeholder="e.g. 100"></label>
-        <label class="flabel" style="margin:0;">Warn hours<input type="number" name="mt_warn_hours" class="finput" min="0" step="0.1" placeholder="e.g. 20"></label>
-        <label class="flabel" style="margin:0;">Alert hours<input type="number" name="mt_alert_hours" class="finput" min="0" step="0.1" placeholder="e.g. 5"></label>
-        <label class="flabel" style="margin:0;">Warn days<input type="number" name="mt_warn_days" class="finput" min="0" step="1" placeholder="e.g. 30"></label>
-        <label class="flabel" style="margin:0;">Alert days<input type="number" name="mt_alert_days" class="finput" min="0" step="1" placeholder="e.g. 14"></label>
+      <div style="display:flex;gap:.6rem;">
+        <label class="flabel" style="margin:0;flex:1;min-width:0;">Every (days)<input type="number" name="mt_interval_days" class="finput" min="1" step="1" placeholder="e.g. 365"></label>
+        <label class="flabel" style="margin:0;flex:1;min-width:0;">Every (hours)<input type="number" name="mt_interval_hours" class="finput" min="0.1" step="0.1" placeholder="e.g. 100"></label>
+        <label class="flabel" style="margin:0;flex:1;min-width:0;">Warn hours<input type="number" name="mt_warn_hours" class="finput" min="0" step="0.1" placeholder="e.g. 20"></label>
+        <label class="flabel" style="margin:0;flex:1;min-width:0;">Alert hours<input type="number" name="mt_alert_hours" class="finput" min="0" step="0.1" placeholder="e.g. 5"></label>
+        <label class="flabel" style="margin:0;flex:1;min-width:0;">Warn days<input type="number" name="mt_warn_days" class="finput" min="0" step="1" placeholder="e.g. 30"></label>
+        <label class="flabel" style="margin:0;flex:1;min-width:0;">Alert days<input type="number" name="mt_alert_days" class="finput" min="0" step="1" placeholder="e.g. 14"></label>
       </div>
     </div>
 
@@ -1185,13 +1185,13 @@
           <input type="hidden" name="mt_id" id="edit-mt-id">
           <label class="flabel">Name<input type="text" name="mt_name" id="edit-mt-name" class="finput" required></label>
           <label class="flabel">Description<input type="text" name="mt_desc" id="edit-mt-desc" class="finput" placeholder="Optional"></label>
-          <div class="fgrid" style="margin-top:.6rem;">
-            <label class="flabel">Every (days)<input type="number" name="mt_interval_days" id="edit-mt-interval-days" class="finput" min="1" step="1" placeholder="e.g. 365"></label>
-            <label class="flabel">Every (hours)<input type="number" name="mt_interval_hours" id="edit-mt-interval-hours" class="finput" min="0.1" step="0.1" placeholder="e.g. 100"></label>
-            <label class="flabel">Warn hours<input type="number" name="mt_warn_hours" id="edit-mt-warn-hours" class="finput" min="0" step="0.1" placeholder="e.g. 20"></label>
-            <label class="flabel">Alert hours<input type="number" name="mt_alert_hours" id="edit-mt-alert-hours" class="finput" min="0" step="0.1" placeholder="e.g. 5"></label>
-            <label class="flabel">Warn days<input type="number" name="mt_warn_days" id="edit-mt-warn-days" class="finput" min="0" step="1" placeholder="e.g. 30"></label>
-            <label class="flabel">Alert days<input type="number" name="mt_alert_days" id="edit-mt-alert-days" class="finput" min="0" step="1" placeholder="e.g. 14"></label>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;">
+            <label class="flabel" style="flex:1;min-width:calc(33% - .4rem);">Every (days)<input type="number" name="mt_interval_days" id="edit-mt-interval-days" class="finput" min="1" step="1" placeholder="e.g. 365"></label>
+            <label class="flabel" style="flex:1;min-width:calc(33% - .4rem);">Every (hours)<input type="number" name="mt_interval_hours" id="edit-mt-interval-hours" class="finput" min="0.1" step="0.1" placeholder="e.g. 100"></label>
+            <label class="flabel" style="flex:1;min-width:calc(33% - .4rem);">Warn hours<input type="number" name="mt_warn_hours" id="edit-mt-warn-hours" class="finput" min="0" step="0.1" placeholder="e.g. 20"></label>
+            <label class="flabel" style="flex:1;min-width:calc(33% - .4rem);">Alert hours<input type="number" name="mt_alert_hours" id="edit-mt-alert-hours" class="finput" min="0" step="0.1" placeholder="e.g. 5"></label>
+            <label class="flabel" style="flex:1;min-width:calc(33% - .4rem);">Warn days<input type="number" name="mt_warn_days" id="edit-mt-warn-days" class="finput" min="0" step="1" placeholder="e.g. 30"></label>
+            <label class="flabel" style="flex:1;min-width:calc(33% - .4rem);">Alert days<input type="number" name="mt_alert_days" id="edit-mt-alert-days" class="finput" min="0" step="1" placeholder="e.g. 14"></label>
           </div>
           <div class="modal-actions">
             <button type="button" class="cbtn" onclick="document.getElementById('edit-mt-modal').hidden=true">Close</button>
