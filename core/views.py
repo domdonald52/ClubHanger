@@ -6053,6 +6053,33 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                 _elapsed_h = _current_hobbs - float(_m.last_completed_hours)
                 _m.progress_pct = min(100, max(0, round(_elapsed_h / _total_h * 100)))
     maintenance_items.sort(key=lambda _m: (_UPR.get(_m.urgency, 3), str(_m.due_date or ''), str(_m.due_hours or '')))
+
+    # Estimated due date for hours-based items, derived from recent run rate.
+    # Use a 90-day window of maintenance log entries; require ≥7 days spread for a reliable rate.
+    from datetime import timedelta as _maint_td
+    _ninety_ago = _today - _maint_td(days=90)
+    _log_window = list(
+        ac.maint_log
+        .filter(date__gte=_ninety_ago, maint_hours_flight__gt=0)
+        .order_by('date', 'id')
+        .values('date', 'maint_hours_total')
+    )
+    _run_rate_per_day = None
+    if len(_log_window) >= 2:
+        _wfirst, _wlast = _log_window[0], _log_window[-1]
+        _wdays = (_wlast['date'] - _wfirst['date']).days
+        _whours = float(_wlast['maint_hours_total']) - float(_wfirst['maint_hours_total'])
+        if _wdays >= 7 and _whours > 0:
+            _run_rate_per_day = _whours / _wdays
+    for _m in maintenance_items:
+        _m.est_due_date = None
+        _m.run_rate_per_week = None
+        if _m.due_hours is not None and _run_rate_per_day:
+            _hrs_rem = float(_m.due_hours) - _current_maint_hours
+            if _hrs_rem > 0:
+                _m.est_due_date = _today + _maint_td(days=int(_hrs_rem / _run_rate_per_day))
+                _m.run_rate_per_week = round(_run_rate_per_day * 7, 1)
+
     flight_types = FlightType.objects.filter(club=club, is_billable=True)
     aircraft_blockout_types = BlockOutType.objects.filter(club=club, target=BlockOutType.TARGET_AIRCRAFT)
 

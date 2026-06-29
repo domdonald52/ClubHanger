@@ -488,7 +488,10 @@
         <tr>
           <td><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:var(--text-3);font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
           <td style="white-space:nowrap;">{{ m.due_date|default:"—" }}</td>
-          <td style="white-space:nowrap;">{{ m.due_hours|default:"—" }}</td>
+          <td style="white-space:nowrap;">
+            {{ m.due_hours|default:"—" }}
+            {% if m.est_due_date %}<br><span style="font-size:.72rem;color:var(--text-3);" title="Estimated at {{ m.run_rate_per_week }} hrs/week (90-day avg)">~{{ m.est_due_date|date:"j M Y" }}</span>{% endif %}
+          </td>
           <td style="white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
           <td><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
           <td>
