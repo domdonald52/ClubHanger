@@ -11240,21 +11240,27 @@ def live_positions(request, club_slug):
         if cached is not None:
             return cached
         result = None
+        src_status = {}
         sources = [
-            f'https://opendata.adsb.fi/api/v2/registration/{reg}',
-            f'https://api.adsb.lol/v2/registration/{reg}',
-            f'https://api.airplanes.live/v2/registration/{reg}',
-            f'https://api.adsb.one/v2/reg/{callsign}',
+            ('adsb.fi',        f'https://opendata.adsb.fi/api/v2/registration/{reg}'),
+            ('adsb.lol',       f'https://api.adsb.lol/v2/registration/{reg}'),
+            ('airplanes.live', f'https://api.airplanes.live/v2/registration/{reg}'),
+            ('adsb.one',       f'https://api.adsb.one/v2/reg/{callsign}'),
         ]
-        for url in sources:
+        for key, url in sources:
             try:
-                result = _parse_v2(_get(url).get('ac'), reg)
-                if result:
+                data = _parse_v2(_get(url).get('ac'), reg)
+                if data:
+                    result = data
+                    src_status[key] = 'found'
                     break
+                else:
+                    src_status[key] = 'empty'
             except Exception:
-                pass
+                src_status[key] = 'error'
         if result is None:
             result = {'found': False, 'registration': reg}
+        result['src'] = src_status
         cache.set(cache_key, result, 90)
         return result
 
@@ -11269,6 +11275,14 @@ def live_positions(request, club_slug):
         t.start()
     for t in threads:
         t.join(timeout=10)
+
+    # Aggregate source health: found > empty > error across all aircraft
+    _priority = {'found': 3, 'empty': 2, 'error': 1}
+    src_health = {}
+    for pos in positions.values():
+        for key, status in pos.get('src', {}).items():
+            if _priority.get(status, 0) > _priority.get(src_health.get(key, ''), 0):
+                src_health[key] = status
 
     aircraft_list = []
     for ac in aircraft_objs:
@@ -11287,7 +11301,7 @@ def live_positions(request, club_slug):
             **pos,
         })
 
-    return JsonResponse({'aircraft': aircraft_list})
+    return JsonResponse({'aircraft': aircraft_list, 'src_health': src_health})
 
 
 @login_required

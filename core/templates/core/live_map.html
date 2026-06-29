@@ -90,10 +90,10 @@
 
   <!-- Source attribution pill (bottom left) -->
   <div id="mp-sources">
-    Data: <a href="https://www.adsb.fi" target="_blank">adsb.fi</a> ·
-    <a href="https://www.adsb.lol" target="_blank">adsb.lol</a> ·
-    <a href="https://www.airplanes.live" target="_blank">airplanes.live</a> ·
-    <a href="https://www.adsb.one" target="_blank">ADSB.one</a>
+    Data: <a href="https://www.adsb.fi" target="_blank" data-src="adsb.fi">adsb.fi</a> ·
+    <a href="https://www.adsb.lol" target="_blank" data-src="adsb.lol">adsb.lol</a> ·
+    <a href="https://www.airplanes.live" target="_blank" data-src="airplanes.live">airplanes.live</a> ·
+    <a href="https://www.adsb.one" target="_blank" data-src="adsb.one">ADSB.one</a>
   </div>
 
   <!-- Legend — icons only -->
@@ -272,6 +272,17 @@ let countdown = REFRESH;
 const dot = document.getElementById('badge-dot');
 const txt = document.getElementById('badge-txt');
 
+function updateSourceHealth(health) {
+  const SRC_COLOR = { found: '#22c55e', empty: '#3b82f6', error: '#ef4444' };
+  const SRC_TITLE = { found: 'Supplying data', empty: 'Alive — no aircraft on ADS-B', error: 'Not responding' };
+  document.querySelectorAll('#mp-sources a[data-src]').forEach(a => {
+    const s = health[a.dataset.src];
+    a.style.color = SRC_COLOR[s] || '';
+    a.style.fontWeight = s ? '650' : '';
+    a.title = SRC_TITLE[s] || '';
+  });
+}
+
 window.fetchPositions = function() {
   dot.style.background = '#f59e0b';
   txt.textContent = 'Querying ADS-B sources…';
@@ -281,6 +292,7 @@ window.fetchPositions = function() {
       const ac = data.aircraft || [];
       updateMap(ac);
       updatePanel(ac);
+      updateSourceHealth(data.src_health || {});
       const found = ac.filter(a => a.found).length;
       countdown = REFRESH;
       dot.style.background = found > 0 ? '#22c55e' : '#8a93a0';
