@@ -17,9 +17,6 @@
   .ac-row:last-child{border-bottom:none;}
   .ac-reg{font-size:.82rem;font-weight:700;color:var(--text-1);}
   .ac-sub{font-size:.72rem;color:var(--text-3);}
-  .ac-pilot{font-size:.74rem;color:var(--text-2);margin-top:.1rem;}
-  .ac-pos{font-size:.7rem;color:var(--text-2);font-family:monospace;margin-top:.1rem;}
-  .ac-nofound{font-size:.7rem;color:#b0b8c1;font-style:italic;margin-top:.1rem;}
   .mp-empty{font-size:.78rem;color:#b0b8c1;text-align:center;padding:.5rem 0;}
 
   /* Refresh badge */
@@ -54,10 +51,6 @@
   #mp-sources a{color:inherit;text-decoration:none;}
   #mp-sources a:hover{text-decoration:underline;}
 
-  /* Per-aircraft source check links inside panel rows */
-  .ac-src{font-size:.65rem;color:#b0b8c1;margin-top:.18rem;}
-  .ac-src a{color:inherit;text-decoration:none;}
-  .ac-src a:hover{text-decoration:underline;color:var(--text-2);}
 </style>
 
 <div id="map-wrap">
@@ -230,39 +223,18 @@ window.updatePanel = function(aircraft) {
     body.innerHTML = '<p class="mp-empty">No aircraft in fleet</p>';
     return;
   }
-  function srcLinks(reg) {
-    const r = encodeURIComponent(reg);
-    return `<div class="ac-src">Check: <a href="https://opendata.adsb.fi/api/v2/registration/${r}" target="_blank">adsb.fi</a> · <a href="https://api.adsb.lol/v2/registration/${r}" target="_blank">adsb.lol</a></div>`;
-  }
   body.innerHTML = aircraft.map(ac => {
-    if (!ac.found) {
+    let dot, opacity;
+    if (ac.found) {
+      dot = '#22c55e'; opacity = '1';
+    } else {
       const lk = lastKnown[ac.registration];
-      if (lk && (now - lk.seenAt) < STALE_MS) {
-        const minsAgo = Math.max(1, Math.round((now - lk.seenAt) / 60000));
-        return `<div class="ac-row" style="opacity:.65;">
-          <div class="ac-reg">${ac.registration}</div>
-          <div class="ac-sub">${ac.aircraft_type || ''}</div>
-          <div class="ac-nofound">Signal lost · last seen ${minsAgo}m ago</div>
-          ${srcLinks(ac.registration)}
-        </div>`;
-      }
-      return `<div class="ac-row" style="opacity:.4;">
-        <div class="ac-reg">${ac.registration}</div>
-        <div class="ac-sub">${ac.aircraft_type || ''}</div>
-        <div class="ac-nofound">Not on ADS-B</div>
-        ${srcLinks(ac.registration)}
-      </div>`;
+      dot = (lk && (now - lk.seenAt) < STALE_MS) ? '#f59e0b' : '#b0b8c1';
+      opacity = (lk && (now - lk.seenAt) < STALE_MS) ? '.7' : '.4';
     }
-    const parts = [];
-    if (ac.alt_ft   != null) parts.push(ac.alt_ft.toLocaleString() + ' ft');
-    if (ac.speed_kt != null) parts.push(ac.speed_kt + ' kt');
-    if (ac.track    != null) parts.push(ac.track + '°');
-    return `<div class="ac-row">
-      <div class="ac-reg">${ac.registration}</div>
-      <div class="ac-sub">${ac.aircraft_type || ''}</div>
-      ${ac.pilot_name ? `<div class="ac-pilot">${ac.pilot_name}</div>` : ''}
-      <div class="ac-pos">${parts.join(' · ') || 'Position received'}</div>
-      ${srcLinks(ac.registration)}
+    return `<div class="ac-row" style="opacity:${opacity};display:flex;align-items:center;gap:.5rem;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${dot};flex-shrink:0;margin-top:.1rem;align-self:flex-start;"></span>
+      <div><div class="ac-reg">${ac.registration}</div><div class="ac-sub">${ac.aircraft_type || ''}</div></div>
     </div>`;
   }).join('');
 }
