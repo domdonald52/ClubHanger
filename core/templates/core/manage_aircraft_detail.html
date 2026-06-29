@@ -92,6 +92,29 @@
       {% endif %}
       <button type="submit" form="save-details-form" class="cbtn primary">Save</button>
     </div>
+    {% if other_aircraft %}
+    <div style="margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--border-subtle);">
+      <form method="post" id="caf-form" onsubmit="return cafConfirm(this)">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="copy_settings_from">
+        <div style="display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;">
+          <span style="font-size:.85rem;font-weight:600;color:var(--text-2);">Copy from</span>
+          <select name="copy_from_id" id="caf-src" class="finput" style="width:auto;" onchange="cafToggle(this)" required>
+            <option value="">— select aircraft —</option>
+            {% for other in other_aircraft %}
+            <option value="{{ other.id }}">{{ other.registration }}{% if other.aircraft_type %} – {{ other.aircraft_type.name }}{% endif %}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="cbtn">Copy</button>
+        </div>
+        <div id="caf-opts" hidden style="margin-top:.45rem;display:flex;gap:1rem;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" name="copy_settings" value="1" checked> Flight settings</label>
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" name="copy_rates" value="1" checked> Hire rates</label>
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" name="copy_maint" value="1" checked> Maintenance</label>
+        </div>
+      </form>
+    </div>
+    {% endif %}
     {% else %}
     <table class="info-table">
       <tr><th>Type</th><td>{{ ac.aircraft_type }}</td></tr>
@@ -1203,6 +1226,15 @@ window.toggleBoTime = function(cb) {
 // Usage: onsubmit="return dcModal(this,'Message')" — optional 3rd arg is confirm button label
 // Defaults: label='Delete', danger=true. Pass label='Mark done' for non-destructive actions.
 var _dcPending = null;
+window.cafToggle = function(sel) {
+  document.getElementById('caf-opts').hidden = !sel.value;
+};
+window.cafConfirm = function(form) {
+  var sel = document.getElementById('caf-src');
+  if (!sel.value) return false;
+  var srcName = sel.options[sel.selectedIndex].text;
+  return dcModal(form, 'Copy selected settings from ' + srcName + ' to {{ ac.registration }}? This will overwrite matching settings on this aircraft.', 'Copy', false);
+};
 window.dcModal = function(form, msg, confirmLabel, isDanger) {
   form._dcModal = true;
   _dcPending = form;

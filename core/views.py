@@ -6032,6 +6032,51 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         elif action == 'delete_maintenance' and actor.is_admin:
             AircraftMaintenanceItem.objects.filter(aircraft=ac, id=request.POST.get('maint_id')).delete()
 
+        elif action == 'copy_settings_from' and actor.is_admin:
+            from .models import AircraftMaintenanceItem, ChargeRate
+            src = Aircraft.objects.filter(club=club, id=request.POST.get('copy_from_id', '')).exclude(id=ac.id).first()
+            if src:
+                if 'copy_settings' in request.POST:
+                    for f in ['engine_count', 'seats', 'records_hobbs', 'records_tacho',
+                              'records_airswitch', 'total_time_method', 'fuel_consumption_per_hour',
+                              'default_hourly_rate', 'maint_time_source', 'maint_time_fraction',
+                              'is_available_for_hire', 'is_leased']:
+                        setattr(ac, f, getattr(src, f))
+                    ac.save()
+                    ac.surcharges.set(src.surcharges.all())
+                if 'copy_rates' in request.POST:
+                    for rate in src.charge_rates.all():
+                        ChargeRate.objects.update_or_create(
+                            club=club, aircraft=ac,
+                            flight_type=rate.flight_type, time_method=rate.time_method,
+                            defaults={'amount': rate.amount, 'currency': rate.currency,
+                                      'includes_fuel': rate.includes_fuel},
+                        )
+                if 'copy_maint' in request.POST:
+                    for item in src.maintenance_items.all():
+                        if item.maintenance_type_id:
+                            exists = AircraftMaintenanceItem.objects.filter(
+                                aircraft=ac, maintenance_type_id=item.maintenance_type_id).exists()
+                        else:
+                            exists = AircraftMaintenanceItem.objects.filter(
+                                aircraft=ac, name=item.name, maintenance_type__isnull=True).exists()
+                        if not exists:
+                            AircraftMaintenanceItem.objects.create(
+                                aircraft=ac,
+                                maintenance_type=item.maintenance_type,
+                                name=item.name,
+                                description=item.description,
+                                due_date=item.due_date,
+                                interval_days=item.interval_days,
+                                due_hours=item.due_hours,
+                                interval_hours=item.interval_hours,
+                                warn_hours=item.warn_hours,
+                                alert_hours=item.alert_hours,
+                                warn_days=item.warn_days,
+                                alert_days=item.alert_days,
+                            )
+                _saved = True
+
         elif action == 'add_aircraft_blockout':
             _create_blockout_from_post(request, club, scope='aircraft', aircraft=ac)
 
@@ -6176,9 +6221,11 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
 
     _is_inline = request.GET.get('inline') == '1'
     _ac_has_bookings = Booking.objects.filter(aircraft=ac).exists()
+    other_aircraft = Aircraft.objects.filter(club=club).exclude(id=ac.id).order_by('registration')
     return render(request, 'core/manage_aircraft_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'ac': ac,
+        'other_aircraft': other_aircraft,
         'ac_icon_type': _ac_icon_type,
         'hire_rate_rows': hire_rate_rows,
         'fuel_rates': fuel_rates,
