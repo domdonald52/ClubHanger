@@ -265,6 +265,7 @@
         <thead>
           <tr>
             <th>Flight type</th>
+            <th style="width:5rem;text-align:center;">Billable</th>
             <th style="width:7rem;text-align:right;">Rate/hr</th>
             <th style="width:9rem;">Instrument</th>
           </tr>
@@ -273,6 +274,13 @@
           {% for ft, rate in hire_rate_rows %}
           <tr>
             <td>{{ ft.name }}</td>
+            <td style="text-align:center;">
+              {% if ft.is_billable %}
+                <span style="color:var(--success,#22c55e);font-size:.8rem;">✓</span>
+              {% else %}
+                <span style="background:var(--warning-bg,#fef3c7);color:var(--warning-text,#92400e);font-size:.72rem;font-weight:650;padding:.1rem .4rem;border-radius:6px;">No billing</span>
+              {% endif %}
+            </td>
             <td style="text-align:right;">
               <span class="rate-view">{% if rate %}${{ rate.amount|currency }}{% else %}<span style="color:var(--text-3)">(default)</span>{% endif %}</span>
               <div class="money-wrap rate-edit" hidden style="justify-content:flex-end;">
