@@ -451,11 +451,7 @@
     fDuration.value = cfg.defaultDuration;
     fDesc.value = "";
     fFlightType.value = "";
-    if (!cfg.canManage) {
-      fMember.value = cfg.currentUserId;
-    } else {
-      fMember.value = "";
-    }
+    fMember.value = cfg.currentUserId;
     updateMemberNotice();
     updateMemberDisplay();
     syncFlightTypeMode();

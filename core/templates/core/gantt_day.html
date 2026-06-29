@@ -1093,7 +1093,8 @@
   }
 
   document.querySelectorAll('.track').forEach(function(track) {
-    if (track.dataset.ghost) return; // skip retired/inactive rows
+    if (track.dataset.ghost) return;              // skip retired/inactive rows
+    if (track.dataset.rowType !== 'aircraft') return; // ghost only on aircraft rows
 
     var g = document.createElement('div');
     g.style.cssText = 'position:absolute;top:4px;height:36px;border-radius:5px;' +
