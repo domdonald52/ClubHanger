@@ -1287,7 +1287,7 @@ window.dcModal = function(form, msg, confirmLabel, isDanger) {
     } else if (AC_ICON_TYPE === 'high_wing') {
       pathD = CESSNA_D; vb = "0 0 352 322"; w = 56; h = 51;
     } else {
-      pathD = PIPER_D; vb = "0 0 658 574"; w = 56; h = 49;
+      pathD = CESSNA_D; vb = "0 0 352 322"; w = 56; h = 51;
     }
     const color = stale ? '#9ca3af' : THEME;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${w}" height="${h}"
@@ -1369,8 +1369,13 @@ window.dcModal = function(form, msg, confirmLabel, isDanger) {
   let pollTimer = null;
   window._adsbStartPolling = function() {
     if (pollTimer) return;
+    let quickCount = 0;
+    function next() {
+      const ms = quickCount < 2 ? 5000 : 60000;
+      pollTimer = setTimeout(async function() { quickCount++; await poll(); next(); }, ms);
+    }
     poll();
-    pollTimer = setInterval(poll, 60000);
+    next();
   };
   // Handle race: if Live tab was activated before this script ran
   if (window._adsbLivePending) {

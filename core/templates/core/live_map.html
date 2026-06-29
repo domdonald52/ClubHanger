@@ -279,6 +279,8 @@ setInterval(() => {
 }, 1000);
 
 fetchPositions();
+setTimeout(fetchPositions, 5000);
+setTimeout(fetchPositions, 10000);
 setInterval(fetchPositions, REFRESH * 1000);
 </script>
 {% endblock %}
