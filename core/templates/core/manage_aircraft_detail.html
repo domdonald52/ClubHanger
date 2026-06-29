@@ -674,8 +674,8 @@
             <option value="" disabled selected>Select a type…</option>
             {% for mt in maintenance_types %}
             <option value="{{ mt.id }}"
-              data-name="{{ mt.name|escapejs }}"
-              data-desc="{{ mt.description|escapejs }}"
+              data-name="{{ mt.name }}"
+              data-desc="{{ mt.description }}"
               data-int-days="{{ mt.interval_days|default:'' }}"
               data-int-hours="{{ mt.interval_hours|default:'' }}"
               data-warn-hours="{{ mt.warn_hours|default:'' }}"
@@ -752,8 +752,8 @@
           <select id="emm-type-select" class="finput" onchange="emmApplyType(this)">
             {% for mt in maintenance_types %}
             <option value="{{ mt.id }}"
-              data-name="{{ mt.name|escapejs }}"
-              data-desc="{{ mt.description|escapejs }}"
+              data-name="{{ mt.name }}"
+              data-desc="{{ mt.description }}"
               data-int-days="{{ mt.interval_days|default:'' }}"
               data-int-hours="{{ mt.interval_hours|default:'' }}"
               data-warn-hours="{{ mt.warn_hours|default:'' }}"
