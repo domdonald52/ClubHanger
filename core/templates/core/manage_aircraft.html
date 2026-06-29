@@ -95,7 +95,7 @@
                style="text-transform:uppercase;" autocomplete="off">
       </label>
       <label class="flabel" style="margin-top:.6rem;">Aircraft type
-        <select name="aircraft_type_id" class="finput" required>
+        <select name="aircraft_type_id" id="aac-ac-type" class="finput" required>
           <option value="">— select —</option>
           {% for at in aircraft_type_list %}
           <option value="{{ at.id }}">{{ at.name }}</option>
@@ -105,6 +105,21 @@
         <span style="font-size:.78rem;color:var(--warning-text);margin-top:.2rem;display:block;">No aircraft types defined — add them in Settings → Aircraft types first.</span>
         {% endif %}
       </label>
+      {% if aircraft_list %}
+      <label class="flabel" style="margin-top:.6rem;">Copy from <span style="font-weight:400;color:var(--text-3);">(optional)</span>
+        <select id="aac-copy-from" name="copy_from_id" class="finput">
+          <option value="">— none —</option>
+          {% for ac in aircraft_list %}
+          <option value="{{ ac.id }}" data-at-id="{{ ac.aircraft_type_id|default:'' }}">{{ ac.registration }}{% if ac.aircraft_type %} – {{ ac.aircraft_type.name }}{% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div id="aac-copy-opts" hidden style="margin-top:.4rem;padding:.55rem .75rem;background:var(--bg-2,#f5f5f5);border-radius:8px;display:flex;gap:1rem;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:.35rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" name="copy_settings" value="1" checked> Flight settings</label>
+        <label style="display:flex;align-items:center;gap:.35rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" name="copy_rates" value="1" checked> Hire rates</label>
+        <label style="display:flex;align-items:center;gap:.35rem;font-size:.85rem;cursor:pointer;"><input type="checkbox" name="copy_maint" value="1" checked> Maintenance</label>
+      </div>
+      {% endif %}
       <div class="modal-actions" style="margin-top:.9rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Add aircraft</button>
       </div>
@@ -127,6 +142,19 @@
   document.getElementById('add-ac-cancel').addEventListener('click', () => { modal.hidden = true; });
   modal.addEventListener('click', e => { if (e.target === modal) modal.hidden = true; });
   document.addEventListener('keydown', e => { if (e.key==='Escape') modal.hidden = true; });
+
+  const copyFrom = document.getElementById('aac-copy-from');
+  const copyOpts = document.getElementById('aac-copy-opts');
+  const acTypeSel = document.getElementById('aac-ac-type');
+  if (copyFrom) {
+    copyFrom.addEventListener('change', function() {
+      copyOpts.hidden = !this.value;
+      if (this.value && acTypeSel) {
+        const atId = this.options[this.selectedIndex].dataset.atId;
+        if (atId) acTypeSel.value = atId;
+      }
+    });
+  }
 
   // Client-side search
   const search = document.getElementById('ac-search');

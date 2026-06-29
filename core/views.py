@@ -5735,10 +5735,50 @@ def manage_aircraft(request, club_slug):
             ac_type_id = request.POST.get('aircraft_type_id', '').strip()
             ac_type_obj = AircraftType.objects.filter(club=club, id=ac_type_id).first() if ac_type_id else None
             if reg:
-                Aircraft.objects.get_or_create(
+                ac, created = Aircraft.objects.get_or_create(
                     club=club, registration=reg,
                     defaults={'aircraft_type': ac_type_obj}
                 )
+                if created:
+                    copy_from_id = request.POST.get('copy_from_id', '').strip()
+                    if copy_from_id:
+                        from .models import AircraftMaintenanceItem, ChargeRate
+                        src = Aircraft.objects.filter(club=club, id=copy_from_id).first()
+                        if src:
+                            if 'copy_settings' in request.POST:
+                                for f in ['engine_count', 'seats', 'records_hobbs', 'records_tacho',
+                                          'records_airswitch', 'total_time_method',
+                                          'fuel_consumption_per_hour', 'default_hourly_rate',
+                                          'maint_time_source', 'maint_time_fraction',
+                                          'is_available_for_hire', 'is_leased']:
+                                    setattr(ac, f, getattr(src, f))
+                                ac.save()
+                                ac.surcharges.set(src.surcharges.all())
+                            if 'copy_rates' in request.POST:
+                                for rate in src.charge_rates.all():
+                                    ChargeRate.objects.get_or_create(
+                                        club=club, aircraft=ac,
+                                        flight_type=rate.flight_type,
+                                        time_method=rate.time_method,
+                                        defaults={'amount': rate.amount, 'currency': rate.currency,
+                                                  'includes_fuel': rate.includes_fuel},
+                                    )
+                            if 'copy_maint' in request.POST:
+                                for item in src.maintenance_items.all():
+                                    AircraftMaintenanceItem.objects.create(
+                                        aircraft=ac,
+                                        maintenance_type=item.maintenance_type,
+                                        name=item.name,
+                                        description=item.description,
+                                        due_date=item.due_date,
+                                        interval_days=item.interval_days,
+                                        due_hours=item.due_hours,
+                                        interval_hours=item.interval_hours,
+                                        warn_hours=item.warn_hours,
+                                        alert_hours=item.alert_hours,
+                                        warn_days=item.warn_days,
+                                        alert_days=item.alert_days,
+                                    )
         elif action == 'add_aircraft_blockout':
             ac_id = request.POST.get('ac_id')
             ac = Aircraft.objects.filter(club=club, id=ac_id).first()
