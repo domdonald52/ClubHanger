@@ -46,6 +46,18 @@
   #map-legend{position:absolute;bottom:1.4rem;right:1rem;z-index:1000;background:rgba(255,255,255,.92);
     backdrop-filter:blur(4px);border-radius:8px;padding:.4rem .6rem;
     box-shadow:0 1px 6px rgba(0,0,0,.1);display:flex;flex-direction:row;gap:.6rem;align-items:center;}
+
+  /* Source attribution pill — bottom left */
+  #mp-sources{position:absolute;bottom:1.4rem;left:1rem;z-index:1000;background:rgba(255,255,255,.92);
+    backdrop-filter:blur(4px);padding:.28rem .75rem;border-radius:20px;
+    font-size:.7rem;color:var(--text-3);box-shadow:0 1px 6px rgba(0,0,0,.12);white-space:nowrap;}
+  #mp-sources a{color:inherit;text-decoration:none;}
+  #mp-sources a:hover{text-decoration:underline;}
+
+  /* Per-aircraft source check links inside panel rows */
+  .ac-src{font-size:.65rem;color:#b0b8c1;margin-top:.18rem;}
+  .ac-src a{color:inherit;text-decoration:none;}
+  .ac-src a:hover{text-decoration:underline;color:var(--text-2);}
 </style>
 
 <div id="map-wrap">
@@ -76,12 +88,12 @@
     <p>No club aircraft discoverable via ADS-B service provider</p>
   </div>
 
-  <!-- Source attribution -->
-  <div style="font-size:.7rem;color:var(--text-3);padding:.3rem .5rem .1rem;border-top:1px solid #f0f2f4;margin-top:.2rem;" id="mp-sources">
-    Data: <a href="https://www.adsb.fi" target="_blank" style="color:inherit;">adsb.fi</a> ·
-    <a href="https://www.adsb.lol" target="_blank" style="color:inherit;">adsb.lol</a> ·
-    <a href="https://www.airplanes.live" target="_blank" style="color:inherit;">airplanes.live</a> ·
-    <a href="https://www.adsb.one" target="_blank" style="color:inherit;">ADSB.one</a>
+  <!-- Source attribution pill (bottom left) -->
+  <div id="mp-sources">
+    Data: <a href="https://www.adsb.fi" target="_blank">adsb.fi</a> ·
+    <a href="https://www.adsb.lol" target="_blank">adsb.lol</a> ·
+    <a href="https://www.airplanes.live" target="_blank">airplanes.live</a> ·
+    <a href="https://www.adsb.one" target="_blank">ADSB.one</a>
   </div>
 
   <!-- Legend — icons only -->
@@ -218,6 +230,10 @@ window.updatePanel = function(aircraft) {
     body.innerHTML = '<p class="mp-empty">No aircraft in fleet</p>';
     return;
   }
+  function srcLinks(reg) {
+    const r = encodeURIComponent(reg);
+    return `<div class="ac-src">Check: <a href="https://opendata.adsb.fi/api/v2/registration/${r}" target="_blank">adsb.fi</a> · <a href="https://api.adsb.lol/v2/registration/${r}" target="_blank">adsb.lol</a></div>`;
+  }
   body.innerHTML = aircraft.map(ac => {
     if (!ac.found) {
       const lk = lastKnown[ac.registration];
@@ -227,12 +243,14 @@ window.updatePanel = function(aircraft) {
           <div class="ac-reg">${ac.registration}</div>
           <div class="ac-sub">${ac.aircraft_type || ''}</div>
           <div class="ac-nofound">Signal lost · last seen ${minsAgo}m ago</div>
+          ${srcLinks(ac.registration)}
         </div>`;
       }
       return `<div class="ac-row" style="opacity:.4;">
         <div class="ac-reg">${ac.registration}</div>
         <div class="ac-sub">${ac.aircraft_type || ''}</div>
         <div class="ac-nofound">Not on ADS-B</div>
+        ${srcLinks(ac.registration)}
       </div>`;
     }
     const parts = [];
@@ -244,6 +262,7 @@ window.updatePanel = function(aircraft) {
       <div class="ac-sub">${ac.aircraft_type || ''}</div>
       ${ac.pilot_name ? `<div class="ac-pilot">${ac.pilot_name}</div>` : ''}
       <div class="ac-pos">${parts.join(' · ') || 'Position received'}</div>
+      ${srcLinks(ac.registration)}
     </div>`;
   }).join('');
 }
