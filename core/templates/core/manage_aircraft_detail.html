@@ -1065,7 +1065,7 @@ window._maintDueHint = function(pfx) {
       document.getElementById(pfx+'-due-hours').value = calc;
       hintEl.style.display = 'none';
     } else if (Math.abs(dueH - calc) > 0.05) {
-      hintEl.textContent = 'Expected ' + calc + ' (last + interval)';
+      hintEl.innerHTML = 'Expected ' + calc + ' (last + interval) — <a href="#" style="color:inherit;font-weight:650;text-decoration:underline;" onclick="document.getElementById(\''+pfx+'-due-hours\').value=\''+calc+'\';this.closest(\'span\').style.display=\'none\';return false;">use this</a>';
       hintEl.style.color = 'var(--warning-text)';
       hintEl.style.display = '';
     } else {
@@ -1087,7 +1087,7 @@ window._maintDueHint = function(pfx) {
       dueDEl.value = calcStr;
       datHintEl.style.display = 'none';
     } else if (dueDEl.value !== calcStr) {
-      datHintEl.textContent = 'Expected ' + calcStr + ' (last + interval)';
+      datHintEl.innerHTML = 'Expected ' + calcStr + ' (last + interval) — <a href="#" style="color:inherit;font-weight:650;text-decoration:underline;" onclick="document.getElementById(\''+pfx+'-due-date\').value=\''+calcStr+'\';this.closest(\'span\').style.display=\'none\';return false;">use this</a>';
       datHintEl.style.color = 'var(--warning-text)';
       datHintEl.style.display = '';
     } else {
