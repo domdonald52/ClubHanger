@@ -631,7 +631,7 @@
 
   <!-- Add maintenance item modal -->
   <div id="add-maint-modal" class="modal-back" hidden>
-    <div class="modal" style="width:min(640px,95vw);">
+    <div class="modal" style="width:min(640px,95vw);overflow-x:hidden;">
       <div class="modal-header">
         <div class="modal-nav">
           <span>Aircraft</span>
@@ -647,9 +647,9 @@
         <input type="hidden" name="action" value="add_maintenance">
         <input type="hidden" name="maint_type_id" id="amm-type-id">
         {% if maintenance_types %}
-        <label class="flabel">Type <span style="font-weight:400;color:var(--text-3);">(optional — pre-fills defaults)</span>
-          <select id="amm-type-select" class="finput" onchange="ammApplyType(this)">
-            <option value="">— none —</option>
+        <label class="flabel">Type
+          <select id="amm-type-select" class="finput" onchange="ammApplyType(this)" required>
+            <option value="" disabled selected>Select a type…</option>
             {% for mt in maintenance_types %}
             <option value="{{ mt.id }}"
               data-name="{{ mt.name|escapejs }}"
@@ -661,16 +661,19 @@
               data-warn-days="{{ mt.warn_days|default:'' }}"
               data-alert-days="{{ mt.alert_days|default:'' }}">{{ mt.name }}</option>
             {% endfor %}
+            <option value="other">Other (custom name)</option>
           </select>
         </label>
         {% endif %}
-        <label class="flabel">Item name
-          <input type="text" name="maint_name" id="amm-name" required class="finput" placeholder="e.g. 100-hr check">
-        </label>
-        <label class="flabel" style="margin-top:.1rem;">Description <span style="font-weight:400;">(optional)</span>
+        <div id="amm-name-wrap"{% if maintenance_types %} hidden{% endif %}>
+          <label class="flabel">Item name
+            <input type="text" name="maint_name" id="amm-name" {% if maintenance_types %}{% else %}required {% endif %}class="finput" placeholder="e.g. 100-hr check">
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.1rem;">Notes <span style="font-weight:400;color:var(--text-3);">(optional)</span>
           <input type="text" name="maint_desc" id="amm-desc" class="finput" placeholder="Details or CAA reference">
         </label>
-        <div class="fgrid" style="margin-top:.1rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.1rem;">
           <label class="flabel">Due date
             <input type="date" name="due_date" id="amm-due-date" class="finput">
             <span id="amm-due-date-hint" style="font-size:.74rem;margin-top:.2rem;display:none;"></span>
@@ -688,7 +691,7 @@
         </div>
         <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border);">
           <div style="font-size:.8rem;font-weight:600;color:var(--text-2);margin-bottom:.5rem;">Recurrence interval <span style="font-weight:400;color:var(--text-3);">(leave blank for one-off)</span></div>
-          <div class="fgrid">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <label class="flabel">Every (days)
               <input type="number" name="interval_days" id="amm-interval-days" min="1" step="1" class="finput" placeholder="e.g. 365">
             </label>
@@ -706,7 +709,7 @@
 
   <!-- Edit maintenance item modal -->
   <div id="edit-maint-modal" class="modal-back" hidden>
-    <div class="modal" style="width:min(640px,95vw);">
+    <div class="modal" style="width:min(640px,95vw);overflow-x:hidden;">
       <div class="modal-header">
         <div class="modal-nav">
           <span>Aircraft</span>
@@ -723,9 +726,8 @@
         <input type="hidden" name="maint_id" id="emm-id">
         <input type="hidden" name="maint_type_id" id="emm-type-id">
         {% if maintenance_types %}
-        <label class="flabel">Type <span style="font-weight:400;color:var(--text-3);">(optional)</span>
+        <label class="flabel">Type
           <select id="emm-type-select" class="finput" onchange="emmApplyType(this)">
-            <option value="">— none —</option>
             {% for mt in maintenance_types %}
             <option value="{{ mt.id }}"
               data-name="{{ mt.name|escapejs }}"
@@ -737,16 +739,19 @@
               data-warn-days="{{ mt.warn_days|default:'' }}"
               data-alert-days="{{ mt.alert_days|default:'' }}">{{ mt.name }}</option>
             {% endfor %}
+            <option value="other">Other (custom name)</option>
           </select>
         </label>
         {% endif %}
-        <label class="flabel">Item name
-          <input type="text" name="maint_name" id="emm-name" required class="finput">
-        </label>
-        <label class="flabel" style="margin-top:.1rem;">Description
+        <div id="emm-name-wrap"{% if maintenance_types %} hidden{% endif %}>
+          <label class="flabel">Item name
+            <input type="text" name="maint_name" id="emm-name" class="finput">
+          </label>
+        </div>
+        <label class="flabel" style="margin-top:.1rem;">Notes <span style="font-weight:400;color:var(--text-3);">(optional)</span>
           <input type="text" name="maint_desc" id="emm-desc" class="finput">
         </label>
-        <div class="fgrid" style="margin-top:.1rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.1rem;">
           <label class="flabel">Due date
             <input type="date" name="due_date" id="emm-due-date" class="finput">
             <span id="emm-due-date-hint" style="font-size:.74rem;margin-top:.2rem;display:none;"></span>
@@ -764,7 +769,7 @@
         </div>
         <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border);">
           <div style="font-size:.8rem;font-weight:600;color:var(--text-2);margin-bottom:.5rem;">Recurrence interval <span style="font-weight:400;color:var(--text-3);">(blank = one-off)</span></div>
-          <div class="fgrid">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
             <label class="flabel">Every (days)
               <input type="number" name="interval_days" id="emm-interval-days" min="1" step="1" class="finput" placeholder="e.g. 365">
             </label>
@@ -1098,14 +1103,17 @@ window.ammUpdateThresh = function() { _maintDueHint('amm'); };
 
 window.ammApplyType = function(sel) {
   const opt = sel.options[sel.selectedIndex];
-  document.getElementById('amm-type-id').value = sel.value;
-  if (!sel.value) return;
-  document.getElementById('amm-name').value = opt.dataset.name;
-  document.getElementById('amm-desc').value = opt.dataset.desc;
-  document.getElementById('amm-interval-days').value = opt.dataset.intDays;
-  document.getElementById('amm-interval-hours').value = opt.dataset.intHours;
-  document.getElementById('amm-due-hours').value = '';
-  ammUpdateThresh();
+  const isOther = sel.value === 'other';
+  document.getElementById('amm-type-id').value = isOther ? '' : sel.value;
+  const nameWrap = document.getElementById('amm-name-wrap');
+  if (nameWrap) nameWrap.hidden = !isOther;
+  if (!isOther && sel.value) {
+    document.getElementById('amm-name').value = opt.dataset.name || '';
+    document.getElementById('amm-interval-days').value = opt.dataset.intDays || '';
+    document.getElementById('amm-interval-hours').value = opt.dataset.intHours || '';
+    document.getElementById('amm-due-hours').value = '';
+    ammUpdateThresh();
+  }
 };
 
 window.openAddMaint = function() {
@@ -1120,18 +1128,24 @@ window.openAddMaint = function() {
   document.getElementById('amm-last-hours').value = '';
   document.getElementById('amm-interval-days').value = '';
   document.getElementById('amm-interval-hours').value = '';
+  const nameWrap = document.getElementById('amm-name-wrap');
+  if (nameWrap) nameWrap.hidden = !!sel;
   document.getElementById('add-maint-modal').hidden = false;
   ammUpdateThresh();
 };
 
 window.emmApplyType = function(sel) {
   const opt = sel.options[sel.selectedIndex];
-  document.getElementById('emm-type-id').value = sel.value;
-  if (!sel.value) return;
-  document.getElementById('emm-desc').value = opt.dataset.name;
-  document.getElementById('emm-interval-days').value = opt.dataset.intDays;
-  document.getElementById('emm-interval-hours').value = opt.dataset.intHours;
-  emmUpdateThresh();
+  const isOther = sel.value === 'other';
+  document.getElementById('emm-type-id').value = isOther ? '' : sel.value;
+  const nameWrap = document.getElementById('emm-name-wrap');
+  if (nameWrap) nameWrap.hidden = !isOther;
+  if (!isOther) {
+    document.getElementById('emm-name').value = opt.dataset.name || '';
+    document.getElementById('emm-interval-days').value = opt.dataset.intDays || '';
+    document.getElementById('emm-interval-hours').value = opt.dataset.intHours || '';
+    emmUpdateThresh();
+  }
 };
 
 window.openEditMaint = function(id, name, desc, dueDate, dueHours, lastDate, lastHours, intervalDays, intervalHours, typeId) {
@@ -1146,7 +1160,9 @@ window.openEditMaint = function(id, name, desc, dueDate, dueHours, lastDate, las
   document.getElementById('emm-interval-hours').value = intervalHours;
   document.getElementById('emm-type-id').value = typeId || '';
   const emmSel = document.getElementById('emm-type-select');
-  if (emmSel) emmSel.value = typeId || '';
+  if (emmSel) emmSel.value = typeId || 'other';
+  const nameWrap = document.getElementById('emm-name-wrap');
+  if (nameWrap) nameWrap.hidden = !!typeId;
   emmUpdateThresh();
   document.getElementById('edit-maint-modal').hidden = false;
 };
