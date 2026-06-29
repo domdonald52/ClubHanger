@@ -5817,6 +5817,10 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
 
         _saved = action in ('save_details', 'save_instruments')
         if action == 'save_details' and actor.is_admin:
+            new_reg = request.POST.get('registration', '').strip().upper()
+            if new_reg and new_reg != ac.registration:
+                if not Aircraft.objects.filter(club=club, registration=new_reg).exclude(id=ac.id).exists():
+                    ac.registration = new_reg
             ac_type_id = request.POST.get('aircraft_type_id', '').strip()
             ac_type_obj = AircraftType.objects.filter(club=club, id=ac_type_id).first() if ac_type_id else None
             if ac_type_obj:
@@ -5831,6 +5835,11 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
             ac.is_leased = request.POST.get('is_leased') == 'on'
             ac.is_available_for_hire = request.POST.get('is_available_for_hire') == 'on'
             ac.save()
+
+        elif action == 'delete_aircraft' and actor.is_admin:
+            if not Booking.objects.filter(aircraft=ac).exists():
+                ac.delete()
+                return redirect('core:manage_aircraft', club_slug=club_slug)
 
         elif action == 'save_instruments' and actor.is_admin:
             ac.records_hobbs = request.POST.get('records_hobbs') == 'on'
@@ -6126,6 +6135,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         _ac_icon_type = 'low_wing'
 
     _is_inline = request.GET.get('inline') == '1'
+    _ac_has_bookings = Booking.objects.filter(aircraft=ac).exists()
     return render(request, 'core/manage_aircraft_detail.html', {
         'club': club, 'club_member': actor, 'is_instructor': actor.is_instructor,
         'ac': ac,
@@ -6145,6 +6155,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'ac_blockouts': ac_blockouts,
         'flight_history': flight_history,
         'aircraft_type_list': AircraftType.objects.filter(club=club),
+        'ac_has_bookings': _ac_has_bookings,
         'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
         'inline_title': ac.registration,
         'records_instruments': [

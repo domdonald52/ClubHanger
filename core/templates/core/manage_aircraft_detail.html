@@ -36,6 +36,9 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="save_details">
       <div class="fgrid">
+        <label class="flabel">Registration
+          <input type="text" name="registration" value="{{ ac.registration }}" class="finput" required style="text-transform:uppercase;" autocomplete="off">
+        </label>
         <label class="flabel">Type
           <select name="aircraft_type_id" class="finput" required>
             <option value="">— select —</option>
@@ -76,8 +79,17 @@
           </div>
         </div>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
-        <button type="submit" class="btn">Save</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+        {% if not ac_has_bookings %}
+        <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Permanently delete {{ ac.registration }}? This cannot be undone.')">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="delete_aircraft">
+          <button type="submit" class="cbtn cbtn-danger">Delete aircraft</button>
+        </form>
+        {% else %}
+        <span></span>
+        {% endif %}
+        <button type="submit" class="cbtn primary">Save</button>
       </div>
     </form>
     {% else %}
