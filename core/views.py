@@ -9799,8 +9799,8 @@ def health_check(request, club_slug):
     def _issue(group, sev, msg, rows=None):
         groups[group]['issues'].append({'severity': sev, 'message': msg, 'rows': rows or []})
 
-    def _ok(group, name):
-        groups[group]['ok'].append(name)
+    def _ok(group, name, tip=''):
+        groups[group]['ok'].append({'name': name, 'tip': tip})
 
     # ── 1. Account balance drift ──────────────────────────────────────────────
     from .models import Account
@@ -9817,7 +9817,9 @@ def health_check(request, club_slug):
                f"{len(balance_drifts)} account balance(s) don't match ledger sum",
                rows=balance_drifts)
     else:
-        _ok('financial', 'Account balances')
+        _ok('financial', 'Account balances',
+            "Each member's stored account balance matches the sum of all their ledger transactions. "
+            "A drift means the displayed balance is out of sync with the underlying records.")
 
     # ── 2. FlightCompletion charge drift ─────────────────────────────────────
     charge_drifts = []
@@ -9840,7 +9842,9 @@ def health_check(request, club_slug):
                f"{len(charge_drifts)} flight completion(s) have charge total mismatches",
                rows=charge_drifts)
     else:
-        _ok('financial', 'Flight charges')
+        _ok('financial', 'Flight charges',
+            "Each flight completion's stored charge total matches the sum of its individual charge line items. "
+            "A drift indicates a charge was added or removed without updating the stored total.")
 
     # ── 3. FlightCompletion payment drift ────────────────────────────────────
     # Only count payments where paid_at IS NOT NULL (money actually received),
@@ -9867,7 +9871,9 @@ def health_check(request, club_slug):
                f"{len(payment_drifts)} flight completion(s) have payment total mismatches",
                rows=payment_drifts)
     else:
-        _ok('financial', 'Flight payments')
+        _ok('financial', 'Flight payments',
+            "Each flight completion's cached amount-paid figure matches the sum of received payment records. "
+            "Only payments with a confirmed receipt date are counted.")
 
     # ── 4. Invoice paid but linked FC still has balance owing ────────────────
     from .models import Invoice as _InvH
@@ -9892,7 +9898,9 @@ def health_check(request, club_slug):
                f"{len(inv_fc_drifts)} invoice(s) marked paid but linked flight still shows balance owing",
                rows=inv_fc_drifts)
     else:
-        _ok('financial', 'Invoice/FC payment sync')
+        _ok('financial', 'Invoice/FC payment sync',
+            "Every invoice marked as paid has no remaining balance owing on its linked flight completion. "
+            "A mismatch means a payment was recorded on the invoice but not applied to the flight.")
 
     # ── 5. Meter hour gaps (Hobbs + Tacho) ──────────────────────────────────
     from .models import MaintenanceLogEntry
@@ -9941,7 +9949,9 @@ def health_check(request, club_slug):
                f"{len(meter_gaps)} meter reading issue(s) detected between consecutive flights",
                rows=meter_gaps)
     else:
-        _ok('operations', 'Meter readings')
+        _ok('operations', 'Meter readings',
+            "Hobbs and tacho readings are continuous between consecutive flights on each aircraft. "
+            "A gap means unaccounted flight time; a negative gap means readings went backwards.")
 
 
     # ── 6. Active members with expired subscriptions ─────────────────────────
@@ -9964,11 +9974,15 @@ def health_check(request, club_slug):
         _issue('members', 'warn',
                f"{len(lapsed_active)} active member(s) have expired subscriptions", rows=rows)
     else:
-        _ok('members', 'Subscription standing')
+        _ok('members', 'Subscription standing',
+            "All members currently marked Active have a valid, non-expired subscription. "
+            "Members whose subscriptions have lapsed should be renewed or their standing updated.")
 
     # Invoices: open invoices on completed bookings is normal (unpaid bill),
     # tracked via Attention Items — not a data integrity issue.
-    _ok('financial', 'Invoices')
+    _ok('financial', 'Invoices',
+        "Invoice records are structurally consistent. Open invoices on completed bookings are normal "
+        "(unpaid bills) and are tracked separately via Attention Items, not flagged here.")
 
     total_issues = sum(len(g['issues']) for g in groups.values())
     return render(request, 'core/health_check.html', {
