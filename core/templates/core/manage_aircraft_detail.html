@@ -32,7 +32,7 @@
   <!-- ── DETAILS tab ── -->
   <div id="tab-details" class="stab-panel">
     {% if club_member.is_admin %}
-    <form method="post">
+    <form method="post" id="save-details-form">
       {% csrf_token %}
       <input type="hidden" name="action" value="save_details">
       <div class="fgrid">
@@ -79,19 +79,19 @@
           </div>
         </div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
-        {% if not ac_has_bookings %}
-        <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Permanently delete {{ ac.registration }}? This cannot be undone.')">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="delete_aircraft">
-          <button type="submit" class="cbtn cbtn-danger">Delete aircraft</button>
-        </form>
-        {% else %}
-        <span></span>
-        {% endif %}
-        <button type="submit" class="cbtn primary">Save</button>
-      </div>
     </form>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1rem;">
+      {% if not ac_has_bookings %}
+      <form method="post" onsubmit="return dcModal(this,'Permanently delete {{ ac.registration }}? This cannot be undone.')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete_aircraft">
+        <button type="submit" class="cbtn cbtn-danger">Delete aircraft</button>
+      </form>
+      {% else %}
+      <span></span>
+      {% endif %}
+      <button type="submit" form="save-details-form" class="cbtn primary">Save</button>
+    </div>
     {% else %}
     <table class="info-table">
       <tr><th>Type</th><td>{{ ac.aircraft_type }}</td></tr>
