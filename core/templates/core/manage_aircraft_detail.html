@@ -3,7 +3,7 @@
 {% block inline_title %}{{ inline_title }}{% endblock %}
 
 {% block content %}
-<div style="max-width:1140px;margin:0 auto;padding:2rem;">
+<div style="max-width:1140px;margin:0 auto;padding:1.25rem 1.5rem;">
 
   <a href="{% if request.GET.back %}{{ request.GET.back }}{% else %}{% url 'core:manage_aircraft' club.slug %}{% endif %}" class="back-link">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2L4 6l4 4"/></svg>
