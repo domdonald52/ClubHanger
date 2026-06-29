@@ -11340,10 +11340,8 @@ def live_positions(request, club_slug):
         result = None
         src_status = {}
         sources = [
-            ('adsb.fi',        f'https://opendata.adsb.fi/api/v2/registration/{reg}'),
-            ('adsb.lol',       f'https://api.adsb.lol/v2/registration/{reg}'),
-            ('airplanes.live', f'https://api.airplanes.live/v2/registration/{reg}'),
-            ('adsb.one',       f'https://api.adsb.one/v2/reg/{callsign}'),
+            ('adsb.fi',  f'https://opendata.adsb.fi/api/v2/registration/{reg}'),
+            ('adsb.lol', f'https://api.adsb.lol/v2/registration/{reg}'),
         ]
         for key, url in sources:
             try:

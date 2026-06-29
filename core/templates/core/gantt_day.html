@@ -861,16 +861,16 @@
           const isTwin = iconType === 'twin';
           const pathD = isTwin ? TWIN_D : CESSNA_D;
           const vb    = isTwin ? "0 0 488 388" : "0 0 352 322";
-          const iw    = isTwin ? 60 : 56;
-          const ih    = isTwin ? 48 : 51;
+          const iw    = isTwin ? 30 : 28;
+          const ih    = isTwin ? 24 : 26;
           const acSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${iw}" height="${ih}"
             style="transform:rotate(${deg}deg);transform-origin:50% 50%;display:block;">
-            <path fill="#1e3a5f" fill-rule="evenodd" d="${pathD}"/>
+            <path fill="#c026d3" fill-rule="evenodd" d="${pathD}"/>
           </svg>`;
           const icon = L.divIcon({
             className: '',
-            html: `<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;">${acSvg}</div>`,
-            iconSize: [80, 80], iconAnchor: [40, 40]
+            html: `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;">${acSvg}</div>`,
+            iconSize: [40, 40], iconAnchor: [20, 20]
           });
           if (!adsbMarker) {
             adsbMarker = L.marker(ll, {icon, title: reg}).addTo(adsbMap);
@@ -1051,6 +1051,101 @@
 
   document.addEventListener('click', function() { popup.classList.remove('rp-vis'); });
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') popup.classList.remove('rp-vis'); });
+})();
+</script>
+
+<!-- ── Ghost slot hover preview ── -->
+<script>
+(function() {
+  var cfg = JSON.parse(document.getElementById('cal-data').textContent);
+  if (!cfg.canBook && !cfg.canManage) return;
+
+  var PX_PER_MIN = cfg.pxPerMin;
+  var SLOT_MIN   = cfg.slotMin   || 15;
+  var DEF_DUR    = cfg.defaultDuration || 90;
+  var TOTAL_MINS = cfg.totalMins;
+
+  // Parse HH:MM offset from day-start ISO string to avoid timezone ambiguity
+  function minsToLabel(minsFromDayStart) {
+    var t = cfg.dayStart; // "YYYY-MM-DDTHH:MM:SS"
+    var baseH = parseInt(t.slice(11, 13), 10);
+    var baseM = parseInt(t.slice(14, 16), 10);
+    var total = baseH * 60 + baseM + minsFromDayStart;
+    var hh = Math.floor(total / 60) % 24;
+    var mm = total % 60;
+    return ('0' + hh).slice(-2) + ':' + ('0' + mm).slice(-2);
+  }
+
+  function getScale(track) {
+    var m = (track.style.transform || '').match(/scaleX\(([^)]+)\)/);
+    return m ? parseFloat(m[1]) : 1;
+  }
+
+  function getObstacles(track) {
+    var obs = [];
+    track.querySelectorAll('.pill, .band[data-hard="true"]').forEach(function(el) {
+      var l = parseFloat(el.dataset.left || 0);
+      var w = parseFloat(el.dataset.width || 0);
+      if (w > 0) obs.push({ left: l, right: l + w });
+    });
+    obs.sort(function(a, b) { return a.left - b.left; });
+    return obs;
+  }
+
+  document.querySelectorAll('.track').forEach(function(track) {
+    if (track.dataset.ghost) return; // skip retired/inactive rows
+
+    var g = document.createElement('div');
+    g.style.cssText = 'position:absolute;top:4px;height:36px;border-radius:5px;' +
+      'box-sizing:border-box;pointer-events:none;border:2px dashed var(--primary);' +
+      'background:color-mix(in srgb,var(--primary) 9%,transparent);' +
+      'z-index:4;display:none;align-items:center;padding-left:6px;overflow:hidden;';
+    var gLabel = document.createElement('span');
+    gLabel.style.cssText = 'font-size:.65rem;font-weight:600;color:var(--primary);' +
+      'white-space:nowrap;transform:scaleX(var(--pill-unscale,1));transform-origin:0 0;display:inline-block;';
+    g.appendChild(gLabel);
+    track.appendChild(g);
+
+    track.addEventListener('mousemove', function(e) {
+      var scale  = getScale(track);
+      var rect   = track.getBoundingClientRect();
+      var xPx    = (e.clientX - rect.left) / scale;
+
+      var rawMin  = xPx / PX_PER_MIN;
+      var snapMin = Math.round(rawMin / SLOT_MIN) * SLOT_MIN;
+      snapMin = Math.max(0, Math.min(TOTAL_MINS - SLOT_MIN, snapMin));
+      var startPx = snapMin * PX_PER_MIN;
+
+      var obs = getObstacles(track);
+
+      // Hide if cursor is directly over an existing booking or hard block-out
+      if (obs.some(function(o) { return xPx >= o.left && xPx < o.right; })) {
+        g.style.display = 'none'; return;
+      }
+
+      // Clip ghost end to first obstacle after start, within defaultDuration
+      var maxEndPx = Math.min((snapMin + DEF_DUR) * PX_PER_MIN, TOTAL_MINS * PX_PER_MIN);
+      for (var i = 0; i < obs.length; i++) {
+        if (obs[i].left > startPx && obs[i].left < maxEndPx) {
+          maxEndPx = obs[i].left;
+          break;
+        }
+      }
+
+      var durMin = maxEndPx / PX_PER_MIN - snapMin;
+      if (durMin < SLOT_MIN) { g.style.display = 'none'; return; }
+
+      var endMin = snapMin + durMin;
+      gLabel.textContent = minsToLabel(snapMin) + '–' + minsToLabel(endMin) +
+        (Math.round(durMin) < DEF_DUR ? ' (' + Math.round(durMin) + 'min)' : '');
+
+      g.style.left  = startPx + 'px';
+      g.style.width = (maxEndPx - startPx) + 'px';
+      g.style.display = 'flex';
+    });
+
+    track.addEventListener('mouseleave', function() { g.style.display = 'none'; });
+  });
 })();
 </script>
 {% endblock %}

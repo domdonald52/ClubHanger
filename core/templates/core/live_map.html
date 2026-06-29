@@ -84,9 +84,7 @@
   <!-- Source attribution pill (bottom left) -->
   <div id="mp-sources">
     Data: <a href="https://www.adsb.fi" target="_blank" data-src="adsb.fi">adsb.fi</a> ·
-    <a href="https://www.adsb.lol" target="_blank" data-src="adsb.lol">adsb.lol</a> ·
-    <a href="https://www.airplanes.live" target="_blank" data-src="airplanes.live">airplanes.live</a> ·
-    <a href="https://www.adsb.one" target="_blank" data-src="adsb.one">ADSB.one</a>
+    <a href="https://www.adsb.lol" target="_blank" data-src="adsb.lol">adsb.lol</a>
   </div>
 
   <!-- Legend — icons only -->
@@ -122,21 +120,21 @@ window.makeIcon = function(iconType, track, stale) {
   const deg = (track != null) ? track : 0;
   let pathD, vb, w, h;
   if (iconType === 'twin') {
-    pathD = TWIN_D;   vb = "0 0 488 388"; w = 60; h = 48;
+    pathD = TWIN_D;   vb = "0 0 488 388"; w = 30; h = 24;
   } else {
-    pathD = CESSNA_D; vb = "0 0 352 322"; w = 56; h = 51;
+    pathD = CESSNA_D; vb = "0 0 352 322"; w = 28; h = 26;
   }
-  const color = stale ? '#9ca3af' : THEME;
+  const color = stale ? '#9ca3af' : '#c026d3';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="${w}" height="${h}"
     style="transform:rotate(${deg}deg);transform-origin:50% 50%;display:block;flex-shrink:0;">
     <path fill="${color}" fill-rule="evenodd" d="${pathD}"/>
   </svg>`;
   return L.divIcon({
     className: '',
-    html: `<div style="width:80px;height:80px;display:flex;align-items:center;justify-content:center;">${svg}</div>`,
-    iconSize:      [80, 80],
-    iconAnchor:    [40, 40],
-    tooltipAnchor: [10, -4],
+    html: `<div style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;">${svg}</div>`,
+    iconSize:      [40, 40],
+    iconAnchor:    [20, 20],
+    tooltipAnchor: [5, -2],
   });
 }
 
