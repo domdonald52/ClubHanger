@@ -30,7 +30,7 @@
   {% if online_aircraft or retired_aircraft %}
   <table class="ac-table">
     <thead><tr>
-      <th>Registration</th><th>Type</th><th>Seats</th><th>Time method</th><th>Status</th><th></th>
+      <th>Registration</th><th>Type</th><th>Seats</th><th>Bill. time</th><th>Maint. time</th><th>Status</th><th></th>
     </tr></thead>
     <tbody>
       {% for ac in online_aircraft %}
@@ -39,6 +39,7 @@
         <td>{{ ac.aircraft_type }}</td>
         <td style="color:var(--text-3);">{{ ac.seats }}</td>
         <td style="color:var(--text-3);font-size:.82rem;">{{ ac.get_total_time_method_display }}</td>
+        <td style="color:var(--text-3);font-size:.82rem;">{{ ac.get_maint_time_source_display }}{% if ac.maint_time_fraction != 1 %} &times;&nbsp;{{ ac.maint_time_fraction }}{% endif %}</td>
         <td>
           <span class="status-badge status-online">Active</span>
         </td>
@@ -50,7 +51,7 @@
 
       {% if retired_aircraft %}
       <tr class="ac-section-divider">
-        <td colspan="6">Retired</td>
+        <td colspan="7">Retired</td>
       </tr>
       {% for ac in retired_aircraft %}
       <tr class="ac-row-retired">
@@ -58,6 +59,7 @@
         <td>{{ ac.aircraft_type }}</td>
         <td style="color:var(--text-3);">{{ ac.seats }}</td>
         <td style="color:var(--text-3);font-size:.82rem;">{{ ac.get_total_time_method_display }}</td>
+        <td style="color:var(--text-3);font-size:.82rem;">{{ ac.get_maint_time_source_display }}{% if ac.maint_time_fraction != 1 %} &times;&nbsp;{{ ac.maint_time_fraction }}{% endif %}</td>
         <td>
           <span class="status-badge status-retired">Retired</span>
         </td>

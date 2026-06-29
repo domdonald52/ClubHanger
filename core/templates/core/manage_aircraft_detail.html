@@ -623,7 +623,7 @@
 
   <!-- Add maintenance item modal -->
   <div id="add-maint-modal" class="modal-back" hidden>
-    <div class="modal" style="width:min(540px,95vw);">
+    <div class="modal" style="width:min(640px,95vw);">
       <div class="modal-header">
         <div class="modal-nav">
           <span>Aircraft</span>
@@ -698,7 +698,7 @@
 
   <!-- Edit maintenance item modal -->
   <div id="edit-maint-modal" class="modal-back" hidden>
-    <div class="modal" style="width:min(540px,95vw);">
+    <div class="modal" style="width:min(640px,95vw);">
       <div class="modal-header">
         <div class="modal-nav">
           <span>Aircraft</span>
@@ -1120,6 +1120,7 @@ window.emmApplyType = function(sel) {
   const opt = sel.options[sel.selectedIndex];
   document.getElementById('emm-type-id').value = sel.value;
   if (!sel.value) return;
+  document.getElementById('emm-desc').value = opt.dataset.name;
   document.getElementById('emm-interval-days').value = opt.dataset.intDays;
   document.getElementById('emm-interval-hours').value = opt.dataset.intHours;
   emmUpdateThresh();

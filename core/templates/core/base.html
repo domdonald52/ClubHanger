@@ -1110,6 +1110,8 @@ span.cal-chip{background:var(--surface-3);color:var(--text-3);}
         // Skip if dcModal is handling this form (flag set by window.dcModal)
         if (f._dcModal) { f._dcModal = false; return; }
         e.preventDefault();
+        // Bail if setupModalForms marked this form invalid — let its error banner show
+        if (!f.checkValidity()) return;
         // GET forms: reload overlay with serialised query string
         if ((f.getAttribute('method') || 'get').toLowerCase() === 'get') {
           const action = f.getAttribute('action') || _currentUrl;
@@ -1160,7 +1162,13 @@ span.cal-chip{background:var(--surface-3);color:var(--text-3);}
 
   // Escape and backdrop click: force-close entire overlay (clear stack)
   overlay.addEventListener('click', e => { if (e.target === overlay) _doCloseOverlay(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !overlay.hidden) _doCloseOverlay(); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !overlay.hidden) {
+      // If an inner modal is open inside the overlay, let the page's own Escape handler close it instead
+      if (body.querySelector('.modal-back:not([hidden])')) return;
+      _doCloseOverlay();
+    }
+  });
 
   // Document-level [data-overlay] handler — for links outside the overlay body.
   // Links inside the overlay body are handled by element-level listeners in attachHandlers.
