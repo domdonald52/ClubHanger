@@ -2070,6 +2070,13 @@ def club_settings(request, club_slug, mode='settings'):
                 mt.delete()
             return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
 
+        elif action == 'toggle_maint_type':
+            mt = MaintenanceType.objects.filter(club=club, id=request.POST.get('mt_id')).first()
+            if mt:
+                mt.is_active = not mt.is_active
+                mt.save(update_fields=['is_active'])
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
+
         elif action == 'save_budget':
             import calendar as _cal
             fy_year = int(request.POST.get('fy_year', 0) or 0)
@@ -6129,7 +6136,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'all_surcharge_types': all_surcharge_types,
         'assigned_surcharge_ids': assigned_surcharge_ids,
         'maintenance_items': maintenance_items,
-        'maintenance_types': MaintenanceType.objects.filter(club=club),
+        'maintenance_types': MaintenanceType.objects.filter(club=club, is_active=True),
         'maint_log': maint_log,
         'maint_peak_instrument': maint_peak_instrument,
         'maint_peak_total': maint_peak_total,

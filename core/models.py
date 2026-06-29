@@ -889,6 +889,7 @@ class MaintenanceType(models.Model):
     club = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='maintenance_types')
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
     interval_days = models.IntegerField(null=True, blank=True)
     interval_hours = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     warn_hours = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
