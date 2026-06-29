@@ -11,7 +11,7 @@ logger = logging.getLogger('clubhangar.audit')
 from .models import (Club, ClubMember, Booking, BookingStatus, Aircraft, AircraftType, AircraftStatus, Role, FlightType, BlockOutType,
                      SlotWatch, InstructorGrade, AircraftSurchargeType,
                      Aerodrome, FuelSurchargeRate, Invoice, InvoiceLineItem,
-                     FlightCompletion, FlightSegment, AircraftMaintenanceItem, MaintenanceUrgency, ChargeRate, FlightChargeItem,
+                     FlightCompletion, FlightSegment, AircraftMaintenanceItem, MaintenanceUrgency, MaintenanceType, ChargeRate, FlightChargeItem,
                      FlightLandingEntry, AccountTransaction, ClubConfig, CredentialCategory,
                      OccurrenceReport, OccurrenceType, OccurrenceAction, OccurrenceAuditEntry,
                      ContactType, MembershipHistoryEntry, VoucherType,
@@ -88,10 +88,10 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     # All instructors including inactive — ghost rows keep conflicted bookings visible.
     instructors = ClubMember.objects.filter(
         club=club, is_on_instructor_roster=True
-    ).select_related('user').order_by('standing', 'user__last_name')
+    ).select_related('user', 'instructor_grade').order_by('standing', 'user__last_name')
     
     aircraft_list = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).order_by('registration')
-    all_aircraft = Aircraft.objects.filter(club=club).order_by('registration')
+    all_aircraft = Aircraft.objects.filter(club=club).order_by('registration').select_related('aircraft_type')
     
     # Get all bookings for day
     from django.db.models import Prefetch as _Prefetch
@@ -316,11 +316,17 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
     _cred_warn  = _cred_today + _cred_td(days=60)
     _instr_user_ids = [i.user_id for i in instructors]
     _creds_by_user = {}
+    _cred_details_by_user = {}
     for _cr in _MCred.objects.filter(
         member_id__in=_instr_user_ids,
         credential_type__expires=True,
-    ).values('member_id', 'expiry_date'):
+    ).values('member_id', 'expiry_date', 'credential_type__name').order_by('expiry_date'):
         _creds_by_user.setdefault(_cr['member_id'], []).append(_cr['expiry_date'])
+        _cred_details_by_user.setdefault(_cr['member_id'], []).append({
+            'name': _cr['credential_type__name'],
+            'expiry': _cr['expiry_date'].isoformat() if _cr['expiry_date'] else None,
+            'expired': bool(_cr['expiry_date'] and _cr['expiry_date'] < _cred_today),
+        })
 
     def _cred_status(user_id):
         dates = [d for d in _creds_by_user.get(user_id, []) if d is not None]
@@ -430,6 +436,15 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             return MaintenanceUrgency.AMBER
         return MaintenanceUrgency.GREEN
 
+    # Maintenance item details for popup cards (top 3 per aircraft by urgency)
+    _URGENCY_RANK = {'red': 0, 'amber': 1, 'green': 2}
+    _maint_detail_by_ac = {}
+    for _mi in _AMI.objects.filter(aircraft__club=club).values('aircraft_id', 'name', 'due_date', 'due_hours', 'urgency'):
+        _maint_detail_by_ac.setdefault(_mi['aircraft_id'], []).append(_mi)
+    for _ac_id in _maint_detail_by_ac:
+        _maint_detail_by_ac[_ac_id].sort(key=lambda m: _URGENCY_RANK.get(m['urgency'], 3))
+        _maint_detail_by_ac[_ac_id] = _maint_detail_by_ac[_ac_id][:3]
+
     aircraft_rows = []
     for ac in all_aircraft:
         is_online = ac.status == AircraftStatus.ONLINE
@@ -458,6 +473,37 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
             'ghost_reason': 'retired' if ghost else None,
             'maint_urgency': _ac_maint_urgency(ac.id, is_online),
         })
+
+    # Info maps for row-label popup cards
+    ac_info_map = {}
+    for _ac in all_aircraft:
+        _items = _maint_detail_by_ac.get(_ac.id, [])
+        _urg = _ac_maint_urgency(_ac.id, _ac.status == AircraftStatus.ONLINE)
+        ac_info_map[_ac.id] = {
+            'reg': _ac.registration,
+            'ac_type': _ac.aircraft_type.name if _ac.aircraft_type_id else '',
+            'rate': str(_ac.default_hourly_rate) if _ac.default_hourly_rate else '',
+            'instrument': _ac.get_total_time_method_display(),
+            'maint_urgency': str(_urg) if _urg else None,
+            'maint': [
+                {
+                    'name': m['name'],
+                    'due_date': m['due_date'].isoformat() if m['due_date'] else None,
+                    'due_hours': str(m['due_hours']) if m['due_hours'] else None,
+                    'urgency': m['urgency'],
+                }
+                for m in _items
+            ],
+        }
+    instr_info_map = {}
+    for _instr in instructors:
+        instr_info_map[_instr.user_id] = {
+            'name': f"{_instr.user.first_name} {_instr.user.last_name}".strip() or _instr.user.username,
+            'grade': _instr.instructor_grade.name if _instr.instructor_grade_id else '',
+            'rate': str(_instr.instructor_grade.hourly_rate) if _instr.instructor_grade_id else '',
+            'cred_status': _cred_status(_instr.user_id),
+            'creds': _cred_details_by_user.get(_instr.user_id, []),
+        }
 
     # Row-label width: fit the longest instructor/aircraft label (7px/char approx at .76rem)
     all_labels = [r['label'] for r in instructor_rows + aircraft_rows]
@@ -631,6 +677,8 @@ def gantt_day(request, club_slug, year=None, month=None, day=None):
         'blockout_types_json': blockout_types_data,
         'contacts_json': contacts_data,
         'contact_types_json': contact_types_data,
+        'ac_info_json': ac_info_map,
+        'instr_info_json': instr_info_map,
         'watched_ids': list(
             SlotWatch.objects.filter(club_member=club_member)
             .values_list('booking_id', flat=True)
@@ -1986,6 +2034,42 @@ def club_settings(request, club_slug, mode='settings'):
                 vt.save(update_fields=['is_active'])
             return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
 
+        elif action == 'add_maint_type':
+            mt_name = request.POST.get('mt_name', '').strip()
+            if mt_name:
+                mt, _ = MaintenanceType.objects.get_or_create(club=club, name=mt_name)
+                mt.description    = request.POST.get('mt_desc', '').strip()
+                mt.interval_days  = request.POST.get('mt_interval_days') or None
+                mt.interval_hours = request.POST.get('mt_interval_hours') or None
+                mt.warn_hours     = request.POST.get('mt_warn_hours') or None
+                mt.alert_hours    = request.POST.get('mt_alert_hours') or None
+                mt.warn_days      = request.POST.get('mt_warn_days') or None
+                mt.alert_days     = request.POST.get('mt_alert_days') or None
+                mt.save()
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
+
+        elif action == 'edit_maint_type':
+            mt = MaintenanceType.objects.filter(club=club, id=request.POST.get('mt_id')).first()
+            if mt:
+                mt_name = request.POST.get('mt_name', '').strip()
+                if mt_name:
+                    mt.name = mt_name
+                mt.description    = request.POST.get('mt_desc', '').strip()
+                mt.interval_days  = request.POST.get('mt_interval_days') or None
+                mt.interval_hours = request.POST.get('mt_interval_hours') or None
+                mt.warn_hours     = request.POST.get('mt_warn_hours') or None
+                mt.alert_hours    = request.POST.get('mt_alert_hours') or None
+                mt.warn_days      = request.POST.get('mt_warn_days') or None
+                mt.alert_days     = request.POST.get('mt_alert_days') or None
+                mt.save()
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
+
+        elif action == 'delete_maint_type':
+            mt = MaintenanceType.objects.filter(club=club, id=request.POST.get('mt_id')).first()
+            if mt and not mt.items.exists():
+                mt.delete()
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
+
         elif action == 'save_budget':
             import calendar as _cal
             fy_year = int(request.POST.get('fy_year', 0) or 0)
@@ -2261,6 +2345,7 @@ def club_settings(request, club_slug, mode='settings'):
         'occurrence_types': OccurrenceType.objects.filter(club=club),
         'contact_types_list': ContactType.objects.filter(club=club).order_by('name'),
         'voucher_types_list': VoucherType.objects.filter(club=club),
+        'maintenance_types': MaintenanceType.objects.filter(club=club),
         'roles': roles,
         'saved': saved,
         'ft_error': ft_error,
@@ -5826,8 +5911,11 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         elif action == 'add_maintenance' and actor.is_admin:
             name = request.POST.get('maint_name', '').strip()
             if name:
+                _mt_id = request.POST.get('maint_type_id') or None
+                _mt = MaintenanceType.objects.filter(club=club, id=_mt_id).first() if _mt_id else None
                 AircraftMaintenanceItem.objects.create(
                     aircraft=ac, name=name,
+                    maintenance_type=_mt,
                     description=request.POST.get('maint_desc', '').strip(),
                     due_date=request.POST.get('due_date') or None,
                     due_hours=request.POST.get('due_hours') or None,
@@ -5848,6 +5936,8 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                 name = request.POST.get('maint_name', '').strip()
                 if name:
                     m.name = name
+                _mt_id = request.POST.get('maint_type_id') or None
+                m.maintenance_type = MaintenanceType.objects.filter(club=club, id=_mt_id).first() if _mt_id else None
                 m.description = request.POST.get('maint_desc', '').strip()
                 m.due_date = request.POST.get('due_date') or None
                 m.due_hours = request.POST.get('due_hours') or None
@@ -6011,6 +6101,7 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
         'all_surcharge_types': all_surcharge_types,
         'assigned_surcharge_ids': assigned_surcharge_ids,
         'maintenance_items': maintenance_items,
+        'maintenance_types': MaintenanceType.objects.filter(club=club),
         'maint_log': maint_log,
         'maint_peak_instrument': maint_peak_instrument,
         'maint_peak_total': maint_peak_total,

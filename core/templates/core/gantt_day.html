@@ -32,8 +32,23 @@
   /* Ghost rows — inactive or off-roster with residual bookings */
   .row-label.ghost{background:var(--surface-3);color:var(--text-3);font-style:italic}
   .row-label.ghost .row-name{text-decoration:line-through;text-decoration-color:var(--border)}
-  .row-label[data-detail-url]{cursor:pointer;}
-  .row-label[data-detail-url]:hover{background:var(--surface-3);}
+  .row-label[data-resource-id]{cursor:pointer;}
+  .row-label[data-resource-id]:hover{background:var(--surface-3);}
+  /* Row popup card */
+  #row-popup{position:fixed;z-index:600;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md,8px);box-shadow:0 8px 28px rgba(0,0,0,.18);min-width:240px;max-width:320px;padding:.7rem .9rem;font-size:.82rem;color:var(--text-1);display:none;pointer-events:none;}
+  #row-popup.rp-vis{display:block;}
+  .rp-head{font-weight:650;font-size:.92rem;display:flex;align-items:center;gap:.35rem;margin-bottom:.15rem;}
+  .rp-sub{color:var(--text-2);font-size:.79rem;margin-bottom:.55rem;}
+  .rp-hr{border:none;border-top:1px solid var(--border);margin:.4rem 0;}
+  .rp-sec{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:.3rem;}
+  .rp-row{display:flex;align-items:baseline;gap:.4rem;margin-bottom:.18rem;font-size:.79rem;}
+  .rp-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rp-meta{color:var(--text-3);font-size:.74rem;white-space:nowrap;flex-shrink:0;}
+  .rp-badge{font-size:.67rem;font-weight:600;padding:.05rem .28rem;border-radius:4px;white-space:nowrap;flex-shrink:0;}
+  .rp-badge.red{background:var(--danger-bg);color:var(--danger);}
+  .rp-badge.amber{background:#fef3c7;color:#92400e;}
+  .rp-badge.green{background:var(--success-bg);color:var(--success-text,var(--success));}
+  .rp-empty{color:var(--text-3);font-size:.79rem;font-style:italic;}
   .ghost-badge{font-size:.6rem;font-weight:600;background:var(--danger-bg);color:var(--danger);border-radius:4px;padding:.05rem .3rem;white-space:nowrap;flex-shrink:0;}
   .track-ghost{opacity:.75}
   /* Section dividers — grid-row style so the background spans the full scrollable width */
@@ -227,7 +242,7 @@
       </div>
       {% for row in instructor_rows %}
         <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
-          <div class="row-label row-label-instructor {% if row.is_current_user %}me{% endif %}{% if row.ghost %} ghost{% endif %}"{% if row.detail_id %}{% if is_instructor or can_manage %} data-detail-url="{% url 'core:manage_instructor_detail' club.slug row.detail_id %}"{% endif %}{% endif %}>
+          <div class="row-label row-label-instructor {% if row.is_current_user %}me{% endif %}{% if row.ghost %} ghost{% endif %}"{% if is_instructor or can_manage %} data-row-type="instructor" data-resource-id="{{ row.resource_id }}"{% endif %}>
             <span class="row-name">{{ row.label }}</span>
             {% if row.ghost_reason == 'inactive' %}
               <span class="ghost-badge" title="Instructor inactive — bookings need reassignment">Inactive</span>
@@ -257,7 +272,7 @@
       </div>
       {% for row in aircraft_rows %}
         <div class="grid-row{% if row.ghost %} row-ghost{% endif %}">
-          <div class="row-label row-label-aircraft{% if row.ghost %} ghost{% endif %}"{% if is_instructor or can_manage %} data-detail-url="{% url 'core:manage_aircraft_detail' club.slug row.detail_id %}"{% endif %}>
+          <div class="row-label row-label-aircraft{% if row.ghost %} ghost{% endif %}"{% if is_instructor or can_manage %} data-row-type="aircraft" data-resource-id="{{ row.resource_id }}"{% endif %}>
             <span class="row-name">{{ row.label }}</span>
             {% if row.ghost_reason == 'retired' %}
               <span class="ghost-badge" title="Aircraft retired — bookings need reassignment">Retired</span>
@@ -548,6 +563,11 @@
 {{ blockout_types_json|json_script:"blockout-types-data" }}
 {{ contacts_json|json_script:"contacts-data" }}
 {{ contact_types_json|json_script:"contact-types-data" }}
+{{ ac_info_json|json_script:"ac-info-data" }}
+{{ instr_info_json|json_script:"instr-info-data" }}
+
+<!-- Row-label info popup -->
+<div id="row-popup" role="tooltip" aria-live="polite"></div>
 
 <!-- Booking detail overlay (loaded inline via fetch) -->
 <div id="detail-overlay" class="modal-back" hidden style="z-index:510;">
@@ -934,6 +954,103 @@
   }
 
   setInterval(refreshWx, 5 * 60 * 1000);
+})();
+</script>
+
+<script>
+(function(){
+  var acInfo   = JSON.parse(document.getElementById('ac-info-data').textContent);
+  var instrInfo = JSON.parse(document.getElementById('instr-info-data').textContent);
+  var popup = document.getElementById('row-popup');
+  if (!popup) return;
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    var d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-NZ', {day:'numeric', month:'short', year:'numeric'});
+  }
+
+  function urgencyBadge(u) {
+    var cls = u === 'red' ? 'red' : u === 'amber' ? 'amber' : 'green';
+    var lbl = u === 'red' ? 'Overdue' : u === 'amber' ? 'Due soon' : 'OK';
+    return '<span class="rp-badge ' + cls + '">' + lbl + '</span>';
+  }
+
+  function credBadge(cred) {
+    if (cred.expired) return '<span class="rp-badge red">Expired</span>';
+    if (cred.expiry) {
+      var diff = (new Date(cred.expiry + 'T00:00:00') - new Date()) / 86400000;
+      if (diff <= 60) return '<span class="rp-badge amber">Expiring</span>';
+    }
+    return '<span class="rp-badge green">Current</span>';
+  }
+
+  function buildAcHtml(info) {
+    var dot = info.maint_urgency ? '<span class="status-dot ' + info.maint_urgency + '">●</span>' : '';
+    var html = '<div class="rp-head">' + info.reg + dot + '</div>';
+    var ratePart = info.rate ? '$' + parseFloat(info.rate).toFixed(2) + '/hr' : 'No rate set';
+    html += '<div class="rp-sub">' + [info.ac_type, ratePart, info.instrument].filter(Boolean).join(' · ') + '</div>';
+    if (info.maint && info.maint.length) {
+      html += '<hr class="rp-hr"><div class="rp-sec">Maintenance</div>';
+      info.maint.forEach(function(m) {
+        var meta = [];
+        if (m.due_date) meta.push(fmtDate(m.due_date));
+        if (m.due_hours) meta.push(m.due_hours + ' hrs');
+        html += '<div class="rp-row"><span class="rp-name">' + m.name + '</span>' +
+          '<span class="rp-meta">' + meta.join(' · ') + '</span>' +
+          urgencyBadge(m.urgency) + '</div>';
+      });
+    } else {
+      html += '<hr class="rp-hr"><span class="rp-empty">No maintenance items</span>';
+    }
+    return html;
+  }
+
+  function buildInstrHtml(info) {
+    var dot = info.cred_status ? '<span class="status-dot ' + info.cred_status + '">●</span>' : '';
+    var html = '<div class="rp-head">' + info.name + dot + '</div>';
+    var sub = [info.grade, info.rate ? '$' + parseFloat(info.rate).toFixed(2) + '/hr' : ''].filter(Boolean).join(' · ');
+    html += '<div class="rp-sub">' + (sub || 'No grade set') + '</div>';
+    if (info.creds && info.creds.length) {
+      html += '<hr class="rp-hr"><div class="rp-sec">Credentials</div>';
+      info.creds.forEach(function(c) {
+        html += '<div class="rp-row"><span class="rp-name">' + c.name + '</span>' +
+          '<span class="rp-meta">' + (c.expiry ? fmtDate(c.expiry) : '') + '</span>' +
+          credBadge(c) + '</div>';
+      });
+    } else {
+      html += '<hr class="rp-hr"><span class="rp-empty">No credential records</span>';
+    }
+    return html;
+  }
+
+  function positionPopup(el) {
+    var rect = el.getBoundingClientRect();
+    popup.style.top = (rect.bottom + 5) + 'px';
+    popup.style.left = rect.left + 'px';
+    popup.classList.add('rp-vis');
+    var pw = popup.offsetWidth, ph = popup.offsetHeight;
+    var maxL = window.innerWidth - pw - 8;
+    if (parseFloat(popup.style.left) > maxL) popup.style.left = Math.max(8, maxL) + 'px';
+    if (rect.bottom + 5 + ph > window.innerHeight - 8) popup.style.top = (rect.top - ph - 5) + 'px';
+  }
+
+  document.querySelectorAll('.row-label[data-resource-id]').forEach(function(el) {
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var id = parseInt(el.dataset.resourceId);
+      var type = el.dataset.rowType;
+      if (type === 'aircraft' && acInfo[id]) {
+        popup.innerHTML = buildAcHtml(acInfo[id]);
+      } else if (type === 'instructor' && instrInfo[id]) {
+        popup.innerHTML = buildInstrHtml(instrInfo[id]);
+      } else { return; }
+      positionPopup(el);
+    });
+  });
+
+  document.addEventListener('click', function() { popup.classList.remove('rp-vis'); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') popup.classList.remove('rp-vis'); });
 })();
 </script>
 {% endblock %}

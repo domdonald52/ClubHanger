@@ -884,6 +884,26 @@ class Aircraft(models.Model):
         return self.status == AircraftStatus.ONLINE and self.is_available_for_hire
 
 
+class MaintenanceType(models.Model):
+    """Club-level template for recurring maintenance items."""
+    club = models.ForeignKey('Club', on_delete=models.CASCADE, related_name='maintenance_types')
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    interval_days = models.IntegerField(null=True, blank=True)
+    interval_hours = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
+    warn_hours = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
+    alert_hours = models.DecimalField(max_digits=6, decimal_places=1, null=True, blank=True)
+    warn_days = models.IntegerField(null=True, blank=True)
+    alert_days = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['name']
+        unique_together = ('club', 'name')
+
+    def __str__(self):
+        return self.name
+
+
 class MaintenanceUrgency(models.TextChoices):
     """Visual indicator for maintenance urgency."""
     GREEN = 'green', 'OK'
@@ -897,6 +917,9 @@ class AircraftMaintenanceItem(models.Model):
     Tracks both calendar and flight-hour based intervals.
     """
     aircraft = models.ForeignKey(Aircraft, on_delete=models.CASCADE, related_name='maintenance_items')
+    maintenance_type = models.ForeignKey(
+        'MaintenanceType', on_delete=models.SET_NULL, null=True, blank=True, related_name='items'
+    )
     
     # What needs doing
     name = models.CharField(max_length=255)

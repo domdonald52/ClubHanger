@@ -508,7 +508,7 @@
                 <button type="submit" class="cbtn-sm cbtn-ok cbtn-icon" title="Mark as done"><i class="ti ti-check"></i></button>
               </form>
               <button type="button" class="cbtn-sm cbtn-icon" title="Edit"
-                      onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|date:"Y-m-d"|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|date:"Y-m-d"|default:'' }}','{{ m.last_completed_hours|default:'' }}','{{ m.interval_days|default:'' }}','{{ m.interval_hours|default:'' }}')"><i class="ti ti-pencil"></i></button>
+                      onclick="openEditMaint({{ m.id }},'{{ m.name|escapejs }}','{{ m.description|escapejs }}','{{ m.due_date|date:"Y-m-d"|default:'' }}','{{ m.due_hours|default:'' }}','{{ m.last_completed_date|date:"Y-m-d"|default:'' }}','{{ m.last_completed_hours|default:'' }}','{{ m.interval_days|default:'' }}','{{ m.interval_hours|default:'' }}','{{ m.maintenance_type_id|default:'' }}')"><i class="ti ti-pencil"></i></button>
               <form method="post" style="display:contents;" onsubmit="return dcModal(this,'Delete {{ m.name|escapejs }}?')">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_maintenance">
@@ -634,11 +634,30 @@
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="add_maintenance">
+        <input type="hidden" name="maint_type_id" id="amm-type-id">
+        {% if maintenance_types %}
+        <label class="flabel">Type <span style="font-weight:400;color:var(--text-3);">(optional — pre-fills defaults)</span>
+          <select id="amm-type-select" class="finput" onchange="ammApplyType(this)">
+            <option value="">— none —</option>
+            {% for mt in maintenance_types %}
+            <option value="{{ mt.id }}"
+              data-name="{{ mt.name|escapejs }}"
+              data-desc="{{ mt.description|escapejs }}"
+              data-int-days="{{ mt.interval_days|default:'' }}"
+              data-int-hours="{{ mt.interval_hours|default:'' }}"
+              data-warn-hours="{{ mt.warn_hours|default:'' }}"
+              data-alert-hours="{{ mt.alert_hours|default:'' }}"
+              data-warn-days="{{ mt.warn_days|default:'' }}"
+              data-alert-days="{{ mt.alert_days|default:'' }}">{{ mt.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
         <label class="flabel">Item name
-          <input type="text" name="maint_name" required class="finput" placeholder="e.g. 100-hr check">
+          <input type="text" name="maint_name" id="amm-name" required class="finput" placeholder="e.g. 100-hr check">
         </label>
         <label class="flabel" style="margin-top:.1rem;">Description <span style="font-weight:400;">(optional)</span>
-          <input type="text" name="maint_desc" class="finput" placeholder="Details or CAA reference">
+          <input type="text" name="maint_desc" id="amm-desc" class="finput" placeholder="Details or CAA reference">
         </label>
         <div class="fgrid" style="margin-top:.1rem;">
           <label class="flabel">Due date
@@ -691,6 +710,25 @@
         {% csrf_token %}
         <input type="hidden" name="action" value="edit_maintenance">
         <input type="hidden" name="maint_id" id="emm-id">
+        <input type="hidden" name="maint_type_id" id="emm-type-id">
+        {% if maintenance_types %}
+        <label class="flabel">Type <span style="font-weight:400;color:var(--text-3);">(optional)</span>
+          <select id="emm-type-select" class="finput" onchange="emmApplyType(this)">
+            <option value="">— none —</option>
+            {% for mt in maintenance_types %}
+            <option value="{{ mt.id }}"
+              data-name="{{ mt.name|escapejs }}"
+              data-desc="{{ mt.description|escapejs }}"
+              data-int-days="{{ mt.interval_days|default:'' }}"
+              data-int-hours="{{ mt.interval_hours|default:'' }}"
+              data-warn-hours="{{ mt.warn_hours|default:'' }}"
+              data-alert-hours="{{ mt.alert_hours|default:'' }}"
+              data-warn-days="{{ mt.warn_days|default:'' }}"
+              data-alert-days="{{ mt.alert_days|default:'' }}">{{ mt.name }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% endif %}
         <label class="flabel">Item name
           <input type="text" name="maint_name" id="emm-name" required class="finput">
         </label>
@@ -1047,12 +1085,44 @@ window.ammUpdateThresh = function() { _maintDueHint('amm'); };
   if (el) el.addEventListener('input', ammUpdateThresh);
 });
 
+window.ammApplyType = function(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('amm-type-id').value = sel.value;
+  if (!sel.value) return;
+  document.getElementById('amm-name').value = opt.dataset.name;
+  document.getElementById('amm-desc').value = opt.dataset.desc;
+  document.getElementById('amm-interval-days').value = opt.dataset.intDays;
+  document.getElementById('amm-interval-hours').value = opt.dataset.intHours;
+  document.getElementById('amm-due-hours').value = '';
+  ammUpdateThresh();
+};
+
 window.openAddMaint = function() {
+  const sel = document.getElementById('amm-type-select');
+  if (sel) { sel.value = ''; }
+  document.getElementById('amm-type-id').value = '';
+  document.getElementById('amm-name').value = '';
+  document.getElementById('amm-desc').value = '';
+  document.getElementById('amm-due-date').value = '';
+  document.getElementById('amm-due-hours').value = '';
+  document.getElementById('amm-last-date').value = '';
+  document.getElementById('amm-last-hours').value = '';
+  document.getElementById('amm-interval-days').value = '';
+  document.getElementById('amm-interval-hours').value = '';
   document.getElementById('add-maint-modal').hidden = false;
   ammUpdateThresh();
 };
 
-window.openEditMaint = function(id, name, desc, dueDate, dueHours, lastDate, lastHours, intervalDays, intervalHours) {
+window.emmApplyType = function(sel) {
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('emm-type-id').value = sel.value;
+  if (!sel.value) return;
+  document.getElementById('emm-interval-days').value = opt.dataset.intDays;
+  document.getElementById('emm-interval-hours').value = opt.dataset.intHours;
+  emmUpdateThresh();
+};
+
+window.openEditMaint = function(id, name, desc, dueDate, dueHours, lastDate, lastHours, intervalDays, intervalHours, typeId) {
   document.getElementById('emm-id').value = id;
   document.getElementById('emm-name').value = name;
   document.getElementById('emm-desc').value = desc;
@@ -1062,6 +1132,9 @@ window.openEditMaint = function(id, name, desc, dueDate, dueHours, lastDate, las
   document.getElementById('emm-last-hours').value = lastHours;
   document.getElementById('emm-interval-days').value = intervalDays;
   document.getElementById('emm-interval-hours').value = intervalHours;
+  document.getElementById('emm-type-id').value = typeId || '';
+  const emmSel = document.getElementById('emm-type-select');
+  if (emmSel) emmSel.value = typeId || '';
   emmUpdateThresh();
   document.getElementById('edit-maint-modal').hidden = false;
 };
