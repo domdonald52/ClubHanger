@@ -935,7 +935,7 @@ span.cal-chip{background:var(--surface-3);color:var(--text-3);}
      size, while a big/4K screen gets a proportionally larger modal). */
   .page-overlay-modal{background:var(--surface);border-radius:10px;width:clamp(500px,46vw,780px);max-width:96vw;box-shadow:var(--shadow-modal);margin:auto;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;}
   .page-overlay-modal.wide{width:clamp(740px,68vw,1140px);max-width:97vw;}
-  #page-overlay-body{flex:1;min-height:0;overflow-y:auto;}
+  #page-overlay-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;}
   .page-overlay-modal .pi-body{flex:1;}
   [hidden]{display:none!important;}
   /* Off-screen render used to measure tab panel heights before locking min-height */
