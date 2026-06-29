@@ -481,19 +481,27 @@
     </div>
 
     {% if maintenance_items %}
-    <table class="ft-table" style="margin-bottom:1.5rem;">
-      <thead><tr><th>Item</th><th style="white-space:nowrap;">Due date</th><th style="white-space:nowrap;">Due maint hrs</th><th style="white-space:nowrap;">Last done</th><th>Status</th><th style="min-width:90px;"></th><th></th></tr></thead>
+    <table id="maint-table" class="ft-table" style="margin-bottom:1.5rem;">
+      <thead><tr>
+        <th data-sc="0">Item</th>
+        <th data-sc="1" style="white-space:nowrap;">Due date</th>
+        <th data-sc="2" style="white-space:nowrap;">Due maint hrs</th>
+        <th data-sc="3" style="white-space:nowrap;">Last done</th>
+        <th data-sc="4">Status</th>
+        <th style="min-width:90px;"></th>
+        <th></th>
+      </tr></thead>
       <tbody>
         {% for m in maintenance_items %}
         <tr>
-          <td><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:var(--text-3);font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
-          <td style="white-space:nowrap;">{{ m.due_date|default:"—" }}</td>
-          <td style="white-space:nowrap;">
+          <td data-v="{{ m.name|lower }}"><strong>{{ m.name }}</strong>{% if m.description %}<br><span style="color:var(--text-3);font-size:.78rem;">{{ m.description }}</span>{% endif %}</td>
+          <td data-v="{{ m.due_date|date:'Y-m-d'|default:'9999' }}" style="white-space:nowrap;">{{ m.due_date|default:"—" }}</td>
+          <td data-v="{{ m.due_hours|default:'999999' }}" style="white-space:nowrap;">
             {{ m.due_hours|default:"—" }}
             {% if m.est_due_date %}<br><span style="font-size:.72rem;color:var(--text-3);" title="Estimated at {{ m.run_rate_per_week }} hrs/week (90-day avg)">~{{ m.est_due_date|date:"j M Y" }}</span>{% endif %}
           </td>
-          <td style="white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
-          <td><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
+          <td data-v="{{ m.last_completed_date|date:'Y-m-d'|default:'9999' }}" style="white-space:nowrap;">{{ m.last_completed_date|default:"—" }}</td>
+          <td data-v="{% if m.urgency == 'overdue' %}2{% elif m.urgency == 'due_soon' %}1{% else %}0{% endif %}"><span class="urg-badge urg-{{ m.urgency }}">{{ m.get_urgency_display }}</span></td>
           <td>
             {% if m.progress_pct is not None %}
             <div class="maint-bar-wrap" title="{{ m.progress_pct }}% through interval">
@@ -1189,6 +1197,40 @@ window.dcModal = function(form, msg, confirmLabel, isDanger) {
   });
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' && !modal.hidden) { modal.hidden = true; _dcPending = null; }
+  });
+})();
+
+// Maintenance table client-side sort
+(function(){
+  var tbl = document.getElementById('maint-table');
+  if (!tbl) return;
+  var sortCol = null, sortDir = 1;
+  tbl.querySelectorAll('th[data-sc]').forEach(function(th){
+    th.style.cursor = 'pointer';
+    th.style.userSelect = 'none';
+    th.addEventListener('click', function(){
+      var col = parseInt(th.dataset.sc);
+      if (sortCol === col) { sortDir *= -1; } else { sortCol = col; sortDir = 1; }
+      tbl.querySelectorAll('th[data-sc]').forEach(function(h){
+        var a = h.querySelector('.msa'); if (a) a.remove();
+        h.classList.remove('sort-active');
+      });
+      th.classList.add('sort-active');
+      var arr = document.createElement('span');
+      arr.className = 'msa sort-arrow';
+      arr.textContent = sortDir === 1 ? ' ↑' : ' ↓';
+      th.appendChild(arr);
+      var tbody = tbl.querySelector('tbody');
+      var rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort(function(a, b){
+        var av = (a.querySelectorAll('td')[col] || {dataset:{}}).dataset.v || '';
+        var bv = (b.querySelectorAll('td')[col] || {dataset:{}}).dataset.v || '';
+        var an = parseFloat(av), bn = parseFloat(bv);
+        if (!isNaN(an) && !isNaN(bn)) return (an - bn) * sortDir;
+        return av.localeCompare(bv) * sortDir;
+      });
+      rows.forEach(function(r){ tbody.appendChild(r); });
+    });
   });
 })();
 </script>
