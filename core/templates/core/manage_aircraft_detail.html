@@ -482,7 +482,7 @@
 
     {% if maintenance_items %}
     <table class="ft-table" style="margin-bottom:1.5rem;">
-      <thead><tr><th>Item</th><th style="white-space:nowrap;">Due date</th><th style="white-space:nowrap;">Due hrs</th><th style="white-space:nowrap;">Last done</th><th>Status</th><th style="min-width:90px;"></th><th></th></tr></thead>
+      <thead><tr><th>Item</th><th style="white-space:nowrap;">Due date</th><th style="white-space:nowrap;">Due maint hrs</th><th style="white-space:nowrap;">Last done</th><th>Status</th><th style="min-width:90px;"></th><th></th></tr></thead>
       <tbody>
         {% for m in maintenance_items %}
         <tr>
@@ -667,14 +667,14 @@
             <input type="date" name="due_date" id="amm-due-date" class="finput">
             <span id="amm-due-date-hint" style="font-size:.74rem;margin-top:.2rem;display:none;"></span>
           </label>
-          <label class="flabel">Due hours
+          <label class="flabel">Due maint hrs
             <input type="number" name="due_hours" id="amm-due-hours" min="0" step="0.1" class="finput">
             <span id="amm-due-hours-hint" style="font-size:.74rem;margin-top:.2rem;display:none;"></span>
           </label>
           <label class="flabel">Last completed date
             <input type="date" name="last_completed_date" id="amm-last-date" class="finput">
           </label>
-          <label class="flabel">Last completed hours
+          <label class="flabel">Last completed maint hrs
             <input type="number" name="last_completed_hours" id="amm-last-hours" min="0" step="0.1" class="finput">
           </label>
         </div>
@@ -684,7 +684,7 @@
             <label class="flabel">Every (days)
               <input type="number" name="interval_days" id="amm-interval-days" min="1" step="1" class="finput" placeholder="e.g. 365">
             </label>
-            <label class="flabel">Every (hours)
+            <label class="flabel">Every (maint hrs)
               <input type="number" name="interval_hours" id="amm-interval-hours" min="0.1" step="0.1" class="finput" placeholder="e.g. 100">
             </label>
           </div>
@@ -743,14 +743,14 @@
             <input type="date" name="due_date" id="emm-due-date" class="finput">
             <span id="emm-due-date-hint" style="font-size:.74rem;margin-top:.2rem;display:none;"></span>
           </label>
-          <label class="flabel">Due hours
+          <label class="flabel">Due maint hrs
             <input type="number" name="due_hours" id="emm-due-hours" min="0" step="0.1" class="finput">
             <span id="emm-due-hours-hint" style="font-size:.74rem;margin-top:.2rem;display:none;"></span>
           </label>
           <label class="flabel">Last completed date
             <input type="date" name="last_completed_date" id="emm-last-date" class="finput">
           </label>
-          <label class="flabel">Last completed hours
+          <label class="flabel">Last completed maint hrs
             <input type="number" name="last_completed_hours" id="emm-last-hours" min="0" step="0.1" class="finput">
           </label>
         </div>
@@ -760,7 +760,7 @@
             <label class="flabel">Every (days)
               <input type="number" name="interval_days" id="emm-interval-days" min="1" step="1" class="finput" placeholder="e.g. 365">
             </label>
-            <label class="flabel">Every (hours)
+            <label class="flabel">Every (maint hrs)
               <input type="number" name="interval_hours" id="emm-interval-hours" min="0.1" step="0.1" class="finput" placeholder="e.g. 100">
             </label>
           </div>

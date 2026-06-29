@@ -5961,12 +5961,13 @@ def manage_aircraft_detail(request, club_slug, aircraft_id):
                 if m.interval_days:
                     import datetime as _dt
                     m.due_date = _today + _dt.timedelta(days=int(m.interval_days))
-                # Snapshot current Hobbs/tacho for hours-based items
+                # Snapshot current maintenance hours for hours-based items
                 _last_log = ac.maint_log.order_by('-date', '-id').first()
-                if _last_log and _last_log.hobbs_reading is not None:
-                    m.last_completed_hours = _last_log.hobbs_reading
-                    if m.interval_hours and m.last_completed_hours is not None:
-                        m.due_hours = float(m.last_completed_hours) + float(m.interval_hours)
+                if _last_log:
+                    _snap = float(_last_log.maint_hours_total)
+                    m.last_completed_hours = _snap
+                    if m.interval_hours:
+                        m.due_hours = _snap + float(m.interval_hours)
                 m.save()
                 m.recalc_urgency()
                 m.save(update_fields=['urgency'])
