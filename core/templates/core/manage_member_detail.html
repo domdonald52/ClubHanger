@@ -191,11 +191,13 @@
         <label class="flabel">Last renewed<input type="date" value="{{ member.last_renewed|date:'Y-m-d' }}" class="finput" disabled style="opacity:.5;"></label>
         <label class="flabel">Join date<input type="text" value="{{ member.join_date }}" class="finput" disabled style="opacity:.5;"></label>
       </div>
-      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-top:.5rem;">
-        <button type="submit" class="btn">Save</button>
-        {% if club_member.is_admin and not existing_sub_invoice %}
-        <button type="button" class="cbtn" onclick="document.getElementById('sub-inv-modal').hidden=false">Generate subscription invoice</button>
-        {% endif %}
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-top:.7rem;">
+        <div>
+          {% if club_member.is_admin and not existing_sub_invoice %}
+          <button type="button" class="cbtn" onclick="document.getElementById('sub-inv-modal').hidden=false">Generate subscription invoice</button>
+          {% endif %}
+        </div>
+        <button type="submit" class="cbtn primary">Save</button>
       </div>
     </form>
     {% if existing_sub_invoice %}
