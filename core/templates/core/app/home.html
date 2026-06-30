@@ -48,6 +48,7 @@ body.dark-mode .ann-card { background: var(--surface-2) !important; }
   </div>
   <div style="font-size:.88rem;font-weight:700;color:var(--text-1);">{{ ann.title }}</div>
   {% if ann.body %}<div style="font-size:.8rem;color:var(--text-2);margin-top:.3rem;line-height:1.45;">{{ ann.body }}</div>{% endif %}
+  {% if ann.image %}<img src="{{ ann.image.url }}" alt="" style="width:100%;border-radius:8px;margin-top:.6rem;display:block;object-fit:cover;max-height:220px;">{% endif %}
 </div>
 {% endfor %}
 
@@ -117,6 +118,25 @@ body.dark-mode .ann-card { background: var(--surface-2) !important; }
     <i class="ti ti-search" style="margin-right:.35rem;vertical-align:middle;"></i>Find a slot
   </a>
 </div>
+
+<!-- ── Personal stats ── -->
+{% if stats_month.flights or stats_fy.flights %}
+<div class="app-card" style="margin-top:.75rem;">
+  <div class="app-card-title" style="margin-bottom:.7rem;">Your flying</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+    <div style="background:var(--surface-2);border-radius:10px;padding:.65rem .8rem;">
+      <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.3rem;">This month</div>
+      <div style="font-size:1.1rem;font-weight:750;color:var(--text-1);line-height:1.1;">{{ stats_month.hrs|floatformat:1 }}<span style="font-size:.7rem;font-weight:500;color:var(--text-3);margin-left:.2rem;">hrs</span></div>
+      <div style="font-size:.75rem;color:var(--text-3);margin-top:.2rem;">{{ stats_month.flights }} flight{{ stats_month.flights|pluralize }} · ${{ stats_month.spend|floatformat:0 }}</div>
+    </div>
+    <div style="background:var(--surface-2);border-radius:10px;padding:.65rem .8rem;">
+      <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.3rem;">This FY</div>
+      <div style="font-size:1.1rem;font-weight:750;color:var(--text-1);line-height:1.1;">{{ stats_fy.hrs|floatformat:1 }}<span style="font-size:.7rem;font-weight:500;color:var(--text-3);margin-left:.2rem;">hrs</span></div>
+      <div style="font-size:.75rem;color:var(--text-3);margin-top:.2rem;">{{ stats_fy.flights }} flight{{ stats_fy.flights|pluralize }} · ${{ stats_fy.spend|floatformat:0 }}</div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <div class="gap-md"></div>
 {% endblock %}

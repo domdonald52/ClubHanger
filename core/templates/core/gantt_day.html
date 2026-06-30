@@ -468,14 +468,15 @@
 <!-- Watch slot (shown to non-staff clicking another member's booking) -->
 <div id="watch-modal" class="modal-back" hidden>
   <div class="modal small">
-    <h2 id="wm-title" style="margin-bottom:.35rem;">Booking</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span id="wm-title">Booking</span></div>
+      <button class="pi-close" id="wm-close" type="button" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <p id="wm-detail" style="font-size:.83rem;color:var(--text-2);margin:0 0 1.1rem;"></p>
     <p style="font-size:.83rem;color:var(--text-2);margin:0 0 1rem;">
       Watch this slot to get an alert if it's released for others to take.
     </p>
     <div class="modal-actions">
-      <button class="cbtn" id="wm-close" type="button">Close</button>
-      <span style="flex:1"></span>
       <button class="cbtn primary" id="wm-watch" type="button"
               style="display:inline-flex;align-items:center;gap:.35rem;">
         <svg width="13" height="13" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 7.5S3.5 2 7.5 2s6.5 5.5 6.5 5.5S12.5 13 7.5 13 1 7.5 1 7.5z"/><circle cx="7.5" cy="7.5" r="2"/></svg>

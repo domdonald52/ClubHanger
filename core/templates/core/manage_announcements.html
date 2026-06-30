@@ -65,7 +65,7 @@
       </div>
       <button type="button" class="pi-close" onclick="document.getElementById('add-ann-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="hidden" name="action" value="create">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;">
@@ -88,13 +88,22 @@
         <label class="flabel">Expires after
           <input type="date" name="expires_at" class="finput">
         </label>
-        <label class="flabel" style="grid-column:1/-1;display:flex;align-items:center;gap:.5rem;cursor:pointer;">
-          <input type="checkbox" name="is_pinned"> Pin to top of home screen
+        <label class="flabel" style="grid-column:1/-1;display:flex;flex-direction:column;gap:.4rem;">Pin to top of home screen
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;cursor:pointer;">
+            <span class="tog-sw">
+              <input type="checkbox" name="is_pinned">
+              <span class="tog-track"></span>
+            </span>
+            Show pinned above other announcements
+          </label>
+        </label>
+        <label class="flabel" style="grid-column:1/-1;">Photo <span style="font-weight:400;color:var(--text-3);">(optional — shown in mobile app)</span>
+          <input type="file" name="image" class="finput" accept="image/*" style="margin-top:.3rem;">
+          <span style="font-size:.75rem;color:var(--text-3);margin-top:.25rem;display:block;">Recommended: 1200 × 600 px, JPEG or PNG, under 2 MB</span>
         </label>
       </div>
-      <div class="modal-actions" style="margin-top:1.2rem;">
+      <div class="modal-actions" style="margin-top:1.2rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Create</button>
-        <button type="button" class="cbtn" onclick="document.getElementById('add-ann-modal').hidden=true">Cancel</button>
       </div>
     </form>
   </div>
@@ -111,7 +120,7 @@
       </div>
       <button type="button" class="pi-close" onclick="document.getElementById('edit-ann-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
     </div>
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="hidden" name="action" value="edit">
       <input type="hidden" name="ann_id" id="edit-id">
@@ -135,13 +144,23 @@
         <label class="flabel">Expires after
           <input type="date" name="expires_at" id="edit-expires" class="finput">
         </label>
-        <label class="flabel" style="grid-column:1/-1;display:flex;align-items:center;gap:.5rem;cursor:pointer;">
-          <input type="checkbox" name="is_pinned" id="edit-pinned"> Pin to top of home screen
+        <label class="flabel" style="grid-column:1/-1;display:flex;flex-direction:column;gap:.4rem;">Pin to top of home screen
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;cursor:pointer;">
+            <span class="tog-sw">
+              <input type="checkbox" name="is_pinned" id="edit-pinned">
+              <span class="tog-track"></span>
+            </span>
+            Show pinned above other announcements
+          </label>
+        </label>
+        <label class="flabel" style="grid-column:1/-1;">Photo <span style="font-weight:400;color:var(--text-3);">(optional — shown in mobile app)</span>
+          <input type="file" name="image" class="finput" accept="image/*" style="margin-top:.3rem;">
+          <span style="font-size:.75rem;color:var(--text-3);margin-top:.25rem;display:block;">Recommended: 1200 × 600 px, JPEG or PNG, under 2 MB. Leave blank to keep existing photo.</span>
         </label>
       </div>
-      <div class="modal-actions" style="margin-top:1.2rem;">
-        <button type="submit" class="cbtn primary">Save</button>
+      <div class="modal-actions" style="margin-top:1.2rem;justify-content:flex-end;">
         <button type="button" class="cbtn" onclick="document.getElementById('edit-ann-modal').hidden=true">Cancel</button>
+        <button type="submit" class="cbtn primary">Save</button>
       </div>
     </form>
   </div>

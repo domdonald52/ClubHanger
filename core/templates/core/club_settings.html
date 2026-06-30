@@ -901,7 +901,10 @@
     <!-- Edit occurrence type modal -->
     <div id="edit-occ-type-modal" class="modal-back" hidden>
       <div class="modal" style="min-width:340px;">
-        <h2>Edit occurrence type</h2>
+        <div class="modal-header">
+          <div class="modal-nav"><span>Edit occurrence type</span></div>
+          <button type="button" class="pi-close" onclick="document.getElementById('edit-occ-type-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+        </div>
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="edit_occurrence_type">
@@ -913,9 +916,7 @@
             <input type="text" name="ot_desc" id="edit-ot-desc" class="finput">
           </label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-occ-type-modal').hidden=true">Close</button>
-            <span style="flex:1"></span>
-            <button type="submit" class="cbtn" data-dirty-save>Save</button>
+            <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
           </div>
         </form>
       </div>
@@ -983,7 +984,10 @@
     <!-- Edit contact type modal -->
     <div id="edit-ct-modal" class="modal-back" hidden>
       <div class="modal" style="min-width:320px;">
-        <h2>Edit contact type</h2>
+        <div class="modal-header">
+          <div class="modal-nav"><span>Edit contact type</span></div>
+          <button type="button" class="pi-close" onclick="document.getElementById('edit-ct-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+        </div>
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="edit_contact_type">
@@ -992,9 +996,7 @@
             <input type="text" name="ct_name" id="edit-ct-name" class="finput" required>
           </label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-ct-modal').hidden=true">Close</button>
-            <span style="flex:1"></span>
-            <button type="submit" class="cbtn" data-dirty-save>Save</button>
+            <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
           </div>
         </form>
       </div>
@@ -1068,7 +1070,10 @@
     <!-- Edit voucher type modal -->
     <div id="edit-vt-modal" class="modal-back" hidden>
       <div class="modal" style="width:min(460px,95vw);">
-        <h2>Edit voucher type</h2>
+        <div class="modal-header">
+          <div class="modal-nav"><span>Edit voucher type</span></div>
+          <button type="button" class="pi-close" onclick="document.getElementById('edit-vt-modal').hidden=true" title="Close"><i class="ti ti-x"></i></button>
+        </div>
         <form method="post">
           {% csrf_token %}
           <input type="hidden" name="action" value="edit_voucher_type">
@@ -1080,9 +1085,7 @@
           </div>
           <label class="flabel">Description<input type="text" name="vt_desc" id="edit-vt-desc" class="finput" placeholder="Optional"></label>
           <div class="modal-actions">
-            <button type="button" class="cbtn" onclick="document.getElementById('edit-vt-modal').hidden=true">Close</button>
-            <span style="flex:1"></span>
-            <button type="submit" class="cbtn" data-dirty-save>Save</button>
+            <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
           </div>
         </form>
       </div>
@@ -1638,29 +1641,34 @@
 <!-- Add flight type -->
 <div id="add-ft-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(420px,95vw);">
-    <h2>Add flight type</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span>Add flight type</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('add-ft-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="add_flight_type">
       <label class="flabel">Name
         <input type="text" name="ft_name" required class="finput" placeholder="e.g. Trial Flight – Harbour Circuit">
       </label>
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem;">
-        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
-          <input type="checkbox" name="ft_is_solo"> Solo (hides instructor field)
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.6rem;">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;cursor:pointer;">
+          <span class="tog-sw"><input type="checkbox" name="ft_is_solo"><span class="tog-track"></span></span>
+          Solo (hides instructor field)
         </label>
-        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
-          <input type="checkbox" name="ft_for_contacts"> Contact flight (trial, Young Eagles, etc.)
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;cursor:pointer;">
+          <span class="tog-sw"><input type="checkbox" name="ft_for_contacts"><span class="tog-track"></span></span>
+          Contact flight (trial, Young Eagles, etc.)
         </label>
-        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
-          <input type="checkbox" name="ft_is_training"> Training
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;cursor:pointer;">
+          <span class="tog-sw"><input type="checkbox" name="ft_is_training"><span class="tog-track"></span></span>
+          Training
         </label>
-        <label class="flabel" style="display:flex;align-items:center;gap:.4rem;">
-          <input type="checkbox" name="ft_is_trial"> Trial flight
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.85rem;cursor:pointer;">
+          <span class="tog-sw"><input type="checkbox" name="ft_is_trial"><span class="tog-track"></span></span>
+          Trial flight
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-ft-modal')">Close</button>
-        <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add flight type</button>
       </div>
     </form>
@@ -1670,7 +1678,10 @@
 <!-- Edit flight type -->
 <div id="edit-ft-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(360px,95vw);">
-    <h2>Rename flight type</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span>Rename flight type</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('edit-ft-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="edit_flight_type">
       <input type="hidden" name="ft_id" id="eft-id">
@@ -1678,9 +1689,7 @@
         <input type="text" name="ft_name" id="eft-name" required class="finput">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-ft-modal')">Close</button>
-        <span style="flex:1"></span>
-        <button type="submit" class="cbtn" data-dirty-save>Save</button>
+        <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1689,7 +1698,10 @@
 <!-- Add instructor grade -->
 <div id="add-ig-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(420px,95vw);">
-    <h2>Add instructor grade</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span>Add instructor grade</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('add-ig-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="add_instructor_grade">
       <label class="flabel">Grade name
@@ -1702,8 +1714,6 @@
         </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-ig-modal')">Close</button>
-        <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add grade</button>
       </div>
     </form>
@@ -1713,7 +1723,10 @@
 <!-- Edit instructor grade -->
 <div id="edit-ig-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(420px,95vw);">
-    <h2>Edit instructor grade</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span>Edit instructor grade</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('edit-ig-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="edit_instructor_grade">
       <input type="hidden" name="ig_id" id="eig-id">
@@ -1727,9 +1740,7 @@
         </div>
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-ig-modal')">Close</button>
-        <span style="flex:1"></span>
-        <button type="submit" class="cbtn" data-dirty-save>Save</button>
+        <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1738,7 +1749,10 @@
 <!-- Add surcharge type -->
 <div id="add-sc-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(460px,95vw);">
-    <h2>Add surcharge type</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span>Add surcharge type</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('add-sc-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="add_surcharge_type">
       <label class="flabel">Name
@@ -1762,8 +1776,6 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-sc-modal')">Close</button>
-        <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add surcharge</button>
       </div>
     </form>
@@ -1773,7 +1785,10 @@
 <!-- Edit surcharge type -->
 <div id="edit-sc-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(460px,95vw);">
-    <h2>Edit surcharge type</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span>Edit surcharge type</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('edit-sc-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="edit_surcharge_type">
       <input type="hidden" name="st_id" id="esc-id">
@@ -1798,9 +1813,7 @@
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-sc-modal')">Close</button>
-        <span style="flex:1"></span>
-        <button type="submit" class="cbtn" data-dirty-save>Save</button>
+        <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1809,7 +1822,10 @@
 <!-- Add block-out type (shared for all three targets) -->
 <div id="add-bot-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(400px,95vw);">
-    <h2 id="add-bot-title">Add block-out type</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span id="add-bot-title">Add block-out type</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('add-bot-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="add_blockout_type">
       <input type="hidden" name="bot_target" id="add-bot-target" value="aircraft">
@@ -1821,13 +1837,17 @@
           <input type="color" name="bot_color" id="add-bot-color" value="#e67e22"
                  style="display:block;width:48px;height:36px;margin-top:.25rem;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
         </label>
-        <label class="flabel" id="add-bot-hard-wrap" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.6rem;">
-          <input type="checkbox" name="bot_is_hard" id="add-bot-hard" checked> Hard block
+        <label class="flabel" id="add-bot-hard-wrap" style="display:flex;flex-direction:column;gap:.4rem;">Hard block
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;cursor:pointer;">
+            <span class="tog-sw">
+              <input type="checkbox" name="bot_is_hard" id="add-bot-hard" checked>
+              <span class="tog-track"></span>
+            </span>
+            Block all bookings
+          </label>
         </label>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('add-bot-modal')">Close</button>
-        <span style="flex:1"></span>
         <button type="submit" class="cbtn primary">Add type</button>
       </div>
     </form>
@@ -1837,7 +1857,10 @@
 <!-- Edit block-out type -->
 <div id="edit-bot-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(360px,95vw);">
-    <h2>Edit block-out type</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span>Edit block-out type</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('edit-bot-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="edit_blockout_type">
       <input type="hidden" name="bot_id" id="ebt-id">
@@ -1849,9 +1872,7 @@
                style="display:block;width:48px;height:36px;margin-top:.25rem;border:1px solid var(--input-border);border-radius:6px;padding:0;cursor:pointer;">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-bot-modal')">Close</button>
-        <span style="flex:1"></span>
-        <button type="submit" class="cbtn" data-dirty-save>Save</button>
+        <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
       </div>
     </form>
   </div>
@@ -1859,7 +1880,10 @@
 
 <div id="edit-at-modal" class="modal-back" hidden>
   <div class="modal" style="width:min(360px,95vw);">
-    <h2>Edit aircraft type</h2>
+    <div class="modal-header">
+      <div class="modal-nav"><span>Edit aircraft type</span></div>
+      <button type="button" class="pi-close" onclick="sCloseModal('edit-at-modal')" title="Close"><i class="ti ti-x"></i></button>
+    </div>
     <form method="post">{% csrf_token %}
       <input type="hidden" name="action" value="edit_aircraft_type">
       <input type="hidden" name="at_id" id="eat-id">
@@ -1870,9 +1894,7 @@
         <input type="text" name="at_icao" id="eat-icao" class="finput" maxlength="10" placeholder="e.g. C172">
       </label>
       <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="cbtn" onclick="sCloseModal('edit-at-modal')">Close</button>
-        <span style="flex:1"></span>
-        <button type="submit" class="cbtn" data-dirty-save>Save</button>
+        <button type="submit" class="cbtn primary" data-dirty-save>Save</button>
       </div>
     </form>
   </div>

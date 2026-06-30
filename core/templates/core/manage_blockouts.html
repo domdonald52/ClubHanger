@@ -137,8 +137,14 @@
         </label>
       </div>
 
-      <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;">
-        <input type="checkbox" name="all_day" id="add-bo-allday" checked onchange="toggleBoTime(this,'add-bo-times')"> All day
+      <label class="flabel" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.5rem;">All day
+        <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;cursor:pointer;">
+          <span class="tog-sw">
+            <input type="checkbox" name="all_day" id="add-bo-allday" checked onchange="toggleBoTime(this,'add-bo-times')">
+            <span class="tog-track"></span>
+          </span>
+          Block entire day
+        </label>
       </label>
       <div id="add-bo-times" style="display:none;gap:.7rem;flex-wrap:wrap;margin-bottom:.5rem;">
         <label class="flabel">Start<input type="time" name="start_time" class="finput" value="08:00"></label>
@@ -203,8 +209,14 @@
         </label>
       </div>
 
-      <label class="flabel" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;">
-        <input type="checkbox" name="all_day" id="ebm-allday" onchange="toggleBoTime(this,'ebm-times')"> All day
+      <label class="flabel" style="display:flex;flex-direction:column;gap:.4rem;margin-bottom:.5rem;">All day
+        <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;cursor:pointer;">
+          <span class="tog-sw">
+            <input type="checkbox" name="all_day" id="ebm-allday" onchange="toggleBoTime(this,'ebm-times')">
+            <span class="tog-track"></span>
+          </span>
+          Block entire day
+        </label>
       </label>
       <div id="ebm-times" style="display:none;gap:.7rem;flex-wrap:wrap;margin-bottom:.5rem;">
         <label class="flabel">Start<input type="time" name="start_time" id="ebm-start" class="finput"></label>

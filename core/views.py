@@ -2396,6 +2396,7 @@ def manage_announcements(request, club_slug):
                 event_date=request.POST.get('event_date') or None,
                 expires_at=request.POST.get('expires_at') or None,
                 is_pinned=request.POST.get('is_pinned') == 'on',
+                image=request.FILES.get('image') or None,
                 created_by=request.user,
             )
         elif action == 'edit':
@@ -2406,6 +2407,8 @@ def manage_announcements(request, club_slug):
             ann.event_date = request.POST.get('event_date') or None
             ann.expires_at = request.POST.get('expires_at') or None
             ann.is_pinned = request.POST.get('is_pinned') == 'on'
+            if request.FILES.get('image'):
+                ann.image = request.FILES['image']
             ann.save()
         elif action == 'delete':
             Announcement.objects.filter(club=club, id=request.POST.get('ann_id')).delete()
@@ -7600,10 +7603,19 @@ def invoice_detail(request, club_slug, invoice_id):
         actor = ClubMember.objects.get(user=request.user, club=club)
     except ClubMember.DoesNotExist:
         return redirect('login')
-    if err := require_staff(actor, club, request): return err
+    _is_own_invoice = invoice.member_id == actor.id
+    if not _is_own_invoice:
+        if err := require_staff(actor, club, request): return err
 
     config = get_config(club)
     error = success = ''
+
+    # Non-staff members viewing own invoice — read-only, no POST actions
+    _is_mobile_view = request.GET.get('back', '').startswith('/app/')
+    _readonly_view  = _is_own_invoice and not actor.is_staff
+
+    if _readonly_view and request.method == 'POST':
+        return redirect(request.path)
 
     # Auto-issue draft membership invoices — they should never sit in draft
     if request.method == 'GET' and invoice.status == Invoice.STATUS_DRAFT and invoice.subscription_expiry_date:
@@ -7825,7 +7837,8 @@ def invoice_detail(request, club_slug, invoice_id):
         'invoice': invoice, 'line_items': line_items, 'config': config,
         'error': error, 'success': success,
         'member_account_balance': _member_acct.balance if _member_acct else None,
-        'base_template': 'core/base_inline.html' if _is_inline else 'core/base.html',
+        'base_template': 'core/app/base.html' if _is_mobile_view else ('core/base_inline.html' if _is_inline else 'core/base.html'),
+        'is_mobile_view': _is_mobile_view,
         'session_payments': _det_session,
         'arrears_clearance_at': _det_arrears_at,
         'arrears_flights': _det_arrears_flights,
@@ -11948,6 +11961,23 @@ def app_home(request, club_slug):
         expiry_date__lte=expiry_threshold,
     ).select_related('credential_type').order_by('expiry_date'))
 
+    # Personal stats — this month and FY-to-date
+    config = get_config(club)
+    _fy_month = config.fy_start_month
+    _fy_start = _d(today.year if today.month >= _fy_month else today.year - 1, _fy_month, 1)
+    _month_start = _d(today.year, today.month, 1)
+    _stats_qs = _FC.objects.filter(
+        booking__member=actor, booking__club=club,
+        booking__status=BookingStatus.COMPLETED,
+    )
+    def _agg(qs):
+        from django.db.models import Sum as _S, Count as _C
+        r = qs.aggregate(flights=_C('id'), hrs=_S('total_duration'), spend=_S('total_charge'))
+        hrs = r['hrs'] or _D('0')
+        return {'flights': r['flights'] or 0, 'hrs': float(hrs), 'spend': r['spend'] or _D('0')}
+    stats_month = _agg(_stats_qs.filter(completed_at__date__gte=_month_start))
+    stats_fy    = _agg(_stats_qs.filter(completed_at__date__gte=_fy_start))
+
     # Active announcements (pinned first, then newest)
     from django.db.models import Q as _Q
     announcements = list(_Ann.objects.filter(
@@ -12010,6 +12040,9 @@ def app_home(request, club_slug):
         'first_slot_time': first_slot_time,
         'available_ac_regs': available_ac_regs,
         'greeting_word': greeting_word,
+        'stats_month': stats_month,
+        'stats_fy': stats_fy,
+        'fy_start': _fy_start,
     })
 
 

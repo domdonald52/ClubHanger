@@ -100,7 +100,7 @@
 </div>
 <div class="app-list">
   {% for inv in paid_receipts %}
-  <a href="{% url 'core:invoice_detail' club.slug inv.id %}?back={{ request.path|urlencode }}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);text-decoration:none;color:inherit;">
+  <a href="{% url 'core:invoice_print' club.slug inv.id %}?back={{ request.path|urlencode }}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);text-decoration:none;color:inherit;">
     <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;background:var(--success);"></div>
     <div class="app-list-main">
       <div class="app-list-title" style="font-size:.87rem;">{{ inv.display_number }}{% if inv.flight_completion %} · {{ inv.flight_completion.booking.aircraft.registration }}{% endif %}</div>

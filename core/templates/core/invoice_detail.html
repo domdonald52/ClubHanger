@@ -23,8 +23,8 @@
       {% else %}
       <span class="inv-badge inv-{{ invoice.status }}">{{ invoice.get_status_display }}</span>
       {% endif %}
-      <a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn-sm cbtn-icon" title="Preview / print / email"><i class="ti ti-eye"></i></a>
-      {% if invoice.flight_completion %}
+      {% if not is_mobile_view %}<a href="{% url 'core:invoice_print' club.slug invoice.id %}" target="_blank" class="cbtn-sm cbtn-icon" title="Preview / print / email"><i class="ti ti-eye"></i></a>{% endif %}
+      {% if invoice.flight_completion and not is_mobile_view %}
       <a href="{% url 'core:booking_detail' club.slug invoice.flight_completion.booking.id %}" class="cbtn" data-overlay data-overlay-wide>View booking</a>
       {% endif %}
     </div>
@@ -162,8 +162,8 @@
   {% endif %}
   {% endwith %}
 
-  <!-- Actions card -->
-  {% if invoice.status == 'draft' or invoice.status == 'sent' %}
+  <!-- Actions card — management only, hidden in mobile member view -->
+  {% if not is_mobile_view and invoice.status == 'draft' or not is_mobile_view and invoice.status == 'sent' %}
   <div class="inv-card" style="margin-bottom:1.2rem;">
     <div class="inv-card-head">Actions</div>
 

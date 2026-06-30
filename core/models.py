@@ -621,6 +621,8 @@ class Announcement(models.Model):
                                   help_text="Optional date — appears on calendar on that day")
     expires_at = models.DateField(null=True, blank=True,
                                   help_text="Hide from home screen after this date (blank = always show)")
+    image      = models.ImageField(upload_to='announcements/', null=True, blank=True,
+                                   help_text="Optional photo — displayed in the mobile app. Deleted automatically when the announcement expires.")
     is_pinned  = models.BooleanField(default=False)
     created_by = models.ForeignKey('User', on_delete=models.SET_NULL,
                                    null=True, blank=True, related_name='+')

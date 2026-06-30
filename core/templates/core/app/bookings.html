@@ -102,13 +102,13 @@
     </div>
   </div>
 
-  <!-- Declaration prompt — solo flights that require one -->
+  <!-- Declaration — required warning shown when flight type mandates it -->
   <div id="bk-decl-section" style="display:none;margin-bottom:.9rem;">
-    <div style="background:var(--warning-bg);border:1px solid color-mix(in srgb,var(--warning) 35%,var(--border));border-radius:10px;padding:.75rem .9rem;margin-bottom:.6rem;">
+    <div id="bk-decl-warning" style="display:none;background:var(--warning-bg);border:1px solid color-mix(in srgb,var(--warning) 35%,var(--border));border-radius:10px;padding:.75rem .9rem;margin-bottom:.6rem;">
       <div style="font-size:.82rem;font-weight:600;color:var(--warning-text);margin-bottom:.2rem;">⚠ Pre-departure declaration required</div>
       <div style="font-size:.78rem;color:var(--warning-text);opacity:.85;">Complete your declaration before this flight can depart.</div>
     </div>
-    <a id="bk-decl-link" href="#" class="app-btn" style="display:block;text-align:center;">Complete declaration →</a>
+    <a id="bk-decl-link" href="#" class="app-btn" style="display:block;text-align:center;">Pre-departure declaration →</a>
   </div>
 
   <div id="bk-cancel-section" style="display:none;">
@@ -152,11 +152,13 @@
       typeWrap.style.display = 'none';
     }
 
-    // Declaration prompt
+    // Declaration — show for all pending/confirmed bookings
     var declSec = document.getElementById('bk-decl-section');
-    declSec.style.display = d.needsDecl === '1' ? '' : 'none';
-    if (d.needsDecl === '1') {
+    var showDecl = d.cancellable === '1' && d.declUrl;
+    declSec.style.display = showDecl ? '' : 'none';
+    if (showDecl) {
       document.getElementById('bk-decl-link').href = d.declUrl;
+      document.getElementById('bk-decl-warning').style.display = d.needsDecl === '1' ? '' : 'none';
     }
 
     var cancelSec = document.getElementById('bk-cancel-section');
