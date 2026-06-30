@@ -2198,6 +2198,30 @@ document.querySelectorAll('.fee-amend-btn').forEach(btn => {
   });
 });
 
+// ── Role permission toggles — fetch submit, no page reload ─────────────────
+document.querySelectorAll('.perm-form').forEach(function(form) {
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const btn = form.querySelector('button[type=submit]');
+    const newVal = btn.value;
+    const active = newVal === '0'; // '0' means currently active → toggling off; '1' means off → toggling on
+    const fd = new FormData(form);
+    fd.set('value', newVal);
+    fetch('', {method:'POST', body:fd, credentials:'same-origin'})
+      .then(function(r) {
+        if (r.ok || r.redirected) {
+          const isNowActive = newVal === '1';
+          btn.classList.toggle('ft-pill-active', isNowActive);
+          btn.textContent = isNowActive ? '✓' : '–';
+          btn.value = isNowActive ? '0' : '1';
+        } else {
+          if (window.toast) window.toast('Save failed', 'err');
+        }
+      })
+      .catch(function() { if (window.toast) window.toast('Save failed', 'err'); });
+  });
+});
+
 // ── Budget grid row totals ──────────────────────────────────────────────────
 window.updateRowTotal = function(inp) {
   const row = inp.closest('tr');

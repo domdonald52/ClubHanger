@@ -324,11 +324,18 @@ body.dark-mode .part{color:#fb923c;}
       <p>A <strong>role</strong> is a system-level category that controls what a person in Club Hangar can access and how the billing cycle applies to them. Some roles map naturally to club membership categories (Full Member, Student Pilot, Life Member), but a role is not the same thing as club membership. A person can have a system account — and therefore appear on bookings, flight records, and safety reports — without being a member of the incorporated society. An external CFI, for example, has a system role but is not on the ISA register and pays no subscription.</p>
       <p>Three system roles exist by default and cannot be deleted:</p>
       <ul>
-        <li><strong>Admin</strong> — all permission flags implied. Full access to every page including Settings and Types.</li>
+        <li><strong>Admin</strong> — all permission flags implied. Full access to every management page including Settings and Types.</li>
         <li><strong>Instructor</strong> — Ops &amp; People + Manage all bookings. See the permission flags below for exactly what this covers.</li>
         <li><strong>Member</strong> — mobile app and Gantt (booking requests only) by default. No management pages.</li>
       </ul>
       <p>Custom roles have a configurable permission matrix. Every flag is independent — you can mix and match for roles like "Club Secretary" (Ops &amp; People, no fleet) or "Safety Officer" (Safety only).</p>
+
+      <p><strong>Per-person access overrides</strong> — on each member's Membership tab, visible only to admins:</p>
+      <ul>
+        <li><em>Config access override <span style="font-size:.75rem;font-weight:600;padding:.1rem .3rem;border-radius:3px;background:var(--warning-bg);color:var(--warning-text);border:1px solid #e9c46a;">CFG↑</span></em> — grants Config (Settings) access regardless of role. Useful for a secretary or CFI who needs admin access without a formal Admin role.</li>
+        <li><em>Superadmin <span style="font-size:.75rem;font-weight:600;padding:.1rem .3rem;border-radius:3px;background:color-mix(in srgb,var(--primary) 15%,var(--surface));color:var(--primary);border:1px solid var(--primary);">SA</span></em> — grants the ability to perform destructive operations: delete a member, void a check-in, make manual account adjustments, and run the integrity fix tools. Only a current superadmin can grant or revoke this flag. At least one superadmin must always exist. To grant: open the member's profile → Membership tab → tick Superadmin → Save.</li>
+      </ul>
+      <p>Both badges are visible in the Members list to admins only, so you can see at a glance who holds elevated access.</p>
 
       <div class="callout info" style="margin-bottom:1rem;">
         <strong>All members can use the Gantt regardless of role.</strong> Any authenticated member can open the booking calendar, see available slots, and submit a booking <em>request</em>. Requests land as Pending and must be confirmed by someone with Ops &amp; People access. Role flags control what happens beyond that.
@@ -358,7 +365,7 @@ body.dark-mode .part{color:#fb923c;}
 
       <p><strong>Config</strong> — unlocks Settings and Types. Anyone with this flag is treated as an admin by the system regardless of other flags. Assign only to people who should be able to change billing configuration, roles, flight types, and club-wide settings.</p>
 
-      <p><strong>Superadmin</strong> — all of the above, implied, and cannot be partially restricted. Use for the club manager or system owner. Equivalent to ticking every flag individually, but future permission areas are also covered automatically.</p>
+      <p><strong>Superadmin</strong> — not a role flag. Granted per person via the Superadmin toggle on their Membership tab (see above). Implies all permissions plus access to destructive operations.</p>
 
       <p><strong>Renewal required</strong> — members on this role are included in the annual subscription cycle and will be flagged on the Integrity page if their subscription has lapsed. Uncheck for life members, non-member instructors, or anyone whose account exists for operational purposes only and is not subject to annual renewal.</p>
 
