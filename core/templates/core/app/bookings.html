@@ -56,10 +56,13 @@
       {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
     </div>
     <div class="app-list-main">
-      <div class="app-list-title" style="color:var(--text-2);">{{ b.aircraft.registration }}</div>
+      <div class="app-list-title" style="color:var(--text-2);">{{ b.aircraft.registration }}
+        {% if b.fc_hours %}<span style="font-size:.75rem;font-weight:500;color:var(--text-3);margin-left:.35rem;">{{ b.fc_hours|floatformat:1 }} hrs</span>{% endif %}
+      </div>
       <div class="app-list-sub">{{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
         {% if b.flight_type %} &middot; {{ b.flight_type.name }}{% endif %}
       </div>
+      {% if b.has_lesson_note %}<a href="{% url 'core:app_training' club.slug %}#note-{{ b.lesson_note_id }}" style="font-size:.72rem;color:var(--primary);text-decoration:none;">Training note →</a>{% endif %}
     </div>
   </div>
   {% endfor %}

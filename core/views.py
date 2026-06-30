@@ -4903,7 +4903,8 @@ def app_flight_log(request, club_slug):
     # 1. Flights where this member was the booking pilot
     fc_qs = (FlightCompletion.objects
              .filter(booking__member=actor, booking__club=club, booking__status=BookingStatus.COMPLETED)
-             .select_related('booking__aircraft', 'booking__instructor', 'booking__flight_type')
+             .select_related('booking__aircraft', 'booking__instructor', 'booking__flight_type',
+                             'booking__lesson_note')
              .prefetch_related('segments')
              .order_by('-booking__scheduled_start'))
 
@@ -4925,6 +4926,10 @@ def app_flight_log(request, club_slug):
         hours = float(my_seg.hours or 0) if my_seg else float(fc.actual_flight_hours or 0)
         # For split flights, special hours are per-segment; for solo flights, on the FC
         _src = my_seg if my_seg else fc
+        try:
+            _note_id = fc.booking.lesson_note.id
+        except Exception:
+            _note_id = None
         entries.append({
             'date':             fc.booking.scheduled_start,
             'aircraft':         fc.booking.aircraft.registration,
@@ -4941,10 +4946,15 @@ def app_flight_log(request, club_slug):
             'fc_id':            fc.id,
             'seg_id':           my_seg.id if my_seg else None,
             'can_edit_special': True,
+            'note_id':          _note_id,
         })
 
     for seg in seg_qs:
         fc = seg.flight_completion
+        try:
+            _seg_note_id = fc.booking.lesson_note.id
+        except Exception:
+            _seg_note_id = None
         entries.append({
             'date':             fc.booking.scheduled_start,
             'aircraft':         fc.booking.aircraft.registration,
@@ -4961,6 +4971,7 @@ def app_flight_log(request, club_slug):
             'fc_id':            fc.id,
             'seg_id':           seg.id,
             'can_edit_special': True,
+            'note_id':          _seg_note_id,
         })
 
     entries.sort(key=lambda e: e['date'], reverse=True)
@@ -12294,10 +12305,25 @@ def app_bookings(request, club_slug):
                 .select_related('aircraft', 'flight_type', 'instructor', 'declaration')
                 .order_by('scheduled_start')[:20])
 
+    from .models import LessonNote as _LN
+    from django.db.models import Subquery, OuterRef, Sum, Exists
+    from decimal import Decimal as _D2
+    _fc_hours_sq = (FlightCompletion.objects
+                    .filter(booking_id=OuterRef('pk'))
+                    .order_by()
+                    .values('booking_id')
+                    .annotate(_t=Sum('actual_flight_hours'))
+                    .values('_t'))
+    _note_id_sq = _LN.objects.filter(booking_id=OuterRef('pk')).values('id')
     past = (Booking.objects
             .filter(member=actor, club=club, scheduled_start__date__lt=today)
             .exclude(status=BookingStatus.CANCELLED)
             .select_related('aircraft', 'flight_type')
+            .annotate(
+                fc_hours=Subquery(_fc_hours_sq),
+                has_lesson_note=Exists(_LN.objects.filter(booking_id=OuterRef('pk'))),
+                lesson_note_id=Subquery(_note_id_sq),
+            )
             .order_by('-scheduled_start')[:20])
 
     return render(request, 'core/app/bookings.html', {

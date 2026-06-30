@@ -88,6 +88,11 @@
     </div>
     {% endif %}
 
+    <!-- Training note link -->
+    {% if entry.note_id %}
+    <a href="{% url 'core:app_training' club.slug %}#note-{{ entry.note_id }}" style="display:inline-block;margin-top:.45rem;font-size:.72rem;color:var(--primary);text-decoration:none;">Training note →</a>
+    {% endif %}
+
     <!-- Special hours self-entry (booking pilot only) -->
     {% if entry.can_edit_special %}
     <details style="margin-top:.5rem;">

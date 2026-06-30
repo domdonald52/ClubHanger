@@ -10,7 +10,7 @@
 {% if notes %}
 <div style="padding:0 .9rem .9rem;">
   {% for note in notes %}
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.75rem;">
+  <div id="note-{{ note.id }}" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.75rem;scroll-margin-top:4rem;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem;">
       <div>
         <div style="font-size:.95rem;font-weight:700;color:var(--text-1);">{{ note.booking.scheduled_start|date:"j M Y" }}</div>
