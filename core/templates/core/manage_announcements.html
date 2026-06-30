@@ -68,7 +68,7 @@
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       <input type="hidden" name="action" value="create">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;padding-bottom:.4rem;">
         <label class="flabel" style="grid-column:1/-1;">Type
           <select name="type" class="finput">
             {% for val, label in type_choices %}
@@ -124,7 +124,7 @@
       {% csrf_token %}
       <input type="hidden" name="action" value="edit">
       <input type="hidden" name="ann_id" id="edit-id">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.7rem;padding-bottom:.4rem;">
         <label class="flabel" style="grid-column:1/-1;">Type
           <select name="type" id="edit-type" class="finput">
             {% for val, label in type_choices %}
