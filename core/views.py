@@ -4707,6 +4707,21 @@ def manage_member_detail(request, club_slug, member_id):
                 _email_note(_note, club)
                 return redirect(_detail_base + '?saved=1#training')
 
+        elif action == 'delete_member' and actor.role and actor.role.is_superadmin and member != actor:
+            from .models import AccountTransaction as _AT
+            from django.urls import reverse as _rev_del
+            has_bookings = Booking.objects.filter(club=club, member=member).exists()
+            has_tx = _AT.objects.filter(account__club_member=member).exists()
+            if has_bookings or has_tx:
+                return _inline_redirect(request, 'core:manage_member_detail',
+                                        club_slug=club_slug, member_id=member_id,
+                                        error='Cannot delete: member has bookings or financial history. Set their standing to Resigned instead.')
+            _user = member.user
+            member.delete()
+            if _user and not ClubMember.objects.filter(user=_user).exists():
+                _user.delete()
+            return redirect(_rev_del('core:manage_members', kwargs={'club_slug': club_slug}) + '?saved=1')
+
         return _inline_redirect(request, 'core:manage_member_detail', club_slug=club_slug, member_id=member_id, saved=_saved)
 
     from .models import MemberCredential, AccountTransaction, FrequentPassenger as _FP

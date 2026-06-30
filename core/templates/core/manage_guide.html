@@ -324,18 +324,45 @@ body.dark-mode .part{color:#fb923c;}
       <p>A <strong>role</strong> is a system-level category that controls what a person in Club Hangar can access and how the billing cycle applies to them. Some roles map naturally to club membership categories (Full Member, Student Pilot, Life Member), but a role is not the same thing as club membership. A person can have a system account — and therefore appear on bookings, flight records, and safety reports — without being a member of the incorporated society. An external CFI, for example, has a system role but is not on the ISA register and pays no subscription.</p>
       <p>Three system roles exist by default and cannot be deleted:</p>
       <ul>
-        <li><strong>Admin</strong> — full access to everything, including Settings and Types. Assign sparingly; this role carries all permissions implied.</li>
-        <li><strong>Instructor</strong> — access to the Gantt calendar, booking management, member detail pages (including financials), the invoice list, invoice detail, and reports. Cannot access the charges screen or settings.</li>
-        <li><strong>Member</strong> — the default for paying members: mobile app access and their own bookings only.</li>
+        <li><strong>Admin</strong> — all permission flags implied. Full access to every page including Settings and Types.</li>
+        <li><strong>Instructor</strong> — Ops &amp; People + Manage all bookings. See the permission flags below for exactly what this covers.</li>
+        <li><strong>Member</strong> — mobile app and Gantt (booking requests only) by default. No management pages.</li>
       </ul>
-      <p>Custom roles sit alongside these three and have fully configurable permission flags. The key flags to understand:</p>
+      <p>Custom roles have a configurable permission matrix. Every flag is independent — you can mix and match for roles like "Club Secretary" (Ops &amp; People, no fleet) or "Safety Officer" (Safety only).</p>
+
+      <div class="callout info" style="margin-bottom:1rem;">
+        <strong>All members can use the Gantt regardless of role.</strong> Any authenticated member can open the booking calendar, see available slots, and submit a booking <em>request</em>. Requests land as Pending and must be confirmed by someone with Ops &amp; People access. Role flags control what happens beyond that.
+      </div>
+
+      <p><strong>Bookings access</strong> — four levels:</p>
       <ul>
-        <li><strong>Bookings access</strong> — None, View own, Manage own, or Manage all. "Manage all" gives access to the full Gantt calendar, booking detail pages, and the ability to confirm, depart, and complete flights.</li>
-        <li><strong>Ops &amp; People, Safety, Fleet, Reports, Config</strong> — grant access to specific navigation sections. Config access reaches Settings and Types.</li>
-        <li><strong>All (superadmin)</strong> — implies every permission above. Use for club managers or system administrators who need unrestricted access.</li>
-        <li><strong>Renewal required</strong> — members on this role are included in the annual subscription cycle and will be auto-lapsed if their subscription expires. Uncheck this for roles where no subscription applies — an honorary life member, a non-member instructor, or a social member who does not fly.</li>
+        <li><em>None</em> — mobile app only; cannot view or create bookings anywhere.</li>
+        <li><em>View own</em> — can see their own bookings in the mobile app and Gantt; cannot create or modify.</li>
+        <li><em>Manage own</em> — can create, edit (while pending), and cancel their own bookings via Gantt and mobile app.</li>
+        <li><em>Manage all</em> — can create bookings for any member, confirm pending bookings, record departures and completions, and access the booking detail page for all bookings. Combined with <strong>Ops &amp; People</strong>, this is the full instructor/operational level.</li>
       </ul>
-      <p>Each role also carries an <strong>annual renewal fee</strong>. This pre-fills the amount when generating a subscription invoice for anyone on that role. It can be overridden per invoice, but a sensible default saves time at bulk renewal. Roles with no fee set will produce a blank amount field on the invoice modal — you will need to enter the amount manually.</p>
+
+      <p><strong>Ops &amp; People</strong> — unlocks the main management sections:</p>
+      <ul>
+        <li>Operations: Gantt calendar (management view), Bookings page (all bookings list and Attention tab), Block-outs</li>
+        <li>People: Members list, member detail pages (including credentials, account, and financial tabs), Contacts, Invites</li>
+        <li>Sales: Invoices list, invoice detail, mark invoice paid</li>
+        <li>Without this flag, "Manage all" bookings access only reaches the Gantt — not the full booking management or member finance pages.</li>
+      </ul>
+
+      <p><strong>Fleet</strong> — unlocks the Fleet section: aircraft list, individual aircraft detail (settings, rates, maintenance schedule, tech log), and airworthiness status. Does not include block-outs (those are under Ops &amp; People).</p>
+
+      <p><strong>Safety</strong> — unlocks the Safety section: all submitted occurrence reports, the safety action item register, and the ability to change a report's status or add internal notes. Members can always submit their own occurrence reports from the mobile app; this flag is for those who review and manage them.</p>
+
+      <p><strong>Reports</strong> — unlocks the Analytics section: utilisation charts, revenue summaries, hours by member, and any exported reports. Read-only; no data is modified.</p>
+
+      <p><strong>Config</strong> — unlocks Settings and Types. Anyone with this flag is treated as an admin by the system regardless of other flags. Assign only to people who should be able to change billing configuration, roles, flight types, and club-wide settings.</p>
+
+      <p><strong>Superadmin</strong> — all of the above, implied, and cannot be partially restricted. Use for the club manager or system owner. Equivalent to ticking every flag individually, but future permission areas are also covered automatically.</p>
+
+      <p><strong>Renewal required</strong> — members on this role are included in the annual subscription cycle and will be flagged on the Integrity page if their subscription has lapsed. Uncheck for life members, non-member instructors, or anyone whose account exists for operational purposes only and is not subject to annual renewal.</p>
+
+      <p>Each role also carries an <strong>annual renewal fee</strong>. This pre-fills the amount when generating a subscription invoice for anyone on that role. It can be overridden per invoice, but a sensible default saves time at bulk renewal. Roles with no fee set will produce a blank amount field on the invoice modal.</p>
 
       <h3 id="setup-budget">Budget</h3>
       <p>The Budget tab lets you set monthly hour targets for each aircraft in the current financial year. These budgeted hours appear in Reports as a variance chart — actual hours flown against plan. This is purely a planning and reporting aid; the budget has no effect on bookings, charges, or any other operational function.</p>
@@ -454,6 +481,19 @@ body.dark-mode .part{color:#fb923c;}
       <p>Go to <strong>Settings → Membership → Send renewal invoices</strong>. The page shows a preview list of all currently Active members with renewal-required roles who do not already have an outstanding subscription invoice. Check the list, then confirm. The system creates full-year invoices for everyone on the list in one action and sends each member a push notification and email. Members who already have a Sent invoice (from an earlier attempt) are skipped automatically.</p>
       <p>The invoice email includes the invoice amount, due date, and your club's bank account details for payment (from Settings → Billing → Bank account). Members pay by direct bank transfer outside the app — there is no in-app payment.</p>
       <p>Each invoice is dated today and carries a due date based on your payment terms (Settings → Billing → Payment terms). The expiry date on the invoice is set to FY end, which is the date the system will advance the member's <code>subscription_expires</code> to when you mark it paid.</p>
+
+      <h4 style="margin:.8rem 0 .3rem;font-size:.92rem;">Early-bird pricing (optional)</h4>
+      <p>If your club offers a discounted renewal fee for members who pay early, configure it in <strong>Settings → Membership → Early-bird amount</strong> and <strong>Early-bird cutoff</strong> before sending renewal invoices.</p>
+      <ul>
+        <li><strong>Early-bird amount</strong> — the discounted fee accepted as payment in full (e.g. $270 instead of the standard $300).</li>
+        <li><strong>Early-bird cutoff</strong> — expressed as a number of days before FY end. For example, 60 days with a 31 March FY end gives a cutoff of 31 January. The computed date is shown on the settings page so you can confirm it before sending.</li>
+      </ul>
+      <p>When both fields are set and you run the bulk renewal send, every invoice generated is stamped with the early-bird amount and cutoff date. The invoice (both the emailed PDF and the in-app detail page) shows the discounted rate prominently in green, with the cutoff date and the full amount if paid late. Members do not need to do anything differently — they simply pay; you record whether the payment arrived in time.</p>
+      <p><strong>When recording a payment:</strong> if the invoice has an active early-bird rate, the payment form shows a confirmation checkbox: <em>"I confirm this payment was received on or before [cutoff date]"</em>. You must tick this before the form will accept a payment at the discounted amount. This is intentional — it forces the bookkeeper to verify the payment date against the bank statement rather than applying the discount automatically. After the cutoff date passes, the checkbox disappears and the full invoice amount becomes due.</p>
+      <div class="callout warn">
+        <strong>Configure early-bird before sending invoices.</strong> The amounts are stamped onto each invoice at the time of generation. If you send invoices before setting up early-bird pricing, those invoices will not carry the discounted rate — you would need to void and regenerate them. Set it up first.
+      </div>
+      <p>If early-bird pricing is not used, leave both fields blank. The fields have no effect unless both are set.</p>
 
       <h4 style="margin:.8rem 0 .3rem;font-size:.92rem;">What happens automatically — expiry warning emails</h4>
       <p>Separately from the invoice, Club Hangar sends automatic reminder emails to members at <strong>30 days</strong> and <strong>7 days</strong> before their subscription expiry date. These are sent by the daily notification job and tell the member their subscription expires soon and to contact the club. They fire based on the <code>subscription_expires</code> date already on the member's record — independent of whether an invoice has been sent. Members who have already renewed (expiry date advanced) will not receive these reminders.</p>

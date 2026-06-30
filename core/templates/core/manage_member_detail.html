@@ -21,7 +21,14 @@
   </form>
 
   <!-- Profile header -->
-  <div class="profile-header">
+  <div class="profile-header" style="position:relative;">
+    {% if club_member.role.is_superadmin and member.id != club_member.id %}
+    <form method="post" style="position:absolute;top:0;right:0;margin:0;" data-confirm="Permanently delete {{ member.user.get_full_name }}? This cannot be undone.">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="delete_member">
+      <button type="submit" class="cbtn cbtn-sm cbtn-danger">Delete</button>
+    </form>
+    {% endif %}
     <div class="avatar-wrap">
       {% if member.avatar %}
         <img src="{{ member.avatar.url }}" class="avatar-lg">
@@ -80,19 +87,21 @@
         <label class="flabel">Home phone<input type="text" name="phone_home" value="{{ member.phone_home }}" class="finput"></label>
         <label class="flabel">Work phone<input type="text" name="phone_work" value="{{ member.phone_work }}" class="finput"></label>
       </div>
+      <div class="field-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:.6rem;">
+        <label class="flabel" style="grid-column:1/-1;">Address<input type="text" name="address_line1" value="{{ member.address_line1 }}" class="finput" placeholder="Street address"></label>
+        <label class="flabel">Line 2<input type="text" name="address_line2" value="{{ member.address_line2 }}" class="finput" placeholder="Apartment, suite, etc."></label>
+        <label class="flabel">Suburb<input type="text" name="suburb" value="{{ member.suburb }}" class="finput"></label>
+        <label class="flabel">Postcode<input type="text" name="postcode" value="{{ member.postcode }}" class="finput"></label>
+      </div>
       <h2 class="section-title" style="margin-top:1.2rem;">Next of kin</h2>
       <p style="font-size:.78rem;color:var(--text-3);margin:.1rem 0 .7rem;">Auto-filled on departure declarations; editable per flight.</p>
       <div class="field-grid">
         <label class="flabel">Name<input type="text" name="next_of_kin_name" value="{{ member.next_of_kin_name }}" class="finput" placeholder="Full name"></label>
         <label class="flabel">Phone<input type="text" name="next_of_kin_phone" value="{{ member.next_of_kin_phone }}" class="finput" placeholder="+64 …"></label>
       </div>
-      <div class="field-grid" style="grid-template-columns:1fr 1fr 1fr;">
-        <label class="flabel" style="grid-column:1/-1;">Address<input type="text" name="address_line1" value="{{ member.address_line1 }}" class="finput" placeholder="Street address"></label>
-        <label class="flabel">Line 2<input type="text" name="address_line2" value="{{ member.address_line2 }}" class="finput" placeholder="Apartment, suite, etc."></label>
-        <label class="flabel">Suburb<input type="text" name="suburb" value="{{ member.suburb }}" class="finput"></label>
-        <label class="flabel">Postcode<input type="text" name="postcode" value="{{ member.postcode }}" class="finput"></label>
+      <div style="display:flex;justify-content:flex-end;margin-top:.7rem;">
+        <button type="submit" class="cbtn primary">Save</button>
       </div>
-      <button type="submit" class="btn" style="margin-top:.5rem;">Save</button>
     </form>
   </section>
 
