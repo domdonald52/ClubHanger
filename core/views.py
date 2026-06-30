@@ -11975,8 +11975,8 @@ def app_home(request, club_slug):
         r = qs.aggregate(flights=_C('id'), hrs=_S('total_duration'), spend=_S('total_charge'))
         hrs = r['hrs'] or _D('0')
         return {'flights': r['flights'] or 0, 'hrs': float(hrs), 'spend': r['spend'] or _D('0')}
-    stats_month = _agg(_stats_qs.filter(completed_at__date__gte=_month_start))
-    stats_fy    = _agg(_stats_qs.filter(completed_at__date__gte=_fy_start))
+    stats_month = _agg(_stats_qs.filter(created_at__date__gte=_month_start))
+    stats_fy    = _agg(_stats_qs.filter(created_at__date__gte=_fy_start))
 
     # Active announcements (pinned first, then newest)
     from django.db.models import Q as _Q
