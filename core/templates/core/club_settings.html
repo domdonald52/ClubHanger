@@ -1448,7 +1448,6 @@
           <th style="text-align:center;min-width:42px;" title="Fleet nav section: Aircraft management">Fleet</th>
           <th style="text-align:center;min-width:42px;" title="Reports nav section: Analytics, Export, Integrity">Reports</th>
           <th style="text-align:center;min-width:42px;" title="Config nav section: Settings, Types, Aerodromes">Config</th>
-          <th style="text-align:center;min-width:42px;background:color-mix(in srgb,var(--primary) 10%,var(--surface));border-left:2px solid var(--primary);border-right:2px solid var(--primary);" title="Full access — implies all permissions above. Assign with care.">All</th>
           <th style="text-align:center;min-width:42px;" title="Member is included in the annual renewal cycle">Renewal</th>
           <th style="min-width:80px;">Annual fee</th>
           <th style="min-width:64px;"></th>
@@ -1469,7 +1468,6 @@
             <span style="font-size:.7rem;color:var(--text-3);margin-top:.1rem;display:block;">System</span>
             {% else %}
             <strong>{{ role.name }}</strong>
-            {% if role.is_superadmin %} <span class="status-tag st-warn">super</span>{% endif %}
             {% endif %}
           </td>
           <td>
@@ -1490,14 +1488,11 @@
             {% endif %}
           </td>
           {% for perm, val in role.perm_items %}
-          {% with is_super=role.is_superadmin is_admin_role=role.system_role_type %}
-          <td style="text-align:center;{% if perm == 'is_superadmin' %}background:color-mix(in srgb,var(--primary) 10%,var(--surface));border-left:2px solid var(--primary);border-right:2px solid var(--primary);{% endif %}">
+          {% with is_admin_role=role.system_role_type %}
+          <td style="text-align:center;">
             {% if is_admin_role == 'admin' %}
             {# Admin system role: always fully ON, locked #}
             <span class="ft-pill ft-pill-active" style="min-width:32px;opacity:.55;cursor:default;" title="Administrator always has full access">✓</span>
-            {% elif is_super and perm != 'is_superadmin' and perm != 'renewal_required' %}
-            {# Superadmin-implied perm: display-only #}
-            <span class="ft-pill ft-pill-active" style="min-width:32px;opacity:.55;cursor:default;" title="Implied by All access">✓</span>
             {% else %}
             <form method="post" style="display:inline-flex;" class="perm-form" data-role="{{ role.id }}" data-perm="{{ perm }}">{% csrf_token %}
               <input type="hidden" name="action" value="set_role_permission">

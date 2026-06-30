@@ -75,6 +75,7 @@
         <td><span class="standing-chip standing-{{ m.standing }}">{{ m.get_standing_display }}</span></td>
         <td style="font-size:.83rem;">
           {{ m.role.name|default:"—" }}
+          {% if m.is_superadmin %}<span title="Superadmin — can perform destructive operations" style="display:inline-block;margin-left:.3rem;font-size:.68rem;font-weight:600;padding:.1rem .35rem;border-radius:4px;background:color-mix(in srgb,var(--primary) 15%,var(--surface));color:var(--primary);border:1px solid var(--primary);vertical-align:middle;">SA</span>{% endif %}
           {% if m.has_admin_access %}<span title="Config access override (admin regardless of role)" style="display:inline-block;margin-left:.3rem;font-size:.68rem;font-weight:600;padding:.1rem .35rem;border-radius:4px;background:var(--warning-bg);color:var(--warning-text);border:1px solid #e9c46a;vertical-align:middle;">CFG↑</span>{% endif %}
         </td>
         <td style="font-size:.83rem;">

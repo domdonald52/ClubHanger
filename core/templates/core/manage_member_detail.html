@@ -22,7 +22,7 @@
 
   <!-- Profile header -->
   <div class="profile-header" style="position:relative;">
-    {% if club_member.role.is_superadmin and member.id != club_member.id %}
+    {% if club_member.is_superadmin and member.id != club_member.id %}
     <form method="post" style="position:absolute;top:0;right:0;margin:0;" data-confirm="Permanently delete {{ member.user.get_full_name }}? This cannot be undone.">
       {% csrf_token %}
       <input type="hidden" name="action" value="delete_member">
@@ -182,6 +182,17 @@
             Grant Config access regardless of role
           </label>
         </label>
+        {% if club_member.is_superadmin %}
+        <label class="flabel" style="display:flex;flex-direction:column;gap:.4rem;">Superadmin
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;margin-top:.25rem;cursor:pointer;">
+            <span class="tog-sw">
+              <input type="checkbox" name="has_superadmin_access" {% if member.is_superadmin %}checked{% endif %}>
+              <span class="tog-track"></span>
+            </span>
+            Grant superadmin access (destructive operations)
+          </label>
+        </label>
+        {% endif %}
         <label class="flabel">Subscription expires
           <div style="display:flex;gap:.4rem;align-items:center;">
             <input type="date" name="subscription_expires" id="sub-exp-input" value="{{ member.subscription_expires|date:'Y-m-d' }}" class="finput" style="flex:1;">

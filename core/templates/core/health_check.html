@@ -70,7 +70,7 @@
     <p style="color:var(--text-3);font-size:.85rem;">No checks configured for this tab.</p>
     {% endif %}
 
-    {% if key == 'financial' and g.issues %}
+    {% if key == 'financial' and g.issues and club_member.is_superadmin %}
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1rem;">
       <form method="post" style="margin:0;" data-confirm="Recompute all account balances from their transaction history and save? This cannot be undone.">
         {% csrf_token %}

@@ -452,6 +452,10 @@ class ClubMember(models.Model):
         help_text="Grants access to club Settings regardless of role. "
                   "Use for CFIs and club secretaries who manage the system."
     )
+    has_superadmin_access = models.BooleanField(
+        default=False,
+        help_text="Grants superadmin status regardless of role — required for destructive operations (delete, void, integrity fixes)."
+    )
     instructor_grade = models.ForeignKey(
         InstructorGrade, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='members', help_text="Instructor qualification grade — determines hourly rate"
@@ -496,6 +500,10 @@ class ClubMember(models.Model):
     @property
     def is_admin(self):
         return self.has_admin_access or bool(self.role and self.role.effective_is_admin)
+
+    @property
+    def is_superadmin(self):
+        return self.has_superadmin_access or bool(self.role and self.role.is_superadmin)
 
     @property
     def is_staff(self):

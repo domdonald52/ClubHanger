@@ -1821,7 +1821,7 @@ def club_settings(request, club_slug, mode='settings'):
 
         elif action == 'set_role_permission':
             _BOOL_PERMS = {'can_access_manage', 'can_access_fleet', 'can_access_safety',
-                           'can_access_settings', 'can_access_reports', 'is_superadmin', 'renewal_required'}
+                           'can_access_settings', 'can_access_reports', 'renewal_required'}
             role = Role.objects.filter(club=club, id=request.POST.get('role_id')).first()
             perm = request.POST.get('perm', '')
             # Admin system role permissions are always ALL — block changes
@@ -2312,7 +2312,7 @@ def club_settings(request, club_slug, mode='settings'):
         ('theme_atypical', 'Outside typical hours', config.theme_atypical),
     ]
 
-    _BOOL_PERM_NAMES = ['can_access_manage', 'can_access_safety', 'can_access_fleet', 'can_access_reports', 'can_access_settings', 'is_superadmin', 'renewal_required']
+    _BOOL_PERM_NAMES = ['can_access_manage', 'can_access_safety', 'can_access_fleet', 'can_access_reports', 'can_access_settings', 'renewal_required']
     from django.db.models import Count as _Count, Case as _Case, When as _When, IntegerField as _IntF, Value as _Val
     _sys_order = _Case(
         _When(system_role_type=Role.SYSTEM_MEMBER,     then=_Val(0)),
@@ -3737,7 +3737,7 @@ def booking_detail(request, club_slug, booking_id):
                 fc.save(update_fields=_sph_fields)
                 return redirect(request.path + '?saved=1')
 
-        elif action == 'void_checkin' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_admin:
+        elif action == 'void_checkin' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_superadmin:
             fc = booking.flight_completion
             if fc:
                 _active_invoices = fc.invoices.exclude(status=Invoice.STATUS_VOID)
@@ -4452,6 +4452,18 @@ def manage_member_detail(request, club_slug, member_id):
                                             error='Cannot remove admin access — at least one admin must remain.')
             member.role = new_role
             member.has_admin_access = new_has_admin
+            if actor.is_superadmin:
+                new_has_superadmin = request.POST.get('has_superadmin_access') == 'on'
+                # Guard: don't remove the last superadmin
+                if not new_has_superadmin:
+                    other_superadmins = ClubMember.objects.filter(club=club).exclude(id=member.id).filter(
+                        Q(has_superadmin_access=True) | Q(role__is_superadmin=True)
+                    )
+                    if not other_superadmins.exists():
+                        return _inline_redirect(request, 'core:manage_member_detail',
+                                                club_slug=club_slug, member_id=member_id,
+                                                error='Cannot remove superadmin access — at least one superadmin must remain.')
+                member.has_superadmin_access = new_has_superadmin
             member.save()
             # Audit log
             _sc = dict(ClubMember.STANDING_CHOICES)
@@ -4556,7 +4568,7 @@ def manage_member_detail(request, club_slug, member_id):
                 except Exception:
                     pass
 
-        elif action == 'account_adjustment' and actor.is_admin:
+        elif action == 'account_adjustment' and actor.is_superadmin:
             from .models import AccountTransaction
             amount = request.POST.get('amount', '').strip()
             direction = request.POST.get('direction', AccountTransaction.DIRECTION_CREDIT)
@@ -4707,7 +4719,7 @@ def manage_member_detail(request, club_slug, member_id):
                 _email_note(_note, club)
                 return redirect(_detail_base + '?saved=1#training')
 
-        elif action == 'delete_member' and actor.role and actor.role.is_superadmin and member != actor:
+        elif action == 'delete_member' and actor.is_superadmin and member != actor:
             from .models import AccountTransaction as _AT
             from django.urls import reverse as _rev_del
             has_bookings = Booking.objects.filter(club=club, member=member).exists()
@@ -7743,7 +7755,7 @@ def invoice_detail(request, club_slug, invoice_id):
                                 _sub_member.user.save(update_fields=['is_active'])
                 return redirect(_stay_url)
 
-        elif action == 'void' and invoice.status in ('draft', 'sent'):
+        elif action == 'void' and invoice.status in ('draft', 'sent') and actor.is_admin:
             invoice.status = Invoice.STATUS_VOID
             invoice.save(update_fields=['status'])
             # Clear invoice_issued on the FC if no active invoices remain
@@ -9748,7 +9760,7 @@ def health_check(request, club_slug):
     if err := require_admin(actor, club, request): return err
 
     # ── Fix-drift actions ─────────────────────────────────────────────────────
-    if request.method == 'POST' and request.POST.get('action') == 'fix_balance_drift':
+    if request.method == 'POST' and request.POST.get('action') == 'fix_balance_drift' and actor.is_superadmin:
         from .models import Account as _Acct
         fixed = 0
         for _acc in _Acct.objects.filter(club_member__club=club):
@@ -9759,7 +9771,7 @@ def health_check(request, club_slug):
                 fixed += 1
         return redirect(request.path + '?fixed=' + str(fixed))
 
-    if request.method == 'POST' and request.POST.get('action') == 'fix_payment_drift':
+    if request.method == 'POST' and request.POST.get('action') == 'fix_payment_drift' and actor.is_superadmin:
         from .models import FlightPayment as _FP2
         fixed = 0
         for _fc in FlightCompletion.objects.filter(booking__club=club):
