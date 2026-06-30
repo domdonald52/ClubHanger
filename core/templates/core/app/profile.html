@@ -101,7 +101,7 @@
 
   <a href="{% url 'core:app_notification_settings' club.slug %}" class="profile-tile">
     <i class="ti ti-bell" style="font-size:28px;color:var(--primary);line-height:1;"></i>
-    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Notifications</span>
+    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Notification settings</span>
   </a>
 
 </div>
@@ -113,7 +113,11 @@
 <div class="app-card" style="padding:0;">
   {% for ocm in other_clubs %}
   <a href="{% url 'core:gantt_day' ocm.club.slug %}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);text-decoration:none;color:inherit;">
-    <i class="ti ti-plane" style="color:var(--text-3);font-size:18px;flex-shrink:0;"></i>
+    {% if ocm.club.logo %}
+    <img src="{{ ocm.club.logo.url }}" alt="{{ ocm.club.name }}" style="width:32px;height:32px;border-radius:8px;object-fit:contain;background:var(--banner);flex-shrink:0;">
+    {% else %}
+    <div style="width:32px;height:32px;border-radius:8px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-plane" style="color:var(--text-3);font-size:16px;"></i></div>
+    {% endif %}
     <div style="flex:1;">
       <div style="font-size:.88rem;font-weight:600;">{{ ocm.club.name }}</div>
       <div style="font-size:.74rem;color:var(--text-3);">Switch to this club</div>
