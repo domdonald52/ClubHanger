@@ -173,13 +173,13 @@
             {% for r in roles %}<option value="{{ r.id }}" {% if member.role_id == r.id %}selected{% endif %}>{{ r.name }}</option>{% endfor %}
           </select>
         </label>
-        <label class="flabel" style="display:flex;flex-direction:column;gap:.4rem;">Admin access
+        <label class="flabel" style="display:flex;flex-direction:column;gap:.4rem;">Config access override
           <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;margin-top:.25rem;cursor:pointer;">
             <span class="tog-sw">
               <input type="checkbox" name="has_admin_access" {% if member.has_admin_access %}checked{% endif %}>
               <span class="tog-track"></span>
             </span>
-            Grant Settings &amp; Rates access
+            Grant Config access regardless of role
           </label>
         </label>
         <label class="flabel">Subscription expires
