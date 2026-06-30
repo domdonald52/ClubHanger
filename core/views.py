@@ -11972,7 +11972,7 @@ def app_home(request, club_slug):
     )
     def _agg(qs):
         from django.db.models import Sum as _S, Count as _C
-        r = qs.aggregate(flights=_C('id'), hrs=_S('total_duration'), spend=_S('total_charge'))
+        r = qs.aggregate(flights=_C('id'), hrs=_S('actual_flight_hours'), spend=_S('total_charge'))
         hrs = r['hrs'] or _D('0')
         return {'flights': r['flights'] or 0, 'hrs': float(hrs), 'spend': r['spend'] or _D('0')}
     stats_month = _agg(_stats_qs.filter(created_at__date__gte=_month_start))
