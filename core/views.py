@@ -12143,7 +12143,7 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
                 'top':           top,
                 'height':        height,
                 'is_mine':       b.member == actor,
-                'name':          'You' if b.member == actor else b.member.user.get_short_name(),
+                'name':          'You' if b.member == actor else b.member.user.get_full_name(),
                 'member_full':   b.member.user.get_full_name(),
                 'time':          '{}–{}'.format(
                     timezone.localtime(b.scheduled_start).strftime('%H:%M'),
