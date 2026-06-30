@@ -46,7 +46,7 @@
       <div style="font-size:1.05rem;font-weight:750;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ club_member.user.get_full_name }}</div>
       <div style="display:flex;align-items:center;gap:.45rem;margin-top:.35rem;flex-wrap:wrap;">
         {% if club_member.standing == 'active' %}
-        <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(255,255,255,.14);color:rgba(255,255,255,.9);padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(255,255,255,.2);">Active</span>
+        <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(22,163,74,.35);color:#6ee7a0;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(22,163,74,.5);">Active</span>
         {% elif club_member.standing == 'suspended' %}
         <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(220,38,38,.35);color:#fff;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(220,38,38,.5);">Suspended</span>
         {% elif club_member.standing == 'lapsed' %}
@@ -92,11 +92,6 @@
   <a href="{% url 'core:app_flight_log' club.slug %}" class="profile-tile">
     <i class="ti ti-plane-departure" style="font-size:28px;color:var(--primary);line-height:1;"></i>
     <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Flight log</span>
-  </a>
-
-  <a href="{% url 'core:app_training' club.slug %}" class="profile-tile">
-    <i class="ti ti-notes" style="font-size:28px;color:var(--primary);line-height:1;"></i>
-    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Training notes</span>
   </a>
 
   <a href="{% url 'core:app_credentials' club.slug %}" class="profile-tile">
