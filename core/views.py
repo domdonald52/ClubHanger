@@ -5013,6 +5013,7 @@ def app_save_special_hours(request, club_slug, fc_id):
     For solo (non-split) flights: saves to FlightCompletion.
     For split flights: saves to the pilot's FlightSegment so each pilot's hours are independent.
     """
+    from django.urls import reverse
     from .models import FlightSegment as _FS
     club, actor = _app_actor(request, club_slug)
     if not actor:
