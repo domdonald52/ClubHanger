@@ -38,6 +38,7 @@
         {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
         {% if b.instructor %} &middot; {{ b.instructor.get_short_name }}{% else %} &middot; Solo{% endif %}
       </div>
+      {% if b.instructor and next_lesson_plan %}<div style="font-size:.73rem;color:var(--text-3);margin-top:.18rem;line-height:1.35;">{{ next_lesson_plan }}</div>{% endif %}
     </div>
     <svg class="app-list-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
   </div>

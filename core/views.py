@@ -12306,6 +12306,14 @@ def app_bookings(request, club_slug):
                 .order_by('scheduled_start')[:20])
 
     from .models import LessonNote as _LN
+    _latest_note = (_LN.objects
+                    .filter(booking__member=actor, booking__club=club)
+                    .exclude(next_lesson_plan='')
+                    .order_by('-booking__scheduled_start')
+                    .only('next_lesson_plan')
+                    .first())
+    next_lesson_plan = _latest_note.next_lesson_plan if _latest_note else ''
+
     from django.db.models import Subquery, OuterRef, Sum, Exists
     from decimal import Decimal as _D2
     _fc_hours_sq = (FlightCompletion.objects
@@ -12331,6 +12339,7 @@ def app_bookings(request, club_slug):
         'upcoming': upcoming,
         'past': past,
         'today': today,
+        'next_lesson_plan': next_lesson_plan,
     })
 
 
