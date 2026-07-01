@@ -11750,9 +11750,10 @@ def occurrence_detail(request, club_slug, report_id):
                 oa.status = OccurrenceAction.STATUS_COMPLETE
                 oa.completed_by = request.user
                 oa.completed_at = now
+                oa.completion_note = request.POST.get('completion_note', '').strip()
                 oa.save()
                 OccurrenceAuditEntry.objects.create(report=report, actor=actor,
-                    verb='Action completed', note=oa.description[:80])
+                    verb='Action completed', note=oa.completion_note[:200] or oa.description[:80])
 
         elif act == 'override_action':
             oa = OccurrenceAction.objects.filter(id=request.POST.get('action_id'), report=report).first()
@@ -11853,10 +11854,11 @@ def occurrence_actions(request, club_slug):
                 oa.status = _OA.STATUS_COMPLETE
                 oa.completed_by = request.user
                 oa.completed_at = _tz.now()
+                oa.completion_note = request.POST.get('completion_note', '').strip()
                 oa.save()
                 from .models import OccurrenceAuditEntry
                 OccurrenceAuditEntry.objects.create(report=oa.report, actor=actor,
-                    verb='Action completed', note=oa.description[:80])
+                    verb='Action completed', note=oa.completion_note[:200] or oa.description[:80])
             elif act == 'override_action':
                 note = request.POST.get('override_note', '').strip()
                 if note:

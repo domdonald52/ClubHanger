@@ -3070,9 +3070,10 @@ class OccurrenceAction(models.Model):
     assigned_to   = models.ForeignKey('ClubMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_actions')
     due_date      = models.DateField(null=True, blank=True)
     status        = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN)
-    completed_by  = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_actions')
-    completed_at  = models.DateTimeField(null=True, blank=True)
-    override_note = models.TextField(blank=True)
+    completed_by   = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='completed_actions')
+    completed_at   = models.DateTimeField(null=True, blank=True)
+    completion_note = models.TextField(blank=True)
+    override_note  = models.TextField(blank=True)
     created_by    = models.ForeignKey('ClubMember', on_delete=models.SET_NULL, null=True, blank=True, related_name='created_actions')
     created_at    = models.DateTimeField(auto_now_add=True)
 

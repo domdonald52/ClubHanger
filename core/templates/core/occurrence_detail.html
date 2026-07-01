@@ -69,33 +69,51 @@
         <div style="flex:1;">
           <div>{{ a.description }}</div>
           {% if a.assigned_to %}<div style="font-size:.78rem;color:var(--text-3);margin-top:.2rem;">→ {{ a.assigned_to.user.get_full_name }}{% if a.due_date %} · due {{ a.due_date|date:"j M" }}{% endif %}</div>{% endif %}
+          {% if a.completion_note %}<div style="font-size:.78rem;color:var(--success-text);margin-top:.25rem;font-style:italic;">✓ {{ a.completion_note }}</div>{% endif %}
+          {% if a.override_note and a.status == 'overridden' %}<div style="font-size:.78rem;color:var(--text-3);margin-top:.25rem;font-style:italic;">Waived: {{ a.override_note }}</div>{% endif %}
         </div>
-        <div style="white-space:nowrap;">
+        <div style="white-space:nowrap;flex-shrink:0;">
           {% if a.status == 'open' %}
-          <form method="post" style="display:inline;">{% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
-            <input type="hidden" name="action" value="complete_action"><input type="hidden" name="action_id" value="{{ a.id }}">
-            <button type="submit" class="cbtn-sm">Done</button>
-          </form>
-          <button type="button" class="cbtn-sm danger" onclick="document.getElementById('override-{{ a.id }}').hidden=false">Override</button>
+          <button type="button" class="cbtn-sm" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="expandDone{{ a.id }}()">Mark done</button>
+          <button type="button" class="cbtn-sm danger" onclick="expandWaive{{ a.id }}()">Waive</button>
           {% elif a.status == 'complete' %}
           <span style="color:var(--success-text);font-size:.78rem;font-weight:600;">✓ Done</span>
           {% else %}
-          <span style="color:var(--text-3);font-size:.78rem;">Overridden</span>
+          <span style="color:var(--text-3);font-size:.78rem;">Waived</span>
           {% endif %}
         </div>
       </div>
       {% if a.status == 'open' %}
-      <div id="override-{{ a.id }}" hidden style="padding:.5rem 0;border-bottom:1px solid #f3f5f7;">
+      <div id="done-expand-{{ a.id }}" hidden style="padding:.45rem 0 .3rem;border-bottom:1px solid #f3f5f7;">
+        <form method="post" style="display:flex;gap:.4rem;align-items:flex-end;">
+          {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
+          <input type="hidden" name="action" value="complete_action"><input type="hidden" name="action_id" value="{{ a.id }}">
+          <label class="flabel" style="flex:1;margin:0;font-size:.82rem;">What was done?
+            <textarea name="completion_note" class="finput" rows="2" required placeholder="Briefly describe what action was taken…" style="resize:vertical;"></textarea>
+          </label>
+          <div style="display:flex;gap:.3rem;align-items:flex-end;padding-bottom:1px;">
+            <button type="submit" class="cbtn-sm" style="background:var(--primary);color:#fff;border-color:var(--primary);">Confirm</button>
+            <button type="button" class="cbtn-sm" onclick="document.getElementById('done-expand-{{ a.id }}').hidden=true">Cancel</button>
+          </div>
+        </form>
+      </div>
+      <div id="waive-expand-{{ a.id }}" hidden style="padding:.45rem 0 .3rem;border-bottom:1px solid #f3f5f7;">
         <form method="post" style="display:flex;gap:.4rem;align-items:flex-end;">
           {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
           <input type="hidden" name="action" value="override_action"><input type="hidden" name="action_id" value="{{ a.id }}">
-          <label class="flabel" style="flex:1;margin:0;font-size:.82rem;">Reason
-            <input type="text" name="override_note" class="finput" required placeholder="Why is this being overridden?">
+          <label class="flabel" style="flex:1;margin:0;font-size:.82rem;">Reason for waiving
+            <input type="text" name="override_note" class="finput" required placeholder="Why is this action being waived?">
           </label>
-          <button type="submit" class="cbtn-sm danger" style="margin-bottom:1px;">Confirm</button>
-          <button type="button" class="cbtn-sm" onclick="document.getElementById('override-{{ a.id }}').hidden=true" style="margin-bottom:1px;">Close</button>
+          <div style="display:flex;gap:.3rem;align-items:flex-end;padding-bottom:1px;">
+            <button type="submit" class="cbtn-sm danger">Confirm</button>
+            <button type="button" class="cbtn-sm" onclick="document.getElementById('waive-expand-{{ a.id }}').hidden=true">Cancel</button>
+          </div>
         </form>
       </div>
+      <script>
+      function expandDone{{ a.id }}(){ document.getElementById('waive-expand-{{ a.id }}').hidden=true; document.getElementById('done-expand-{{ a.id }}').hidden=false; document.getElementById('done-expand-{{ a.id }}').querySelector('textarea').focus(); }
+      function expandWaive{{ a.id }}(){ document.getElementById('done-expand-{{ a.id }}').hidden=true; document.getElementById('waive-expand-{{ a.id }}').hidden=false; document.getElementById('waive-expand-{{ a.id }}').querySelector('input[name=override_note]').focus(); }
+      </script>
       {% endif %}
       {% endfor %}
       {% else %}
