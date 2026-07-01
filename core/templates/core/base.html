@@ -369,7 +369,7 @@
 
     {% if user.is_authenticated and club %}
     <div class="sidenav-overlay" id="sidenav-overlay"></div>
-    <nav class="sidenav" id="sidenav" aria-label="Main navigation" aria-hidden="true">
+    <nav class="sidenav" id="sidenav" aria-label="Main navigation" inert>
         <div class="sidenav-head">
             <span class="sidenav-club">{% if theme.logo %}<img src="{{ theme.logo.url }}" alt="" style="height:24px;object-fit:contain;vertical-align:middle;margin-right:.4rem;background:var(--banner);padding:2px 4px;border-radius:3px;">{% endif %}{{ club.name }}</span>
             <button class="sidenav-close" id="sidenav-close" aria-label="Close menu">
@@ -849,11 +849,21 @@ span.cal-chip{background:var(--surface-3);color:var(--text-3);}
   const closeBtn = document.getElementById('sidenav-close');
   const nav      = document.getElementById('sidenav');
   const overlay  = document.getElementById('sidenav-overlay');
+  const desktopMq = window.matchMedia('(min-width: 900px)');
+  function syncNavInert() {
+    if (!nav) return;
+    // On desktop the nav is always visible — never inert; on mobile only inert when closed
+    if (desktopMq.matches || nav.classList.contains('open')) {
+      nav.removeAttribute('inert');
+    } else {
+      nav.setAttribute('inert', '');
+    }
+  }
   function openNav() {
     if (!nav) return;
     nav.classList.add('open');
     if (overlay) overlay.classList.add('open');
-    nav.setAttribute('aria-hidden', 'false');
+    nav.removeAttribute('inert');
     if (openBtn) openBtn.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
   }
@@ -861,10 +871,12 @@ span.cal-chip{background:var(--surface-3);color:var(--text-3);}
     if (!nav) return;
     nav.classList.remove('open');
     if (overlay) overlay.classList.remove('open');
-    nav.setAttribute('aria-hidden', 'true');
+    if (!desktopMq.matches) nav.setAttribute('inert', '');
     if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
   }
+  desktopMq.addEventListener('change', syncNavInert);
+  syncNavInert();
   if (openBtn)  openBtn.addEventListener('click', openNav);
   if (closeBtn) closeBtn.addEventListener('click', closeNav);
   if (overlay)  overlay.addEventListener('click', closeNav);
