@@ -52,7 +52,7 @@
     <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1;letter-spacing:-.01em;">{{ b.scheduled_start|localtime|time:"H:i" }}<span style="font-weight:500;color:var(--text-3);font-size:17px;"> – </span>{{ b.scheduled_end|localtime|time:"H:i" }}</div>
 
     <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;">
-      {{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %} · {% if b.instructor %}with {{ b.instructor.get_full_name }}{% else %}Solo{% endif %}{% if b.status == 'pending' %} · awaiting approval{% elif b.sched_hours %} · {{ b.sched_hours|floatformat:1 }}h{% endif %}
+      {{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %} · {% if b.instructor %}with {{ b.instructor.get_full_name }}{% else %}Solo{% endif %}{% if b.sched_hours %} · {{ b.sched_hours|floatformat:1 }}h{% endif %}
     </div>
 
     {% if forloop.first and b.instructor and next_lesson_plan %}
