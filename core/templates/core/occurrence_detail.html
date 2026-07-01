@@ -130,7 +130,7 @@
   <!-- ── Review panel ── -->
   {% if report.status != 'closed' %}
   <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;">
-    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;">Review</div>
+    <div style="background:var(--surface-2);padding:.5rem .9rem .6rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;line-height:1.4;">Review</div>
     <div style="padding:.8rem .9rem;">
       <form method="post">
         {% csrf_token %}{% if is_inline %}<input type="hidden" name="inline" value="1">{% endif %}
@@ -167,7 +167,7 @@
   </form>
   {% if report.review_notes %}
   <div style="border:1px solid var(--border);border-radius:10px;margin-bottom:1rem;">
-    <div style="background:var(--surface-2);padding:.5rem .9rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;">Review notes</div>
+    <div style="background:var(--surface-2);padding:.5rem .9rem .6rem;border-bottom:1px solid var(--border-subtle);font-size:.8rem;font-weight:600;line-height:1.4;">Review notes</div>
     <div style="padding:.8rem .9rem;font-size:.88rem;white-space:pre-wrap;">{{ report.review_notes }}</div>
   </div>
   {% endif %}
