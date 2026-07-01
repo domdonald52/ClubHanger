@@ -109,6 +109,14 @@ body.dark-mode .badge.admin{background:rgba(91,33,182,.2);color:#c4b5fd;}
 body.dark-mode .badge.member{background:var(--success-bg);color:var(--success-text);}
 body.dark-mode .sshot{background:var(--surface-2);border-color:var(--border);}
 body.dark-mode .part{color:#fb923c;}
+/* ── Occurrence lifecycle diagram ── */
+.occ-flow{display:flex;align-items:flex-start;gap:0;margin:.9rem 0 1.1rem;overflow-x:auto;padding-bottom:.3rem;}
+.occ-step{flex:1;min-width:100px;text-align:center;padding:0 .2rem;}
+.occ-step-num{width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-size:.75rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-bottom:.35rem;}
+.occ-step-title{font-size:.75rem;font-weight:650;color:var(--text-1);line-height:1.3;margin-bottom:.2rem;}
+.occ-step-who{font-size:.68rem;color:var(--text-3);margin-bottom:.3rem;}
+.occ-flow-arrow{flex-shrink:0;color:#b0b8c1;font-size:.85rem;margin-top:8px;padding:0 .15rem;align-self:flex-start;}
+body.dark-mode .occ-step-num{background:var(--primary);}
 </style>
 
 <div class="guide-wrap">
@@ -1313,9 +1321,45 @@ body.dark-mode .part{color:#fb923c;}
       <h3 id="tools-events">Safety events (occurrences)</h3>
       <p>Safety → Events is the occurrence reporting system. It covers the full lifecycle from a member raising a report on their phone through to safety officer review, action assignment, and closure. Reports are categorised by the event types defined in Settings → Types → Event types.</p>
 
-      <details open>
+      <details class="dblock" open>
         <summary>Full lifecycle — member to closure</summary>
-        <p>The process has five stages. Each stage has a clear owner and a defined next step.</p>
+        <div class="dbody">
+        <div class="occ-flow">
+          <div class="occ-step">
+            <div class="occ-step-num">1</div>
+            <div class="occ-step-title">Member submits</div>
+            <div class="occ-step-who">Mobile app</div>
+            <span class="pill submitted" style="font-size:.67rem;">Submitted</span>
+          </div>
+          <div class="occ-flow-arrow">→</div>
+          <div class="occ-step">
+            <div class="occ-step-num">2</div>
+            <div class="occ-step-title">Staff notified</div>
+            <div class="occ-step-who">Safety → Events</div>
+            <span class="pill submitted" style="font-size:.67rem;">Submitted</span>
+          </div>
+          <div class="occ-flow-arrow">→</div>
+          <div class="occ-step">
+            <div class="occ-step-num">3</div>
+            <div class="occ-step-title">Officer reviews</div>
+            <div class="occ-step-who">Mark reviewed</div>
+            <span class="pill active" style="font-size:.67rem;">Reviewed</span>
+          </div>
+          <div class="occ-flow-arrow">→</div>
+          <div class="occ-step">
+            <div class="occ-step-num">4</div>
+            <div class="occ-step-title">Actions assigned</div>
+            <div class="occ-step-who">Mark done / Waive</div>
+            <span class="pill pending" style="font-size:.67rem;">Open actions</span>
+          </div>
+          <div class="occ-flow-arrow">→</div>
+          <div class="occ-step">
+            <div class="occ-step-num">5</div>
+            <div class="occ-step-title">Report closed</div>
+            <div class="occ-step-who">Safety officer</div>
+            <span class="pill void" style="font-size:.67rem;">Closed</span>
+          </div>
+        </div>
 
         <p><strong>1 — Member submits from the mobile app.</strong> The member taps <em>Events</em> in the hamburger menu. The form asks for: event type (required), date and approximate time, location (ICAO or description), aircraft if applicable, a description of what happened, any immediate action taken, and whether they believe it represents an ongoing safety risk. Crucially, they can link the report to one of their recent flights — this pre-fills the aircraft and date, and creates a traceable link from the event to the booking and flight record. On submission, the system issues an event reference (e.g. EVT-42) displayed in a confirmation on screen. The member keeps this reference if they need to follow up.</p>
 
@@ -1326,32 +1370,41 @@ body.dark-mode .part{color:#fb923c;}
         <p><strong>4 — Action items created and assigned.</strong> If follow-up is required, the reviewer adds action items directly on the report: a description of what needs to happen, who it's assigned to, and a due date. Each action item is a discrete task — keep them specific and actionable ("Inspect ZK-BCX nose gear strut and log result", not "look into it"). Assigned staff members see their actions in the <em>Safety → Action items</em> consolidated view and in their own profile, and receive a notification if push is enabled. Action items are independent — the report stays open until every action is resolved.</p>
 
         <p><strong>5 — Actions resolved, report closed.</strong> When an assignee completes their action, they click <em>Mark done</em> on the action row and enter a brief note describing what was done ("Inspected strut — no defect found, torqued to spec, logged in maintenance record"). This note is stored and audited. If an action item is no longer applicable — the aircraft was sold, the situation changed — a reviewer can <em>Waive</em> it with a reason instead. Once all action items are marked done or waived, the safety officer opens the report and clicks <em>Close</em>. Closed reports are retained permanently for audit purposes and appear in the export.</p>
+        </div>
       </details>
 
-      <details>
+      <details class="dblock">
         <summary>Action items in detail</summary>
+        <div class="dbody">
         <p><strong>Safety → Action items</strong> shows all open action items across every report in one consolidated list — this is the view to use at the start of a safety review or committee meeting. It shows what's outstanding, who it's assigned to, and when it's due, without having to open each report individually. Overdue items are highlighted in red.</p>
         <p><strong>Completing an action</strong> requires a "What was done?" note — you cannot mark an action complete with no information. The note is stored against the action and appears in the event audit trail. This is intentional: a safety record with no evidence of what was done provides no assurance.</p>
         <p><strong>Waiving an action</strong> is for cases where the action can no longer be completed as written — the aircraft is sold, the responsible person has left, the situation has materially changed. Waiving requires a reason. Waived actions count as resolved for the purposes of closing the report, but the waive reason is permanently recorded. Do not waive an action simply to close a report — if the underlying issue still exists, create a replacement action.</p>
         <p><strong>Overdue items</strong> appear in the sidebar Attention badge and on the Action items page in red. The due date is set by whoever creates the action — it is not automatically enforced, but it surfaces the item as overdue so it cannot be quietly forgotten.</p>
+        </div>
       </details>
 
-      <details>
+      <details class="dblock">
         <summary>Who can submit and who can review</summary>
+        <div class="dbody">
         <p><strong>Submitting</strong> — any active member with a mobile app account. No special permissions required. Members can only see their own submissions; they cannot see other members' reports or any review notes.</p>
         <p><strong>Submitting from the management app</strong> — any admin or staff member can also submit from Safety → Events → Submit. This is useful when a report is phoned in or handed in on paper and needs to be entered by staff on the member's behalf.</p>
         <p><strong>Reviewing and managing</strong> — requires Admin access or the Safety permission flag. Safety-only staff can view all reports, add notes, assign actions, mark reviewed, and close. They cannot access other management areas (bookings, billing, fleet) unless those flags are also set. Instructors with no Safety flag cannot see the occurrence system at all.</p>
+        </div>
       </details>
 
-      <details>
+      <details class="dblock">
         <summary>Export and CAA notification</summary>
+        <div class="dbody">
         <p>The occurrence list can be exported (Safety → Events → Export) for committee review, minutes attachment, or CAA submission. The export includes event type, date, location, aircraft, description, status, reviewer notes, and action summary.</p>
         <p>Club Hangar does not automatically notify the CAA. If an event meets the threshold for mandatory reporting under Part 12 (accidents, serious incidents), the safety officer must submit the notification directly to the CAA's TAIC/CAA reporting portal. The system supports this by providing all the structured data needed for the submission, and the event reference gives you a consistent identifier to cross-reference between your internal record and any external notification.</p>
+        </div>
       </details>
 
-      <details>
+      <details class="dblock">
         <summary>Link to aircraft maintenance</summary>
+        <div class="dbody">
         <p>When a member links their event report to a recent flight, the report is associated with that booking. If the event involves an aircraft technical issue, the safety officer can also log a maintenance snag against the aircraft from the Fleet → Aircraft page. This creates a traceable chain: event report → action item → maintenance log entry → resolution. The aircraft's maintenance history will show the snag alongside regular scheduled maintenance, so the full picture of what happened to that airframe is visible in one place.</p>
+        </div>
       </details>
 
       <h3 id="tools-data">Data export (Settings → Data)</h3>
