@@ -13,9 +13,8 @@
     All reports are confidential and reviewed by the club safety officer.
   </p>
 
-  {% if request.GET.saved %}
-  <script>window.toast && window.toast('Report submitted — thank you.', 'ok');</script>
-  <div class="notice ok" style="margin-bottom:1.2rem;">Report submitted. Thank you.</div>
+  {% if request.GET.submitted %}
+  <div class="notice ok" data-no-toast style="margin-bottom:1.2rem;">Report submitted — thank you. Your event reference is <strong>EVT-{{ request.GET.submitted }}</strong>.</div>
   {% endif %}
   {% if error %}<div class="notice err" style="margin-bottom:1rem;">{{ error }}</div>{% endif %}
 
