@@ -1,0 +1,157 @@
+{% extends "core/app/base.html" %}
+{% load tz humanize %}
+{% block title %}{{ invoice.display_number }} · {{ club.name }}{% endblock %}
+
+{% block app_bar_center %}<span class="app-bar-title">{{ invoice.display_number }}</span>{% endblock %}
+
+{% block content %}
+<div style="height:14px;"></div>
+
+<!-- ── Status hero ── -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;margin:0 14px;padding:18px;">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
+    <div>
+      <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);">Invoice</div>
+      <div style="font:800 24px 'Manrope',system-ui,sans-serif;color:var(--text-1);margin-top:2px;">{{ invoice.display_number }}</div>
+    </div>
+    {% if invoice.status == 'paid' %}
+    <span style="background:#e2f1e9;color:#2e9e6b;border-radius:999px;padding:4px 12px;font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;">Paid</span>
+    {% elif invoice.is_overdue %}
+    <span style="background:#e8832a;color:#fff;border-radius:999px;padding:4px 12px;font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;">Overdue</span>
+    {% else %}
+    <span style="background:#fbf1e8;color:#9a5a2a;border-radius:999px;padding:4px 12px;font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;">Unpaid</span>
+    {% endif %}
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:14px;border-top:1px solid var(--border);">
+    <div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:2px;">Issued</div>
+      <div style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ invoice.issue_date|date:"j M Y" }}</div>
+    </div>
+    <div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:2px;">Due</div>
+      <div style="font:700 13px 'Manrope',system-ui,sans-serif;color:{% if invoice.is_overdue %}var(--danger){% else %}var(--text-1){% endif %};">{{ invoice.due_date|date:"j M Y" }}</div>
+    </div>
+    {% if invoice.status == 'paid' and invoice.paid_at %}
+    <div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:2px;">Paid</div>
+      <div style="font:700 13px 'Manrope',system-ui,sans-serif;color:#2e9e6b;">{{ invoice.paid_at|localtime|date:"j M Y" }}</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ── Flight details (if linked) ── -->
+{% if invoice.flight_completion and invoice.flight_completion.booking %}
+{% with fc=invoice.flight_completion bk=invoice.flight_completion.booking %}
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:14px;">
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:10px;">Flight</div>
+  <div class="detail-row">
+    <span class="detail-label">Aircraft</span>
+    <span class="detail-value">{{ bk.aircraft.registration }}{% if bk.aircraft.aircraft_type %} · {{ bk.aircraft.aircraft_type.name }}{% endif %}</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Date</span>
+    <span class="detail-value">{{ bk.scheduled_start|localtime|date:"j M Y" }}</span>
+  </div>
+  {% if bk.flight_type %}
+  <div class="detail-row">
+    <span class="detail-label">Type</span>
+    <span class="detail-value">{{ bk.flight_type.name }}</span>
+  </div>
+  {% endif %}
+  {% if bk.instructor %}
+  <div class="detail-row">
+    <span class="detail-label">Instructor</span>
+    <span class="detail-value">{{ bk.instructor.get_full_name }}</span>
+  </div>
+  {% endif %}
+  {% if fc.hobbs_end and fc.hobbs_start %}
+  <div class="detail-row">
+    <span class="detail-label">Hobbs</span>
+    <span class="detail-value">{{ fc.hobbs_start }} → {{ fc.hobbs_end }}</span>
+  </div>
+  {% endif %}
+</div>
+{% endwith %}
+{% endif %}
+
+<!-- ── Line items ── -->
+{% if invoice.line_items.all %}
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:14px;">
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:10px;">Charges</div>
+  {% for item in invoice.line_items.all %}
+  <div style="{% if not forloop.first %}border-top:1px solid var(--border-subtle);padding-top:8px;margin-top:8px;{% endif %}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+      <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);flex:1;">{{ item.description }}</div>
+      <div style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);white-space:nowrap;">${{ item.amount|floatformat:2|intcomma }}</div>
+    </div>
+    {% if item.quantity and item.rate %}
+    <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:2px;">
+      {{ item.quantity|floatformat:"-2" }}{% if item.unit %} {{ item.unit }}{% endif %} × ${{ item.rate|floatformat:2|intcomma }}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <!-- Totals -->
+  <div style="border-top:1.5px solid var(--border);margin-top:12px;padding-top:12px;">
+    {% if invoice.early_bird_amount and invoice.early_bird_cutoff %}
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);">Early-bird total</span>
+      <span style="font:600 12px 'Manrope',system-ui,sans-serif;color:#2e9e6b;">${{ invoice.early_bird_amount|floatformat:2|intcomma }}</span>
+    </div>
+    <div style="font:500 10.5px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:8px;opacity:.8;">if paid by {{ invoice.early_bird_cutoff|date:"j M Y" }}</div>
+    {% endif %}
+    <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
+      <span style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);">Subtotal (incl. GST)</span>
+      <span style="font:600 12px 'Manrope',system-ui,sans-serif;color:var(--text-1);">${{ invoice.total|floatformat:2|intcomma }}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
+      <span style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);">GST included ({{ invoice.gst_rate|floatformat:"-2" }}%)</span>
+      <span style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);">${{ invoice.gst_amount|floatformat:2|intcomma }}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding-top:10px;border-top:1px solid var(--border);">
+      <span style="font:700 14px 'Manrope',system-ui,sans-serif;color:var(--text-1);">Total</span>
+      <span style="font:800 18px 'Manrope',system-ui,sans-serif;color:var(--text-1);">${{ invoice.total|floatformat:2|intcomma }}</span>
+    </div>
+    {% if invoice.amount_paid and invoice.amount_paid > 0 and invoice.status != 'paid' %}
+    <div style="display:flex;justify-content:space-between;margin-top:8px;">
+      <span style="font:600 13px 'Manrope',system-ui,sans-serif;color:#2e9e6b;">Paid so far</span>
+      <span style="font:700 13px 'Manrope',system-ui,sans-serif;color:#2e9e6b;">${{ invoice.amount_paid|floatformat:2|intcomma }}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;">
+      <span style="font:700 14px 'Manrope',system-ui,sans-serif;color:var(--danger);">Balance due</span>
+      <span style="font:800 18px 'Manrope',system-ui,sans-serif;color:var(--danger);">${{ invoice.balance_due|floatformat:2|intcomma }}</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ── Notes ── -->
+{% if invoice.notes %}
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:14px;">
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:8px;">Notes</div>
+  <div style="font:500 13.5px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.55;white-space:pre-wrap;">{{ invoice.notes }}</div>
+</div>
+{% endif %}
+
+<!-- ── Payment history ── -->
+{% if invoice.payments.all %}
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:14px;">
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:10px;">Payment history</div>
+  {% for pmt in invoice.payments.all %}
+  <div style="display:flex;justify-content:space-between;align-items:center;{% if not forloop.first %}border-top:1px solid var(--border-subtle);padding-top:8px;margin-top:8px;{% endif %}">
+    <div>
+      <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ pmt.get_payment_method_display|default:"Payment" }}</div>
+      {% if pmt.paid_at %}<div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:1px;">{{ pmt.paid_at|localtime|date:"j M Y" }}</div>{% endif %}
+    </div>
+    <div style="font:700 14px 'Manrope',system-ui,sans-serif;color:#2e9e6b;">${{ pmt.amount|floatformat:2|intcomma }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div style="height:32px;"></div>
+{% endblock %}

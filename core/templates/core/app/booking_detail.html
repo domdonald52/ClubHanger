@@ -37,6 +37,9 @@
   <div style="display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     <span style="font:600 15px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ booking.scheduled_start|localtime|time:"H:i" }} – {{ booking.scheduled_end|localtime|time:"H:i" }}</span>
+    {% if booking.instructor %}
+    <span style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-left:4px;">· Dual with {{ booking.instructor.get_full_name }}</span>
+    {% endif %}
   </div>
 </div>
 
@@ -66,13 +69,24 @@
   {% endif %}
 </div>
 
-<!-- ── Instructor note ── -->
-{% if lesson_note and lesson_note.next_lesson_plan %}
+<!-- ── Instructor notes ── -->
+{% if lesson_note %}
 <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:14px;">
-  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:7px;">
-    Instructor note{% if lesson_note.author %} · {{ lesson_note.author.get_full_name }}{% endif %}
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:10px;">
+    Instructor notes{% if lesson_note.author %} · {{ lesson_note.author.get_full_name }}{% endif %}
   </div>
-  <div style="font:500 14px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.55;">{{ lesson_note.next_lesson_plan }}</div>
+  {% if lesson_note.debrief_notes %}
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:4px;">Debrief</div>
+  <div style="font:500 13.5px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.55;margin-bottom:12px;">{{ lesson_note.debrief_notes }}</div>
+  {% endif %}
+  {% if lesson_note.exercises_covered %}
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:4px;">Exercises</div>
+  <div style="font:500 13.5px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.55;margin-bottom:12px;">{{ lesson_note.exercises_covered }}</div>
+  {% endif %}
+  {% if lesson_note.next_lesson_plan %}
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:4px;">Next lesson</div>
+  <div style="font:500 13.5px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.55;">{{ lesson_note.next_lesson_plan }}</div>
+  {% endif %}
 </div>
 {% endif %}
 
@@ -95,17 +109,21 @@
 </div>
 {% endif %}
 
-<!-- ── Cancel action ── -->
-{% if booking.status == 'pending' or booking.status == 'confirmed' %}
-<div style="margin:14px 14px {% if request.GET.created %}10px{% else %}24px{% endif %};">
-  <form method="post" action="{% url 'core:app_bookings' club.slug %}">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="cancel_booking">
-    <input type="hidden" name="booking_id" value="{{ booking.id }}">
-    <button type="submit" class="app-btn outline-danger" style="width:100%;padding:11px;"
-            onclick="return confirm('Cancel this booking?');">Cancel booking</button>
-  </form>
-</div>
+<!-- ── Cancel action (future bookings only) ── -->
+{% if booking.scheduled_start|localtime|date:"Y-m-d" >= today|date:"Y-m-d" %}
+  {% if booking.status == 'pending' or booking.status == 'confirmed' %}
+  <div style="margin:14px 14px {% if request.GET.created %}10px{% else %}24px{% endif %};">
+    <form method="post" action="{% url 'core:app_bookings' club.slug %}">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="cancel_booking">
+      <input type="hidden" name="booking_id" value="{{ booking.id }}">
+      <button type="submit" class="app-btn outline-danger" style="width:100%;padding:11px;"
+              onclick="return confirm('Cancel this booking?');">Cancel booking</button>
+    </form>
+  </div>
+  {% else %}
+  <div style="height:24px;"></div>
+  {% endif %}
 {% else %}
 <div style="height:24px;"></div>
 {% endif %}

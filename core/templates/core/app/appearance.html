@@ -1,0 +1,106 @@
+{% extends "core/app/base.html" %}
+{% block title %}Appearance · {{ club.name }}{% endblock %}
+
+{% block app_bar_center %}<span class="app-bar-title">Appearance</span>{% endblock %}
+
+{% block content %}
+<div style="height:20px;"></div>
+
+<!-- ── Theme ── -->
+<div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin-bottom:8px;">Theme</div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 14px;padding:14px;">
+  <div class="seg-ctrl" style="margin:0;">
+    <button class="seg-btn" id="th-light"  onclick="setTheme('light')">Light</button>
+    <button class="seg-btn" id="th-dark"   onclick="setTheme('dark')">Dark</button>
+    <button class="seg-btn" id="th-system" onclick="setTheme('system')">System</button>
+  </div>
+</div>
+
+<!-- ── Accent colour ── -->
+<div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin:20px 0 8px;">Accent colour</div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 14px;padding:16px 14px;">
+  <div style="display:flex;gap:16px;justify-content:flex-start;flex-wrap:wrap;" id="accent-grid">
+    {% for ac in accents %}
+    <button onclick="setAccent('{{ ac.hex }}')"
+            data-hex="{{ ac.hex }}"
+            style="background:none;border:none;cursor:pointer;padding:4px;display:flex;flex-direction:column;align-items:center;gap:6px;-webkit-tap-highlight-color:transparent;">
+      <div style="width:38px;height:38px;border-radius:50%;background:{{ ac.hex }};position:relative;" class="accent-circle" data-hex="{{ ac.hex }}">
+        <div class="accent-check" data-hex="{{ ac.hex }}" style="display:none;position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+      <div style="font:600 10px 'Manrope',system-ui,sans-serif;color:var(--text-2);" class="accent-label" data-hex="{{ ac.hex }}">{{ ac.name }}</div>
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── Preview ── -->
+<div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin:20px 0 8px;">Preview</div>
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 14px 32px;padding:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;color:var(--text-2);">Next · Today</span>
+    <span class="st-pill st-confirmed">Confirmed</span>
+  </div>
+  <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:var(--text-1);">G-ABCD · Cessna 172</div>
+  <div style="margin-top:14px;">
+    <button id="preview-btn" style="width:100%;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font:700 14px 'Manrope',system-ui,sans-serif;cursor:default;">Open details</button>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+var ACCENTS = [{% for ac in accents %}{ hex: '{{ ac.hex }}', name: '{{ ac.name }}' }{% if not forloop.last %},{% endif %}{% endfor %}];
+
+function setTheme(t) {
+  localStorage.setItem('ch-theme', t);
+  var mq = window.matchMedia('(prefers-color-scheme:dark)');
+  var dark = t === 'dark' || (t !== 'light' && mq.matches);
+  document.body.classList.toggle('dark-mode', dark);
+  highlightTheme(t);
+  if (t !== 'dark' && t !== 'light') {
+    mq.addEventListener('change', function(e){ document.body.classList.toggle('dark-mode', e.matches); });
+  }
+}
+
+function highlightTheme(t) {
+  ['light','dark','system'].forEach(function(k){
+    var btn = document.getElementById('th-'+k);
+    if (btn) btn.classList.toggle('active', k === t);
+  });
+}
+
+function setAccent(hex) {
+  localStorage.setItem('ch-accent', hex);
+  document.documentElement.style.setProperty('--primary', hex);
+  document.documentElement.style.setProperty('--banner', hex);
+  document.documentElement.style.setProperty('--info-bg', hex+'22');
+  highlightAccent(hex);
+}
+
+function highlightAccent(hex) {
+  document.querySelectorAll('.accent-check').forEach(function(el){
+    el.style.display = el.dataset.hex === hex ? 'flex' : 'none';
+  });
+  document.querySelectorAll('.accent-label').forEach(function(el){
+    el.style.color = el.dataset.hex === hex ? 'var(--primary)' : 'var(--text-2)';
+    el.style.fontWeight = el.dataset.hex === hex ? '800' : '600';
+  });
+  var btn = document.getElementById('preview-btn');
+  if (btn) btn.style.background = hex;
+}
+
+(function(){
+  var t = localStorage.getItem('ch-theme') || 'system';
+  var a = localStorage.getItem('ch-accent') || '{{ default_accent }}';
+  highlightTheme(t);
+  highlightAccent(a);
+  if (a) {
+    document.documentElement.style.setProperty('--primary', a);
+    document.documentElement.style.setProperty('--info-bg', a+'22');
+  }
+})();
+</script>
+{% endblock %}

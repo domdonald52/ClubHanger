@@ -12251,6 +12251,18 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
             'bars':     _bars,
         })
 
+    # Member booking dates this week (for ribbon dots)
+    member_booking_dates = set(
+        Booking.objects
+        .filter(club=club, member=actor,
+                scheduled_start__date__gte=week_start,
+                scheduled_start__date__lte=week_start + _td(days=6))
+        .exclude(status=BookingStatus.CANCELLED)
+        .values_list('scheduled_start__date', flat=True)
+    )
+    for wd in week_days:
+        wd['has_booking'] = wd['date'] in member_booking_dates
+
     from .permissions import check_booking_block
     bb_blocked, bb_msg = check_booking_block(actor, get_config(club))
 
@@ -12419,6 +12431,14 @@ def app_profile(request, club_slug):
         else:
             sub_status = 'ok'
 
+    other_memberships = list(
+        ClubMember.objects
+        .filter(user=actor.user)
+        .exclude(id=actor.id)
+        .select_related('club', 'club__config')
+        .order_by('club__name')
+    )
+
     return render(request, 'core/app/profile.html', {
         'club': club, 'club_member': actor,
         'credentials': credentials,
@@ -12427,6 +12447,7 @@ def app_profile(request, club_slug):
         'saved': request.GET.get('saved') == '1',
         'sub_status': sub_status,
         'sub_days': sub_days,
+        'other_memberships': other_memberships,
     })
 
 
@@ -12564,7 +12585,7 @@ def app_account(request, club_slug):
     paid_receipts = list(
         _Inv.objects
         .filter(member=actor, club=club, status=Invoice.STATUS_PAID)
-        .select_related('flight_completion__booking')
+        .select_related('flight_completion__booking__aircraft', 'flight_completion__booking__flight_type')
         .order_by('-paid_at')[:10]
     )
 
@@ -12581,6 +12602,30 @@ def app_account(request, club_slug):
         'unpaid_flights_total': unpaid_flights_total,
         'unpaid_invoices_total': unpaid_invoices_total,
         'paid_receipts': paid_receipts,
+    })
+
+
+@login_required
+def app_invoice_detail(request, club_slug, invoice_id):
+    """Mobile app — full invoice detail for a member."""
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    from .models import Invoice as _Inv
+    from django.http import Http404
+    try:
+        inv = (_Inv.objects
+               .filter(id=invoice_id, member=actor, club=club)
+               .select_related('flight_completion__booking__aircraft__aircraft_type',
+                               'flight_completion__booking__flight_type',
+                               'flight_completion__booking__instructor')
+               .prefetch_related('line_items', 'payments')
+               .get())
+    except _Inv.DoesNotExist:
+        raise Http404
+    return render(request, 'core/app/invoice_detail.html', {
+        'club': club, 'club_member': actor,
+        'invoice': inv,
     })
 
 
@@ -12742,6 +12787,25 @@ def app_profile_edit(request, club_slug):
 
     return render(request, 'core/app/profile_edit.html', {
         'club': club, 'club_member': actor,
+    })
+
+
+@login_required
+def app_appearance(request, club_slug):
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    accents = [
+        {'hex': '#2f6fae', 'name': 'Blue'},
+        {'hex': '#8b2333', 'name': 'Burgundy'},
+        {'hex': '#7c5cbf', 'name': 'Lilac'},
+        {'hex': '#6b7a3a', 'name': 'Olive'},
+        {'hex': '#1f7a6e', 'name': 'Teal'},
+    ]
+    return render(request, 'core/app/appearance.html', {
+        'club': club, 'club_member': actor,
+        'accents': accents,
+        'default_accent': '#2f6fae',
     })
 
 

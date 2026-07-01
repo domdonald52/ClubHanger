@@ -11,62 +11,90 @@
   /* ── Override app-body for schedule (no padding, custom layout) ── */
   .app-body { padding-top: 0; padding-bottom: 0; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; min-height: 0; }
 
-  /* ── Week strip ── */
-  .week-strip-wrap {
-    background: var(--banner);
+  /* ── Date header bar (below app bar) ── */
+  .date-header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     margin-top: calc(52px + env(safe-area-inset-top, 0px));
   }
+  .date-header-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .7rem .9rem .3rem;
+  }
+  .date-heading {
+    font: 800 20px 'Manrope',system-ui,sans-serif;
+    color: var(--text-1);
+  }
+  .view-toggle { display: flex; gap: 4px; }
+  .view-toggle-btn {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 9px; border: 1.5px solid var(--border);
+    background: var(--surface-2); color: var(--text-2);
+    cursor: pointer;
+  }
+  .view-toggle-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  /* ── Week strip ── */
+  .week-strip-wrap { background: var(--surface); flex-shrink: 0; }
   .week-nav-row {
     display: flex; align-items: center;
-    padding: .5rem .6rem .3rem;
-    gap: .4rem;
+    padding: .1rem .5rem .1rem;
+    gap: .3rem;
   }
   .week-nav-btn {
-    width: 30px; height: 30px;
+    width: 28px; height: 28px;
     display: flex; align-items: center; justify-content: center;
-    background: rgba(255,255,255,.1); border-radius: 8px;
-    color: #fff; text-decoration: none; flex-shrink: 0;
+    background: var(--surface-2); border-radius: 7px;
+    color: var(--text-2); text-decoration: none; flex-shrink: 0;
     border: none; cursor: pointer;
   }
-  .week-nav-btn:active { background: rgba(255,255,255,.2); }
+  .week-nav-btn:active { background: var(--border); }
   .week-range-label {
     flex: 1; text-align: center;
-    font: 700 11.5px 'Manrope',system-ui,sans-serif;
-    color: rgba(255,255,255,.75);
-    letter-spacing: .01em;
+    font: 600 11px 'Manrope',system-ui,sans-serif;
+    color: var(--text-2);
   }
   .today-pill {
-    background: rgba(255,255,255,.15); color: #fff;
-    border-radius: 999px; padding: 4px 10px;
-    font: 700 10.5px 'Manrope',system-ui,sans-serif;
+    background: var(--info-bg); color: var(--primary);
+    border-radius: 999px; padding: 3px 9px;
+    font: 700 10px 'Manrope',system-ui,sans-serif;
     text-decoration: none; white-space: nowrap;
-    border: 1px solid rgba(255,255,255,.25);
+    border: 1px solid color-mix(in srgb,var(--primary) 25%,transparent);
     flex-shrink: 0;
   }
-  .today-pill:active { background: rgba(255,255,255,.25); }
   .week-strip {
     display: flex;
-    padding: .15rem .4rem .55rem;
-    gap: .2rem;
+    padding: .35rem .4rem .5rem;
+    gap: .25rem;
   }
   .day-chip {
     flex: 1; display: flex; flex-direction: column; align-items: center;
     padding: .4rem .2rem; border-radius: 10px;
-    text-decoration: none; color: rgba(255,255,255,.6);
+    text-decoration: none; color: var(--text-2);
     font: 600 9.5px 'Manrope',system-ui,sans-serif;
     text-transform: uppercase; letter-spacing: .04em;
-    cursor: pointer;
+    cursor: pointer; position: relative;
   }
-  .day-chip .dn { font: 700 16px 'Manrope',system-ui,sans-serif; line-height: 1.2; margin-top: .15rem; color: rgba(255,255,255,.75); }
-  .day-chip.today .dn { color: #fff; }
+  .day-chip .dn { font: 700 16px 'Manrope',system-ui,sans-serif; line-height: 1.2; margin-top: .15rem; color: var(--text-1); }
+  .day-chip.today { color: var(--primary); }
+  .day-chip.today .dn { color: var(--primary); }
   .day-chip.selected { background: var(--primary); color: #fff; }
   .day-chip.selected .dn { color: #fff; }
-  .day-chip.today-dot::after {
-    content: ''; display: block; width: 4px; height: 4px;
-    background: rgba(255,255,255,.7); border-radius: 50%; margin: .2rem auto 0;
+  /* Booking dot */
+  .day-chip .bk-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--primary); margin: .2rem auto 0;
+    opacity: .7;
   }
-  .day-chip.selected.today-dot::after { background: rgba(255,255,255,.9); }
+  .day-chip.selected .bk-dot { background: #fff; opacity: .8; }
+  /* Today ring — only when not selected */
+  .day-chip.today:not(.selected)::after {
+    content: ''; position: absolute; inset: 0;
+    border-radius: 10px; border: 1.5px solid var(--primary);
+    pointer-events: none;
+  }
 
   /* ── Aircraft header strip ── */
   .ac-header-wrap {
@@ -237,6 +265,24 @@
     box-shadow: 0 2px 8px rgba(0,0,0,.18);
   }
 
+  /* ── Right-edge fade on grid ── */
+  .timeline-fade-right {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 32px;
+    background: linear-gradient(to right, transparent, var(--bg));
+    pointer-events: none; z-index: 15;
+  }
+  /* ── Scroll indicator ── */
+  .scroll-track {
+    height: 3px; background: var(--border); flex-shrink: 0;
+    margin: 0 44px; border-radius: 2px; position: relative;
+    overflow: hidden;
+  }
+  .scroll-thumb {
+    position: absolute; top: 0; height: 100%;
+    background: var(--primary); border-radius: 2px;
+    opacity: .55; transition: left .05s, width .05s;
+  }
+
   /* ── No aircraft ── */
   .no-ac { flex: 1; display: flex; align-items: center; justify-content: center; color:var(--text-3); font-size: .88rem; padding: 2rem; text-align: center; }
 
@@ -260,26 +306,37 @@
 
 {% block content %}
 
-<!-- Week strip -->
-<div class="week-strip-wrap">
-  <!-- Week navigation row -->
+<!-- Date heading + view toggle -->
+<div class="date-header">
+  <div class="date-header-row">
+    <span class="date-heading">{{ selected|date:"D j M" }}</span>
+    <div class="view-toggle">
+      <button class="view-toggle-btn active" id="vt-grid" onclick="setView('grid')" aria-label="Grid view">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </button>
+      <button class="view-toggle-btn" id="vt-list" onclick="setView('list')" aria-label="List view">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+  <!-- Week navigation + day chips -->
   <div class="week-nav-row">
     <a href="{{ prev_week_url }}" class="week-nav-btn" aria-label="Previous week">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </a>
     <span class="week-range-label">{{ week_start|date:"j M" }} – {{ week_end|date:"j M" }}</span>
     {% if selected != today %}<a href="{{ today_url }}" class="today-pill">Today</a>{% endif %}
     <a href="{{ next_week_url }}" class="week-nav-btn" aria-label="Next week">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </a>
   </div>
-  <!-- Day chips -->
   <div class="week-strip">
     {% for wd in week_days %}
     <a href="{{ wd.url }}"
-       class="day-chip {% if wd.is_selected %}selected{% endif %} {% if wd.is_today %}today{% if not wd.is_selected %} today-dot{% endif %}{% endif %}">
+       class="day-chip {% if wd.is_selected %}selected{% endif %} {% if wd.is_today %}today{% endif %}">
       {{ wd.name }}
       <span class="dn">{{ wd.num }}</span>
+      {% if wd.has_booking %}<span class="bk-dot"></span>{% endif %}
     </a>
     {% endfor %}
   </div>
@@ -317,6 +374,7 @@
 </div>
 
 <!-- Timeline -->
+<div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0;">
 <div class="timeline-outer {% if full_blockouts %}schedule-greyed{% endif %}" id="tl-outer">
   <!-- Time axis (sticky left:0) -->
   <div class="time-axis">
@@ -339,6 +397,9 @@
     {% endfor %}
   </div>
   {% endif %}
+
+  <!-- Right-edge fade -->
+  <div class="timeline-fade-right" id="tl-fade"></div>
 
   <!-- Aircraft columns -->
   <div class="ac-cols" id="ac-cols">
@@ -371,6 +432,9 @@
     {% endfor %}
   </div>
 </div>
+<!-- Scroll indicator -->
+<div class="scroll-track" id="scroll-track"><div class="scroll-thumb" id="scroll-thumb"></div></div>
+</div><!-- end timeline wrapper -->
 
 {% else %}
 <div class="no-ac">No aircraft available</div>
@@ -475,9 +539,48 @@
 <script>
 const outer = document.getElementById('tl-outer');
 const heads = document.getElementById('ac-heads');
+
+// Sync header + scroll indicator on horizontal scroll
 if (outer && heads) {
-  outer.addEventListener('scroll', () => { heads.scrollLeft = outer.scrollLeft; }, {passive: true});
+  outer.addEventListener('scroll', function() {
+    heads.scrollLeft = outer.scrollLeft;
+    updateScrollIndicator();
+    // Hide right-edge fade when scrolled to end
+    var fade = document.getElementById('tl-fade');
+    if (fade) {
+      var maxScroll = outer.scrollWidth - outer.clientWidth;
+      fade.style.opacity = (maxScroll > 0 && outer.scrollLeft < maxScroll - 4) ? '1' : '0';
+    }
+  }, {passive: true});
 }
+
+function updateScrollIndicator() {
+  var thumb = document.getElementById('scroll-thumb');
+  var track = document.getElementById('scroll-track');
+  if (!outer || !thumb || !track) return;
+  var scrollW = outer.scrollWidth;
+  var clientW = outer.clientWidth;
+  if (scrollW <= clientW) { track.style.display='none'; return; }
+  track.style.display = '';
+  var ratio = clientW / scrollW;
+  var thumbW = Math.max(24, track.offsetWidth * ratio);
+  var maxLeft = track.offsetWidth - thumbW;
+  var left = (outer.scrollLeft / (scrollW - clientW)) * maxLeft;
+  thumb.style.width = thumbW + 'px';
+  thumb.style.left = left + 'px';
+}
+
+// View toggle (list view is a stub — grid is the functional view)
+function setView(v) {
+  document.getElementById('vt-grid').classList.toggle('active', v==='grid');
+  document.getElementById('vt-list').classList.toggle('active', v==='list');
+  var listStub = document.getElementById('list-view-stub');
+  var gridArea = document.getElementById('grid-view-area');
+  if (listStub) listStub.style.display = v==='list' ? '' : 'none';
+  if (gridArea) gridArea.style.display = v==='list' ? 'none' : '';
+}
+
+setTimeout(updateScrollIndicator, 100);
 
 // iOS Safari: trigger toolbar collapse on first touch so nav bar matches other pages
 (function() {
