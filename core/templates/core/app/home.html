@@ -18,15 +18,21 @@
 {% endblock %}
 
 {% block app_bar_right %}
-{% if club_member.avatar %}
-<a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action" style="padding:.2rem;">
-  <img src="{{ club_member.avatar.url }}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,.5);">
-</a>
-{% else %}
-<a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action" style="padding:.2rem;">
-  <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font:700 11px 'Manrope',system-ui,sans-serif;color:#fff;">{{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}</div>
-</a>
-{% endif %}
+<div style="display:flex;align-items:center;gap:2px;">
+  <a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" aria-label="Notifications" style="position:relative;">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    {% if unread_notifications_count %}<span style="position:absolute;top:4px;right:4px;width:8px;height:8px;background:#d6453f;border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}
+  </a>
+  {% if club_member.avatar %}
+  <a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action" style="padding:.2rem;">
+    <img src="{{ club_member.avatar.url }}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,.5);">
+  </a>
+  {% else %}
+  <a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action" style="padding:.2rem;">
+    <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font:700 11px 'Manrope',system-ui,sans-serif;color:#fff;">{{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}</div>
+  </a>
+  {% endif %}
+</div>
 {% endblock %}
 
 {% block extra_style %}
@@ -102,18 +108,14 @@
 
 <!-- ── Upcoming flights carousel ── -->
 {% if upcoming_bookings %}
-<div style="padding:16px 14px 4px;display:flex;align-items:center;justify-content:space-between;">
+<div style="padding:16px 14px 4px;">
   <div style="font:700 12px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);">Upcoming flights</div>
-  <div style="display:flex;align-items:center;gap:10px;">
-    <span style="display:flex;align-items:center;gap:4px;font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);"><span style="width:7px;height:7px;border-radius:50%;background:#2e9e6b;display:inline-block;"></span>Confirmed</span>
-    <span style="display:flex;align-items:center;gap:4px;font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);"><span style="width:7px;height:7px;border-radius:50%;background:#9a5a2a;display:inline-block;"></span>Pending</span>
-  </div>
 </div>
 <div class="bk-carousel" id="bk-carousel">
   {% for b in upcoming_bookings %}
   <div class="bk-carousel-card" onclick="window.location.href='{% url 'core:app_booking_detail' club.slug b.id %}'" style="cursor:pointer;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-      <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">
+      <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-1);">
         {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}Today{% else %}{{ b.scheduled_start|localtime|date:"D j M" }}{% endif %}
       </span>
       <div style="display:flex;align-items:center;gap:6px;">
@@ -149,8 +151,8 @@
       <div style="font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--text-2);margin-bottom:5px;">Balance</div>
       {% if balance is not None %}
       <div style="font:800 20px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1;">
-        {% if balance >= 0 %}<span style="font-weight:500;font-size:13px;color:var(--text-2);">$</span>{{ balance|floatformat:2 }}
-        {% else %}<span style="color:var(--alert);">−${{ balance|floatformat:2|slice:"1:" }}</span>{% endif %}
+        {% if balance >= 0 %}<span style="font-weight:500;font-size:13px;color:var(--text-2);">$</span>{{ balance|floatformat:2|intcomma }}
+        {% else %}<span style="color:var(--alert);">−${{ balance|floatformat:2|intcomma|cut:"-" }}</span>{% endif %}
       </div>
       <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:{% if balance >= 0 %}var(--text-2){% else %}var(--alert){% endif %};margin-top:3px;">{% if balance >= 0 %}In credit{% else %}Owing{% endif %}</div>
       {% else %}
@@ -166,7 +168,7 @@
         {% if invoice_count %}<span style="background:#f3e2d6;color:#9a5a2a;border-radius:999px;padding:2px 7px;font:700 9px 'Manrope',system-ui,sans-serif;">DUE</span>{% endif %}
       </div>
       {% if invoice_count %}
-      <div style="font:800 20px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1;"><span style="font-weight:500;font-size:13px;color:var(--text-2);">$</span>{{ outstanding_invoice_total|floatformat:2 }}</div>
+      <div style="font:800 20px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1;"><span style="font-weight:500;font-size:13px;color:var(--text-2);">$</span>{{ outstanding_invoice_total|floatformat:2|intcomma }}</div>
       <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:#9a5a2a;margin-top:3px;">{{ invoice_count }} invoice{{ invoice_count|pluralize }} due</div>
       {% else %}
       <div style="font:800 20px 'Manrope',system-ui,sans-serif;color:var(--success);line-height:1;">All clear</div>

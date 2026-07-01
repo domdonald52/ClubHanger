@@ -42,18 +42,17 @@
   {% for b in upcoming %}
   <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="bk-card">
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
-      <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">
-        {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}Today · {{ b.scheduled_start|localtime|time:"H:i" }}{% else %}{{ b.scheduled_start|localtime|date:"D j M" }} · {{ b.scheduled_start|localtime|time:"H:i" }}{% endif %}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-1);">
+        {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}Today{% else %}{{ b.scheduled_start|localtime|date:"D j M" }}{% endif %}
       </span>
       <span class="st-pill st-{{ b.status }}">{{ b.get_status_display }}</span>
     </div>
 
-    <div style="font:800 18px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.2;">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div>
+    <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1;letter-spacing:-.01em;">{{ b.scheduled_start|localtime|time:"H:i" }}<span style="font-weight:500;color:var(--text-3);font-size:17px;"> – </span>{{ b.scheduled_end|localtime|time:"H:i" }}</div>
 
-    <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:4px;">
-      {% if b.instructor %}Dual with {{ b.instructor.get_full_name }}{% else %}Solo{% endif %} ·
-      {% if b.status == 'pending' %}awaiting approval{% elif b.sched_hours %}{{ b.sched_hours|floatformat:1 }}h{% endif %}
+    <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;">
+      {{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %} · {% if b.instructor %}with {{ b.instructor.get_full_name }}{% else %}Solo{% endif %}{% if b.status == 'pending' %} · awaiting approval{% elif b.sched_hours %} · {{ b.sched_hours|floatformat:1 }}h{% endif %}
     </div>
 
     {% if forloop.first and b.instructor and next_lesson_plan %}
@@ -139,11 +138,6 @@
 </div>
 
 </div>
-
-<!-- ── FAB ── -->
-<a href="{% url 'core:app_book_find' club.slug %}" style="position:fixed;right:16px;bottom:calc(20px + var(--safe-bottom));width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25);text-decoration:none;z-index:40;">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-</a>
 
 {% endblock %}
 
