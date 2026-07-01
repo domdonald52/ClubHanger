@@ -329,7 +329,7 @@
                             <span class="user-avatar user-initials">{{ user.first_name|slice:":1" }}{{ user.last_name|slice:":1" }}</span>
                         {% endif %}
                         <span class="user-name">{{ user.first_name }} {{ user.last_name }}</span>
-                        {% if is_instructor %}<span class="role-badge">Instructor</span>{% endif %}
+                        {% if club_member.role %}<span class="role-badge">{{ club_member.role.name }}</span>{% elif club_member.is_admin %}<span class="role-badge">Admin</span>{% elif is_instructor %}<span class="role-badge">Instructor</span>{% endif %}
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 3.5l3 3 3-3"/></svg>
                     </button>
                     <div class="user-dropdown" id="user-dropdown" hidden>
