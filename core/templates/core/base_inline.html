@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
-{% if request.GET.saved %}<script>if(window.toast)window.toast('Saved','ok');</script>{% endif %}
+{% if request.GET.saved %}<script>if(window.toast)window.toast('{{ request.GET.msg|default:"Saved"|escapejs }}','ok');</script>{% endif %}
 <script>
 (function(){
   if(!window._snapForm||!window._checkDirty) return;

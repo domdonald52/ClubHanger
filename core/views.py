@@ -11615,9 +11615,14 @@ def occurrence_list(request, club_slug):
     if sort_dir == 'desc':
         _occ_order = tuple(f[1:] if f.startswith('-') else '-'+f for f in _occ_order)
 
+    from django.db.models import Count, Q as _Q
     qs = (OccurrenceReport.objects
           .filter(club=club)
           .select_related('occurrence_type', 'reported_by__user', 'aircraft', 'reviewed_by')
+          .annotate(
+              open_actions=Count('actions', filter=_Q(actions__status='open')),
+              done_actions=Count('actions', filter=_Q(actions__status__in=['complete', 'overridden'])),
+          )
           .order_by(*_occ_order))
     if f_status == 'all':
         pass
@@ -11767,7 +11772,18 @@ def occurrence_detail(request, club_slug, report_id):
         # Terminal actions (close, close_no_action) drop inline=1 so the overlay closes.
         # Non-terminal actions (save_notes, mark_reviewed, etc.) keep inline=1 to stay open.
         _terminal = act in ('close', 'close_no_action', 'reopen')
-        return redirect(f"{request.path}?{'inline=1&' if (is_inline and not _terminal) else ''}saved=1")
+        _act_msg = {
+            'mark_reviewed': 'Marked+as+reviewed',
+            'save_notes': 'Notes+saved',
+            'close': 'Report+closed',
+            'close_no_action': 'Report+closed',
+            'reopen': 'Report+reopened',
+            'add_action': 'Action+added',
+            'complete_action': 'Action+marked+done',
+            'override_action': 'Action+waived',
+            'set_safety_risk': 'Updated',
+        }.get(act, 'Saved')
+        return redirect(f"{request.path}?{'inline=1&' if (is_inline and not _terminal) else ''}saved=1&msg={_act_msg}")
 
     instructors = ClubMember.objects.filter(club=club, is_on_instructor_roster=True).select_related('user')
     base_template = 'core/base_inline.html' if is_inline else 'core/base.html'

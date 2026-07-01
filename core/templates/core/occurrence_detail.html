@@ -8,7 +8,6 @@
   <a href="{% if back %}{{ back }}{% else %}{% url 'core:occurrence_list' club.slug %}{% endif %}" class="back-link">← Back</a>
   {% endif %}
 
-  {% if request.GET.saved %}<script>window.toast && window.toast('Saved','ok');</script>{% endif %}
 
   <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:.8rem;margin-bottom:1.2rem;">
     <div>
@@ -63,6 +62,16 @@
       {% if actions %}<span style="font-size:.75rem;color:var(--text-3);">{{ actions|length }} item{{ actions|length|pluralize }}</span>{% endif %}
     </div>
     <div style="padding:.8rem .9rem;">
+      <script>
+      window.oaDone = function(id){
+        var w=document.getElementById('waive-expand-'+id), d=document.getElementById('done-expand-'+id);
+        if(w) w.hidden=true; if(d){ d.hidden=false; var t=d.querySelector('textarea'); if(t) t.focus(); }
+      };
+      window.oaWaive = function(id){
+        var d=document.getElementById('done-expand-'+id), w=document.getElementById('waive-expand-'+id);
+        if(d) d.hidden=true; if(w){ w.hidden=false; var i=w.querySelector('input[name=override_note]'); if(i) i.focus(); }
+      };
+      </script>
       {% if actions %}
       {% for a in actions %}
       <div style="display:flex;gap:.7rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid #f3f5f7;font-size:.85rem;">
@@ -74,8 +83,8 @@
         </div>
         <div style="white-space:nowrap;flex-shrink:0;">
           {% if a.status == 'open' %}
-          <button type="button" class="cbtn-sm" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="expandDone{{ a.id }}()">Mark done</button>
-          <button type="button" class="cbtn-sm danger" onclick="expandWaive{{ a.id }}()">Waive</button>
+          <button type="button" class="cbtn-sm" style="background:var(--primary);color:#fff;border-color:var(--primary);" onclick="oaDone({{ a.id }})">Mark done</button>
+          <button type="button" class="cbtn-sm cbtn-danger" onclick="oaWaive({{ a.id }})">Waive</button>
           {% elif a.status == 'complete' %}
           <span style="color:var(--success-text);font-size:.78rem;font-weight:600;">✓ Done</span>
           {% else %}
@@ -105,15 +114,11 @@
             <input type="text" name="override_note" class="finput" required placeholder="Why is this action being waived?">
           </label>
           <div style="display:flex;gap:.3rem;align-items:flex-end;padding-bottom:1px;">
-            <button type="submit" class="cbtn-sm danger">Confirm</button>
+            <button type="submit" class="cbtn-sm cbtn-danger">Confirm</button>
             <button type="button" class="cbtn-sm" onclick="document.getElementById('waive-expand-{{ a.id }}').hidden=true">Cancel</button>
           </div>
         </form>
       </div>
-      <script>
-      function expandDone{{ a.id }}(){ document.getElementById('waive-expand-{{ a.id }}').hidden=true; document.getElementById('done-expand-{{ a.id }}').hidden=false; document.getElementById('done-expand-{{ a.id }}').querySelector('textarea').focus(); }
-      function expandWaive{{ a.id }}(){ document.getElementById('done-expand-{{ a.id }}').hidden=true; document.getElementById('waive-expand-{{ a.id }}').hidden=false; document.getElementById('waive-expand-{{ a.id }}').querySelector('input[name=override_note]').focus(); }
-      </script>
       {% endif %}
       {% endfor %}
       {% else %}

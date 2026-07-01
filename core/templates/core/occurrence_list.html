@@ -59,8 +59,16 @@
         <td>{{ r.reported_by.user.get_full_name }}</td>
         <td>{{ r.aircraft.registration|default:"—" }}</td>
         <td><span class="status-chip occ-{{ r.status }}">{{ r.get_status_display }}</span></td>
-        <td style="color:var(--text-3);font-size:.82rem;">
-          {% with open=r.actions.all %}{% if open %}{{ open|length }} action{{ open|length|pluralize }}{% else %}—{% endif %}{% endwith %}
+        <td style="font-size:.82rem;white-space:nowrap;">
+          {% if r.open_actions %}
+            <span style="background:var(--warning-bg);color:var(--warning-text);border-radius:10px;padding:.15rem .5rem;font-size:.76rem;font-weight:600;">{{ r.open_actions }} open</span>
+          {% endif %}
+          {% if r.done_actions %}
+            <span style="background:var(--success-bg);color:var(--success-text);border-radius:10px;padding:.15rem .5rem;font-size:.76rem;font-weight:600;">{{ r.done_actions }} done</span>
+          {% endif %}
+          {% if not r.open_actions and not r.done_actions %}
+            <span style="color:var(--text-3);">—</span>
+          {% endif %}
         </td>
         <td><a href="{% url 'core:occurrence_detail' club.slug r.id %}" class="cbtn-sm cbtn-icon" title="View" data-overlay><i class="ti ti-eye"></i></a></td>
       </tr>
