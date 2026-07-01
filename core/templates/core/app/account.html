@@ -13,7 +13,7 @@
   <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:6px;">Account balance</div>
   {% if balance is not None %}
     {% if balance >= 0 %}
-    <div style="font:800 30px 'Manrope',system-ui,sans-serif;color:#2e9e6b;">+${{ balance|floatformat:2|intcomma }}</div>
+    <div style="font:800 30px 'Manrope',system-ui,sans-serif;color:var(--success-text);">+${{ balance|floatformat:2|intcomma }}</div>
     <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:4px;">Credit available</div>
     {% else %}
     <div style="font:800 30px 'Manrope',system-ui,sans-serif;color:var(--danger);">${{ balance|floatformat:2|intcomma|cut:"-" }}</div>
@@ -128,7 +128,7 @@
         </div>
         <div style="text-align:right;flex-shrink:0;margin-left:8px;">
           <div style="font:800 16px 'Manrope',system-ui,sans-serif;color:var(--text-1);">${{ inv.total|floatformat:2|intcomma }}</div>
-          <div style="font:600 10px 'Manrope',system-ui,sans-serif;color:#2e9e6b;margin-top:2px;">✓ Paid</div>
+          <div style="font:600 10px 'Manrope',system-ui,sans-serif;color:var(--success-text);margin-top:2px;">✓ Paid</div>
         </div>
       </div>
     </a>
