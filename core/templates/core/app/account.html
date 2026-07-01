@@ -147,27 +147,25 @@
 <!-- ── Transactions tab ── -->
 <div id="tab-transactions" {% if not request.GET.tab or request.GET.tab == 'invoices' %}style="display:none;"{% endif %}>
   <div style="height:14px;"></div>
-  {% if transactions_page %}
+  {% if payments_page.object_list %}
   <div class="app-list" style="margin-bottom:24px;">
-    {% for tx in transactions_page %}
+    {% for item in payments_page %}
     <div class="app-list-row" style="cursor:default;">
       <div class="app-list-main">
-        <div class="app-list-title">{{ tx.description|default:"Transaction" }}</div>
-        <div class="app-list-sub">{{ tx.created_at|localtime|date:"j M Y" }}</div>
+        <div class="app-list-title">{{ item.description }}</div>
+        <div class="app-list-sub">{{ item.date|localtime|date:"j M Y" }}{% if item.sub %} · {{ item.sub }}{% endif %}</div>
       </div>
-      <div class="app-list-right" style="color:{% if tx.amount >= 0 %}#2e9e6b{% else %}var(--danger){% endif %};">
-        {% if tx.amount >= 0 %}+{% endif %}${{ tx.amount|floatformat:2|intcomma }}
-      </div>
+      <div class="app-list-right" style="color:{% if item.color == 'success' %}var(--success-text){% elif item.color == 'danger' %}var(--danger-text){% else %}var(--text-2){% endif %};">{{ item.prefix }}${{ item.amount|floatformat:2|intcomma }}</div>
     </div>
     {% endfor %}
   </div>
-  {% if transactions_page.has_other_pages %}
+  {% if payments_page.has_other_pages %}
   <div style="display:flex;gap:8px;margin:0 14px 24px;">
-    {% if transactions_page.has_previous %}
-    <a href="?tab=transactions&page={{ transactions_page.previous_page_number }}" class="app-btn secondary" style="flex:1;padding:10px;">← Previous</a>
+    {% if payments_page.has_previous %}
+    <a href="?tab=transactions&page={{ payments_page.previous_page_number }}" class="app-btn secondary" style="flex:1;padding:10px;">← Previous</a>
     {% endif %}
-    {% if transactions_page.has_next %}
-    <a href="?tab=transactions&page={{ transactions_page.next_page_number }}" class="app-btn secondary" style="flex:1;padding:10px;">Next →</a>
+    {% if payments_page.has_next %}
+    <a href="?tab=transactions&page={{ payments_page.next_page_number }}" class="app-btn secondary" style="flex:1;padding:10px;">Next →</a>
     {% endif %}
   </div>
   {% endif %}

@@ -12655,21 +12655,54 @@ def app_account(request, club_slug):
     if not actor:
         return redirect('login')
 
-    from .models import AccountTransaction, FlightCompletion as _FC, Invoice as _Inv
+    from .models import AccountTransaction, FlightCompletion as _FC, Invoice as _Inv, FlightPayment as _FP
     from datetime import timedelta as _timedelta
     from django.core.paginator import Paginator as _Paginator
 
-    transactions_page = None
+    # Build merged payment history: account ledger + direct flight payments
+    _history = []
     balance = None
     try:
         acct = actor.account
-        _tx_qs = AccountTransaction.objects.filter(account=acct).order_by('-created_at')
-        _paginator = _Paginator(_tx_qs, 20)
-        _page_num = request.GET.get('page', 1)
-        transactions_page = _paginator.get_page(_page_num)
         balance = acct.balance
+        for _tx in AccountTransaction.objects.filter(account=acct).order_by('-created_at'):
+            _is_cr = _tx.direction == AccountTransaction.DIRECTION_CREDIT
+            _pm = _tx.payment_method
+            _sub = _tx.get_payment_method_display() if _pm and _pm != 'account' else None
+            _history.append({
+                'date': _tx.created_at,
+                'description': _tx.description or _tx.get_transaction_type_display(),
+                'sub': _sub,
+                'amount': _tx.amount,
+                'prefix': '+' if _is_cr else '−',
+                'color': 'success' if _is_cr else 'danger',
+            })
     except Exception:
         pass
+
+    for _fp in (_FP.objects
+                .filter(member=actor, paid_at__isnull=False)
+                .exclude(method__in=['credit', 'invoice'])
+                .select_related('completion__booking__aircraft')
+                .order_by('-paid_at')):
+        try:
+            _reg = _fp.completion.booking.aircraft.registration
+            _desc = f'Flight payment — {_reg}'
+        except Exception:
+            _desc = 'Flight payment'
+        _is_refund = _fp.method == 'refund'
+        _history.append({
+            'date': _fp.paid_at,
+            'description': _desc,
+            'sub': _fp.get_method_display(),
+            'amount': _fp.amount,
+            'prefix': '+' if _is_refund else '',
+            'color': 'success' if _is_refund else 'neutral',
+        })
+
+    _history.sort(key=lambda x: x['date'], reverse=True)
+    _page_num = request.GET.get('page', 1)
+    payments_page = _Paginator(_history, 20).get_page(_page_num)
 
     today = timezone.localdate()
     _thirty_days_ago = today - _timedelta(days=30)
@@ -12710,7 +12743,7 @@ def app_account(request, club_slug):
     return render(request, 'core/app/account.html', {
         'club': club, 'club_member': actor,
         'balance': balance,
-        'transactions_page': transactions_page,
+        'payments_page': payments_page,
         'unpaid_flights': unpaid_flights,
         'unpaid_invoices': unpaid_invoices,
         'unpaid_flights_total': unpaid_flights_total,
