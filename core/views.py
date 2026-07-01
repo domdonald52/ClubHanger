@@ -1809,7 +1809,7 @@ def club_settings(request, club_slug, mode='settings'):
                 else:
                     from django.contrib import messages as _msg
                     _msg.error(request, f'A role named "{new_name}" already exists.')
-            return redirect(redirect(_redir_name, club_slug=club_slug).url + '?tab=roles&saved=1')
+            return redirect(redirect(_redir_name, club_slug=club_slug).url + '?tab=roles&saved=1&msg=Role+renamed')
 
         elif action == 'set_role_fee':
             role = Role.objects.filter(club=club, id=request.POST.get('role_id')).first()
@@ -1940,7 +1940,7 @@ def club_settings(request, club_slug, mode='settings'):
             ot_desc = request.POST.get('ot_desc', '').strip()
             if ot_name:
                 OccurrenceType.objects.get_or_create(club=club, name=ot_name, defaults={'description': ot_desc})
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=incident-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=incident-types&saved=1&msg=Event+type+added")
 
         elif action == 'edit_occurrence_type':
             ot = OccurrenceType.objects.filter(club=club, id=request.POST.get('ot_id')).first()
@@ -1951,26 +1951,26 @@ def club_settings(request, club_slug, mode='settings'):
                 ot.description = request.POST.get('ot_desc', '').strip()
                 ot.sort_order = int(request.POST.get('ot_sort', ot.sort_order) or ot.sort_order)
                 ot.save()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=incident-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=incident-types&saved=1&msg=Event+type+updated")
 
         elif action == 'delete_occurrence_type':
             ot = OccurrenceType.objects.filter(club=club, id=request.POST.get('ot_id')).first()
             if ot and not ot.reports.exists():
                 ot.delete()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=incident-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=incident-types&saved=1&msg=Event+type+deleted")
 
         elif action == 'toggle_occurrence_type':
             ot = OccurrenceType.objects.filter(club=club, id=request.POST.get('ot_id')).first()
             if ot:
                 ot.is_active = not ot.is_active
                 ot.save(update_fields=['is_active'])
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=incident-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=incident-types&saved=1&msg=Updated")
 
         elif action == 'add_contact_type':
             ct_name = request.POST.get('ct_name', '').strip()
             if ct_name:
                 ContactType.objects.get_or_create(club=club, name=ct_name)
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1&msg=Contact+type+added")
 
         elif action == 'edit_contact_type':
             ct = ContactType.objects.filter(club=club, id=request.POST.get('ct_id')).first()
@@ -1978,20 +1978,20 @@ def club_settings(request, club_slug, mode='settings'):
                 ct_name = request.POST.get('ct_name', '').strip()
                 if ct_name: ct.name = ct_name
                 ct.save()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1&msg=Contact+type+updated")
 
         elif action == 'delete_contact_type':
             ct = ContactType.objects.filter(club=club, id=request.POST.get('ct_id')).first()
             if ct and not ct.contacts.exists():
                 ct.delete()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1&msg=Contact+type+deleted")
 
         elif action == 'toggle_contact_type':
             ct = ContactType.objects.filter(club=club, id=request.POST.get('ct_id')).first()
             if ct:
                 ct.is_active = not ct.is_active
                 ct.save(update_fields=['is_active'])
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=contact-types&saved=1&msg=Updated")
 
         elif action == 'add_voucher_type':
             vt_name = request.POST.get('vt_name', '').strip()
@@ -2008,7 +2008,7 @@ def club_settings(request, club_slug, mode='settings'):
                     )
                 except Exception:
                     pass
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1&msg=Voucher+type+added")
 
         elif action == 'edit_voucher_type':
             vt = VoucherType.objects.filter(club=club, id=request.POST.get('vt_id')).first()
@@ -2019,20 +2019,20 @@ def club_settings(request, club_slug, mode='settings'):
                 vt.description = request.POST.get('vt_desc', '').strip()
                 vt.sort_order  = int(request.POST.get('vt_sort', vt.sort_order) or vt.sort_order)
                 vt.save()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1&msg=Voucher+type+updated")
 
         elif action == 'delete_voucher_type':
             vt = VoucherType.objects.filter(club=club, id=request.POST.get('vt_id')).first()
             if vt:
                 vt.delete()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1&msg=Voucher+type+deleted")
 
         elif action == 'toggle_voucher_type':
             vt = VoucherType.objects.filter(club=club, id=request.POST.get('vt_id')).first()
             if vt:
                 vt.is_active = not vt.is_active
                 vt.save(update_fields=['is_active'])
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=voucher-types&saved=1&msg=Updated")
 
         elif action == 'add_maint_type':
             mt_name = request.POST.get('mt_name', '').strip()
@@ -2046,7 +2046,7 @@ def club_settings(request, club_slug, mode='settings'):
                 mt.warn_days      = request.POST.get('mt_warn_days') or None
                 mt.alert_days     = request.POST.get('mt_alert_days') or None
                 mt.save()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1&msg=Maintenance+type+added")
 
         elif action == 'edit_maint_type':
             mt = MaintenanceType.objects.filter(club=club, id=request.POST.get('mt_id')).first()
@@ -2062,20 +2062,20 @@ def club_settings(request, club_slug, mode='settings'):
                 mt.warn_days      = request.POST.get('mt_warn_days') or None
                 mt.alert_days     = request.POST.get('mt_alert_days') or None
                 mt.save()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1&msg=Maintenance+type+updated")
 
         elif action == 'delete_maint_type':
             mt = MaintenanceType.objects.filter(club=club, id=request.POST.get('mt_id')).first()
             if mt and not mt.items.exists():
                 mt.delete()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1&msg=Maintenance+type+deleted")
 
         elif action == 'toggle_maint_type':
             mt = MaintenanceType.objects.filter(club=club, id=request.POST.get('mt_id')).first()
             if mt:
                 mt.is_active = not mt.is_active
                 mt.save(update_fields=['is_active'])
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=maint-types&saved=1&msg=Updated")
 
         elif action == 'save_budget':
             import calendar as _cal
@@ -2094,7 +2094,7 @@ def club_settings(request, club_slug, mode='settings'):
                             club=club, aircraft=ac, fy_year=fy_year, month=m,
                             defaults={'budgeted_hours': round(hrs, 1)},
                         )
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=budget&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=budget&saved=1&msg=Budget+saved")
 
         elif action == 'run_auto_lapse':
             from datetime import timedelta as _td
@@ -2127,7 +2127,7 @@ def club_settings(request, club_slug, mode='settings'):
                    if lapsed_names else 'No members were due for lapsing.')
             from django.contrib import messages as _msgs
             _msgs.success(request, msg)
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=membership&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=membership&saved=1&msg=Members+lapsed")
 
         elif action == 'save_renewal_defaults':
             from decimal import Decimal as _D
@@ -2144,7 +2144,7 @@ def club_settings(request, club_slug, mode='settings'):
                 config.renewal_early_bird_days_before_fy_end = None
             config.save(update_fields=['renewal_early_bird_amount', 'renewal_early_bird_days_before_fy_end'])
             from django.urls import reverse as _rev_s
-            return redirect(_rev_s(_redir_name, kwargs={'club_slug': club_slug}) + '?tab=membership&saved=1')
+            return redirect(_rev_s(_redir_name, kwargs={'club_slug': club_slug}) + '?tab=membership&saved=1&msg=Renewal+defaults+saved')
 
         elif action == 'run_bulk_renewal':
             from datetime import timedelta as _td
@@ -2211,7 +2211,7 @@ def club_settings(request, club_slug, mode='settings'):
             except (ValueError, TypeError):
                 pass
             config.save()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=membership&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=membership&saved=1&msg=Settings+saved")
 
         elif action == 'save_billing':
             for field in ['billing_name',
@@ -2245,7 +2245,7 @@ def club_settings(request, club_slug, mode='settings'):
             except (ValueError, TypeError):
                 pass
             config.save()
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=billing&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab=billing&saved=1&msg=Billing+settings+saved")
 
         else:
             club_name = request.POST.get('club_name', '').strip()
@@ -2301,7 +2301,7 @@ def club_settings(request, club_slug, mode='settings'):
                             pass
             config.save()
             _tab = request.POST.get('_tab', 'general')
-            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab={_tab}&saved=1")
+            return redirect(f"{redirect(_redir_name, club_slug=club_slug).url}?tab={_tab}&saved=1&msg=Settings+saved")
 
     color_fields = [
         ('theme_banner', 'Banner', config.theme_banner),
@@ -2415,7 +2415,8 @@ def manage_announcements(request, club_slug):
             ann.save()
         elif action == 'delete':
             Announcement.objects.filter(club=club, id=request.POST.get('ann_id')).delete()
-        return redirect(f"{request.path}?saved=1")
+        _ann_msg = 'Announcement+deleted' if action == 'delete' else 'Announcement+saved'
+        return redirect(f"{request.path}?saved=1&msg={_ann_msg}")
 
     from urllib.parse import urlencode as _ue
     saved    = request.GET.get('saved') == '1'
@@ -3104,6 +3105,8 @@ def booking_detail(request, club_slug, booking_id):
                             amount=round(float(_new_fc.instructor_rate_snapshot) * float(_fc_hours), 2),
                         )
                     for _sc in ac.surcharges.all():
+                        if _sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR and not _fc_hours:
+                            continue
                         _sc_amt = (round(float(_sc.amount) * float(_fc_hours), 2)
                                    if _sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR else float(_sc.amount))
                         FlightChargeItem.objects.create(
@@ -3132,6 +3135,8 @@ def booking_detail(request, club_slug, booking_id):
                             amount=round(float(_new_fc.instructor_rate_snapshot) * float(_fc_hours), 2),
                         )
                     for _sc in ac.surcharges.all():
+                        if _sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR and not _fc_hours:
+                            continue
                         _sc_amt = (round(float(_sc.amount) * float(_fc_hours), 2)
                                    if _sc.rate_type == AircraftSurchargeType.RATE_PER_HOUR else float(_sc.amount))
                         FlightChargeItem.objects.create(
@@ -3272,7 +3277,7 @@ def booking_detail(request, club_slug, booking_id):
                 client=_Cont.objects.filter(id=cid, club=club).first() if cid else None,
                 billed_to=request.POST.get('billed_to', ''),
             )
-            return redirect(request.path + ('?inline=1&saved=1' if is_inline else '?saved=1'))
+            return redirect(request.path + ('?inline=1&saved=1&msg=Client+updated' if is_inline else '?saved=1&msg=Client+updated'))
 
         elif action == 'add_charge' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and (actor.is_admin or actor.is_instructor):
             fc = booking.flight_completion
@@ -3741,7 +3746,7 @@ def booking_detail(request, club_slug, booking_id):
                     else:
                         setattr(fc, _sf, None)
                 fc.save(update_fields=_sph_fields)
-                return redirect(request.path + '?saved=1')
+                return redirect(request.path + '?saved=1&msg=Hours+saved')
 
         elif action == 'void_checkin' and booking.status in (BookingStatus.RETURNED, BookingStatus.COMPLETED) and actor.is_superadmin:
             fc = booking.flight_completion
@@ -3839,13 +3844,29 @@ def booking_detail(request, club_slug, booking_id):
                     _chk_fc.refresh_from_db(fields=['amount_paid', 'paid_at', 'invoice_issued'])
                     if _chk_fc.is_paid or _chk_fc.invoice_issued:
                         Booking.objects.filter(pk=booking.pk).update(status=BookingStatus.COMPLETED)
+            _bk_msg = {
+                'confirm': 'Booking+confirmed',
+                'depart': 'Booking+checked+out',
+                'cancel': 'Booking+cancelled',
+                'add_charge': 'Charge+added',
+                'void_checkin': 'Check-in+voided',
+                'reverse_payment': 'Payment+reversed',
+                'record_refund': 'Refund+recorded',
+                'waive_charge': 'Charge+waived',
+                'record_segment_payments': 'Payment+recorded',
+                'record_all_payees': 'Payment+recorded',
+                'record_multi_payment': 'Payment+recorded',
+                'record_payee': 'Payment+recorded',
+                'record_new_payee': 'Payment+recorded',
+                'edit_checkin': 'Check-in+updated',
+            }.get(action, 'Saved')
             if is_inline:
                 if action in ('depart', 'confirm'):
                     # Close the overlay after checkout or confirmation
-                    return redirect(f'{request.path}?close_overlay=1&saved=1')
-                return redirect(f'{request.path}?inline=1&saved=1')
+                    return redirect(f'{request.path}?close_overlay=1&saved=1&msg={_bk_msg}')
+                return redirect(f'{request.path}?inline=1&saved=1&msg={_bk_msg}')
             from django.urls import reverse as _rev
-            return redirect(_rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id}) + '?saved=1')
+            return redirect(_rev('core:booking_detail', kwargs={'club_slug': club_slug, 'booking_id': booking_id}) + f'?saved=1&msg={_bk_msg}')
 
     is_inline = request.GET.get('inline') == '1'
     error = request.GET.get('err', '') or None
@@ -4714,7 +4735,7 @@ def manage_member_detail(request, club_slug, member_id):
                 _note.debrief_notes     = request.POST.get('debrief_notes', '').strip()
                 _note.next_lesson_plan  = request.POST.get('next_lesson_plan', '').strip()
                 _note.save()
-                return redirect(_detail_base + '?saved=1#training')
+                return redirect(_detail_base + '?saved=1&msg=Lesson+note+saved#training')
             elif action == 'delete_lesson_note':
                 _note = get_object_or_404(_LN, id=request.POST.get('note_id'), booking__club=club)
                 _note.delete()
@@ -4723,7 +4744,7 @@ def manage_member_detail(request, club_slug, member_id):
                 _note = get_object_or_404(_LN, id=request.POST.get('note_id'), booking__club=club)
                 from .email_notifications import lesson_note_emailed as _email_note
                 _email_note(_note, club)
-                return redirect(_detail_base + '?saved=1#training')
+                return redirect(_detail_base + '?saved=1&msg=Lesson+note+emailed#training')
 
         elif action == 'delete_member' and actor.is_superadmin and member != actor:
             from .models import AccountTransaction as _AT
@@ -4738,7 +4759,7 @@ def manage_member_detail(request, club_slug, member_id):
             member.delete()
             if _user and not ClubMember.objects.filter(user=_user).exists():
                 _user.delete()
-            return redirect(_rev_del('core:manage_members', kwargs={'club_slug': club_slug}) + '?saved=1')
+            return redirect(_rev_del('core:manage_members', kwargs={'club_slug': club_slug}) + '?saved=1&msg=Member+deleted')
 
         return _inline_redirect(request, 'core:manage_member_detail', club_slug=club_slug, member_id=member_id, saved=_saved)
 
@@ -5066,7 +5087,7 @@ def my_profile(request, club_slug):
             if request.FILES.get('avatar'):
                 member.avatar = request.FILES['avatar']
                 member.save(update_fields=['avatar'])
-            return redirect(_profile_url + '?saved=1')
+            return redirect(_profile_url + '?saved=1&msg=Avatar+updated')
         elif action == 'save_notifications':
             from .models import NotificationPreference
             pref, _ = NotificationPreference.objects.get_or_create(club_member=member)
@@ -5086,12 +5107,12 @@ def my_profile(request, club_slug):
             raw_days = request.POST.get('max_days_ahead', '').strip()
             pref.max_days_ahead = int(raw_days) if raw_days.isdigit() else None
             pref.save()
-            return redirect(_profile_url + '?saved=1#notifications')
+            return redirect(_profile_url + '?saved=1&msg=Notifications+saved#notifications')
         elif action == 'unwatch_slot':
             booking_id = request.POST.get('booking_id')
             if booking_id:
                 SlotWatch.objects.filter(club_member=member, booking_id=booking_id).delete()
-            return redirect(_profile_url + '?saved=1#notifications')
+            return redirect(_profile_url + '?saved=1&msg=Watch+removed#notifications')
         elif action == 'delete_notifications':
             from .models import NotificationPreference
             NotificationPreference.objects.filter(club_member=member).delete()
@@ -5117,7 +5138,7 @@ def my_profile(request, club_slug):
             member.date_of_birth = dob or None
             member.sex = request.POST.get('sex', '').strip()
             member.save()
-            return redirect(_profile_url + '?saved=1')
+            return redirect(_profile_url + '?saved=1&msg=Profile+saved')
 
     from django.db.models import Q as _Q
     _now = timezone.now()
@@ -6354,7 +6375,7 @@ def aircraft_maintenance_log(request, club_slug, aircraft_id):
         if mle_fields:
             mle.save(update_fields=mle_fields)
 
-        return redirect(request.path + '?saved=1')
+        return redirect(request.path + '?saved=1&msg=Log+entry+saved')
 
     entries_qs = (
         ac.maint_log
@@ -6861,7 +6882,7 @@ def contact_detail(request, club_slug, contact_id):
             contact.contact_type  = ContactType.objects.filter(id=_ct_id, club=club).first() if _ct_id else None
             contact.notes         = request.POST.get('notes', '').strip()
             contact.save()
-            redir = request.path + '?saved=1'
+            redir = request.path + '?saved=1&msg=Contact+saved'
             return redirect(redir)
 
         elif action == 'convert_to_member' and contact.can_convert:
@@ -7092,7 +7113,7 @@ def booking_declaration(request, club_slug, booking_id):
 
     _is_inline = request.GET.get('inline') == '1'
     _decl_url = f'{request.path}{"?inline=1" if _is_inline else ""}'
-    _saved_url = request.path + ('?inline=1&saved=1' if _is_inline else '?saved=1')
+    _saved_url = request.path + ('?inline=1&saved=1&msg=Declaration+saved' if _is_inline else '?saved=1&msg=Declaration+saved')
 
     if request.method == 'POST' and not readonly:
         action = request.POST.get('action', 'save_draft')
@@ -7606,7 +7627,7 @@ def generate_invoice(request, club_slug, booking_id):
         import urllib.parse as _up2
         _print_qs = '?' + _up2.urlencode({'back': _booking_url})
         return redirect(_rev('core:invoice_print', kwargs={'club_slug': club_slug, 'invoice_id': created[0].id}) + _print_qs)
-    return redirect(_booking_url + '?saved=1')
+    return redirect(_booking_url + '?saved=1&msg=Invoice+issued')
 
 
 @login_required
@@ -7651,7 +7672,7 @@ def invoice_detail(request, club_slug, invoice_id):
             invoice.save(update_fields=['description'])
 
         if action == 'update_details':
-            return redirect(_stay_url)
+            return redirect(_stay_url + '&msg=Details+saved')
 
         if action == 'mark_sent' and invoice.status == Invoice.STATUS_DRAFT:
             invoice.status = Invoice.STATUS_SENT
@@ -7662,7 +7683,7 @@ def invoice_detail(request, club_slug, invoice_id):
             from .email_notifications import invoice_sent as _email_invoice
             _email_invoice(invoice)
             _next = request.POST.get('next_url', '').strip()
-            return redirect(_next if _next else _stay_url)
+            return redirect(_next if _next else _stay_url + '&msg=Invoice+sent')
 
         elif action == 'send_copy' and invoice.status in ('sent', 'paid'):
             from .services import notification_service as _ns
@@ -7670,7 +7691,7 @@ def invoice_detail(request, club_slug, invoice_id):
             from .email_notifications import invoice_sent as _email_invoice2
             _email_invoice2(invoice)
             _next = request.POST.get('next_url', '').strip()
-            return redirect(_next if _next else _stay_url)
+            return redirect(_next if _next else _stay_url + '&msg=Copy+sent')
 
         elif action == 'mark_paid' and invoice.status == 'sent':
             from decimal import Decimal as _D
@@ -7780,7 +7801,7 @@ def invoice_detail(request, club_slug, invoice_id):
                             if _sub_member.user and not _sub_member.user.is_active:
                                 _sub_member.user.is_active = True
                                 _sub_member.user.save(update_fields=['is_active'])
-                return redirect(_stay_url)
+                return redirect(_stay_url + '&msg=Payment+recorded')
 
         elif action == 'void' and invoice.status in ('draft', 'sent') and actor.is_admin:
             invoice.status = Invoice.STATUS_VOID
@@ -7791,7 +7812,7 @@ def invoice_detail(request, club_slug, invoice_id):
                 if not _fc_v.invoices.exclude(status=Invoice.STATUS_VOID).exists():
                     _fc_v.invoice_issued = False
                     _fc_v.save(update_fields=['invoice_issued'])
-            return redirect(_stay_url)
+            return redirect(_stay_url + '&msg=Invoice+voided')
 
     _raw_items = list(invoice.line_items.select_related(
         'charge_item__flight_completion__booking__aircraft',
@@ -9077,7 +9098,8 @@ def notifications(request, club_slug):
             from django.http import JsonResponse
             return JsonResponse({'ok': True})
         _profile_url = redirect('core:notifications', club_slug=club_slug).url
-        return redirect(_profile_url + '?saved=1')
+        _notif_msg = {'mark_all_read': 'All+marked+read', 'delete': 'Notification+deleted', 'delete_all_read': 'Read+notifications+cleared'}.get(action, 'Saved')
+        return redirect(_profile_url + f'?saved=1&msg={_notif_msg}')
 
     tab = request.GET.get('tab', 'unread')
     qs = member.notifications.all()
@@ -9716,7 +9738,7 @@ def manage_sundry(request, club_slug):
             )
             account.balance = account.balance - amount
             account.save(update_fields=['balance'])
-            return redirect(f'{request.path}?saved=1')
+            return redirect(f'{request.path}?saved=1&msg=Sale+recorded')
 
     members = (ClubMember.objects
                .filter(club=club)
@@ -12592,7 +12614,7 @@ def app_notification_settings(request, club_slug):
         for f in _toggle_fields:
             setattr(pref, f, request.POST.get(f) == 'on')
         pref.save()
-        return redirect(_settings_url + '?saved=1')
+        return redirect(_settings_url + '?saved=1&msg=Notifications+saved')
     try:
         notification_pref = actor.notification_prefs
     except _NP.DoesNotExist:
@@ -12766,7 +12788,7 @@ def app_credential_add(request, club_slug):
             if 'evidence' in request.FILES:
                 cred.evidence = request.FILES['evidence']
             cred.save()
-        return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1')
+        return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1&msg=Credential+added')
 
     aircraft_types = AircraftType.objects.filter(club=club).order_by('name')
     return render(request, 'core/app/credential_add.html', {
@@ -12823,7 +12845,7 @@ def app_credential_edit(request, club_slug, cred_id):
             cred.evidence.delete(save=False)
             cred.evidence = None
         cred.save()
-        return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1')
+        return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1&msg=Credential+updated')
 
     aircraft_types = AircraftType.objects.filter(club=club).order_by('name')
     return render(request, 'core/app/credential_edit.html', {
@@ -12845,7 +12867,7 @@ def app_credential_delete(request, club_slug, cred_id):
     cred = get_object_or_404(MemberCredential, id=cred_id, member=actor.user)
     if request.method == 'POST':
         cred.delete()
-    return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1')
+    return redirect(_rev('core:app_credentials', args=[club.slug]) + '?saved=1&msg=Credential+deleted')
 
 
 @login_required
@@ -12860,7 +12882,7 @@ def app_profile_edit(request, club_slug):
             if actor.avatar:
                 actor.avatar.delete(save=True)
             from django.urls import reverse
-            return redirect(reverse('core:app_profile', args=[club.slug]) + '?saved=1')
+            return redirect(reverse('core:app_profile', args=[club.slug]) + '?saved=1&msg=Avatar+removed')
         actor.phone_mobile  = request.POST.get('phone_mobile', '').strip()
         actor.phone_home    = request.POST.get('phone_home', '').strip()
         actor.address_line1 = request.POST.get('address_line1', '').strip()
@@ -12875,7 +12897,7 @@ def app_profile_edit(request, club_slug):
             actor.avatar = request.FILES['avatar']
         actor.save()
         from django.urls import reverse
-        return redirect(reverse('core:app_profile', args=[club.slug]) + '?saved=1')
+        return redirect(reverse('core:app_profile', args=[club.slug]) + '?saved=1&msg=Profile+saved')
 
     return render(request, 'core/app/profile_edit.html', {
         'club': club, 'club_member': actor,
@@ -13646,4 +13668,4 @@ def submit_feedback(request, club_slug):
             message_type=msg_type,
             message=message,
         )
-    return redirect(request.META.get('HTTP_REFERER', '/') + '?saved=1')
+    return redirect(request.META.get('HTTP_REFERER', '/') + '?saved=1&msg=Feedback+sent')
