@@ -12088,9 +12088,11 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
             'url': reverse('core:app_schedule_date', args=[club_slug, d.year, d.month, d.day]),
         })
 
-    # Prev / next day
+    # Prev / next day and week
     prev_d = selected - _td(days=1)
     next_d = selected + _td(days=1)
+    prev_week_d = week_start - _td(days=7)
+    next_week_d = week_start + _td(days=7)
 
     # Aircraft (online)
     aircraft_qs = (Aircraft.objects
@@ -12275,6 +12277,11 @@ def app_schedule(request, club_slug, year=None, month=None, day=None):
         'next_url': reverse('core:app_schedule_date', args=[club.slug, next_d.year, next_d.month, next_d.day]),
         'prev_date': prev_d,
         'next_date': next_d,
+        'prev_week_url': reverse('core:app_schedule_date', args=[club.slug, prev_week_d.year, prev_week_d.month, prev_week_d.day]),
+        'next_week_url': reverse('core:app_schedule_date', args=[club.slug, next_week_d.year, next_week_d.month, next_week_d.day]),
+        'today_url': reverse('core:app_schedule_date', args=[club.slug, today.year, today.month, today.day]),
+        'week_start': week_start,
+        'week_end': week_start + _td(days=6),
         'full_blockouts': full_blockouts,
         'instructor_bars': instructor_bars,
         'booking_blocked': bb_blocked,

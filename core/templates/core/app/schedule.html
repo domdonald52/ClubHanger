@@ -2,9 +2,9 @@
 {% load tz %}
 {% block title %}Schedule · {{ club.name }}{% endblock %}
 
-{% block app_bar_left %}<a href="{{ prev_url }}" class="app-bar-action" aria-label="Previous day"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>{% endblock %}
-{% block app_bar_center %}<span class="app-bar-title" style="text-align:center;">{% if selected == today %}Today{% else %}{{ selected|date:"D j M" }}{% endif %}</span>{% endblock %}
-{% block app_bar_right %}<a href="{{ next_url }}" class="app-bar-action" aria-label="Next day"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></a>{% endblock %}
+{% block app_bar_left %}<button class="app-bar-action" onclick="openMenu()" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>{% endblock %}
+{% block app_bar_center %}<span class="app-bar-title">Schedule</span>{% endblock %}
+{% block app_bar_right %}<a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" aria-label="Notifications" style="position:relative;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>{% if unread_notifications_count %}<span style="position:absolute;top:4px;right:4px;width:8px;height:8px;background:#d6453f;border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}</a>{% endblock %}
 
 {% block extra_style %}
 <style>
@@ -12,28 +12,61 @@
   .app-body { padding-top: 0; padding-bottom: 0; overflow: hidden; display: flex; flex-direction: column; height: 100dvh; min-height: 0; }
 
   /* ── Week strip ── */
-  .week-strip {
-    display: flex;
+  .week-strip-wrap {
     background: var(--banner);
-    padding: .4rem .5rem .5rem;
-    gap: .2rem;
     flex-shrink: 0;
     margin-top: calc(52px + env(safe-area-inset-top, 0px));
+  }
+  .week-nav-row {
+    display: flex; align-items: center;
+    padding: .5rem .6rem .3rem;
+    gap: .4rem;
+  }
+  .week-nav-btn {
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,.1); border-radius: 8px;
+    color: #fff; text-decoration: none; flex-shrink: 0;
+    border: none; cursor: pointer;
+  }
+  .week-nav-btn:active { background: rgba(255,255,255,.2); }
+  .week-range-label {
+    flex: 1; text-align: center;
+    font: 700 11.5px 'Manrope',system-ui,sans-serif;
+    color: rgba(255,255,255,.75);
+    letter-spacing: .01em;
+  }
+  .today-pill {
+    background: rgba(255,255,255,.15); color: #fff;
+    border-radius: 999px; padding: 4px 10px;
+    font: 700 10.5px 'Manrope',system-ui,sans-serif;
+    text-decoration: none; white-space: nowrap;
+    border: 1px solid rgba(255,255,255,.25);
+    flex-shrink: 0;
+  }
+  .today-pill:active { background: rgba(255,255,255,.25); }
+  .week-strip {
+    display: flex;
+    padding: .15rem .4rem .55rem;
+    gap: .2rem;
   }
   .day-chip {
     flex: 1; display: flex; flex-direction: column; align-items: center;
     padding: .4rem .2rem; border-radius: 10px;
-    text-decoration: none; color: rgba(255,255,255,.7);
-    font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
-    cursor: pointer; transition: background .12s;
+    text-decoration: none; color: rgba(255,255,255,.6);
+    font: 600 9.5px 'Manrope',system-ui,sans-serif;
+    text-transform: uppercase; letter-spacing: .04em;
+    cursor: pointer;
   }
-  .day-chip .dn { font-size: .95rem; font-weight: 700; line-height: 1.2; margin-top: .1rem; }
-  .day-chip.today .dn { color: rgba(255,255,255,1); }
-  .day-chip.selected { background: rgba(255,255,255,.18); color: #fff; border-radius: 10px; }
+  .day-chip .dn { font: 700 16px 'Manrope',system-ui,sans-serif; line-height: 1.2; margin-top: .15rem; color: rgba(255,255,255,.75); }
+  .day-chip.today .dn { color: #fff; }
+  .day-chip.selected { background: var(--primary); color: #fff; }
+  .day-chip.selected .dn { color: #fff; }
   .day-chip.today-dot::after {
-    content: ''; display: block; width: 5px; height: 5px;
-    background: #fff; border-radius: 50%; margin: .15rem auto 0;
+    content: ''; display: block; width: 4px; height: 4px;
+    background: rgba(255,255,255,.7); border-radius: 50%; margin: .2rem auto 0;
   }
+  .day-chip.selected.today-dot::after { background: rgba(255,255,255,.9); }
 
   /* ── Aircraft header strip ── */
   .ac-header-wrap {
@@ -228,14 +261,28 @@
 {% block content %}
 
 <!-- Week strip -->
-<div class="week-strip">
-  {% for wd in week_days %}
-  <a href="{{ wd.url }}"
-     class="day-chip {% if wd.is_selected %}selected{% endif %} {% if wd.is_today %}today today-dot{% endif %}">
-    {{ wd.name }}
-    <span class="dn">{{ wd.num }}</span>
-  </a>
-  {% endfor %}
+<div class="week-strip-wrap">
+  <!-- Week navigation row -->
+  <div class="week-nav-row">
+    <a href="{{ prev_week_url }}" class="week-nav-btn" aria-label="Previous week">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <span class="week-range-label">{{ week_start|date:"j M" }} – {{ week_end|date:"j M" }}</span>
+    {% if selected != today %}<a href="{{ today_url }}" class="today-pill">Today</a>{% endif %}
+    <a href="{{ next_week_url }}" class="week-nav-btn" aria-label="Next week">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+  </div>
+  <!-- Day chips -->
+  <div class="week-strip">
+    {% for wd in week_days %}
+    <a href="{{ wd.url }}"
+       class="day-chip {% if wd.is_selected %}selected{% endif %} {% if wd.is_today %}today{% if not wd.is_selected %} today-dot{% endif %}{% endif %}">
+      {{ wd.name }}
+      <span class="dn">{{ wd.num }}</span>
+    </a>
+    {% endfor %}
+  </div>
 </div>
 
 {% if full_blockouts %}
