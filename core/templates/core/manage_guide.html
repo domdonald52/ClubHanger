@@ -1311,12 +1311,48 @@ body.dark-mode .part{color:#fb923c;}
       <p>Reports are read-only — no records are changed. Quality depends on completeness of flight completions, charge records, and maintenance entries. If flight completions are missing meter readings or charges, the revenue and hours figures will be understated.</p>
 
       <h3 id="tools-events">Safety events (occurrences)</h3>
-      <p>Safety → Events is the occurrence reporting system. Any member or staff can submit a report covering anything from a minor snag to a significant near-miss. Reports are categorised by the event types defined in Settings → Types → Event types.</p>
-      <p><strong>Submitting a report.</strong> From Safety → Events → Submit, the reporter selects an event type, describes what happened (what was observed, what conditions applied, what action was taken), and optionally links it to a specific aircraft or booking. Reports can be submitted anonymously if the club's settings allow it.</p>
-      <p><strong>Review and action.</strong> Submitted reports go to a review queue. Admin (or anyone with Safety access) can open a report, add observations, assign action items to named people with due dates, and mark the report as resolved once all items are closed. Action items that are overdue or approaching their due date surface in the sidebar Attention badge — so open items don't get forgotten between committee meetings.</p>
-      <p><strong>Safety → Action items.</strong> In addition to viewing actions within each report, the Action items page shows all open action items across every report in one consolidated list. This is the view to use at the start of a safety review or committee meeting — it shows what's outstanding, who it's assigned to, and when it's due, without having to open each report individually.</p>
-      <p><strong>Export.</strong> The occurrence list can be exported (Safety → Events → Export) for committee review, minutes attachment, or CAA submission. The export includes event type, date, description, status, and action summary.</p>
-      <p><strong>Link to maintenance.</strong> Aircraft snags logged at flight completion are linked to the occurrence system and appear in the aircraft's maintenance history — creating a traceable chain from snag report → action item → maintenance log entry → resolution.</p>
+      <p>Safety → Events is the occurrence reporting system. It covers the full lifecycle from a member raising a report on their phone through to safety officer review, action assignment, and closure. Reports are categorised by the event types defined in Settings → Types → Event types.</p>
+
+      <details open>
+        <summary>Full lifecycle — member to closure</summary>
+        <p>The process has five stages. Each stage has a clear owner and a defined next step.</p>
+
+        <p><strong>1 — Member submits from the mobile app.</strong> The member taps <em>Events</em> in the hamburger menu. The form asks for: event type (required), date and approximate time, location (ICAO or description), aircraft if applicable, a description of what happened, any immediate action taken, and whether they believe it represents an ongoing safety risk. Crucially, they can link the report to one of their recent flights — this pre-fills the aircraft and date, and creates a traceable link from the event to the booking and flight record. On submission, the system issues an event reference (e.g. EVT-42) displayed in a confirmation on screen. The member keeps this reference if they need to follow up.</p>
+
+        <p><strong>2 — Report appears in Safety → Events.</strong> The submitted report is immediately visible to any staff member with Safety or Admin access. It appears in the event list with status <em>Submitted</em>. If notifications are enabled, the safety officer receives a push notification. The report shows: event type, date/time, location, linked aircraft and flight (if provided), description, immediate action, and the safety risk flag. The event reference is shown at the top.</p>
+
+        <p><strong>3 — Safety officer reviews and adds observations.</strong> Opening the report shows the full submission. The reviewer adds internal notes (observations, preliminary findings, whether a CAA notification is required) in the <em>Review notes</em> field and saves. These notes are internal — not visible to the submitting member. The reviewer then clicks <em>Mark reviewed</em> to change the status to <em>Reviewed</em>. A report can be reviewed without creating any action items if no follow-up is required — in that case it can be closed immediately.</p>
+
+        <p><strong>4 — Action items created and assigned.</strong> If follow-up is required, the reviewer adds action items directly on the report: a description of what needs to happen, who it's assigned to, and a due date. Each action item is a discrete task — keep them specific and actionable ("Inspect ZK-BCX nose gear strut and log result", not "look into it"). Assigned staff members see their actions in the <em>Safety → Action items</em> consolidated view and in their own profile, and receive a notification if push is enabled. Action items are independent — the report stays open until every action is resolved.</p>
+
+        <p><strong>5 — Actions resolved, report closed.</strong> When an assignee completes their action, they click <em>Mark done</em> on the action row and enter a brief note describing what was done ("Inspected strut — no defect found, torqued to spec, logged in maintenance record"). This note is stored and audited. If an action item is no longer applicable — the aircraft was sold, the situation changed — a reviewer can <em>Waive</em> it with a reason instead. Once all action items are marked done or waived, the safety officer opens the report and clicks <em>Close</em>. Closed reports are retained permanently for audit purposes and appear in the export.</p>
+      </details>
+
+      <details>
+        <summary>Action items in detail</summary>
+        <p><strong>Safety → Action items</strong> shows all open action items across every report in one consolidated list — this is the view to use at the start of a safety review or committee meeting. It shows what's outstanding, who it's assigned to, and when it's due, without having to open each report individually. Overdue items are highlighted in red.</p>
+        <p><strong>Completing an action</strong> requires a "What was done?" note — you cannot mark an action complete with no information. The note is stored against the action and appears in the event audit trail. This is intentional: a safety record with no evidence of what was done provides no assurance.</p>
+        <p><strong>Waiving an action</strong> is for cases where the action can no longer be completed as written — the aircraft is sold, the responsible person has left, the situation has materially changed. Waiving requires a reason. Waived actions count as resolved for the purposes of closing the report, but the waive reason is permanently recorded. Do not waive an action simply to close a report — if the underlying issue still exists, create a replacement action.</p>
+        <p><strong>Overdue items</strong> appear in the sidebar Attention badge and on the Action items page in red. The due date is set by whoever creates the action — it is not automatically enforced, but it surfaces the item as overdue so it cannot be quietly forgotten.</p>
+      </details>
+
+      <details>
+        <summary>Who can submit and who can review</summary>
+        <p><strong>Submitting</strong> — any active member with a mobile app account. No special permissions required. Members can only see their own submissions; they cannot see other members' reports or any review notes.</p>
+        <p><strong>Submitting from the management app</strong> — any admin or staff member can also submit from Safety → Events → Submit. This is useful when a report is phoned in or handed in on paper and needs to be entered by staff on the member's behalf.</p>
+        <p><strong>Reviewing and managing</strong> — requires Admin access or the Safety permission flag. Safety-only staff can view all reports, add notes, assign actions, mark reviewed, and close. They cannot access other management areas (bookings, billing, fleet) unless those flags are also set. Instructors with no Safety flag cannot see the occurrence system at all.</p>
+      </details>
+
+      <details>
+        <summary>Export and CAA notification</summary>
+        <p>The occurrence list can be exported (Safety → Events → Export) for committee review, minutes attachment, or CAA submission. The export includes event type, date, location, aircraft, description, status, reviewer notes, and action summary.</p>
+        <p>Club Hangar does not automatically notify the CAA. If an event meets the threshold for mandatory reporting under Part 12 (accidents, serious incidents), the safety officer must submit the notification directly to the CAA's TAIC/CAA reporting portal. The system supports this by providing all the structured data needed for the submission, and the event reference gives you a consistent identifier to cross-reference between your internal record and any external notification.</p>
+      </details>
+
+      <details>
+        <summary>Link to aircraft maintenance</summary>
+        <p>When a member links their event report to a recent flight, the report is associated with that booking. If the event involves an aircraft technical issue, the safety officer can also log a maintenance snag against the aircraft from the Fleet → Aircraft page. This creates a traceable chain: event report → action item → maintenance log entry → resolution. The aircraft's maintenance history will show the snag alongside regular scheduled maintenance, so the full picture of what happened to that airframe is visible in one place.</p>
+      </details>
 
       <h3 id="tools-data">Data export (Settings → Data)</h3>
       <p>The Data page (Settings → Data, admin only) provides bulk exports of your club's data as downloadable CSV files. Available datasets:</p>
