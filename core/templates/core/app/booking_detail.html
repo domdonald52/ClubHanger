@@ -117,7 +117,10 @@
 <div style="height:14px;"></div>
 {% if booking.scheduled_start|localtime|date:"Y-m-d" >= today|date:"Y-m-d" and booking.status == 'pending' or booking.scheduled_start|localtime|date:"Y-m-d" >= today|date:"Y-m-d" and booking.status == 'confirmed' %}
 <div style="display:flex;gap:10px;margin:0 14px 24px;">
-  <a href="#" class="app-btn secondary" style="flex:1;padding:13px;text-align:center;" onclick="return false;">Add to calendar</a>
+  <a href="{% url 'core:app_booking_ics' club.slug booking.id %}" class="app-btn secondary" style="flex:1;padding:13px;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px;">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Add to phone calendar
+  </a>
   <form method="post" action="{% url 'core:app_bookings' club.slug %}" style="flex:1;">
     {% csrf_token %}
     <input type="hidden" name="action" value="cancel_booking">

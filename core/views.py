@@ -12409,6 +12409,54 @@ def app_booking_detail(request, club_slug, booking_id):
 
 
 @login_required
+def app_booking_ics(request, club_slug, booking_id):
+    from datetime import timedelta
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    booking = get_object_or_404(
+        Booking.objects.select_related('aircraft', 'flight_type', 'instructor'),
+        id=booking_id, club=club, member=actor,
+    )
+    start = booking.scheduled_start
+    end = booking.scheduled_end or (start + timedelta(hours=1))
+
+    def _idt(dt):
+        return dt.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+
+    summary_parts = [booking.aircraft.registration]
+    if booking.flight_type:
+        summary_parts.append(booking.flight_type.name)
+    summary = ' · '.join(summary_parts)
+
+    desc_parts = ['Dual with ' + booking.instructor.get_full_name() if booking.instructor else 'Solo',
+                  'Club: ' + club.name]
+    if booking.description:
+        desc_parts.append(booking.description)
+
+    ical = (
+        'BEGIN:VCALENDAR\r\n'
+        'VERSION:2.0\r\n'
+        'PRODID:-//ClubHangar//EN\r\n'
+        'CALSCALE:GREGORIAN\r\n'
+        'METHOD:PUBLISH\r\n'
+        'BEGIN:VEVENT\r\n'
+        f'UID:booking-{booking.id}@clubhangar\r\n'
+        f'DTSTAMP:{_idt(timezone.now())}\r\n'
+        f'DTSTART:{_idt(start)}\r\n'
+        f'DTEND:{_idt(end)}\r\n'
+        f'SUMMARY:{summary}\r\n'
+        f'DESCRIPTION:{"\\n".join(desc_parts)}\r\n'
+        'END:VEVENT\r\n'
+        'END:VCALENDAR\r\n'
+    )
+    from django.http import HttpResponse as _HR
+    resp = _HR(ical, content_type='text/calendar; charset=utf-8')
+    resp['Content-Disposition'] = f'attachment; filename="flight-{booking.id}.ics"'
+    return resp
+
+
+@login_required
 def app_profile(request, club_slug):
     club, actor = _app_actor(request, club_slug)
     if not actor:
