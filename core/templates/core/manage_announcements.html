@@ -159,12 +159,12 @@
           <!-- Current image preview -->
           <div id="edit-img-preview" style="display:none;margin-bottom:.6rem;">
             <img id="edit-img-thumb" src="" alt="Current photo" style="width:100%;max-height:160px;object-fit:cover;border-radius:6px;display:block;">
-            <div style="display:flex;align-items:center;gap:1rem;margin-top:.4rem;">
+            <div id="edit-img-actions" style="display:flex;align-items:center;gap:1rem;margin-top:.4rem;">
               <label style="display:flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--text-2);cursor:pointer;">
                 <input type="checkbox" name="clear_image" id="edit-clear-image" value="1" onchange="toggleClearImage(this);">
                 Remove photo
               </label>
-              <button type="button" style="font-size:.82rem;color:var(--primary);background:none;border:none;cursor:pointer;padding:0;" onclick="document.getElementById('edit-file-wrap').style.display='';document.getElementById('edit-img-preview').querySelector('button')&&null;this.style.display='none';">Replace photo</button>
+              <button type="button" style="font-size:.82rem;color:var(--primary);background:none;border:none;cursor:pointer;padding:0;" onclick="document.getElementById('edit-file-wrap').style.display='';this.style.display='none';">Replace photo</button>
             </div>
           </div>
           <!-- File input -->
@@ -220,6 +220,7 @@ window.openEdit = function(id, type, title, body, evDate, exDate, pinned, imgUrl
   // Reset image state
   document.getElementById('edit-image-input').value = '';
   document.getElementById('edit-clear-image').checked = false;
+  document.getElementById('edit-img-actions').style.display = '';
   var preview = document.getElementById('edit-img-preview');
   var fileWrap = document.getElementById('edit-file-wrap');
   if (imgUrl) {
@@ -242,6 +243,20 @@ window.toggleClearImage = function(cb) {
     fileWrap.style.display = '';
   }
 }
+
+document.getElementById('edit-image-input').addEventListener('change', function() {
+  var file = this.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('edit-img-thumb').src = e.target.result;
+    document.getElementById('edit-img-preview').style.display = '';
+    // Hide Remove/Replace buttons — a new file is already selected
+    document.getElementById('edit-img-actions').style.display = 'none';
+    document.getElementById('edit-clear-image').checked = false;
+  };
+  reader.readAsDataURL(file);
+});
 
 window.openDel = function(id, title) {
   document.getElementById('del-id').value = id;
