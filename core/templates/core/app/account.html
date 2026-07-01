@@ -27,16 +27,16 @@
 
 <!-- ── Outstanding alert ── -->
 {% if unpaid_invoices or unpaid_flights %}
-<div style="background:#fbf1e8;border:1px solid #efd9c4;border-radius:14px;margin:10px 14px 0;padding:14px;">
-  <div style="font:700 12.5px 'Manrope',system-ui,sans-serif;color:#9a5a2a;margin-bottom:3px;">Amount outstanding</div>
+<div style="background:var(--warning-bg);border:1px solid var(--border);border-left:3px solid var(--warning);border-radius:14px;margin:10px 14px 0;padding:14px;">
+  <div style="font:700 12.5px 'Manrope',system-ui,sans-serif;color:var(--warning-text);margin-bottom:3px;">Amount outstanding</div>
   {% if unpaid_invoices_total %}
-  <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:#9a5a2a;">${{ unpaid_invoices_total|floatformat:2|intcomma }}</div>
+  <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:var(--warning);">${{ unpaid_invoices_total|floatformat:2|intcomma }}</div>
   {% if unpaid_flights_total %}
-  <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:#9a5a2a;opacity:.85;margin-top:2px;">Plus ${{ unpaid_flights_total|floatformat:2|intcomma }} in unbilled charges</div>
+  <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.85;margin-top:2px;">Plus ${{ unpaid_flights_total|floatformat:2|intcomma }} in unbilled charges</div>
   {% endif %}
   {% else %}
-  <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:#9a5a2a;">${{ unpaid_flights_total|floatformat:2|intcomma }}</div>
-  <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:#9a5a2a;opacity:.85;margin-top:2px;">Unbilled flight charges</div>
+  <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:var(--warning);">${{ unpaid_flights_total|floatformat:2|intcomma }}</div>
+  <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.85;margin-top:2px;">Unbilled flight charges</div>
   {% endif %}
 </div>
 {% endif %}
@@ -56,28 +56,28 @@
   {% if unpaid_invoices %}
   <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin-bottom:8px;">Outstanding</div>
   {% for inv in unpaid_invoices %}
-  <a href="{% url 'core:app_invoice_detail' club.slug inv.id %}" style="display:block;text-decoration:none;background:#fbf1e8;border:1.5px solid #efd9c4;border-left:4px solid #c07830;border-radius:14px;margin:0 14px;padding:14px;{% if not forloop.first %}margin-top:8px;{% endif %}">
+  <a href="{% url 'core:app_invoice_detail' club.slug inv.id %}" style="display:block;text-decoration:none;background:var(--warning-bg);border:1.5px solid var(--border);border-left:4px solid var(--warning);border-radius:14px;margin:0 14px;padding:14px;{% if not forloop.first %}margin-top:8px;{% endif %}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
       <div>
-        <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:#9a5a2a;">{{ inv.display_number }}</div>
-        <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:#7a4020;margin-top:3px;">
+        <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--warning-text);">{{ inv.display_number }}</div>
+        <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--warning-text);margin-top:3px;">
           Issued {{ inv.issue_date|date:"j M Y" }}{% if inv.due_date %} · Due {{ inv.due_date|date:"j M" }}{% endif %}
         </div>
         {% if inv.flight_completion and inv.flight_completion.booking %}
-        <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:#9a5a2a;opacity:.85;margin-top:3px;">
+        <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.75;margin-top:3px;">
           {{ inv.flight_completion.booking.aircraft.registration }} · {{ inv.flight_completion.booking.scheduled_start|localtime|date:"j M Y" }}
         </div>
         {% elif inv.description %}
-        <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:#9a5a2a;opacity:.85;margin-top:3px;">{{ inv.description }}</div>
+        <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.75;margin-top:3px;">{{ inv.description }}</div>
         {% endif %}
       </div>
       {% if inv.needs_attention %}
-      <span style="background:#e8832a;color:#fff;border-radius:999px;padding:3px 9px;font:700 9px 'Manrope',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;">Overdue</span>
+      <span style="background:var(--danger-bg);color:var(--danger-text);border:1px solid var(--danger-text);border-radius:999px;padding:3px 9px;font:700 9px 'Manrope',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;">Overdue</span>
       {% else %}
-      <span style="background:#efd9c4;color:#9a5a2a;border-radius:999px;padding:3px 9px;font:700 9px 'Manrope',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;">Unpaid</span>
+      <span style="background:var(--warning-bg);color:var(--warning-text);border:1px solid var(--warning);border-radius:999px;padding:3px 9px;font:700 9px 'Manrope',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;">Unpaid</span>
       {% endif %}
     </div>
-    <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:#7a4020;">${{ inv.balance_due|floatformat:2|intcomma }}</div>
+    <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:var(--warning);">${{ inv.balance_due|floatformat:2|intcomma }}</div>
   </a>
   {% endfor %}
   <div style="height:14px;"></div>
