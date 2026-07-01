@@ -2216,7 +2216,7 @@ def club_settings(request, club_slug, mode='settings'):
         elif action == 'save_billing':
             for field in ['billing_name',
                           'gst_number', 'bank_name', 'bank_account', 'payment_terms_text',
-                          'invoice_number_prefix']:
+                          'invoice_number_prefix', 'member_id_prefix']:
                 setattr(config, field, request.POST.get(field, '').strip())
             try:
                 config.gst_rate = float(request.POST.get('gst_rate', config.gst_rate))
@@ -2409,6 +2409,9 @@ def manage_announcements(request, club_slug):
             ann.is_pinned = request.POST.get('is_pinned') == 'on'
             if request.FILES.get('image'):
                 ann.image = request.FILES['image']
+            elif request.POST.get('clear_image') == '1':
+                ann.image.delete(save=False)
+                ann.image = None
             ann.save()
         elif action == 'delete':
             Announcement.objects.filter(club=club, id=request.POST.get('ann_id')).delete()
@@ -12324,11 +12327,17 @@ def app_bookings(request, club_slug):
                 _email_cancelled(booking, reason=reason)
         return redirect('core:app_bookings', club_slug=club_slug)
 
-    upcoming = (Booking.objects
+    _upcoming_qs = list(Booking.objects
                 .filter(member=actor, club=club, scheduled_start__date__gte=today)
                 .exclude(status=BookingStatus.CANCELLED)
                 .select_related('aircraft', 'aircraft__aircraft_type', 'flight_type', 'instructor', 'declaration')
                 .order_by('scheduled_start')[:20])
+    for _b in _upcoming_qs:
+        if _b.scheduled_end and _b.scheduled_start:
+            _b._sched_hours = (_b.scheduled_end - _b.scheduled_start).total_seconds() / 3600
+        else:
+            _b._sched_hours = None
+    upcoming = _upcoming_qs
 
     from .models import LessonNote as _LN
     _latest_note = (_LN.objects
@@ -12340,29 +12349,37 @@ def app_bookings(request, club_slug):
     next_lesson_plan = _latest_note.next_lesson_plan if _latest_note else ''
 
     from django.db.models import Subquery, OuterRef, Sum, Exists
-    from decimal import Decimal as _D2
     _fc_hours_sq = (FlightCompletion.objects
                     .filter(booking_id=OuterRef('pk'))
                     .order_by()
                     .values('booking_id')
                     .annotate(_t=Sum('actual_flight_hours'))
                     .values('_t'))
+    _fc_charge_sq = (FlightCompletion.objects
+                     .filter(booking_id=OuterRef('pk'))
+                     .order_by('sequence')
+                     .values('total_charge')[:1])
     _note_id_sq = _LN.objects.filter(booking_id=OuterRef('pk')).values('id')
     past = (Booking.objects
             .filter(member=actor, club=club, scheduled_start__date__lt=today)
             .exclude(status=BookingStatus.CANCELLED)
-            .select_related('aircraft', 'aircraft__aircraft_type', 'flight_type')
+            .select_related('aircraft', 'aircraft__aircraft_type', 'flight_type', 'instructor')
             .annotate(
                 fc_hours=Subquery(_fc_hours_sq),
+                fc_charge=Subquery(_fc_charge_sq),
                 has_lesson_note=Exists(_LN.objects.filter(booking_id=OuterRef('pk'))),
                 lesson_note_id=Subquery(_note_id_sq),
             )
             .order_by('-scheduled_start')[:20])
 
+    past_list = list(past)
+    just_completed = past_list[0] if past_list else None
+
     return render(request, 'core/app/bookings.html', {
         'club': club, 'club_member': actor,
         'upcoming': upcoming,
-        'past': past,
+        'past': past_list,
+        'just_completed': just_completed,
         'today': today,
         'next_lesson_plan': next_lesson_plan,
     })
@@ -12439,6 +12456,13 @@ def app_profile(request, club_slug):
         .order_by('club__name')
     )
 
+    _cfg = getattr(club, 'config', None)
+    _prefix = _cfg.member_id_prefix if _cfg else ''
+    if actor.membership_number:
+        member_display_id = f"{_prefix}{actor.membership_number}"
+    else:
+        member_display_id = f"{_prefix}{actor.id:04d}"
+
     return render(request, 'core/app/profile.html', {
         'club': club, 'club_member': actor,
         'credentials': credentials,
@@ -12448,6 +12472,7 @@ def app_profile(request, club_slug):
         'sub_status': sub_status,
         'sub_days': sub_days,
         'other_memberships': other_memberships,
+        'member_display_id': member_display_id,
     })
 
 

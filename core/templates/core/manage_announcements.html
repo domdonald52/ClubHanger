@@ -38,7 +38,8 @@
         <td style="text-align:right;white-space:nowrap;">
           <button class="cbtn-sm cbtn-icon" title="Edit" onclick="openEdit(
             '{{ ann.id }}','{{ ann.type }}','{{ ann.title|escapejs }}','{{ ann.body|escapejs }}',
-            '{{ ann.event_date|date:"Y-m-d" }}','{{ ann.expires_at|date:"Y-m-d" }}',{{ ann.is_pinned|yesno:"true,false" }}
+            '{{ ann.event_date|date:"Y-m-d" }}','{{ ann.expires_at|date:"Y-m-d" }}',{{ ann.is_pinned|yesno:"true,false" }},
+            '{% if ann.image %}{{ ann.image.url|escapejs }}{% endif %}'
           )"><i class="ti ti-pencil"></i></button>
           <button class="cbtn-sm cbtn-danger cbtn-icon" title="Delete" onclick="openDel('{{ ann.id }}','{{ ann.title|escapejs }}')"><i class="ti ti-trash"></i></button>
         </td>
@@ -153,10 +154,25 @@
             Show pinned above other announcements
           </label>
         </label>
-        <label class="flabel" style="grid-column:1/-1;">Photo <span style="font-weight:400;color:var(--text-3);">(optional — shown in mobile app)</span>
-          <input type="file" name="image" class="finput" accept="image/*" style="margin-top:.3rem;">
-          <span style="font-size:.75rem;color:var(--text-3);margin-top:.25rem;display:block;">Recommended: 1200 × 600 px, JPEG or PNG, under 2 MB. Leave blank to keep existing photo.</span>
-        </label>
+        <div style="grid-column:1/-1;">
+          <div class="flabel" style="margin-bottom:.4rem;">Photo <span style="font-weight:400;color:var(--text-3);">(optional — shown in mobile app)</span></div>
+          <!-- Current image preview -->
+          <div id="edit-img-preview" style="display:none;margin-bottom:.6rem;">
+            <img id="edit-img-thumb" src="" alt="Current photo" style="width:100%;max-height:160px;object-fit:cover;border-radius:6px;display:block;">
+            <div style="display:flex;align-items:center;gap:1rem;margin-top:.4rem;">
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--text-2);cursor:pointer;">
+                <input type="checkbox" name="clear_image" id="edit-clear-image" value="1" onchange="toggleClearImage(this);">
+                Remove photo
+              </label>
+              <button type="button" style="font-size:.82rem;color:var(--primary);background:none;border:none;cursor:pointer;padding:0;" onclick="document.getElementById('edit-file-wrap').style.display='';document.getElementById('edit-img-preview').querySelector('button')&&null;this.style.display='none';">Replace photo</button>
+            </div>
+          </div>
+          <!-- File input -->
+          <div id="edit-file-wrap" style="overflow:hidden;border-radius:6px;">
+            <input type="file" name="image" id="edit-image-input" class="finput" accept="image/*" style="width:100%;box-sizing:border-box;margin-top:0;">
+          </div>
+          <span style="font-size:.75rem;color:var(--text-3);margin-top:.3rem;display:block;">Recommended: 1200 × 600 px, JPEG or PNG, under 2 MB. Leave blank to keep existing photo.</span>
+        </div>
       </div>
       <div class="modal-actions" style="margin-top:1.2rem;justify-content:flex-end;">
         <button type="submit" class="cbtn primary">Save</button>
@@ -193,7 +209,7 @@ document.addEventListener('keydown', e => {
   if(e.key==='Escape') document.querySelectorAll('.modal-back').forEach(m => m.hidden=true);
 });
 
-window.openEdit = function(id, type, title, body, evDate, exDate, pinned) {
+window.openEdit = function(id, type, title, body, evDate, exDate, pinned, imgUrl) {
   document.getElementById('edit-id').value = id;
   document.getElementById('edit-type').value = type;
   document.getElementById('edit-title').value = title;
@@ -201,7 +217,30 @@ window.openEdit = function(id, type, title, body, evDate, exDate, pinned) {
   document.getElementById('edit-event-date').value = evDate;
   document.getElementById('edit-expires').value = exDate;
   document.getElementById('edit-pinned').checked = pinned;
+  // Reset image state
+  document.getElementById('edit-image-input').value = '';
+  document.getElementById('edit-clear-image').checked = false;
+  var preview = document.getElementById('edit-img-preview');
+  var fileWrap = document.getElementById('edit-file-wrap');
+  if (imgUrl) {
+    document.getElementById('edit-img-thumb').src = imgUrl;
+    preview.style.display = '';
+    fileWrap.style.display = 'none';
+  } else {
+    preview.style.display = 'none';
+    fileWrap.style.display = '';
+  }
   document.getElementById('edit-ann-modal').hidden = false;
+}
+
+window.toggleClearImage = function(cb) {
+  var fileWrap = document.getElementById('edit-file-wrap');
+  if (cb.checked) {
+    fileWrap.style.display = 'none';
+    document.getElementById('edit-image-input').value = '';
+  } else {
+    fileWrap.style.display = '';
+  }
 }
 
 window.openDel = function(id, title) {

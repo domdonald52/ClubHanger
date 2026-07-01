@@ -241,6 +241,8 @@ class ClubConfig(models.Model):
                                                          help_text="Next invoice number to allocate — set this to continue from your current sequence")
     invoice_number_prefix = models.CharField(max_length=10, blank=True,
                                               help_text="Optional prefix, e.g. 'INV-'")
+    member_id_prefix = models.CharField(max_length=10, blank=True,
+                                        help_text="Prefix for member IDs shown in the mobile app, e.g. 'WAC-'")
 
     fy_start_month = models.PositiveSmallIntegerField(
         default=4, help_text="Month the financial year starts (1=Jan … 12=Dec). NZ default: April (4)")

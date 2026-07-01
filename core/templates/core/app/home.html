@@ -62,15 +62,15 @@
   {% for ann in announcements %}
   <div class="ann-slide">
     {% if ann.image %}
-    <div style="position:relative;overflow:hidden;border-bottom:1px solid var(--border);">
-      <img src="{{ ann.image.url }}" alt="" style="width:100%;height:140px;object-fit:cover;display:block;">
-      <div style="position:absolute;inset:0;background:rgba(0,0,0,.48);padding:.85rem 14px;display:flex;flex-direction:column;justify-content:flex-end;">
+    <div style="overflow:hidden;border-bottom:1px solid var(--border);">
+      <img src="{{ ann.image.url }}" alt="" style="width:100%;height:130px;object-fit:cover;display:block;">
+      <div style="padding:.7rem 14px .8rem;background:var(--surface);">
         <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.3rem;">
           <span style="font:700 10px 'Manrope',system-ui,sans-serif;padding:.12rem .4rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
-          {% if ann.event_date %}<span style="font:500 12px 'Manrope',system-ui,sans-serif;color:rgba(255,255,255,.75);">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
+          {% if ann.event_date %}<span style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
         </div>
-        <div style="font:700 14px 'Manrope',system-ui,sans-serif;color:#fff;">{{ ann.title }}</div>
-        {% if ann.body %}<div style="font:500 12px 'Manrope',system-ui,sans-serif;color:rgba(255,255,255,.82);margin-top:.25rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ ann.body }}</div>{% endif %}
+        <div style="font:700 14px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ ann.title }}</div>
+        {% if ann.body %}<div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:.25rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ ann.body }}</div>{% endif %}
       </div>
     </div>
     {% else %}

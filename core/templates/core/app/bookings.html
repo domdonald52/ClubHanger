@@ -1,5 +1,5 @@
 {% extends "core/app/base.html" %}
-{% load tz %}
+{% load tz humanize %}
 {% block title %}My flights · {{ club.name }}{% endblock %}
 
 {% block app_bar_left %}<button class="app-bar-action" onclick="openMenu()" aria-label="Menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>{% endblock %}
@@ -7,14 +7,19 @@
 
 {% block extra_style %}
 <style>
-.filter-chip {
-  display:inline-flex; align-items:center; gap:5px;
-  border:1px solid var(--border); background:var(--surface);
-  border-radius:999px; padding:7px 12px;
-  font:600 12px 'Manrope',system-ui,sans-serif; color:var(--text-1);
-  cursor:pointer; white-space:nowrap;
+.bk-card {
+  display:block; text-decoration:none; color:inherit;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:14px; margin:0 14px; padding:14px;
+  -webkit-tap-highlight-color:transparent;
 }
-.filter-chip.active { border-color:var(--primary); background:var(--info-bg); color:var(--primary); }
+.bk-card + .bk-card { margin-top:10px; }
+.bk-card:active { opacity:.8; }
+.past-card { background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 14px;padding:14px; }
+.past-card + .past-card { margin-top:10px; }
+.dg { display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:10px; }
+.dl { font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3); }
+.dv { font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);margin-top:2px; }
 </style>
 {% endblock %}
 
@@ -35,8 +40,8 @@
 
   {% if upcoming %}
   {% for b in upcoming %}
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 14px;padding:14px;{% if not forloop.first %}margin-top:10px;{% endif %}">
-    <!-- Eyebrow + status -->
+  <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="bk-card">
+
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
       <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">
         {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}Today · {{ b.scheduled_start|localtime|time:"H:i" }}{% else %}{{ b.scheduled_start|localtime|date:"D j M" }} · {{ b.scheduled_start|localtime|time:"H:i" }}{% endif %}
@@ -44,40 +49,46 @@
       <span class="st-pill st-{{ b.status }}">{{ b.get_status_display }}</span>
     </div>
 
-    <!-- Aircraft -->
     <div style="font:800 18px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.2;">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div>
 
-    <!-- Time + instructor/description -->
     <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:4px;">
-      {% if b.instructor %}Dual with {{ b.instructor.get_full_name }} · {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}{% else %}Solo · {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}{% endif %}
+      {% if b.instructor %}Dual with {{ b.instructor.get_full_name }}{% else %}Solo{% endif %} ·
+      {% if b.status == 'pending' %}awaiting approval{% elif b._sched_hours %}{{ b._sched_hours|floatformat:1 }}h{% endif %}
     </div>
 
-    <!-- Description / instructor note preview -->
     {% if forloop.first and b.instructor and next_lesson_plan %}
-    <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;line-height:1.4;padding:.5rem .65rem;background:var(--surface-2);border-radius:8px;border-left:2px solid var(--primary);">{{ next_lesson_plan|truncatechars:100 }}</div>
+    <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:6px;line-height:1.4;padding:.45rem .6rem;background:var(--surface-2);border-radius:8px;border-left:2px solid var(--primary);">{{ next_lesson_plan|truncatechars:100 }}</div>
     {% elif b.description %}
     <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;line-height:1.4;">{{ b.description|truncatechars:80 }}</div>
     {% endif %}
 
-    <!-- Declaration warning -->
     {% if b.flight_type and b.flight_type.requires_declaration %}
       {% if not b.declaration or b.declaration.is_draft %}
-      <div style="background:var(--warning-bg);border:1px solid color-mix(in srgb,#9a5a2a 25%,transparent);border-radius:9px;padding:.6rem .75rem;margin-top:10px;">
+      <div style="background:var(--warning-bg);border-radius:8px;padding:.5rem .65rem;margin-top:9px;">
         <div style="font:600 12px 'Manrope',system-ui,sans-serif;color:var(--warning-text);">⚠ Pre-departure declaration required</div>
-        <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.85;margin-top:2px;">Complete before this flight can depart.</div>
       </div>
       {% endif %}
     {% endif %}
 
-    <!-- Actions row -->
-    <div style="display:flex;gap:8px;margin-top:12px;">
-      <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="app-btn" style="flex:1;padding:10px;">View details</a>
-      {% if b.flight_type and b.flight_type.requires_declaration %}
-      <a href="{% url 'core:app_booking_declaration' club.slug b.id %}" class="app-btn secondary" style="flex:1;padding:10px;">Declaration</a>
-      {% endif %}
-    </div>
-  </div>
+  </a>
   {% endfor %}
+
+  {% if just_completed %}
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin:18px 0 8px;">Just completed</div>
+  <a href="{% url 'core:app_booking_detail' club.slug just_completed.id %}" class="bk-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">{{ just_completed.scheduled_start|localtime|date:"D j M" }}</span>
+      <span class="st-pill st-logged">Logged</span>
+    </div>
+    <div style="font:700 15px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ just_completed.aircraft.registration }}{% if just_completed.fc_hours %} · {{ just_completed.fc_hours|floatformat:1 }}h{% endif %} {% if just_completed.instructor %}dual{% else %}solo{% endif %}</div>
+    {% if just_completed.has_lesson_note %}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding-top:9px;border-top:1px solid var(--border);">
+      <span style="font:600 12px 'Manrope',system-ui,sans-serif;color:var(--text-1);">Instructor note added</span>
+      <span style="font:700 12px 'Manrope',system-ui,sans-serif;color:var(--primary);">View ›</span>
+    </div>
+    {% endif %}
+  </a>
+  {% endif %}
 
   {% else %}
   <div class="app-empty" style="margin-top:32px;">
@@ -86,6 +97,8 @@
     <a href="{% url 'core:app_book_find' club.slug %}" class="app-btn" style="display:inline-block;width:auto;padding:11px 24px;">Find a slot</a>
   </div>
   {% endif %}
+
+  <div style="height:24px;"></div>
 </div>
 
 <!-- ── Past tab ── -->
@@ -93,42 +106,32 @@
   <div style="height:14px;"></div>
 
   {% if past %}
-  {% if past.0.has_lesson_note %}
-  <!-- "Just completed" highlight -->
-  {% with b=past.0 %}
-  <div style="margin:0 14px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;">
-    <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:8px;">Just completed</div>
-    <div style="display:flex;align-items:center;gap:10px;">
-      <div style="flex:1;">
-        <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);">{{ b.scheduled_start|localtime|date:"D j M" }}</div>
-        <div style="font:700 15px 'Manrope',system-ui,sans-serif;color:var(--text-1);margin-top:3px;">{{ b.aircraft.registration }}{% if b.fc_hours %} · {{ b.fc_hours|floatformat:1 }}h{% endif %}{% if b.instructor %} dual{% else %} solo{% endif %}</div>
-      </div>
-      <span class="st-pill st-logged">Logged</span>
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin-bottom:8px;">Flight history</div>
+
+  {% for b in past %}
+  <div class="past-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">{{ b.scheduled_start|localtime|date:"D j M Y" }}</span>
+      {% if b.has_lesson_note %}<span style="font:600 11px 'Manrope',system-ui,sans-serif;color:var(--primary);">Notes added</span>{% endif %}
+    </div>
+    <div style="font:800 17px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.2;">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div>
+    <div class="dg">
+      <div><div class="dl">Type</div><div class="dv">{% if b.flight_type %}{{ b.flight_type.name }}{% else %}—{% endif %}</div></div>
+      <div><div class="dl">Duration</div><div class="dv">{% if b.fc_hours %}{{ b.fc_hours|floatformat:1 }}h{% else %}—{% endif %}</div></div>
+      <div><div class="dl">Time</div><div class="dv">{{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}</div></div>
+      <div><div class="dl">{% if b.instructor %}Instructor{% else %}Pilot{% endif %}</div><div class="dv">{% if b.instructor %}{{ b.instructor.get_full_name }}{% else %}Solo{% endif %}</div></div>
+      {% if b.fc_charge %}<div><div class="dl">Charge</div><div class="dv">${{ b.fc_charge|floatformat:2|intcomma }}</div></div>{% endif %}
     </div>
     {% if b.has_lesson_note %}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);">
-      <span style="font:600 12.5px 'Manrope',system-ui,sans-serif;color:var(--text-1);">Instructor note added</span>
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+      <span style="font:600 12.5px 'Manrope',system-ui,sans-serif;color:var(--text-1);">Instructor notes</span>
       <a href="{% url 'core:app_training' club.slug %}#note-{{ b.lesson_note_id }}" style="font:700 12px 'Manrope',system-ui,sans-serif;color:var(--primary);text-decoration:none;">View ›</a>
     </div>
     {% endif %}
   </div>
-  <div style="height:14px;"></div>
-  {% endwith %}
-  {% endif %}
+  {% endfor %}
 
-  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin-bottom:8px;">Flight history</div>
-  <div class="app-list" style="margin-bottom:20px;">
-    {% for b in past %}
-    <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="app-list-row">
-      <div class="app-list-main">
-        <div class="app-list-title">{{ b.aircraft.registration }}{% if b.fc_hours %} <span style="font-weight:500;color:var(--text-2);">· {{ b.fc_hours|floatformat:1 }}h</span>{% endif %}</div>
-        <div class="app-list-sub">{{ b.scheduled_start|localtime|date:"j M Y" }} · {{ b.scheduled_start|localtime|time:"H:i" }}{% if b.flight_type %} · {{ b.flight_type.name }}{% endif %}</div>
-        {% if b.has_lesson_note %}<div style="font:600 11px 'Manrope',system-ui,sans-serif;color:var(--primary);margin-top:2px;">Instructor note ›</div>{% endif %}
-      </div>
-      <svg class="app-list-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </a>
-    {% endfor %}
-  </div>
+  <div style="height:24px;"></div>
 
   {% else %}
   <div class="app-empty">No past flights recorded yet.</div>

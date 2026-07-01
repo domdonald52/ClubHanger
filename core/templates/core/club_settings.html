@@ -1272,6 +1272,16 @@
         <textarea name="payment_terms_text" class="finput" rows="3" placeholder="e.g. Please include your invoice number when paying by direct credit.">{{ config.payment_terms_text }}</textarea>
       </label>
 
+      <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Member IDs</h3>
+      <div style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.4rem;">
+        <label class="flabel" style="margin:0;">Member ID prefix <span style="font-weight:400;color:var(--text-3);">(optional)</span>
+          <input type="text" name="member_id_prefix" value="{{ config.member_id_prefix }}" class="finput" style="width:90px;" placeholder="e.g. WAC-">
+        </label>
+        <div style="font-size:.8rem;color:var(--text-3);padding-bottom:.5rem;">
+          Shown on the mobile app profile, e.g. <strong>{{ config.member_id_prefix|default:"WAC-" }}0042</strong>
+        </div>
+      </div>
+
       <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Invoice numbering</h3>
       <div style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.2rem;">
         <label class="flabel" style="margin:0;">Prefix <span style="font-weight:400;color:var(--text-3);">(optional)</span>
