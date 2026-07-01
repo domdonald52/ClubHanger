@@ -2,155 +2,215 @@
 {% load tz humanize static %}
 {% block title %}{{ club.name }}{% endblock %}
 
-{% block app_bar %}<span class="app-bar-title"></span>{% endblock %}
+{% block app_bar_left %}
+<button class="app-bar-action" onclick="openMenu()" aria-label="Menu" style="position:relative;">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  {% if unread_notifications_count %}<span style="position:absolute;top:5px;right:5px;width:8px;height:8px;background:#d6453f;border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}
+</button>
+{% endblock %}
+
+{% block app_bar_center %}
+{% if theme.logo %}
+<img src="{{ theme.logo.url }}" alt="{{ club.name }}" style="max-height:26px;max-width:130px;object-fit:contain;opacity:.9;">
+{% else %}
+<span class="app-bar-title">{{ club.name }}</span>
+{% endif %}
+{% endblock %}
+
+{% block app_bar_right %}
+{% if club_member.avatar %}
+<a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action" style="padding:.2rem;">
+  <img src="{{ club_member.avatar.url }}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,.5);">
+</a>
+{% else %}
+<a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action" style="padding:.2rem;">
+  <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font:700 11px 'Manrope',system-ui,sans-serif;color:#fff;">{{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}</div>
+</a>
+{% endif %}
+{% endblock %}
 
 {% block extra_style %}
 <style>
-.ha-row {
-  display:flex; align-items:center; gap:.75rem;
-  padding:.8rem 1rem;
-  border-bottom:1px solid var(--border-subtle);
-  text-decoration:none; color:inherit;
-}
-.ha-row:last-child { border-bottom:none; }
-.ha-row:active { background:var(--surface-2); }
-.ha-icon { width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
-body.dark-mode .ann-card { background: var(--surface-2) !important; }
+/* Announcement gallery */
+.ann-gallery { overflow-x:auto; scroll-snap-type:x mandatory; display:flex; gap:0; scroll-behavior:smooth; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.ann-gallery::-webkit-scrollbar { display:none; }
+.ann-slide { min-width:100%; scroll-snap-align:start; flex-shrink:0; }
+.ann-card { background:var(--surface); border-bottom:1px solid var(--border); padding:.85rem 14px; }
+
+/* Booking carousel */
+.bk-carousel { overflow-x:auto; scroll-snap-type:x mandatory; display:flex; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:0 14px; gap:12px; }
+.bk-carousel::-webkit-scrollbar { display:none; }
+.bk-carousel-card { min-width:calc(100% - 28px); scroll-snap-align:start; flex-shrink:0; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px; }
+
+/* Carousel dots */
+.car-dots { display:flex; justify-content:center; gap:5px; margin-top:8px; }
+.car-dot { width:6px; height:6px; border-radius:50%; background:var(--border); transition:background .15s,width .15s; }
+.car-dot.active { background:var(--primary); width:14px; border-radius:3px; }
 </style>
 {% endblock %}
 
 {% block content %}
+<div style="padding-top:8px;">
 
 {% if request.GET.event_reported %}
-<div style="background:var(--success-bg);color:var(--success-text);padding:.55rem 1rem;font-size:.82rem;font-weight:600;text-align:center;">Event report submitted — thank you.</div>
+<div style="background:var(--success-bg);color:var(--success-text);padding:.55rem 14px;font:600 13px 'Manrope',system-ui,sans-serif;">✓ Occurrence report submitted — thank you.</div>
 {% endif %}
-
-<!-- ── Compact greeting on banner colour ── -->
-<div style="background:var(--banner);padding:.9rem 1rem 1.1rem;">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;">
-    <div>
-      <div style="font-size:1.2rem;font-weight:750;color:#fff;letter-spacing:-.01em;">{{ greeting_word }}, {{ club_member.user.first_name }}.</div>
-      <div style="font-size:.74rem;color:rgba(255,255,255,.5);margin-top:.2rem;">{{ today|date:"l, j F Y" }}</div>
-    </div>
-    <a href="{% url 'core:app_snag' club.slug %}" style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);text-decoration:none;font-size:.74rem;font-weight:600;padding:.32rem .65rem;border-radius:20px;border:1px solid rgba(255,255,255,.15);flex-shrink:0;">
-      <i class="ti ti-alert-triangle" style="font-size:13px;"></i>Report
-    </a>
-  </div>
-</div>
 
 <!-- ── Announcements ── -->
-{% for ann in announcements %}
-{% if ann.image %}
-<div class="ann-card app-card" style="position:relative;overflow:hidden;padding:0;border-left:4px solid {{ ann.color }};{% if forloop.first %}margin-top:.75rem;{% endif %}">
-  <img src="{{ ann.image.url }}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
-  <div style="position:relative;background:rgba(0,0,0,.55);padding:.85rem 1rem;">
-    <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.3rem;">
-      <span style="font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
-      {% if ann.event_date %}<span style="font-size:.74rem;color:rgba(255,255,255,.7);">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
-      {% if ann.is_pinned %}<svg width="11" height="11" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M12 2L9 9H2l6 4.4L5.6 21 12 17l6.4 4L16 13.4 22 9h-7z"/></svg>{% endif %}
+{% if announcements %}
+<div class="ann-gallery" id="ann-gallery">
+  {% for ann in announcements %}
+  <div class="ann-slide">
+    {% if ann.image %}
+    <div style="position:relative;overflow:hidden;border-bottom:1px solid var(--border);">
+      <img src="{{ ann.image.url }}" alt="" style="width:100%;height:140px;object-fit:cover;display:block;">
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.48);padding:.85rem 14px;display:flex;flex-direction:column;justify-content:flex-end;">
+        <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.3rem;">
+          <span style="font:700 10px 'Manrope',system-ui,sans-serif;padding:.12rem .4rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
+          {% if ann.event_date %}<span style="font:500 12px 'Manrope',system-ui,sans-serif;color:rgba(255,255,255,.75);">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
+        </div>
+        <div style="font:700 14px 'Manrope',system-ui,sans-serif;color:#fff;">{{ ann.title }}</div>
+        {% if ann.body %}<div style="font:500 12px 'Manrope',system-ui,sans-serif;color:rgba(255,255,255,.82);margin-top:.25rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ ann.body }}</div>{% endif %}
+      </div>
     </div>
-    <div style="font-size:.88rem;font-weight:700;color:#fff;">{{ ann.title }}</div>
-    {% if ann.body %}<div style="font-size:.8rem;color:rgba(255,255,255,.82);margin-top:.3rem;line-height:1.45;">{{ ann.body }}</div>{% endif %}
-  </div>
-</div>
-{% else %}
-<div class="ann-card app-card" style="border-left:4px solid {{ ann.color }};background:{{ ann.bg }};padding:.85rem 1rem;{% if forloop.first %}margin-top:.75rem;{% endif %}">
-  <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.3rem;">
-    <span style="font-size:.62rem;font-weight:700;padding:.12rem .4rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
-    {% if ann.event_date %}<span style="font-size:.74rem;color:var(--text-3);">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
-    {% if ann.is_pinned %}<svg width="11" height="11" viewBox="0 0 24 24" fill="{{ ann.color }}" stroke="none"><path d="M12 2L9 9H2l6 4.4L5.6 21 12 17l6.4 4L16 13.4 22 9h-7z"/></svg>{% endif %}
-  </div>
-  <div style="font-size:.88rem;font-weight:700;color:var(--text-1);">{{ ann.title }}</div>
-  {% if ann.body %}<div style="font-size:.8rem;color:var(--text-2);margin-top:.3rem;line-height:1.45;">{{ ann.body }}</div>{% endif %}
-</div>
-{% endif %}
-{% endfor %}
-
-<!-- ── Alert rows (credential expiry, instructor pending, available today) ── -->
-{% if expiring_creds or club_member.is_instructor and pending_count or slots_available_today %}
-<div class="app-list" style="margin-top:.75rem;">
-
-  {% if expiring_creds %}
-  <a href="{% url 'core:app_profile' club.slug %}" class="ha-row">
-    <div class="ha-icon" style="background:color-mix(in srgb,var(--warning) 12%,var(--surface));color:var(--warning);"><i class="ti ti-id-badge"></i></div>
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:.86rem;font-weight:650;">{{ expiring_creds|length }} credential{{ expiring_creds|length|pluralize }} expiring</div>
-      <div style="font-size:.74rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{% for c in expiring_creds %}{{ c.credential_type.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>
+    {% else %}
+    <div class="ann-card" style="border-left:3px solid {{ ann.color }};">
+      <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.3rem;">
+        <span style="font:700 10px 'Manrope',system-ui,sans-serif;padding:.12rem .4rem;border-radius:4px;background:{{ ann.color }};color:#fff;text-transform:uppercase;letter-spacing:.04em;">{{ ann.get_type_display }}</span>
+        {% if ann.event_date %}<span style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);">{{ ann.event_date|date:"j M Y" }}</span>{% endif %}
+        {% if ann.is_pinned %}<svg width="10" height="10" viewBox="0 0 24 24" fill="{{ ann.color }}" stroke="none"><path d="M12 2L9 9H2l6 4.4L5.6 21 12 17l6.4 4L16 13.4 22 9h-7z"/></svg>{% endif %}
+      </div>
+      <div style="font:700 14px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ ann.title }}</div>
+      {% if ann.body %}<div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:.25rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ ann.body }}</div>{% endif %}
     </div>
-    <i class="ti ti-chevron-right" style="color:var(--border);font-size:16px;flex-shrink:0;"></i>
-  </a>
-  {% endif %}
-
-  {% if club_member.is_instructor and pending_count %}
-  <a href="{% url 'core:app_bookings' club.slug %}?tab=pending" class="ha-row">
-    <div class="ha-icon" style="background:color-mix(in srgb,var(--warning) 12%,var(--surface));color:var(--warning);"><i class="ti ti-clock"></i></div>
-    <div style="flex:1;">
-      <div style="font-size:.86rem;font-weight:650;">{{ pending_count }} booking{{ pending_count|pluralize }} to confirm</div>
-      <div style="font-size:.74rem;color:var(--text-3);">Tap to review</div>
-    </div>
-    <i class="ti ti-chevron-right" style="color:var(--border);font-size:16px;flex-shrink:0;"></i>
-  </a>
-  {% endif %}
-
-  {% if slots_available_today %}
-  <a href="{% url 'core:app_schedule' club.slug %}" class="ha-row">
-    <div class="ha-icon" style="background:color-mix(in srgb,var(--success) 12%,var(--surface));color:var(--success);"><i class="ti ti-circle-check"></i></div>
-    <div style="flex:1;min-width:0;">
-      <div style="font-size:.86rem;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ available_ac_regs|join:", " }}</div>
-      <div style="font-size:.74rem;color:var(--text-3);">Available from {{ first_slot_time }} &middot; Solo{% if instr_on_roster %} &amp; Dual{% endif %}</div>
-    </div>
-    <i class="ti ti-chevron-right" style="color:var(--border);font-size:16px;flex-shrink:0;"></i>
-  </a>
-  {% endif %}
-
-</div>
-{% endif %}
-
-<!-- ── Next flight card ── -->
-{% if next_booking %}{% with b=next_booking %}
-<div class="app-card" style="margin-top:.75rem;background:color-mix(in srgb,var(--primary) 6%,var(--surface));border-left:3px solid var(--primary);">
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
-    <div class="app-card-title" style="margin-bottom:0;">Next flight</div>
-    <span class="st-pill st-{{ b.status }}">{% if b.status == 'departed' %}<i class="ti ti-plane-departure"></i>{% elif b.status == 'completed' %}<i class="ti ti-plane-arrival"></i>{% elif b.status == 'confirmed' %}<i class="ti ti-check"></i>{% elif b.status == 'pending' %}<i class="ti ti-clock"></i>{% endif %} {{ b.get_status_display }}</span>
-  </div>
-  <div style="font-size:1.35rem;font-weight:750;letter-spacing:-.01em;line-height:1;">{{ b.aircraft.registration }}</div>
-  <div style="font-size:.82rem;color:var(--text-2);margin-top:.4rem;">{{ b.scheduled_start|localtime|date:"D j M" }} &middot; {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}</div>
-  <div style="font-size:.76rem;color:var(--text-3);margin-top:.1rem;">{% if b.instructor %}with {{ b.instructor.get_full_name }}{% else %}Solo{% endif %}</div>
-  {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}
-    {% if b.status == 'confirmed' %}
-    <a href="{% url 'core:app_bookings' club.slug %}#booking-{{ b.id }}" class="app-btn" style="margin-top:.9rem;"><i class="ti ti-plane-departure" style="margin-right:.3rem;vertical-align:middle;"></i>Depart</a>
-    {% elif b.status == 'departed' %}
-    <a href="{% url 'core:app_bookings' club.slug %}#booking-{{ b.id }}" class="app-btn" style="margin-top:.9rem;background:#7c3aed;"><i class="ti ti-plane-arrival" style="margin-right:.3rem;vertical-align:middle;"></i>Land</a>
     {% endif %}
-  {% endif %}
+  </div>
+  {% endfor %}
 </div>
-{% endwith %}{% endif %}
+{% if announcements|length > 1 %}
+<div class="car-dots" id="ann-dots">
+  {% for ann in announcements %}<div class="car-dot {% if forloop.first %}active{% endif %}" data-i="{{ forloop.counter0 }}"></div>{% endfor %}
+</div>
+{% endif %}
+{% endif %}
 
-<!-- ── Find a slot CTA ── -->
-<div style="padding:.65rem .75rem 0;">
+<!-- ── Greeting ── -->
+<div style="padding:18px 14px 0;">
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);">{{ today|date:"D j M" }}</div>
+  <div style="font:800 23px 'Manrope',system-ui,sans-serif;color:var(--text-1);margin-top:3px;">{{ greeting_word }}, {{ club_member.user.first_name }}.</div>
+</div>
+
+<!-- ── Upcoming flights carousel ── -->
+{% if upcoming_bookings %}
+<div style="padding:16px 14px 4px;display:flex;align-items:center;justify-content:space-between;">
+  <div style="font:700 12px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);">Upcoming flights</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="display:flex;align-items:center;gap:4px;font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);"><span style="width:7px;height:7px;border-radius:50%;background:#2e9e6b;display:inline-block;"></span>Confirmed</span>
+    <span style="display:flex;align-items:center;gap:4px;font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);"><span style="width:7px;height:7px;border-radius:50%;background:#9a5a2a;display:inline-block;"></span>Pending</span>
+  </div>
+</div>
+<div class="bk-carousel" id="bk-carousel">
+  {% for b in upcoming_bookings %}
+  <div class="bk-carousel-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
+      <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">
+        {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}Next · Today{% else %}{{ b.scheduled_start|localtime|date:"D j M" }}{% endif %}
+      </span>
+      <span class="st-pill st-{{ b.status }}">{{ b.get_status_display }}</span>
+    </div>
+    <div style="font:800 19px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.15;">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div>
+    <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;">{{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}{% if b.instructor %} · with {{ b.instructor.get_short_name }}{% else %} · Solo{% endif %}</div>
+    <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="app-btn" style="margin-top:13px;">Open details ›</a>
+  </div>
+  {% endfor %}
+</div>
+{% if upcoming_bookings|length > 1 %}
+<div class="car-dots" id="bk-dots" style="margin-top:8px;">
+  {% for b in upcoming_bookings %}<div class="car-dot {% if forloop.first %}active{% endif %}"></div>{% endfor %}
+</div>
+<div style="text-align:center;font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;">‹ swipe for all bookings ›</div>
+{% endif %}
+{% endif %}
+
+<!-- ── Find a slot ── -->
+<div style="padding:16px 14px 0;">
   <a href="{% url 'core:app_book_find' club.slug %}" class="app-btn">
-    <i class="ti ti-search" style="margin-right:.35rem;vertical-align:middle;"></i>Find a slot
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:6px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Find an available slot
   </a>
 </div>
 
-<!-- ── Personal stats ── -->
-{% if stats_month.flights or stats_fy.flights %}
-<div class="app-card" style="margin-top:.75rem;">
-  <div class="app-card-title" style="margin-bottom:.7rem;">Your flying</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
-    <div style="background:var(--surface-2);border-radius:10px;padding:.65rem .8rem;">
-      <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.3rem;">This month</div>
-      <div style="font-size:1.1rem;font-weight:750;color:var(--text-1);line-height:1.1;">{{ stats_month.hrs|floatformat:1 }}<span style="font-size:.7rem;font-weight:500;color:var(--text-3);margin-left:.2rem;">hrs</span></div>
-      <div style="font-size:.75rem;color:var(--text-3);margin-top:.2rem;">{{ stats_month.flights }} flight{{ stats_month.flights|pluralize }} · ${{ stats_month.spend|floatformat:0 }}</div>
+<!-- ── Balance + Invoices stat cards ── -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 14px 0;">
+  <!-- Balance -->
+  <a href="{% url 'core:app_account' club.slug %}" style="text-decoration:none;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px;">
+      <div style="font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--text-2);margin-bottom:5px;">Balance</div>
+      {% if balance is not None %}
+      <div style="font:800 20px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1;">
+        {% if balance >= 0 %}<span style="font-weight:500;font-size:13px;color:var(--text-2);">$</span>{{ balance|floatformat:2 }}
+        {% else %}<span style="color:var(--alert);">−${{ balance|floatformat:2|slice:"1:" }}</span>{% endif %}
+      </div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:{% if balance >= 0 %}var(--text-2){% else %}var(--alert){% endif %};margin-top:3px;">{% if balance >= 0 %}In credit{% else %}Owing{% endif %}</div>
+      {% else %}
+      <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);">No account</div>
+      {% endif %}
     </div>
-    <div style="background:var(--surface-2);border-radius:10px;padding:.65rem .8rem;">
-      <div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);margin-bottom:.3rem;">This FY</div>
-      <div style="font-size:1.1rem;font-weight:750;color:var(--text-1);line-height:1.1;">{{ stats_fy.hrs|floatformat:1 }}<span style="font-size:.7rem;font-weight:500;color:var(--text-3);margin-left:.2rem;">hrs</span></div>
-      <div style="font-size:.75rem;color:var(--text-3);margin-top:.2rem;">{{ stats_fy.flights }} flight{{ stats_fy.flights|pluralize }} · ${{ stats_fy.spend|floatformat:0 }}</div>
+  </a>
+  <!-- Invoices -->
+  <a href="{% url 'core:app_account' club.slug %}" style="text-decoration:none;">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+        <div style="font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--text-2);">Invoices</div>
+        {% if invoice_count %}<span style="background:#f3e2d6;color:#9a5a2a;border-radius:999px;padding:2px 7px;font:700 9px 'Manrope',system-ui,sans-serif;">DUE</span>{% endif %}
+      </div>
+      {% if invoice_count %}
+      <div style="font:800 20px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1;"><span style="font-weight:500;font-size:13px;color:var(--text-2);">$</span>{{ outstanding_invoice_total|floatformat:2 }}</div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:#9a5a2a;margin-top:3px;">{{ invoice_count }} invoice{{ invoice_count|pluralize }} due</div>
+      {% else %}
+      <div style="font:800 20px 'Manrope',system-ui,sans-serif;color:var(--success);line-height:1;">All clear</div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:3px;">No outstanding invoices</div>
+      {% endif %}
+    </div>
+  </a>
+</div>
+
+<!-- ── Weather placeholder ── -->
+<div style="margin:14px 14px 0;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px;display:flex;gap:11px;align-items:center;">
+    <div style="width:40px;height:40px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">☁</div>
+    <div>
+      <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">Weather unavailable</div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:2px;">General forecast — not for flight planning</div>
     </div>
   </div>
 </div>
-{% endif %}
 
-<div class="gap-md"></div>
+<!-- ── Report occurrence ── -->
+<div style="padding:14px 14px 8px;">
+  <a href="{% url 'core:app_snag' club.slug %}" style="display:flex;align-items:center;gap:8px;padding:.65rem 1rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;text-decoration:none;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f0b74a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    <span style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);flex:1;">Report a snag or occurrence</span>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+</div>
+
+<div style="height:16px;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function(){
+  /* Carousel dot sync */
+  function syncDots(scrollEl, dotsEl){
+    if(!scrollEl||!dotsEl) return;
+    var dots=dotsEl.querySelectorAll('.car-dot');
+    scrollEl.addEventListener('scroll',function(){
+      var idx=Math.round(scrollEl.scrollLeft/scrollEl.offsetWidth);
+      dots.forEach(function(d,i){ d.classList.toggle('active',i===idx); });
+    },{passive:true});
+  }
+  syncDots(document.getElementById('bk-carousel'),document.getElementById('bk-dots'));
+  syncDots(document.getElementById('ann-gallery'),document.getElementById('ann-dots'));
+})();
+</script>
 {% endblock %}

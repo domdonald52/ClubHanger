@@ -7,6 +7,8 @@
 <button onclick="clearAll()" style="background:none;border:none;color:var(--primary);font-size:.8rem;font-weight:600;padding:.3rem .5rem;cursor:pointer;flex-shrink:0;">Clear all</button>
 {% endif %}
 {% endblock %}
+{% block app_bar_center %}<span class="app-bar-title">Notifications</span>{% endblock %}
+{% block app_bar_right %}{% if notifications %}<button onclick="clearAll()" style="background:none;border:none;color:var(--primary);font-size:.8rem;font-weight:600;padding:.3rem .5rem;cursor:pointer;flex-shrink:0;">Clear all</button>{% endif %}{% endblock %}
 
 {% block content %}
 <div class="gap-sm"></div>

@@ -7,265 +7,352 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="{{ club.name }}">
-<meta name="theme-color" content="{{ theme.banner|default:'#1d3a5f' }}">
+<meta name="theme-color" content="{{ theme.banner|default:'#1f2a36' }}">
 <meta name="vapid-public-key" content="{{ vapid_public_key }}">
 <title>{% block title %}Club Hangar{% endblock %}</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
 {% if theme.logo %}
 <link rel="icon" href="{{ theme.logo.url }}" type="image/png">
 {% else %}
 <link rel="icon" href="{% static 'core/img/clubhangar-mark.svg' %}" type="image/svg+xml">
 {% endif %}
-{# iOS home-screen icon must be an opaque PNG — an SVG apple-touch-icon renders as a blank white tile #}
 <link rel="apple-touch-icon" href="{% static 'core/img/apple-touch-icon-180.png' %}">
 {% if theme.logo %}<link rel="apple-touch-icon" href="{{ theme.logo.url }}">{% endif %}
 <link rel="manifest" href="{% url 'core:pwa_manifest' club.slug %}">
 <style>
   :root {
-    --banner:  {{ theme.banner|default:'#1d3a5f' }};
-    --primary: {{ theme.primary|default:'#2f7dd1' }};
-    --accent:  {{ theme.accent|default:'#e8943a' }};
+    --banner:  {{ theme.banner|default:'#1f2a36' }};
+    --primary: {{ theme.primary|default:'#2f6fae' }};
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    /* Surfaces */
-    --bg:            #f4f6f9;
-    --surface:       #ffffff;
-    --surface-2:     #f8f9fb;
-    --surface-3:     #f3f5f7;
+    /* Light surfaces */
+    --bg:            #ffffff;
+    --surface:       #f7f8f9;
+    --surface-2:     #eff0f2;
+    --surface-3:     #e8eaec;
     /* Text */
-    --text-1:        #1f2933;
-    --text-2:        #5b6573;
-    --text-3:        #8a93a0;
+    --text-1:        #191c20;
+    --text-2:        #6e747b;
+    --text-3:        #9ca3af;
     /* Borders */
-    --border:        #e3e6ea;
-    --border-subtle: #f0f2f4;
+    --border:        #e7e9ec;
+    --border-subtle: #f0f1f3;
     --input-border:  #d1d5db;
     /* Semantic */
-    --alert:         #e03131;
+    --alert:         #d6453f;
     --alert-text:    #fff;
-    --success:       #16a34a;
-    --success-bg:    #dcfce7;
-    --success-text:  #216c2a;
-    --warning:       #d97706;
-    --warning-bg:    #fffbeb;
-    --warning-text:  #92400e;
-    --danger:        #dc2626;
-    --danger-bg:     #fee2e2;
-    --danger-text:   #991b1b;
-    --info-bg:       #eff6ff;
-    --info-text:     #1d4ed8;
-    /* Elevation */
-    --shadow-card:     0 1px 4px rgba(0,0,0,.07);
-    --shadow-elevated: 0 4px 18px rgba(0,0,0,.13);
-    --modal-backdrop:  rgba(16,24,40,.55);
+    --success:       #2e9e6b;
+    --success-bg:    #e2f1e9;
+    --success-text:  #2e9e6b;
+    --warning:       #9a5a2a;
+    --warning-bg:    #f3e2d6;
+    --warning-text:  #9a5a2a;
+    --danger:        #d6453f;
+    --danger-bg:     rgba(214,69,63,.1);
+    --danger-text:   #d6453f;
+    --info-bg:       #e4edf6;
+    --info-text:     #2f6fae;
+    /* Shadows & radii */
+    --shadow-card:     0 1px 3px rgba(0,0,0,.07);
+    --shadow-elevated: 0 16px 36px rgba(0,0,0,.25);
+    --radius-card:     14px;
+    --radius-btn:      10px;
+    --modal-backdrop:  rgba(16,24,40,.45);
   }
+
   body.dark-mode {
-    color-scheme: dark; /* tells Safari to render native controls (select, input) in dark mode */
-    --bg:            #0d1117;
-    --surface:       #161b22;
-    --surface-2:     #1c2128;
-    --surface-3:     #22272e;
-    --text-1:        #e6edf3;
-    --text-2:        #8b949e;
-    --text-3:        #6e7681;
-    --border:        #30363d;
-    --border-subtle: #21262d;
+    color-scheme: dark;
+    --bg:            #13171c;
+    --surface:       #1c222a;
+    --surface-2:     #222931;
+    --surface-3:     #2a3240;
+    --text-1:        #eef1f4;
+    --text-2:        #99a2ac;
+    --text-3:        #6b7580;
+    --border:        #2b323b;
+    --border-subtle: #222931;
     --input-border:  #374151;
     --alert:         #f85149;
+    --alert-text:    #fff;
     --success:       #3fb950;
-    --success-bg:    rgba(46,160,67,.15);
+    --success-bg:    rgba(63,185,80,.15);
     --success-text:  #3fb950;
-    --warning:       #f59e0b;
+    --warning:       #f0b74a;
     --warning-bg:    rgba(245,158,11,.12);
     --warning-text:  #fcd34d;
     --danger:        #f87171;
-    --danger-bg:     rgba(248,81,73,.12);
+    --danger-bg:     rgba(248,113,113,.12);
     --danger-text:   #fca5a5;
+    --info-bg:       rgba(47,111,174,.2);
+    --info-text:     #5aa0e6;
     --shadow-card:     0 1px 6px rgba(0,0,0,.45);
-    --shadow-elevated: 0 4px 22px rgba(0,0,0,.55);
-    --modal-backdrop:  rgba(0,0,0,.72);
+    --modal-backdrop:  rgba(0,0,0,.7);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text-1); -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    font-family: 'Manrope', system-ui, sans-serif;
+    color: var(--text-1);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-font-smoothing: antialiased;
+  }
 
-  /* ── Top app bar ── */
+  /* ── App bar ── */
   .app-bar {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     height: calc(52px + env(safe-area-inset-top, 0px));
     background: var(--banner);
-    color: #fff;
-    display: flex; align-items: flex-end; gap: .5rem;
-    padding: 0 .85rem calc(8px);
+    display: flex; align-items: flex-end;
+    padding: 0 4px 9px;
     padding-top: env(safe-area-inset-top, 0px);
-    box-shadow: 0 1px 0 rgba(0,0,0,.22);
   }
-  .app-bar-title { font-size: .92rem; font-weight: 650; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .app-bar-action { background: none; border: none; color: #fff; padding: .3rem; cursor: pointer; display: flex; align-items: center; opacity: .8; text-decoration: none; transition: opacity .12s; }
-  .app-bar-action:hover, .app-bar-action:active { opacity: 1; }
+  .app-bar-left  { width: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-start; }
+  .app-bar-center { flex: 1; min-width: 0; text-align: center; }
+  .app-bar-right { width: 44px; flex-shrink: 0; display: flex; align-items: center; justify-content: flex-end; }
+  .app-bar-title { font: 700 15px 'Manrope',system-ui,sans-serif; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .app-bar-action {
+    background: none; border: none; color: #fff; padding: .4rem;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    opacity: .85; text-decoration: none; position: relative; border-radius: 8px;
+  }
+  .app-bar-action:active { opacity: 1; background: rgba(255,255,255,.1); }
 
-  /* ── Bottom nav ── */
-  .app-nav {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
-    height: calc(58px + var(--safe-bottom));
-    background: var(--surface);
-    border-top: 1px solid var(--border);
-    display: flex;
-    padding-bottom: var(--safe-bottom);
-  }
-  .app-nav-item {
-    flex: 1; display: flex; flex-direction: column; align-items: center;
-    justify-content: center; gap: 2px;
-    text-decoration: none; color: var(--text-3);
-    font-size: .6rem; font-weight: 600; letter-spacing: .01em;
-    padding: .35rem 0;
-    position: relative;
-    transition: color .15s;
-  }
-  .app-nav-item.active { color: var(--primary); }
-  .app-nav-icon { font-size: 22px; line-height: 1; }
-  .app-nav-badge {
-    position: absolute; top: 5px; right: calc(50% - 16px);
-    background: var(--alert); color: var(--alert-text);
-    font-size: .55rem; font-weight: 700;
-    min-width: 15px; height: 15px;
-    border-radius: 8px; padding: 0 3px;
-    display: flex; align-items: center; justify-content: center;
-    line-height: 1; border: 1.5px solid var(--surface);
-  }
-
-  /* ── Page body ── */
+  /* ── Body ── */
   .app-body {
     padding-top: calc(52px + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(58px + var(--safe-bottom));
+    padding-bottom: calc(20px + var(--safe-bottom));
     min-height: 100%;
-    min-height: max(100%, 100lvh); /* iOS Safari: force pages scrollable so toolbar collapses */
-    overflow-y: auto;
-    background: var(--bg); /* explicit bg: iOS Safari overflow containers don't inherit from body */
   }
 
   /* ── Cards ── */
   .app-card {
     background: var(--surface);
-    border-radius: 14px;
-    box-shadow: var(--shadow-card);
-    padding: 1rem;
-    margin: .75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 14px;
+    margin: 0 14px;
   }
-  .app-card-title { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); margin-bottom: .55rem; }
-
-  /* ── Section header ── */
-  .app-section { padding: .75rem .75rem .25rem; }
-  .app-section-title { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-3); }
-
-  /* ── List rows ── */
-  .app-list { background: var(--surface); border-radius: 14px; overflow: hidden; margin: 0 .75rem; box-shadow: var(--shadow-card); }
-  .app-list-row {
-    display: flex; align-items: center; gap: .75rem;
-    padding: .85rem 1rem;
-    border-bottom: 1px solid var(--border-subtle);
-    text-decoration: none; color: inherit;
-    cursor: pointer;
+  .app-card + .app-card { margin-top: 12px; }
+  .app-card-title {
+    font: 700 11px 'Manrope',system-ui,sans-serif;
+    text-transform: uppercase; letter-spacing: .06em;
+    color: var(--text-2); margin-bottom: .5rem;
   }
-  .app-list-row:last-child { border-bottom: none; }
+
+  /* ── Section labels ── */
+  .app-section { padding: 0 14px; margin-top: 20px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+  .app-section-title {
+    font: 700 11px 'Manrope',system-ui,sans-serif;
+    text-transform: uppercase; letter-spacing: .06em; color: var(--text-2);
+  }
+
+  /* ── Lists ── */
+  .app-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); margin: 0 14px; overflow: hidden; }
+  .app-list-row { display: flex; align-items: center; gap: .75rem; padding: 12px 14px; border-top: 1px solid var(--border); text-decoration: none; color: inherit; }
+  .app-list-row:first-child { border-top: none; }
   .app-list-row:active { background: var(--surface-2); }
   .app-list-main { flex: 1; min-width: 0; }
-  .app-list-title { font-size: .88rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .app-list-sub { font-size: .76rem; color: var(--text-3); margin-top: .1rem; }
-  .app-list-right { font-size: .8rem; color: var(--text-3); flex-shrink: 0; }
-  .app-list-chev { color: var(--border); flex-shrink: 0; }
-
-  /* ── Status pills ── */
-  .st-pill { display: inline-flex; align-items: center; gap: .2rem; font-size: .63rem; font-weight: 700; padding: .15rem .45rem; border-radius: 20px; text-transform: uppercase; letter-spacing: .04em; }
-  .st-pill .ti { font-size: .72rem; }
-  .st-pending   { background: color-mix(in srgb,var(--primary) 12%,var(--surface)); color: var(--primary); border: 1px solid color-mix(in srgb,var(--primary) 25%,var(--border)); }
-  .st-confirmed { background: color-mix(in srgb,var(--success) 18%,var(--surface)); color: var(--success); border: 1px solid color-mix(in srgb,var(--success) 35%,var(--border)); }
-  .st-departed  { background: var(--primary); color: #fff; border: 1px solid transparent; }
-  .st-completed { background: var(--surface-3); color: var(--text-2); border: 1px solid var(--border); }
-
-  /* ── Booking list rows — lifecycle left border + date badge ── */
-  .bk-pending   { border-left: 3px solid color-mix(in srgb,var(--primary) 40%,var(--border)); }
-  .bk-confirmed { border-left: 3px solid color-mix(in srgb,var(--primary) 65%,var(--border)); }
-  .bk-departed  { border-left: 3px solid var(--primary); background: color-mix(in srgb,var(--primary) 6%,var(--bg)); }
-  .bk-completed { border-left: 3px solid var(--border); }
-  .bk-date-badge {
-    width: 38px; height: 38px; border-radius: 10px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    flex-shrink: 0; font-size: .8rem; font-weight: 700; line-height: 1.15; text-align: center;
-  }
-  .bk-pending .bk-date-badge   { background: color-mix(in srgb,var(--primary) 12%,var(--surface)); color: var(--primary); }
-  .bk-confirmed .bk-date-badge { background: color-mix(in srgb,var(--primary) 28%,var(--surface)); color: var(--primary); }
-  .bk-departed .bk-date-badge  { background: var(--primary); color: #fff; }
-  .bk-completed .bk-date-badge { background: var(--surface-2); color: var(--text-3); }
+  .app-list-title { font: 600 13px 'Manrope',system-ui,sans-serif; color: var(--text-1); }
+  .app-list-sub   { font: 500 12px 'Manrope',system-ui,sans-serif; color: var(--text-2); margin-top: .15rem; }
+  .app-list-right { font: 700 13px 'Manrope',system-ui,sans-serif; color: var(--text-1); flex-shrink: 0; }
+  .app-list-chev  { color: var(--border); flex-shrink: 0; }
 
   /* ── Buttons ── */
   .app-btn {
-    display: block; width: 100%;
+    display: block; width: 100%; padding: 13px; text-align: center;
     background: var(--primary); color: #fff;
-    border: none; border-radius: 12px;
-    padding: .85rem; font-size: .95rem; font-weight: 650;
-    text-align: center; cursor: pointer; text-decoration: none;
-    transition: filter .15s;
+    border-radius: var(--radius-btn); border: none;
+    font: 700 13.5px 'Manrope',system-ui,sans-serif;
+    text-decoration: none; cursor: pointer; -webkit-appearance: none;
   }
-  .app-btn:active { filter: brightness(.9); }
-  .app-btn.secondary {
-    background: color-mix(in srgb,var(--primary) 10%,var(--surface));
-    color: var(--primary);
-    border: 1.5px solid color-mix(in srgb,var(--primary) 25%,var(--border));
-  }
-  .app-btn-sm {
-    display: inline-flex; align-items: center; gap: .3rem;
-    background: var(--primary); color: #fff;
-    border: none; border-radius: 8px;
-    padding: .45rem .85rem; font-size: .82rem; font-weight: 600;
-    cursor: pointer; text-decoration: none;
-  }
-  .app-btn-sm.ghost {
-    background: transparent; color: var(--primary);
-    border: 1.5px solid var(--primary);
-  }
+  .app-btn.secondary { background: var(--surface); border: 1.5px solid var(--border); color: var(--text-1); }
+  .app-btn.outline-danger { background: transparent; border: 1.5px solid #e6c9c7; color: #c4453f; }
 
-  /* ── Empty state ── */
-  .app-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-3); font-size: .88rem; }
+  /* ── Segmented control ── */
+  .seg-ctrl {
+    display: flex; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 11px; padding: 3px; gap: 3px; margin: 0 14px;
+  }
+  .seg-btn {
+    flex: 1; text-align: center; padding: 9px 0; border-radius: 8px;
+    font: 700 12.5px 'Manrope',system-ui,sans-serif; color: var(--text-2);
+    background: transparent; border: none; cursor: pointer; text-decoration: none;
+  }
+  .seg-btn.active { background: var(--primary); color: #fff; }
+
+  /* ── Status pills ── */
+  .st-pill {
+    display: inline-flex; align-items: center; gap: .2rem;
+    border-radius: 999px; padding: 3px 9px;
+    font: 700 9px 'Manrope',system-ui,sans-serif;
+    letter-spacing: .03em; white-space: nowrap; text-transform: uppercase;
+  }
+  .st-confirmed { background: #e2f1e9; color: #2e9e6b; }
+  .st-pending   { background: #f3e2d6; color: #9a5a2a; }
+  .st-departed  { background: var(--info-bg); color: var(--info-text); }
+  .st-completed { background: #e2f1e9; color: #2e9e6b; }
+  .st-cancelled { background: var(--surface-2); color: var(--text-2); }
+  .st-logged    { background: #e2f1e9; color: #2e9e6b; }
+
+  /* ── Detail rows (flight details, invoice sheets) ── */
+  .detail-row { display: flex; align-items: center; padding: 12px 0; border-top: 1px solid var(--border); }
+  .detail-row:first-child { border-top: none; padding-top: 0; }
+  .detail-label { font: 500 12px 'Manrope',system-ui,sans-serif; color: var(--text-2); flex: none; width: 96px; }
+  .detail-value { flex: 1; text-align: right; font: 700 12.5px 'Manrope',system-ui,sans-serif; color: var(--text-1); }
+
+  /* ── Toggles ── */
+  .tog-sw { position: relative; display: inline-block; }
+  .tog-sw input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .tog-track {
+    display: block; width: 46px; height: 27px; border-radius: 14px;
+    background: var(--border); cursor: pointer; transition: background .2s; position: relative;
+  }
+  .tog-track::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 21px; height: 21px; border-radius: 50%; background: #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: left .2s;
+  }
+  .tog-sw input:checked + .tog-track { background: var(--primary); }
+  .tog-sw input:checked + .tog-track::after { left: 22px; }
+
+  /* ── Slide-over menu ── */
+  #menu-back {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.5); z-index: 200;
+  }
+  #menu-back.open { display: block; }
+  #menu-panel {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 201;
+    width: 88%; max-width: 320px;
+    background: #1f2a36;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  #menu-panel.open { transform: translateX(0); }
 
   /* ── Utilities ── */
   .gap-xs { margin-top: .4rem; }
   .gap-sm { margin-top: .75rem; }
   .gap-md { margin-top: 1.25rem; }
+  .app-empty { text-align: center; padding: 2.5rem 1rem; font: 500 13px 'Manrope',system-ui,sans-serif; color: var(--text-2); }
 </style>
 {% block extra_style %}{% endblock %}
 </head>
-<body class="{% if theme.dark_mode %}dark-mode{% endif %}">
+<body>
+<script>
+(function(){
+  var t=localStorage.getItem('ch-theme');
+  var mq=window.matchMedia('(prefers-color-scheme:dark)');
+  var dark=t==='dark'||(t!=='light'&&mq.matches);
+  if(dark) document.body.classList.add('dark-mode');
+  if(t!=='dark'&&t!=='light') mq.addEventListener('change',function(e){
+    document.body.classList.toggle('dark-mode',e.matches);
+  });
+  var acc=localStorage.getItem('ch-accent');
+  if(acc) document.documentElement.style.setProperty('--primary',acc);
+})();
+</script>
 
-<header class="app-bar">
-  {% block app_bar_brand %}
-  {% if theme.logo %}
-  <img src="{{ theme.logo.url }}" alt="{{ club.name }}" fetchpriority="high" style="flex-shrink:0;max-height:28px;height:auto;width:auto;max-width:90px;object-fit:contain;opacity:.9;pointer-events:none;">
-  {% else %}
-  <img src="{% static 'core/img/clubhangar-mark.svg' %}" alt="" style="flex-shrink:0;height:20px;width:20px;object-fit:contain;pointer-events:none;">
-  {% endif %}
-  {% endblock %}
-  {% block app_bar %}
-  <span class="app-bar-title">{% block page_title %}{% endblock %}</span>
-  {% endblock %}
-  {% block app_bar_right %}
-  <a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" style="position:relative;" title="Notifications">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-    {% if unread_notifications_count %}<span style="position:absolute;top:4px;right:4px;width:7px;height:7px;background:var(--alert);border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}
+<!-- ── Slide-over menu ── -->
+<div id="menu-back" onclick="closeMenu()"></div>
+<nav id="menu-panel" aria-label="Main menu">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 15px 12px;">
+    {% if theme.logo %}
+    <img src="{{ theme.logo.url }}" alt="{{ club.name }}" style="height:26px;width:auto;display:block;object-fit:contain;opacity:.9;">
+    {% else %}
+    <span style="color:rgba(255,255,255,.8);font:700 14px 'Manrope',system-ui,sans-serif;">{{ club.name }}</span>
+    {% endif %}
+    <button onclick="closeMenu()" style="background:none;border:none;color:rgba(255,255,255,.6);font:300 24px 'Manrope',system-ui,sans-serif;line-height:1;padding:.2rem .4rem;cursor:pointer;">✕</button>
+  </div>
+
+  <!-- Identity -->
+  <div style="display:flex;align-items:center;gap:12px;padding:2px 15px 16px;border-bottom:1px solid rgba(255,255,255,.1);">
+    {% if club_member.avatar %}
+    <img src="{{ club_member.avatar.url }}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.8px solid rgba(255,255,255,.6);">
+    {% else %}
+    <div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);border:1.8px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font:700 16px 'Manrope',system-ui,sans-serif;color:#fff;flex-shrink:0;">{{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}</div>
+    {% endif %}
+    <div>
+      <div style="color:#fff;font:600 15px 'Manrope',system-ui,sans-serif;line-height:1.2;">{{ club_member.user.get_full_name }}</div>
+      <div style="color:rgba(255,255,255,.5);font:500 11px 'Manrope',system-ui,sans-serif;margin-top:3px;">
+        {% if club_member.role %}{{ club_member.role.name }}{% else %}Member{% endif %}{% if club_member.caa_number %} · {{ club_member.caa_number }}{% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav items -->
+  <a href="{% url 'core:app_schedule' club.slug %}" onclick="closeMenu()" style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none;">
+    <div style="flex:1;">
+      <div style="color:#fff;font:600 14px 'Manrope',system-ui,sans-serif;">Schedule</div>
+      <div style="color:rgba(255,255,255,.45);font:500 11px 'Manrope',system-ui,sans-serif;margin-top:2px;">Book &amp; view upcoming slots</div>
+    </div>
+    <span style="color:rgba(255,255,255,.3);font-size:18px;line-height:1;">›</span>
   </a>
-  <button class="app-bar-action" onclick="appSignOutConfirm()" title="Sign out">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-  </button>
-  {% endblock %}
+
+  <a href="{% url 'core:app_bookings' club.slug %}" onclick="closeMenu()" style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none;">
+    <div style="flex:1;">
+      <div style="color:#fff;font:600 14px 'Manrope',system-ui,sans-serif;">My flights</div>
+      <div style="color:rgba(255,255,255,.45);font:500 11px 'Manrope',system-ui,sans-serif;margin-top:2px;">Upcoming &amp; past logbook</div>
+    </div>
+    <span style="color:rgba(255,255,255,.3);font-size:18px;line-height:1;">›</span>
+  </a>
+
+  <a href="{% url 'core:app_account' club.slug %}" onclick="closeMenu()" style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none;">
+    <div style="flex:1;">
+      <div style="color:#fff;font:600 14px 'Manrope',system-ui,sans-serif;">Invoices &amp; payments</div>
+      <div style="color:rgba(255,255,255,.45);font:500 11px 'Manrope',system-ui,sans-serif;margin-top:2px;">History{% if invoice_count %} · {{ invoice_count }} unpaid{% endif %}</div>
+    </div>
+    {% if invoice_count %}<span style="background:#d6453f;color:#fff;border-radius:999px;padding:2px 8px;font:700 10px 'Manrope',system-ui,sans-serif;">{{ invoice_count }}</span>
+    {% else %}<span style="color:rgba(255,255,255,.3);font-size:18px;line-height:1;">›</span>{% endif %}
+  </a>
+
+  <a href="{% url 'core:app_profile' club.slug %}" onclick="closeMenu()" style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none;">
+    <div style="flex:1;">
+      <div style="color:#fff;font:600 14px 'Manrope',system-ui,sans-serif;">Profile &amp; settings</div>
+      <div style="color:rgba(255,255,255,.45);font:500 11px 'Manrope',system-ui,sans-serif;margin-top:2px;">Membership · credentials · notifications</div>
+    </div>
+    <span style="color:rgba(255,255,255,.3);font-size:18px;line-height:1;">›</span>
+  </a>
+
+  <!-- Footer -->
+  <div style="margin-top:auto;padding-top:1.5rem;">
+    {% if other_clubs %}
+    <a href="{% url 'core:app_root' %}" onclick="closeMenu()" style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-top:1px solid rgba(255,255,255,.1);text-decoration:none;">
+      <div style="flex:1;">
+        <div style="color:#fff;font:600 14px 'Manrope',system-ui,sans-serif;">Switch clubs</div>
+        <div style="color:rgba(255,255,255,.45);font:500 11px 'Manrope',system-ui,sans-serif;margin-top:2px;">{{ club.name }}</div>
+      </div>
+      <span style="color:rgba(255,255,255,.4);font-size:16px;">⇄</span>
+    </a>
+    {% endif %}
+    <button onclick="appSignOutConfirm();closeMenu();" style="display:block;width:100%;text-align:left;padding:14px 15px;border:none;border-top:1px solid rgba(255,255,255,.1);background:none;cursor:pointer;">
+      <span style="color:#f87171;font:600 14px 'Manrope',system-ui,sans-serif;">Sign out</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ── App bar ── -->
+<header class="app-bar">
+  <div class="app-bar-left">{% block app_bar_left %}<a href="javascript:history.back()" class="app-bar-action" aria-label="Back"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>{% endblock %}</div>
+  <div class="app-bar-center">{% block app_bar_center %}<span class="app-bar-title">{% block page_title %}{% endblock %}</span>{% endblock %}</div>
+  <div class="app-bar-right">{% block app_bar_right %}<a href="{% url 'core:app_notifications' club.slug %}" class="app-bar-action" aria-label="Notifications" style="position:relative;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>{% if unread_notifications_count %}<span style="position:absolute;top:4px;right:4px;width:8px;height:8px;background:#d6453f;border-radius:50%;border:1.5px solid var(--banner);"></span>{% endif %}</a>{% endblock %}</div>
 </header>
 
-<!-- Sign-out confirmation dialog -->
-<div id="signout-overlay" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:500;align-items:center;justify-content:center;">
-  <div style="background:var(--surface);border-radius:18px;padding:1.5rem 1.25rem;margin:1.2rem;max-width:320px;width:100%;box-shadow:var(--shadow-elevated);">
-    <div style="font-size:1rem;font-weight:700;color:var(--text-1);margin-bottom:.35rem;">Sign out?</div>
-    <div style="font-size:.86rem;color:var(--text-2);margin-bottom:1.2rem;line-height:1.5;">You'll need to sign in again to access the app.</div>
+<!-- ── Sign-out confirm ── -->
+<div id="signout-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:18px;padding:1.5rem 1.25rem;margin:1.2rem;max-width:320px;width:100%;box-shadow:0 16px 36px rgba(0,0,0,.3);">
+    <div style="font:700 17px 'Manrope',system-ui,sans-serif;color:var(--text-1);margin-bottom:.35rem;">Sign out?</div>
+    <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:1.2rem;line-height:1.5;">You'll need to sign in again to access the app.</div>
     <div style="display:flex;gap:.6rem;">
-      <button onclick="document.getElementById('signout-overlay').style.display='none'" style="flex:1;padding:.75rem;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text-1);">Cancel</button>
-      <form method="post" action="{% url 'logout' %}" style="flex:1;">{% csrf_token %}<input type="hidden" name="next" value="/"><button type="submit" style="width:100%;padding:.75rem;border:none;border-radius:10px;background:var(--alert);color:var(--alert-text);font-size:.9rem;font-weight:600;cursor:pointer;">Sign out</button></form>
+      <button onclick="document.getElementById('signout-overlay').style.display='none'" style="flex:1;padding:.75rem;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);font:600 13px 'Manrope',system-ui,sans-serif;cursor:pointer;color:var(--text-1);">Cancel</button>
+      <form method="post" action="{% url 'logout' %}" style="flex:1;">{% csrf_token %}<input type="hidden" name="next" value="/"><button type="submit" style="width:100%;padding:.75rem;border:none;border-radius:10px;background:#d6453f;color:#fff;font:600 13px 'Manrope',system-ui,sans-serif;cursor:pointer;">Sign out</button></form>
     </div>
   </div>
 </div>
@@ -273,136 +360,80 @@
 <main class="app-body">
   {% block content %}{% endblock %}
 </main>
-<div style="height:2px;overflow:hidden;" aria-hidden="true"></div>
-
-<nav class="app-nav">
-  <a href="{% url 'core:app_home' club.slug %}"
-     class="app-nav-item {% if request.resolver_match.url_name == 'app_home' %}active{% endif %}">
-    <i class="ti ti-home-2 app-nav-icon"></i>
-    <span>Home</span>
-  </a>
-  <a href="{% url 'core:app_schedule' club.slug %}"
-     class="app-nav-item {% if 'app_schedule' in request.resolver_match.url_name %}active{% endif %}">
-    <i class="ti ti-calendar-event app-nav-icon"></i>
-    <span>Schedule</span>
-  </a>
-  <a href="{% url 'core:app_bookings' club.slug %}"
-     class="app-nav-item {% if request.resolver_match.url_name == 'app_bookings' %}active{% endif %}">
-    <i class="ti ti-notes app-nav-icon"></i>
-    <span>Bookings</span>
-    {% if pending_count %}<span class="app-nav-badge">{{ pending_count }}</span>{% endif %}
-  </a>
-  <a href="{% url 'core:app_account' club.slug %}"
-     class="app-nav-item {% if request.resolver_match.url_name == 'app_account' %}active{% endif %}">
-    <i class="ti ti-wallet app-nav-icon"></i>
-    <span>Account</span>
-    {% if invoice_count or flight_count %}<span class="app-nav-badge" style="min-width:8px;width:8px;height:8px;padding:0;font-size:0;top:5px;right:calc(50% - 17px);"></span>{% endif %}
-  </a>
-  <a href="{% url 'core:app_profile' club.slug %}"
-     class="app-nav-item {% if request.resolver_match.url_name in 'app_profile app_profile_edit app_credential_add' %}active{% endif %}">
-    <i class="ti ti-user-circle app-nav-icon"></i>
-    <span>Profile</span>
-  </a>
-</nav>
 
 {% block extra_js %}{% endblock %}
 
 <script>
-function appSignOutConfirm() {
-  var el = document.getElementById('signout-overlay');
-  el.style.display = 'flex';
+function openMenu(){
+  document.getElementById('menu-panel').classList.add('open');
+  document.getElementById('menu-back').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeMenu(){
+  document.getElementById('menu-panel').classList.remove('open');
+  document.getElementById('menu-back').classList.remove('open');
+  document.body.style.overflow='';
+}
+function appSignOutConfirm(){
+  document.getElementById('signout-overlay').style.display='flex';
 }
 
-// Service worker registration
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(e){
-    console.warn('SW registration failed:', e);
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(e){
+    console.warn('SW registration failed:',e);
   });
 }
 
-// Push notification helpers — exposed globally for the profile page
-window.ClubPush = (function() {
-  var SUBSCRIBE_URL   = '{% url "core:push_subscribe"   club.slug %}';
-  var UNSUBSCRIBE_URL = '{% url "core:push_unsubscribe" club.slug %}';
-  var TEST_URL        = '{% url "core:push_test"        club.slug %}';
-  var VAPID_KEY       = (document.querySelector('meta[name="vapid-public-key"]') || {}).content || '';
-
-  function urlBase64ToUint8Array(b64) {
-    var pad = '='.repeat((4 - b64.length % 4) % 4);
-    var raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
-    var arr = new Uint8Array(raw.length);
-    for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+window.ClubPush=(function(){
+  var SUBSCRIBE_URL  ='{% url "core:push_subscribe"   club.slug %}';
+  var UNSUBSCRIBE_URL='{% url "core:push_unsubscribe" club.slug %}';
+  var TEST_URL       ='{% url "core:push_test"        club.slug %}';
+  var VAPID_KEY=(document.querySelector('meta[name="vapid-public-key"]')||{}).content||'';
+  function urlBase64ToUint8Array(b64){
+    var pad='='.repeat((4-b64.length%4)%4);
+    var raw=atob((b64+pad).replace(/-/g,'+').replace(/_/g,'/'));
+    var arr=new Uint8Array(raw.length);
+    for(var i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
     return arr;
   }
-
-  function getCSRF() {
-    var m = document.cookie.match(/csrftoken=([^;]+)/);
-    return m ? m[1] : '';
+  function getCSRF(){ var m=document.cookie.match(/csrftoken=([^;]+)/); return m?m[1]:''; }
+  function postJSON(url,body){
+    return fetch(url,{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCSRF()},body:JSON.stringify(body)});
   }
-
-  function postJSON(url, body) {
-    return fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRF() },
-      body: JSON.stringify(body),
-    });
-  }
-
   return {
-    // Returns: 'subscribed' | 'unsubscribed' | 'denied' | 'unsupported' | 'error'
-    subscribe: async function() {
-      if (!('PushManager' in window)) return 'unsupported';
-      if (!VAPID_KEY) { console.error('ClubPush: VAPID public key not set'); return 'error'; }
-      try {
-        var perm = await Notification.requestPermission();
-        if (perm !== 'granted') return 'denied';
-        var reg = await navigator.serviceWorker.ready;
-        var sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_KEY),
-        });
-        var resp = await postJSON(SUBSCRIBE_URL, sub.toJSON());
-        if (!resp.ok) { console.error('ClubPush: server error', resp.status); return 'error'; }
+    subscribe:async function(){
+      if(!('PushManager' in window)) return 'unsupported';
+      if(!VAPID_KEY){ console.error('ClubPush: VAPID key not set'); return 'error'; }
+      try{
+        var perm=await Notification.requestPermission();
+        if(perm!=='granted') return 'denied';
+        var reg=await navigator.serviceWorker.ready;
+        var sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_KEY)});
+        var resp=await postJSON(SUBSCRIBE_URL,sub.toJSON());
+        if(!resp.ok){ console.error('ClubPush: server error',resp.status); return 'error'; }
         return 'subscribed';
-      } catch(e) {
-        console.error('ClubPush subscribe error:', e);
-        return 'error';
-      }
+      }catch(e){ console.error('ClubPush subscribe error:',e); return 'error'; }
     },
-
-    // Returns: 'unsubscribed' | 'error'
-    unsubscribe: async function() {
-      try {
-        var reg = await navigator.serviceWorker.ready;
-        var sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          await postJSON(UNSUBSCRIBE_URL, { endpoint: sub.endpoint });
-          await sub.unsubscribe();
-        }
+    unsubscribe:async function(){
+      try{
+        var reg=await navigator.serviceWorker.ready;
+        var sub=await reg.pushManager.getSubscription();
+        if(sub){ await postJSON(UNSUBSCRIBE_URL,{endpoint:sub.endpoint}); await sub.unsubscribe(); }
         return 'unsubscribed';
-      } catch(e) {
-        console.error('ClubPush unsubscribe error:', e);
-        return 'error';
-      }
+      }catch(e){ console.error('ClubPush unsubscribe error:',e); return 'error'; }
     },
-
-    // Returns: 'subscribed' | 'unsubscribed' | 'denied' | 'unsupported' | 'error'
-    getState: async function() {
-      if (!('PushManager' in window)) return 'unsupported';
-      if (Notification.permission === 'denied') return 'denied';
-      try {
-        var reg = await navigator.serviceWorker.ready;
-        var sub = await reg.pushManager.getSubscription();
-        return sub ? 'subscribed' : 'unsubscribed';
-      } catch(e) { return 'error'; }
+    getState:async function(){
+      if(!('PushManager' in window)) return 'unsupported';
+      if(Notification.permission==='denied') return 'denied';
+      try{
+        var reg=await navigator.serviceWorker.ready;
+        var sub=await reg.pushManager.getSubscription();
+        return sub?'subscribed':'unsubscribed';
+      }catch(e){ return 'error'; }
     },
-
-    // Returns {ok, error?}
-    sendTest: async function() {
-      try {
-        var resp = await postJSON(TEST_URL, {});
-        return await resp.json();
-      } catch(e) { return { ok: false, error: String(e) }; }
+    sendTest:async function(){
+      try{ var resp=await postJSON(TEST_URL,{}); return await resp.json(); }
+      catch(e){ return {ok:false,error:String(e)}; }
     },
   };
 })();

@@ -2,133 +2,146 @@
 {% load tz %}
 {% block title %}Profile · {{ club.name }}{% endblock %}
 
-{% block extra_style %}
-<style>
-.m-pill { font-size:.62rem; font-weight:700; padding:.15rem .5rem; border-radius:20px; text-transform:uppercase; letter-spacing:.05em; }
-.m-pill-green  { background:var(--success-bg); color:var(--success-text); }
-.m-pill-amber  { background:var(--warning-bg); color:var(--warning-text); }
-.m-pill-red    { background:var(--danger-bg); color:var(--danger-text); }
-.m-pill-grey   { background:var(--surface-3); color:var(--text-3); }
-.profile-tile {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:.5rem; background:var(--surface); border:1px solid var(--border);
-  border-radius:14px; padding:1.2rem .5rem; text-decoration:none; transition:background .12s;
-}
-.profile-tile:active { background:var(--surface-2); }
-</style>
-{% endblock %}
-
-{% block app_bar %}
-<span class="app-bar-title">My Profile</span>
-<a href="{% url 'core:app_guide' club.slug %}" class="app-bar-action" title="Help guide">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-</a>
-<a href="{% url 'core:app_profile_edit' club.slug %}" class="app-bar-action" title="Edit details">
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-</a>
-{% endblock %}
+{% block app_bar_center %}<span class="app-bar-title">Profile & settings</span>{% endblock %}
 
 {% block content %}
+<div style="height:16px;"></div>
 
-{% if saved %}
-<div style="background:var(--success-bg);color:var(--success-text);padding:.55rem 1rem;font-size:.82rem;font-weight:600;text-align:center;">✓ Saved.</div>
-{% endif %}
-
-<!-- Member banner card -->
-<div style="background:var(--banner);padding:1.1rem 1rem 1.4rem;">
-  <div style="display:flex;align-items:center;gap:.9rem;">
+<!-- ── Identity card ── -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;margin:0 14px;padding:18px;">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <!-- Avatar -->
     {% if club_member.avatar %}
-    <img src="{{ club_member.avatar.url }}" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2.5px solid rgba(255,255,255,.25);">
+    <img src="{{ club_member.avatar.url }}" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;flex-shrink:0;">
     {% else %}
-    <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.15);border:2.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:750;color:#fff;flex-shrink:0;letter-spacing:-.02em;">{{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}</div>
+    <div style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font:800 20px 'Manrope',system-ui,sans-serif;flex-shrink:0;">{{ club_member.user.first_name|first|upper }}{{ club_member.user.last_name|first|upper }}</div>
     {% endif %}
+    <!-- Name + role -->
     <div style="flex:1;min-width:0;">
-      <div style="font-size:1.05rem;font-weight:750;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ club_member.user.get_full_name }}</div>
-      <div style="display:flex;align-items:center;gap:.45rem;margin-top:.35rem;flex-wrap:wrap;">
-        {% if club_member.standing == 'active' %}
-        <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(22,163,74,.35);color:#6ee7a0;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(22,163,74,.5);">Active</span>
-        {% elif club_member.standing == 'suspended' %}
-        <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(220,38,38,.35);color:#fff;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(220,38,38,.5);">Suspended</span>
-        {% elif club_member.standing == 'lapsed' %}
-        <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(217,119,6,.3);color:#fff;padding:.15rem .5rem;border-radius:20px;border:1px solid rgba(217,119,6,.5);">Lapsed</span>
-        {% else %}
-        <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);padding:.15rem .5rem;border-radius:20px;">{{ club_member.get_standing_display }}</span>
-        {% endif %}
-        {% if sub_status == 'expired' %}
-        <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(220,38,38,.35);color:#fff;padding:.15rem .5rem;border-radius:20px;">Sub. expired</span>
-        {% elif sub_status == 'expiring' %}
-        <span style="font-size:.63rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;background:rgba(217,119,6,.3);color:#fff;padding:.15rem .5rem;border-radius:20px;">{{ sub_days }}d left</span>
-        {% endif %}
+      <div style="font:800 17px 'Manrope',system-ui,sans-serif;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ club_member.user.get_full_name }}</div>
+      <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{% if club_member.role %}{{ club_member.role.name }}{% else %}{{ club_member.user.email }}{% endif %}</div>
+    </div>
+    <!-- Edit button -->
+    <a href="{% url 'core:app_profile_edit' club.slug %}" style="flex-shrink:0;font:700 12px 'Manrope',system-ui,sans-serif;color:var(--primary);text-decoration:none;padding:7px 13px;border:1.5px solid var(--primary);border-radius:20px;">Edit</a>
+  </div>
+</div>
+
+<!-- ── Membership card ── -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:16px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+    <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);">Membership</div>
+    <!-- Standing pill -->
+    {% if club_member.standing == 'active' %}
+    <span style="background:#e2f1e9;color:#2e9e6b;border-radius:999px;padding:3px 10px;font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;">Active</span>
+    {% elif club_member.standing == 'pending' %}
+    <span style="background:#f3e2d6;color:#9a5a2a;border-radius:999px;padding:3px 10px;font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;">Pending</span>
+    {% elif club_member.standing == 'lapsed' %}
+    <span style="background:var(--danger-bg);color:var(--danger-text);border-radius:999px;padding:3px 10px;font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;">Lapsed</span>
+    {% elif club_member.standing == 'suspended' %}
+    <span style="background:var(--danger-bg);color:var(--danger-text);border-radius:999px;padding:3px 10px;font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;">Suspended</span>
+    {% else %}
+    <span style="background:var(--surface-2);color:var(--text-2);border-radius:999px;padding:3px 10px;font:700 10px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;">{{ club_member.get_standing_display }}</span>
+    {% endif %}
+  </div>
+  <!-- 2×2 grid -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:2px;">Role</div>
+      <div style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{% if club_member.role %}{{ club_member.role.name }}{% else %}—{% endif %}</div>
+    </div>
+    <div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:2px;">Renews</div>
+      <div style="font:700 13px 'Manrope',system-ui,sans-serif;color:{% if sub_status == 'expired' %}var(--danger){% elif sub_status == 'expiring' %}#9a5a2a{% else %}var(--text-1){% endif %};">
+        {% if club_member.subscription_expires %}{{ club_member.subscription_expires|date:"j M Y" }}{% if sub_status == 'expiring' %} ({{ sub_days }}d){% endif %}{% else %}—{% endif %}
       </div>
     </div>
+    <div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:2px;">Member since</div>
+      <div style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ club_member.join_date|date:"j M Y" }}</div>
+    </div>
+    <div>
+      <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:2px;">Member no.</div>
+      <div style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{% if club_member.membership_number %}{{ club_member.membership_number }}{% else %}#{{ club_member.id }}{% endif %}</div>
+    </div>
   </div>
-  {% if club_member.caa_number or club_member.role or club_member.subscription_expires %}
-  <div style="display:flex;gap:1.5rem;margin-top:1rem;">
-    {% if club_member.caa_number %}
-    <div>
-      <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.4);margin-bottom:.2rem;">CAA</div>
-      <div style="font-size:.84rem;font-weight:600;color:rgba(255,255,255,.9);">{{ club_member.caa_number }}</div>
+</div>
+
+<!-- ── Settings list ── -->
+<div class="app-list" style="margin-top:14px;">
+
+  <!-- Credentials -->
+  <a href="{% url 'core:app_credentials' club.slug %}" class="app-list-row">
+    <div style="width:34px;height:34px;border-radius:9px;background:{% if cred_status == 'red' %}var(--danger-bg){% elif cred_status == 'amber' %}#fbf1e8{% elif cred_status == 'green' %}#e2f1e9{% else %}var(--surface-2){% endif %};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="{% if cred_status == 'red' %}var(--danger){% elif cred_status == 'amber' %}#9a5a2a{% elif cred_status == 'green' %}#2e9e6b{% else %}var(--text-2){% endif %}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>
     </div>
-    {% endif %}
-    {% if club_member.role %}
-    <div>
-      <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.4);margin-bottom:.2rem;">Role</div>
-      <div style="font-size:.84rem;font-weight:600;color:rgba(255,255,255,.9);">{{ club_member.role.name }}</div>
+    <div class="app-list-main">
+      <div class="app-list-title">Credentials</div>
+      <div class="app-list-sub">{% if cred_status == 'red' %}Some expired{% elif cred_status == 'amber' %}Expiring soon{% elif cred_status == 'green' %}All current{% else %}None on file{% endif %}</div>
     </div>
-    {% endif %}
-    {% if club_member.subscription_expires %}
-    <div>
-      <div style="font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:rgba(255,255,255,.4);margin-bottom:.2rem;">Expires</div>
-      <div style="font-size:.84rem;font-weight:600;color:rgba(255,255,255,.9);">{{ club_member.subscription_expires|date:"j/n/Y" }}</div>
+    <svg class="app-list-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+
+  <!-- Notification settings -->
+  <a href="{% url 'core:app_notification_settings' club.slug %}" class="app-list-row">
+    <div style="width:34px;height:34px;border-radius:9px;background:var(--info-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
     </div>
-    {% endif %}
+    <div class="app-list-main">
+      <div class="app-list-title">Notifications</div>
+      <div class="app-list-sub">Manage what you're alerted about</div>
+    </div>
+    <svg class="app-list-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+  </a>
+
+</div>
+
+<!-- ── Appearance ── -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:16px;">
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:12px;">Appearance</div>
+  <div style="display:flex;gap:8px;">
+    <button id="th-system" onclick="setTheme('system')" style="">System</button>
+    <button id="th-light"  onclick="setTheme('light')"  style="">Light</button>
+    <button id="th-dark"   onclick="setTheme('dark')"   style="">Dark</button>
   </div>
-  {% endif %}
 </div>
 
-<!-- Quick-nav tiles -->
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;padding:.75rem .75rem 0;">
-
-  <a href="{% url 'core:app_flight_log' club.slug %}" class="profile-tile">
-    <i class="ti ti-plane-departure" style="font-size:28px;color:var(--primary);line-height:1;"></i>
-    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Flight log</span>
+<!-- ── Switch clubs / Sign out ── -->
+<div class="app-list" style="margin-top:10px;margin-bottom:24px;">
+  <a href="{% url 'core:app_root' %}" class="app-list-row">
+    <div class="app-list-main"><div class="app-list-title">Switch clubs</div></div>
+    <svg class="app-list-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
   </a>
-
-  <a href="{% url 'core:app_credentials' club.slug %}" class="profile-tile">
-    <i class="ti ti-id-badge" style="font-size:28px;color:var(--primary);line-height:1;"></i>
-    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Credentials</span>
+  <a href="#" onclick="appSignOutConfirm();return false;" class="app-list-row">
+    <div class="app-list-main"><div class="app-list-title" style="color:var(--danger);">Sign out</div></div>
   </a>
-
-  <a href="{% url 'core:app_notification_settings' club.slug %}" class="profile-tile">
-    <i class="ti ti-bell" style="font-size:28px;color:var(--primary);line-height:1;"></i>
-    <span style="font-size:.75rem;font-weight:700;color:var(--text-2);">Notification settings</span>
-  </a>
-
 </div>
 
-<div class="gap-md"></div>
+{% endblock %}
 
-{% if other_clubs %}
-<div class="app-section gap-sm"><span class="app-section-title">My clubs</span></div>
-<div class="app-card" style="padding:0;">
-  {% for ocm in other_clubs %}
-  <a href="{% url 'core:gantt_day' ocm.club.slug %}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);text-decoration:none;color:inherit;">
-    {% if ocm.club.logo %}
-    <img src="{{ ocm.club.logo.url }}" alt="{{ ocm.club.name }}" style="width:32px;height:32px;border-radius:8px;object-fit:contain;background:var(--banner);flex-shrink:0;">
-    {% else %}
-    <div style="width:32px;height:32px;border-radius:8px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ti ti-plane" style="color:var(--text-3);font-size:16px;"></i></div>
-    {% endif %}
-    <div style="flex:1;">
-      <div style="font-size:.88rem;font-weight:600;">{{ ocm.club.name }}</div>
-      <div style="font-size:.74rem;color:var(--text-3);">Switch to this club</div>
-    </div>
-    <i class="ti ti-chevron-right" style="color:var(--border);font-size:16px;flex-shrink:0;"></i>
-  </a>
-  {% endfor %}
-</div>
-<div class="gap-sm"></div>
-{% endif %}
-
-<div class="gap-md"></div>
-
+{% block extra_js %}
+<script>
+var BASE = 'flex:1;padding:.5rem 0;border-radius:9px;font:600 13px \'Manrope\',system-ui,sans-serif;cursor:pointer;border:1.5px solid ';
+function highlight(t) {
+  ['system','light','dark'].forEach(function(k){
+    var on = k === t;
+    document.getElementById('th-'+k).style.cssText = BASE + (on
+      ? 'var(--primary);background:var(--info-bg);color:var(--primary);'
+      : 'var(--border);background:var(--surface-2);color:var(--text-2);');
+  });
+}
+function setTheme(t) {
+  localStorage.setItem('ch-theme', t);
+  var mq = window.matchMedia('(prefers-color-scheme:dark)');
+  var dark = t === 'dark' || (t !== 'light' && mq.matches);
+  document.body.classList.toggle('dark-mode', dark);
+  highlight(t);
+  if (t !== 'dark' && t !== 'light') {
+    mq.addEventListener('change', function(e){ document.body.classList.toggle('dark-mode', e.matches); });
+  }
+}
+(function(){
+  var t = localStorage.getItem('ch-theme') || 'system';
+  highlight(t);
+})();
+</script>
 {% endblock %}

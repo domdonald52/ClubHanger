@@ -8,6 +8,7 @@
 </a>
 <span class="app-bar-title">{% if mode == 'dual' %}Dual{% else %}Solo{% endif %} — {{ selected|date:"D j M" }}</span>
 {% endblock %}
+{% block app_bar_center %}<span class="app-bar-title">{% if mode == 'dual' %}Dual{% else %}Solo{% endif %} · {{ selected|date:"D j M" }}</span>{% endblock %}
 
 {% block extra_style %}
 <style>

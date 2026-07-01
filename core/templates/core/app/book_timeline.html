@@ -131,6 +131,8 @@
   {% if mode == 'dual' %}Dual{% else %}Solo{% endif %} — {{ selected|date:"D j M" }}
 </span>
 {% endblock %}
+{% block app_bar_left %}<a href="{% url 'core:app_book' club.slug %}" class="app-bar-action"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></a>{% endblock %}
+{% block app_bar_center %}<span class="app-bar-title">{% if mode == 'dual' %}Dual{% else %}Solo{% endif %} · {{ selected|date:"D j M" }}</span>{% endblock %}
 
 {% block content %}
 <div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">

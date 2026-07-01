@@ -1,193 +1,157 @@
 {% extends "core/app/base.html" %}
 {% load tz %}
-{% block title %}My Bookings · {{ club.name }}{% endblock %}
-{% block page_title %}My Bookings{% endblock %}
+{% block title %}My flights · {{ club.name }}{% endblock %}
+
+{% block app_bar_center %}<span class="app-bar-title">My flights</span>{% endblock %}
+
+{% block extra_style %}
+<style>
+.filter-chip {
+  display:inline-flex; align-items:center; gap:5px;
+  border:1px solid var(--border); background:var(--surface);
+  border-radius:999px; padding:7px 12px;
+  font:600 12px 'Manrope',system-ui,sans-serif; color:var(--text-1);
+  cursor:pointer; white-space:nowrap;
+}
+.filter-chip.active { border-color:var(--primary); background:var(--info-bg); color:var(--primary); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="gap-sm"></div>
+<div style="padding:12px 0 0;">
 
-{% if request.GET.saved %}
-<div style="background:var(--success-bg);color:var(--success-text);border-radius:10px;padding:.6rem 1rem;margin:0 .75rem .5rem;font-size:.83rem;font-weight:600;">Booking requested — pending instructor confirmation.</div>
-{% endif %}
+<!-- ── Segmented: Upcoming / Past ── -->
+<div class="seg-ctrl" style="margin:0 14px;">
+  <button class="seg-btn {% if not request.GET.tab or request.GET.tab == 'upcoming' %}active{% endif %}"
+          onclick="showTab('upcoming')">Upcoming</button>
+  <button class="seg-btn {% if request.GET.tab == 'past' %}active{% endif %}"
+          onclick="showTab('past')">Past</button>
+</div>
 
-{% if upcoming %}
-<div class="app-section"><span class="app-section-title">Upcoming</span></div>
-<div class="app-list" style="margin-bottom:.5rem;">
+<!-- ── Upcoming tab ── -->
+<div id="tab-upcoming" {% if request.GET.tab == 'past' %}style="display:none;"{% endif %}>
+  <div style="height:14px;"></div>
+
+  {% if upcoming %}
   {% for b in upcoming %}
-  <div class="app-list-row bk-{{ b.status }}" id="booking-{{ b.id }}" style="cursor:pointer;"
-       data-id="{{ b.id }}"
-       data-reg="{{ b.aircraft.registration }}"
-       data-status="{{ b.status }}"
-       data-status-label="{{ b.get_status_display }}"
-       data-start="{{ b.scheduled_start|localtime|date:'D j M' }} {{ b.scheduled_start|localtime|time:'H:i' }}"
-       data-end="{{ b.scheduled_end|localtime|time:'H:i' }}"
-       data-instr="{% if b.instructor %}{{ b.instructor.get_full_name }}{% else %}Solo{% endif %}"
-       data-type="{% if b.flight_type %}{{ b.flight_type.name }}{% endif %}"
-       data-cancellable="{% if b.status == 'pending' or b.status == 'confirmed' %}1{% else %}0{% endif %}"
-       data-needs-decl="{% if b.flight_type.requires_declaration and b.status in 'pending confirmed' and not b.declaration or b.flight_type.requires_declaration and b.status in 'pending confirmed' and b.declaration.is_draft %}1{% else %}0{% endif %}"
-       data-decl-url="{% url 'core:app_booking_declaration' club.slug b.id %}"
-       onclick="openBookingSheet(this)">
-    <div class="bk-date-badge">
-      {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:0 14px;padding:14px;{% if not forloop.first %}margin-top:10px;{% endif %}">
+    <!-- Eyebrow + status -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;">
+      <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">
+        {% if b.scheduled_start|localtime|date:"Y-m-d" == today|date:"Y-m-d" %}Today · {{ b.scheduled_start|localtime|time:"H:i" }}{% else %}{{ b.scheduled_start|localtime|date:"D j M" }} · {{ b.scheduled_start|localtime|time:"H:i" }}{% endif %}
+      </span>
+      <span class="st-pill st-{{ b.status }}">{{ b.get_status_display }}</span>
     </div>
-    <div class="app-list-main">
-      <div class="app-list-title">{{ b.aircraft.registration }}
-        &nbsp;<span class="st-pill st-{{ b.status }}">{% if b.status == 'departed' %}<i class="ti ti-plane-departure"></i> {% elif b.status == 'completed' %}<i class="ti ti-plane-arrival"></i> {% endif %}{{ b.get_status_display }}</span>
-      </div>
-      <div class="app-list-sub">
-        {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
-        {% if b.instructor %} &middot; {{ b.instructor.get_short_name }}{% else %} &middot; Solo{% endif %}
-      </div>
-      {% if b.instructor and next_lesson_plan %}<div style="font-size:.73rem;color:var(--text-3);margin-top:.18rem;line-height:1.35;">{{ next_lesson_plan }}</div>{% endif %}
-    </div>
-    <svg class="app-list-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-  </div>
-  {% endfor %}
-</div>
-{% else %}
-<div class="app-empty">No upcoming bookings</div>
-{% endif %}
 
-{% if past %}
-<div class="app-section gap-sm"><span class="app-section-title">Recent flights</span></div>
-<div class="app-list">
-  {% for b in past %}
-  <div class="app-list-row" style="opacity:.68;">
-    <div style="width:38px;height:38px;border-radius:10px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.8rem;font-weight:700;color:var(--text-3);">
-      {{ b.scheduled_start|localtime|date:"j" }}<br><span style="font-size:.55rem;font-weight:500;">{{ b.scheduled_start|localtime|date:"M" }}</span>
+    <!-- Aircraft -->
+    <div style="font:800 18px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.2;">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div>
+
+    <!-- Time + instructor/description -->
+    <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:4px;">
+      {% if b.instructor %}Dual with {{ b.instructor.get_full_name }} · {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}{% else %}Solo · {{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}{% endif %}
     </div>
-    <div class="app-list-main">
-      <div class="app-list-title" style="color:var(--text-2);">{{ b.aircraft.registration }}
-        {% if b.fc_hours %}<span style="font-size:.75rem;font-weight:500;color:var(--text-3);margin-left:.35rem;">{{ b.fc_hours|floatformat:1 }} hrs</span>{% endif %}
+
+    <!-- Description / instructor note preview -->
+    {% if forloop.first and b.instructor and next_lesson_plan %}
+    <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;line-height:1.4;padding:.5rem .65rem;background:var(--surface-2);border-radius:8px;border-left:2px solid var(--primary);">{{ next_lesson_plan|truncatechars:100 }}</div>
+    {% elif b.description %}
+    <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;line-height:1.4;">{{ b.description|truncatechars:80 }}</div>
+    {% endif %}
+
+    <!-- Declaration warning -->
+    {% if b.flight_type and b.flight_type.requires_declaration %}
+      {% if not b.declaration or b.declaration.is_draft %}
+      <div style="background:var(--warning-bg);border:1px solid color-mix(in srgb,#9a5a2a 25%,transparent);border-radius:9px;padding:.6rem .75rem;margin-top:10px;">
+        <div style="font:600 12px 'Manrope',system-ui,sans-serif;color:var(--warning-text);">⚠ Pre-departure declaration required</div>
+        <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.85;margin-top:2px;">Complete before this flight can depart.</div>
       </div>
-      <div class="app-list-sub">{{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}
-        {% if b.flight_type %} &middot; {{ b.flight_type.name }}{% endif %}
-      </div>
-      {% if b.has_lesson_note %}<a href="{% url 'core:app_training' club.slug %}#note-{{ b.lesson_note_id }}" style="font-size:.72rem;color:var(--primary);text-decoration:none;">Training note →</a>{% endif %}
+      {% endif %}
+    {% endif %}
+
+    <!-- Actions row -->
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="app-btn" style="flex:1;padding:10px;">View details</a>
+      {% if b.flight_type and b.flight_type.requires_declaration %}
+      <a href="{% url 'core:app_booking_declaration' club.slug b.id %}" class="app-btn secondary" style="flex:1;padding:10px;">Declaration</a>
+      {% endif %}
     </div>
   </div>
   {% endfor %}
-</div>
-{% endif %}
-<div class="gap-md"></div>
 
-<!-- FAB: new booking -->
-<a href="{% url 'core:app_book_find' club.slug %}" title="New booking" style="background:var(--primary);color:#fff;position:fixed;right:1rem;bottom:calc(74px + var(--safe-bottom));width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 12px rgba(0,0,0,.25);text-decoration:none;z-index:40;">
+  {% else %}
+  <div class="app-empty" style="margin-top:32px;">
+    <div style="font:600 15px 'Manrope',system-ui,sans-serif;color:var(--text-1);margin-bottom:6px;">No upcoming flights</div>
+    <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-bottom:18px;">Book a slot to get started.</div>
+    <a href="{% url 'core:app_book_find' club.slug %}" class="app-btn" style="display:inline-block;width:auto;padding:11px 24px;">Find a slot</a>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ── Past tab ── -->
+<div id="tab-past" {% if not request.GET.tab or request.GET.tab == 'upcoming' %}style="display:none;"{% endif %}>
+  <div style="height:14px;"></div>
+
+  {% if past %}
+  {% if past.0.has_lesson_note %}
+  <!-- "Just completed" highlight -->
+  {% with b=past.0 %}
+  <div style="margin:0 14px;padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:14px;">
+    <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:8px;">Just completed</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="flex:1;">
+        <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);">{{ b.scheduled_start|localtime|date:"D j M" }}</div>
+        <div style="font:700 15px 'Manrope',system-ui,sans-serif;color:var(--text-1);margin-top:3px;">{{ b.aircraft.registration }}{% if b.fc_hours %} · {{ b.fc_hours|floatformat:1 }}h{% endif %}{% if b.instructor %} dual{% else %} solo{% endif %}</div>
+      </div>
+      <span class="st-pill st-logged">Logged</span>
+    </div>
+    {% if b.has_lesson_note %}
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:11px;padding-top:11px;border-top:1px solid var(--border);">
+      <span style="font:600 12.5px 'Manrope',system-ui,sans-serif;color:var(--text-1);">Instructor note added</span>
+      <a href="{% url 'core:app_training' club.slug %}#note-{{ b.lesson_note_id }}" style="font:700 12px 'Manrope',system-ui,sans-serif;color:var(--primary);text-decoration:none;">View ›</a>
+    </div>
+    {% endif %}
+  </div>
+  <div style="height:14px;"></div>
+  {% endwith %}
+  {% endif %}
+
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin-bottom:8px;">Flight history</div>
+  <div class="app-list" style="margin-bottom:20px;">
+    {% for b in past %}
+    <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="app-list-row">
+      <div class="app-list-main">
+        <div class="app-list-title">{{ b.aircraft.registration }}{% if b.fc_hours %} <span style="font-weight:500;color:var(--text-2);">· {{ b.fc_hours|floatformat:1 }}h</span>{% endif %}</div>
+        <div class="app-list-sub">{{ b.scheduled_start|localtime|date:"j M Y" }} · {{ b.scheduled_start|localtime|time:"H:i" }}{% if b.flight_type %} · {{ b.flight_type.name }}{% endif %}</div>
+        {% if b.has_lesson_note %}<div style="font:600 11px 'Manrope',system-ui,sans-serif;color:var(--primary);margin-top:2px;">Instructor note ›</div>{% endif %}
+      </div>
+      <svg class="app-list-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="app-empty">No past flights recorded yet.</div>
+  {% endif %}
+</div>
+
+</div>
+
+<!-- ── FAB ── -->
+<a href="{% url 'core:app_book_find' club.slug %}" style="position:fixed;right:16px;bottom:calc(20px + var(--safe-bottom));width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25);text-decoration:none;z-index:40;">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </a>
 
-<!-- ── Booking detail sheet ── -->
-<div id="bk-sheet-back" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:300;" onclick="closeBookingSheet()"></div>
-<div id="bk-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
-  <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto .9rem;"></div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;">
-    <div>
-      <div style="font-size:1.1rem;font-weight:750;" id="bk-reg"></div>
-      <div id="bk-status-wrap" style="margin-top:.2rem;"></div>
-    </div>
-    <button onclick="closeBookingSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
+{% endblock %}
 
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1.1rem;">
-    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Date &amp; time</div>
-      <div style="font-size:.86rem;font-weight:600;" id="bk-start"></div>
-      <div style="font-size:.8rem;color:var(--text-3);" id="bk-end"></div>
-    </div>
-    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Instructor</div>
-      <div style="font-size:.86rem;font-weight:600;" id="bk-instr"></div>
-    </div>
-    <div id="bk-type-wrap" style="grid-column:1/-1;background:var(--bg);border-radius:10px;padding:.7rem .8rem;display:none;">
-      <div style="font-size:.7rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.2rem;">Flight type</div>
-      <div style="font-size:.86rem;font-weight:600;" id="bk-type"></div>
-    </div>
-  </div>
-
-  <!-- Declaration — required warning shown when flight type mandates it -->
-  <div id="bk-decl-section" style="display:none;margin-bottom:.9rem;">
-    <div id="bk-decl-warning" style="display:none;background:var(--warning-bg);border:1px solid color-mix(in srgb,var(--warning) 35%,var(--border));border-radius:10px;padding:.75rem .9rem;margin-bottom:.6rem;">
-      <div style="font-size:.82rem;font-weight:600;color:var(--warning-text);margin-bottom:.2rem;">⚠ Pre-departure declaration required</div>
-      <div style="font-size:.78rem;color:var(--warning-text);opacity:.85;">Complete your declaration before this flight can depart.</div>
-    </div>
-    <a id="bk-decl-link" href="#" class="app-btn" style="display:block;text-align:center;">Pre-departure declaration →</a>
-  </div>
-
-  <div id="bk-cancel-section" style="display:none;">
-    <div style="font-size:.82rem;font-weight:600;color:var(--text-1);margin-bottom:.45rem;">Cancellation reason</div>
-    <select id="bk-cancel-reason" style="display:block;width:100%;padding:.5rem .6rem;border:1px solid var(--input-border);border-radius:9px;font-size:.86rem;background:var(--surface);color:var(--text-1);margin-bottom:.7rem;">
-      <option value="no_longer_required">No longer required</option>
-      <option value="scheduling_conflict">Scheduling conflict</option>
-      <option value="weather">Weather</option>
-      <option value="aircraft_unavailable">Aircraft unavailable</option>
-      <option value="other">Other</option>
-    </select>
-    <form id="bk-cancel-form" method="post" action="{% url 'core:app_bookings' club.slug %}">
-      {% csrf_token %}
-      <input type="hidden" name="action" value="cancel_booking">
-      <input type="hidden" name="booking_id" id="bk-cancel-id">
-      <input type="hidden" name="cancellation_reason" id="bk-cancel-reason-input">
-      <button type="submit" class="app-btn" style="background:var(--alert);width:100%;"
-              onclick="document.getElementById('bk-cancel-reason-input').value=document.getElementById('bk-cancel-reason').value">
-        Cancel booking
-      </button>
-    </form>
-  </div>
-</div>
-
+{% block extra_js %}
 <script>
-(function(){
-  function openBookingSheet(row) {
-    var d = row.dataset;
-    document.getElementById('bk-reg').textContent = d.reg;
-    document.getElementById('bk-status-wrap').innerHTML =
-      '<span class="st-pill st-' + d.status + '">' + d.statusLabel + '</span>';
-    document.getElementById('bk-start').textContent = d.start;
-    document.getElementById('bk-end').textContent = '— ' + d.end;
-    document.getElementById('bk-instr').textContent = d.instr;
-
-    var typeWrap = document.getElementById('bk-type-wrap');
-    if (d.type) {
-      document.getElementById('bk-type').textContent = d.type;
-      typeWrap.style.display = '';
-    } else {
-      typeWrap.style.display = 'none';
-    }
-
-    // Declaration — show for all pending/confirmed bookings
-    var declSec = document.getElementById('bk-decl-section');
-    var showDecl = d.cancellable === '1' && d.declUrl;
-    declSec.style.display = showDecl ? '' : 'none';
-    if (showDecl) {
-      document.getElementById('bk-decl-link').href = d.declUrl;
-      document.getElementById('bk-decl-warning').style.display = d.needsDecl === '1' ? '' : 'none';
-    }
-
-    var cancelSec = document.getElementById('bk-cancel-section');
-    cancelSec.style.display = d.cancellable === '1' ? '' : 'none';
-    document.getElementById('bk-cancel-id').value = d.id;
-
-    document.getElementById('bk-sheet-back').style.display = '';
-    var sheet = document.getElementById('bk-sheet');
-    sheet.style.display = '';
-    sheet.style.transform = 'translateY(100%)';
-    sheet.style.transition = 'transform .25s ease';
-    requestAnimationFrame(function(){ sheet.style.transform = 'translateY(0)'; });
-  }
-
-  function closeBookingSheet() {
-    var sheet = document.getElementById('bk-sheet');
-    sheet.style.transform = 'translateY(100%)';
-    setTimeout(function(){
-      sheet.style.display = 'none';
-      document.getElementById('bk-sheet-back').style.display = 'none';
-    }, 250);
-  }
-
-  window.openBookingSheet = openBookingSheet;
-  window.closeBookingSheet = closeBookingSheet;
-})();
+function showTab(name){
+  document.getElementById('tab-upcoming').style.display=name==='upcoming'?'':'none';
+  document.getElementById('tab-past').style.display=name==='past'?'':'none';
+  document.querySelectorAll('.seg-btn').forEach(function(btn,i){
+    btn.classList.toggle('active',(i===0&&name==='upcoming')||(i===1&&name==='past'));
+  });
+  history.replaceState(null,'',name==='past'?'?tab=past':'?');
+}
 </script>
 {% endblock %}

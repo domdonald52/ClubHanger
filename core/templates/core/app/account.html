@@ -1,348 +1,160 @@
 {% extends "core/app/base.html" %}
-{% load tz humanize %}
-{% block title %}Account · {{ club.name }}{% endblock %}
+{% load tz %}
+{% block title %}Invoices & payments · {{ club.name }}{% endblock %}
 
-{% block app_bar %}
-<span class="app-bar-title">Account</span>
-{% endblock %}
+{% block app_bar_center %}<span class="app-bar-title">Invoices & payments</span>{% endblock %}
 
 {% block content %}
-<div class="gap-sm"></div>
+<div style="height:14px;"></div>
 
-<!-- Balance -->
-{% if balance is not None %}
-<div class="app-card" style="background:var(--banner);color:#fff;">
-  <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.7;margin-bottom:.3rem;">Account balance</div>
-  <div style="font-size:2.2rem;font-weight:800;letter-spacing:-.02em;line-height:1.1;">
-    {% if balance >= 0 %}<span style="opacity:.5;font-size:1.2rem;font-weight:500;">$</span>{{ balance|floatformat:2|intcomma }}
-    {% else %}<span style="color:#fca5a5;">−${{ balance|floatformat:2|slice:"1:"|intcomma }}</span>{% endif %}
-  </div>
-  <div style="font-size:.74rem;opacity:.65;margin-top:.4rem;">
-    {% if balance >= 0 %}Account in credit{% else %}Balance owing — please top up{% endif %}
-  </div>
-</div>
-{% else %}
-<div class="app-card" style="color:var(--text-3);text-align:center;font-size:.88rem;">No account linked</div>
-{% endif %}
-
-<!-- Outstanding amounts -->
-{% if unpaid_flights or unpaid_invoices %}
-
-{% if unpaid_flights %}
-<div class="app-section gap-sm">
-  <span class="app-section-title">Flights awaiting payment</span>
-</div>
-<div class="app-list">
-  {% for fc in unpaid_flights %}
-  <div class="app-list-row" style="cursor:pointer;" onclick="openFlightSheet(this)"
-       data-reg="{{ fc.booking.aircraft.registration }}"
-       data-type="{% if fc.booking.aircraft.aircraft_type %}{{ fc.booking.aircraft.aircraft_type.name }}{% endif %}"
-       data-date="{{ fc.booking.scheduled_start|localtime|date:'j M Y' }}"
-       data-sched="{{ fc.booking.scheduled_start|localtime|time:'H:i' }}–{{ fc.booking.scheduled_end|localtime|time:'H:i' }}"
-       data-instr="{% if fc.booking.instructor %}{{ fc.booking.instructor.get_full_name }}{% else %}Solo{% endif %}"
-       data-ftype="{% if fc.booking.flight_type %}{{ fc.booking.flight_type.name }}{% endif %}"
-       data-departed="{{ fc.booking.departed_at|localtime|time:'H:i'|default:'' }}"
-       data-arrived="{{ fc.booking.arrived_at|localtime|time:'H:i'|default:'' }}"
-       data-hours="{{ fc.actual_flight_hours }}"
-       data-total="{{ fc.total_charge|floatformat:2 }}"
-       data-paid="{{ fc.amount_paid|floatformat:2 }}"
-       data-owing="{{ fc.balance_owing|floatformat:2 }}"
-       data-partial="{{ fc.is_partially_paid|yesno:'1,0' }}">
-    <div class="app-list-main">
-      <div class="app-list-title" style="font-size:.87rem;">{{ fc.booking.aircraft.registration }} &middot; {{ fc.booking.scheduled_start|localtime|date:"j M Y" }}</div>
-      <div class="app-list-sub">
-        {% if fc.is_partially_paid %}Partial — ${{ fc.amount_paid|floatformat:2|intcomma }} of ${{ fc.total_charge|floatformat:2|intcomma }} paid{% else %}Unpaid — total ${{ fc.total_charge|floatformat:2|intcomma }}{% endif %}
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:.4rem;">
-      <div style="font-size:.95rem;font-weight:700;color:var(--alert);">${{ fc.balance_owing|floatformat:2|intcomma }}</div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-{% if unpaid_invoices %}
-<div class="app-section gap-sm">
-  <span class="app-section-title">Unpaid invoices</span>
-</div>
-<div class="app-list">
-  {% for inv in unpaid_invoices %}
-  <div class="app-list-row" style="cursor:pointer;" onclick="openInvoiceSheet('{{ inv.id }}')">
-    <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;
-      background:{% if inv.needs_attention %}var(--alert){% else %}var(--warning){% endif %};"></div>
-    <div class="app-list-main">
-      <div class="app-list-title" style="font-size:.87rem;">{{ inv.display_number }} &middot; {{ inv.issue_date|date:"j M Y" }}</div>
-      <div class="app-list-sub" style="color:{% if inv.needs_attention %}var(--alert){% else %}var(--text-3){% endif %};">
-        {% if inv.is_overdue %}Overdue by {{ inv.days_overdue }} day{{ inv.days_overdue|pluralize }} — due {{ inv.due_date|date:"j M" }}
-        {% elif inv.needs_attention %}Issued 30+ days ago — please follow up
-        {% else %}Due {{ inv.due_date|date:"j M" }}{% endif %}
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:.4rem;">
-      <div style="font-size:.95rem;font-weight:700;color:{% if inv.needs_attention %}var(--alert){% else %}var(--warning){% endif %};">${{ inv.balance_due|floatformat:2|intcomma }}</div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-<div style="padding:.5rem .75rem;font-size:.73rem;color:var(--text-3);line-height:1.5;">
-  Pay by EFTPOS at the club, or via online banking — use your <strong style="color:var(--text-3);">invoice number</strong> as the payment reference. Account balances update at month end. If an invoice is still showing 30 days after payment, contact the club.
-</div>
-{% endif %}
-{% endif %}
-
-<!-- Receipts -->
-{% if paid_receipts %}
-<div class="app-section gap-sm">
-  <span class="app-section-title">Receipts</span>
-</div>
-<div class="app-list">
-  {% for inv in paid_receipts %}
-  <a href="{% url 'core:invoice_print' club.slug inv.id %}?back={{ request.path|urlencode }}" style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1rem;border-bottom:1px solid var(--border-subtle);text-decoration:none;color:inherit;">
-    <div style="width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;background:var(--success);"></div>
-    <div class="app-list-main">
-      <div class="app-list-title" style="font-size:.87rem;">{{ inv.display_number }}{% if inv.flight_completion %} · {{ inv.flight_completion.booking.aircraft.registration }}{% endif %}</div>
-      <div class="app-list-sub">Paid {{ inv.paid_at|date:"j M Y" }} · receipt emailed</div>
-    </div>
-    <div style="display:flex;align-items:center;gap:.4rem;">
-      <div style="font-size:.92rem;font-weight:700;color:var(--success);">${{ inv.total|floatformat:2 }}</div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>
-  </a>
-  {% endfor %}
-</div>
-{% endif %}
-
-<!-- Transactions -->
-{% if transactions_page %}
-<div class="app-section gap-sm">
-  <span class="app-section-title">Transactions</span>
-  {% if transactions_page.paginator.num_pages > 1 %}
-  <span style="font-size:.75rem;color:var(--text-3);">Page {{ transactions_page.number }} of {{ transactions_page.paginator.num_pages }}</span>
-  {% endif %}
-</div>
-<div class="app-list">
-  {% for tx in transactions_page %}
-  <div class="app-list-row" style="cursor:default;">
-    <div class="app-list-main">
-      <div class="app-list-title" style="font-size:.85rem;">{{ tx.description|truncatechars:44 }}</div>
-      <div class="app-list-sub">{{ tx.created_at|localtime|date:"j M Y" }} &middot; {{ tx.get_transaction_type_display }}</div>
-    </div>
-    <div class="app-list-right" style="font-weight:700;color:{% if tx.direction == 'debit' %}var(--alert){% else %}var(--success){% endif %};">
-      {% if tx.direction == 'debit' %}&minus;{% else %}+{% endif %}${{ tx.amount|floatformat:2|intcomma }}
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
-{% if transactions_page.paginator.num_pages > 1 %}
-<div style="display:flex;gap:.5rem;padding:.75rem .75rem 0;">
-  {% if transactions_page.has_previous %}
-  <a href="?page={{ transactions_page.previous_page_number }}" class="app-btn secondary" style="flex:1;text-align:center;border-radius:10px;padding:.6rem;">← Newer</a>
+<!-- ── Balance card ── -->
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;margin:0 14px;padding:18px;">
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:6px;">Account balance</div>
+  {% if balance is not None %}
+    {% if balance >= 0 %}
+    <div style="font:800 30px 'Manrope',system-ui,sans-serif;color:#2e9e6b;">+${{ balance }}</div>
+    <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:4px;">Credit available</div>
+    {% else %}
+    <div style="font:800 30px 'Manrope',system-ui,sans-serif;color:var(--danger);">${{ balance|cut:"-" }}</div>
+    <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--danger-text);margin-top:4px;">Overdrawn — please top up</div>
+    {% endif %}
   {% else %}
-  <div style="flex:1;"></div>
+  <div style="font:800 30px 'Manrope',system-ui,sans-serif;color:var(--text-2);">—</div>
+  <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:4px;">No account set up</div>
   {% endif %}
-  {% if transactions_page.has_next %}
-  <a href="?page={{ transactions_page.next_page_number }}" class="app-btn secondary" style="flex:1;text-align:center;border-radius:10px;padding:.6rem;">Older →</a>
+</div>
+
+<!-- ── Outstanding alert ── -->
+{% if unpaid_invoices or unpaid_flights %}
+<div style="background:#fbf1e8;border:1px solid #efd9c4;border-radius:14px;margin:10px 14px 0;padding:14px;">
+  <div style="font:700 12.5px 'Manrope',system-ui,sans-serif;color:#9a5a2a;margin-bottom:3px;">Amount outstanding</div>
+  {% if unpaid_invoices_total %}
+  <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:#9a5a2a;">${{ unpaid_invoices_total }}</div>
+  {% if unpaid_flights_total %}
+  <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:#9a5a2a;opacity:.85;margin-top:2px;">Plus ${{ unpaid_flights_total }} in unbilled charges</div>
+  {% endif %}
+  {% else %}
+  <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:#9a5a2a;">${{ unpaid_flights_total }}</div>
+  <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:#9a5a2a;opacity:.85;margin-top:2px;">Unbilled flight charges</div>
   {% endif %}
 </div>
 {% endif %}
 
-{% elif balance is not None %}
-<div class="app-empty">No transactions yet</div>
-{% endif %}
-
-<div class="gap-md"></div>
-
-<!-- ── Flight detail sheet ── -->
-<div id="fl-sheet-back" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:300;" onclick="closeFlightSheet()"></div>
-<div id="fl-sheet" style="display:none;position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
-  <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto .9rem;"></div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-    <div>
-      <div style="font-size:1.1rem;font-weight:750;" id="fl-reg"></div>
-      <div style="font-size:.8rem;color:var(--text-3);margin-top:.15rem;" id="fl-type"></div>
-    </div>
-    <button onclick="closeFlightSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1rem;">
-    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Date</div>
-      <div style="font-size:.86rem;font-weight:600;" id="fl-date"></div>
-    </div>
-    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Scheduled</div>
-      <div style="font-size:.86rem;font-weight:600;" id="fl-sched"></div>
-    </div>
-    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Actual</div>
-      <div style="font-size:.86rem;font-weight:600;" id="fl-actual"></div>
-    </div>
-    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Instructor</div>
-      <div style="font-size:.86rem;font-weight:600;" id="fl-instr"></div>
-    </div>
-    <div id="fl-ftype-wrap" style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;display:none;">
-      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Flight type</div>
-      <div style="font-size:.86rem;font-weight:600;" id="fl-ftype"></div>
-    </div>
-    <div style="background:var(--bg);border-radius:10px;padding:.7rem .8rem;">
-      <div style="font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;">Flight time</div>
-      <div style="font-size:.86rem;font-weight:600;" id="fl-hours"></div>
-    </div>
-  </div>
-  <div style="background:var(--danger-bg);border-radius:10px;padding:.75rem .9rem;display:flex;align-items:center;justify-content:space-between;">
-    <div>
-      <div style="font-size:.72rem;color:var(--alert);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.15rem;">Balance owing</div>
-      <div style="font-size:.78rem;color:var(--text-3);" id="fl-charge-detail"></div>
-    </div>
-    <div style="font-size:1.2rem;font-weight:800;color:var(--alert);" id="fl-owing"></div>
-  </div>
+<!-- ── Segmented: Invoices / Transactions ── -->
+<div class="seg-ctrl" style="margin:14px 14px 0;">
+  <button class="seg-btn {% if not request.GET.tab or request.GET.tab == 'invoices' %}active{% endif %}"
+          onclick="showTab('invoices')">Invoices</button>
+  <button class="seg-btn {% if request.GET.tab == 'transactions' %}active{% endif %}"
+          onclick="showTab('transactions')">Transactions</button>
 </div>
 
-<script>
-(function(){
-  function openFlightSheet(row) {
-    var d = row.dataset;
-    document.getElementById('fl-reg').textContent = d.reg;
-    document.getElementById('fl-type').textContent = d.type || '';
-    document.getElementById('fl-date').textContent = d.date;
-    document.getElementById('fl-sched').textContent = d.sched;
-    var actual = (d.departed && d.arrived) ? d.departed + '–' + d.arrived : (d.departed ? 'Departed ' + d.departed : '—');
-    document.getElementById('fl-actual').textContent = actual;
-    document.getElementById('fl-instr').textContent = d.instr;
-    var ftWrap = document.getElementById('fl-ftype-wrap');
-    if (d.ftype) { document.getElementById('fl-ftype').textContent = d.ftype; ftWrap.style.display = ''; }
-    else { ftWrap.style.display = 'none'; }
-    document.getElementById('fl-hours').textContent = d.hours ? d.hours + ' h' : '—';
-    document.getElementById('fl-owing').textContent = '$' + d.owing;
-    var detail = d.partial === '1' ? '$' + d.paid + ' of $' + d.total + ' paid' : 'Total $' + d.total;
-    document.getElementById('fl-charge-detail').textContent = detail;
-    document.getElementById('fl-sheet-back').style.display = '';
-    var sheet = document.getElementById('fl-sheet');
-    sheet.style.display = '';
-    sheet.style.transform = 'translateY(100%)';
-    sheet.style.transition = 'transform .25s ease';
-    requestAnimationFrame(function(){ sheet.style.transform = 'translateY(0)'; });
-  }
-  function closeFlightSheet() {
-    var sheet = document.getElementById('fl-sheet');
-    sheet.style.transform = 'translateY(100%)';
-    setTimeout(function(){
-      sheet.style.display = 'none';
-      document.getElementById('fl-sheet-back').style.display = 'none';
-    }, 250);
-  }
-  window.openFlightSheet = openFlightSheet;
-  window.closeFlightSheet = closeFlightSheet;
-})();
-</script>
+<!-- ── Invoices tab ── -->
+<div id="tab-invoices" {% if request.GET.tab == 'transactions' %}style="display:none;"{% endif %}>
+  <div style="height:14px;"></div>
 
-<!-- ── Invoice detail sheets ── -->
-{% if unpaid_invoices %}
-<style>
-  .inv-cell{background:var(--bg);border-radius:10px;padding:.7rem .8rem;}
-  .inv-cell .k{font-size:.68rem;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem;}
-  .inv-cell .v{font-size:.86rem;font-weight:600;}
-</style>
-<div id="inv-sheet-back" style="display:none;position:fixed;inset:0;background:var(--modal-backdrop);z-index:300;" onclick="closeInvoiceSheet()"></div>
-{% for inv in unpaid_invoices %}
-<div class="inv-sheet" id="inv-sheet-{{ inv.id }}" style="display:none;position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-radius:16px 16px 0 0;padding:1.2rem 1.1rem 2rem;z-index:301;max-height:85vh;overflow-y:auto;">
-  <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto .9rem;"></div>
-  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1rem;">
-    <div>
-      <div style="font-size:1.1rem;font-weight:750;">Invoice {{ inv.display_number }}</div>
-      <div style="font-size:.8rem;color:var(--text-3);margin-top:.15rem;">
-        Issued {{ inv.issue_date|date:"j M Y" }}{% if inv.is_overdue %} <span style="color:var(--alert);font-weight:600;">· Overdue</span>{% endif %}
+  {% if unpaid_invoices %}
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin-bottom:8px;">Outstanding</div>
+  {% for inv in unpaid_invoices %}
+  <div style="background:var(--surface);border:1px solid {% if inv.needs_attention %}#efd9c4{% else %}var(--border){% endif %};border-radius:14px;margin:0 14px;padding:14px;{% if not forloop.first %}margin-top:8px;{% endif %}">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+      <div>
+        <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;color:var(--text-2);">Invoice #{{ inv.number|default:inv.id }}</div>
+        <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);margin-top:3px;">Issued {{ inv.issue_date|date:"j M Y" }}</div>
       </div>
+      {% if inv.needs_attention %}
+      <span style="background:#fbf1e8;color:#9a5a2a;border-radius:999px;padding:3px 9px;font:700 9px 'Manrope',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;">DUE</span>
+      {% endif %}
     </div>
-    <button onclick="closeInvoiceSheet()" style="background:none;border:none;padding:.3rem;cursor:pointer;">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
+    <div style="font:800 20px 'Manrope',system-ui,sans-serif;color:var(--text-1);">${{ inv.balance_due }}</div>
   </div>
-
-  {% if inv.description %}
-  <div style="font-size:.86rem;color:var(--text-2);margin-bottom:1rem;">{{ inv.description }}</div>
+  {% endfor %}
+  <div style="height:14px;"></div>
   {% endif %}
 
-  {% if inv.flight_completion %}{% with b=inv.flight_completion.booking fc=inv.flight_completion %}
-  <div style="font-size:.68rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Flight</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.55rem;margin-bottom:1.1rem;">
-    <div class="inv-cell"><div class="k">Aircraft</div><div class="v">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div></div>
-    <div class="inv-cell"><div class="k">Date</div><div class="v">{{ b.scheduled_start|localtime|date:"j M Y" }}</div></div>
-    <div class="inv-cell"><div class="k">Instructor</div><div class="v">{% if b.instructor %}{{ b.instructor.get_full_name }}{% else %}Solo{% endif %}</div></div>
-    {% if b.flight_type %}<div class="inv-cell"><div class="k">Flight type</div><div class="v">{{ b.flight_type.name }}</div></div>{% endif %}
-    <div class="inv-cell"><div class="k">Scheduled</div><div class="v">{{ b.scheduled_start|localtime|time:'H:i' }}–{{ b.scheduled_end|localtime|time:'H:i' }}</div></div>
-    <div class="inv-cell"><div class="k">Flight time</div><div class="v">{% if fc.actual_flight_hours %}{{ fc.actual_flight_hours }} h{% else %}—{% endif %}</div></div>
-  </div>
-  {% endwith %}{% endif %}
-
-  <div style="font-size:.68rem;color:var(--text-3);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.4rem;">Charges</div>
-  <div class="app-list">
-    {% for li in inv.line_items.all %}
+  {% if unpaid_flights %}
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin-bottom:8px;">Unbilled flights</div>
+  <div class="app-list" style="margin-bottom:14px;">
+    {% for fc in unpaid_flights %}
     <div class="app-list-row" style="cursor:default;">
       <div class="app-list-main">
-        <div class="app-list-title" style="font-size:.85rem;">{{ li.description }}</div>
-        {% if li.quantity and li.quantity != 1 or li.unit %}<div class="app-list-sub">{{ li.quantity|floatformat:'-2' }}{% if li.unit %} {{ li.unit }}{% endif %} × ${{ li.rate|floatformat:2|intcomma }}</div>{% endif %}
+        <div class="app-list-title">{{ fc.booking.aircraft.registration }}{% if fc.booking.scheduled_start %} · {{ fc.booking.scheduled_start|localtime|date:"j M" }}{% endif %}</div>
+        <div class="app-list-sub">{% if fc.booking.flight_type %}{{ fc.booking.flight_type.name }}{% endif %}{% if fc.booking.instructor %} · Dual{% else %} · Solo{% endif %}</div>
       </div>
-      <div class="app-list-right" style="font-weight:700;">${{ li.amount|floatformat:2|intcomma }}</div>
+      <div class="app-list-right">${{ fc.balance_owing }}</div>
     </div>
-    {% empty %}
-    <div class="app-empty">No line items</div>
     {% endfor %}
   </div>
+  {% endif %}
 
-  <div style="border-top:1px solid var(--border-subtle);margin-top:.6rem;padding-top:.7rem;">
-    <div style="display:flex;justify-content:space-between;font-size:.84rem;color:var(--text-3);margin-bottom:.3rem;">
-      <span>Total{% if inv.gst_rate %} (incl. ${{ inv.gst_amount|floatformat:2|intcomma }} GST){% endif %}</span>
-      <span style="font-weight:700;color:var(--text-1);">${{ inv.total|floatformat:2|intcomma }}</span>
+  {% if paid_receipts %}
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);padding:0 14px;margin-bottom:8px;">Paid</div>
+  <div class="app-list" style="margin-bottom:24px;">
+    {% for inv in paid_receipts %}
+    <div class="app-list-row" style="cursor:default;">
+      <div class="app-list-main">
+        <div class="app-list-title">Invoice #{{ inv.number|default:inv.id }}</div>
+        <div class="app-list-sub">Paid {% if inv.paid_at %}{{ inv.paid_at|localtime|date:"j M Y" }}{% endif %}</div>
+      </div>
+      <div class="app-list-right" style="color:#2e9e6b;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2e9e6b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>
+        Paid
+      </div>
     </div>
-    {% if inv.amount_paid > 0 %}
-    <div style="display:flex;justify-content:space-between;font-size:.84rem;color:var(--success);margin-bottom:.3rem;">
-      <span>Paid</span><span style="font-weight:700;">−${{ inv.amount_paid|floatformat:2|intcomma }}</span>
-    </div>
-    {% endif %}
-    <div style="display:flex;justify-content:space-between;align-items:center;background:var(--danger-bg);border-radius:10px;padding:.65rem .85rem;margin-top:.5rem;">
-      <span style="font-size:.74rem;color:var(--alert);font-weight:700;text-transform:uppercase;letter-spacing:.04em;">Balance due{% if inv.due_date %} · {{ inv.due_date|date:"j M" }}{% endif %}</span>
-      <span style="font-size:1.2rem;font-weight:800;color:var(--alert);">${{ inv.balance_due|floatformat:2|intcomma }}</span>
-    </div>
+    {% endfor %}
   </div>
+  {% endif %}
 
-  <div style="padding:.75rem .1rem 0;font-size:.73rem;color:var(--text-3);line-height:1.5;">
-    Pay by EFTPOS at the club, or online banking — use the <strong style="color:var(--text-3);">invoice number</strong> as reference. Balances update at month end.
+  {% if not unpaid_invoices and not unpaid_flights and not paid_receipts %}
+  <div class="app-empty">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--border)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:10px;display:block;margin-left:auto;margin-right:auto;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    No invoices yet
   </div>
+  {% endif %}
 </div>
-{% endfor %}
 
+<!-- ── Transactions tab ── -->
+<div id="tab-transactions" {% if not request.GET.tab or request.GET.tab == 'invoices' %}style="display:none;"{% endif %}>
+  <div style="height:14px;"></div>
+  {% if transactions_page %}
+  <div class="app-list" style="margin-bottom:24px;">
+    {% for tx in transactions_page %}
+    <div class="app-list-row" style="cursor:default;">
+      <div class="app-list-main">
+        <div class="app-list-title">{{ tx.description|default:"Transaction" }}</div>
+        <div class="app-list-sub">{{ tx.created_at|localtime|date:"j M Y" }}</div>
+      </div>
+      <div class="app-list-right" style="color:{% if tx.amount >= 0 %}#2e9e6b{% else %}var(--danger){% endif %};">
+        {% if tx.amount >= 0 %}+{% endif %}${{ tx.amount }}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% if transactions_page.has_other_pages %}
+  <div style="display:flex;gap:8px;margin:0 14px 24px;">
+    {% if transactions_page.has_previous %}
+    <a href="?tab=transactions&page={{ transactions_page.previous_page_number }}" class="app-btn secondary" style="flex:1;padding:10px;">← Previous</a>
+    {% endif %}
+    {% if transactions_page.has_next %}
+    <a href="?tab=transactions&page={{ transactions_page.next_page_number }}" class="app-btn secondary" style="flex:1;padding:10px;">Next →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <div class="app-empty">No transactions yet.</div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
 <script>
-(function(){
-  var back = document.getElementById('inv-sheet-back');
-  function openInvoiceSheet(id) {
-    var sheet = document.getElementById('inv-sheet-' + id);
-    if (!sheet) return;
-    back.style.display = '';
-    sheet.style.display = '';
-    sheet.dataset.open = '1';
-    sheet.style.transform = 'translateY(100%)';
-    sheet.style.transition = 'transform .25s ease';
-    requestAnimationFrame(function(){ sheet.style.transform = 'translateY(0)'; });
-  }
-  function closeInvoiceSheet() {
-    back.style.display = 'none';
-    var open = document.querySelectorAll('.inv-sheet[data-open="1"]');
-    open.forEach(function(sheet){
-      sheet.dataset.open = '';
-      sheet.style.transform = 'translateY(100%)';
-      setTimeout(function(){ sheet.style.display = 'none'; }, 250);
-    });
-  }
-  window.openInvoiceSheet = openInvoiceSheet;
-  window.closeInvoiceSheet = closeInvoiceSheet;
-})();
+function showTab(name){
+  document.getElementById('tab-invoices').style.display=name==='invoices'?'':'none';
+  document.getElementById('tab-transactions').style.display=name==='transactions'?'':'none';
+  document.querySelectorAll('.seg-btn').forEach(function(btn,i){
+    btn.classList.toggle('active',(i===0&&name==='invoices')||(i===1&&name==='transactions'));
+  });
+  history.replaceState(null,'',name==='transactions'?'?tab=transactions':'?');
+}
 </script>
-{% endif %}
 {% endblock %}

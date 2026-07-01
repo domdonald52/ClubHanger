@@ -11922,12 +11922,12 @@ def app_home(request, club_slug):
         return redirect('login')
     today = timezone.localdate()
 
-    next_booking = (Booking.objects
+    upcoming_bookings = list(Booking.objects
                     .filter(member=actor, club=club, scheduled_start__date__gte=today)
                     .exclude(status=BookingStatus.CANCELLED)
-                    .select_related('aircraft', 'flight_type', 'instructor')
-                    .order_by('scheduled_start')
-                    .first())
+                    .select_related('aircraft', 'aircraft__aircraft_type', 'flight_type', 'instructor', 'declaration')
+                    .order_by('scheduled_start')[:8])
+    next_booking = upcoming_bookings[0] if upcoming_bookings else None
 
     pending_count = 0
     if actor.is_instructor:
@@ -11956,7 +11956,10 @@ def app_home(request, club_slug):
     from decimal import Decimal as _D
     flight_debt  = max(_D('0'), (_fc_agg['total'] or _D('0')) - (_fc_agg['paid'] or _D('0')))
     flight_count = _fc_agg['cnt'] or 0
-    invoice_count = _Inv.objects.filter(member=actor, club=club, status=Invoice.STATUS_SENT).count()
+    _unpaid_invs = list(_Inv.objects.filter(member=actor, club=club, status=Invoice.STATUS_SENT))
+    invoice_count = len(_unpaid_invs)
+    from django.db.models import Sum as _SumI
+    outstanding_invoice_total = sum((_D(str(inv.balance_due)) for inv in _unpaid_invs), _D('0'))
 
     # Last completed flight
     last_flight = (Booking.objects
@@ -12036,6 +12039,7 @@ def app_home(request, club_slug):
 
     return render(request, 'core/app/home.html', {
         'club': club, 'club_member': actor,
+        'upcoming_bookings': upcoming_bookings,
         'next_booking': next_booking,
         'today': today,
         'pending_count': pending_count,
@@ -12043,6 +12047,7 @@ def app_home(request, club_slug):
         'flight_debt': flight_debt,
         'flight_count': flight_count,
         'invoice_count': invoice_count,
+        'outstanding_invoice_total': outstanding_invoice_total,
         'last_flight': last_flight,
         'expiring_creds': expiring_creds,
         'announcements': announcements,
@@ -12303,7 +12308,7 @@ def app_bookings(request, club_slug):
     upcoming = (Booking.objects
                 .filter(member=actor, club=club, scheduled_start__date__gte=today)
                 .exclude(status=BookingStatus.CANCELLED)
-                .select_related('aircraft', 'flight_type', 'instructor', 'declaration')
+                .select_related('aircraft', 'aircraft__aircraft_type', 'flight_type', 'instructor', 'declaration')
                 .order_by('scheduled_start')[:20])
 
     from .models import LessonNote as _LN
@@ -12327,7 +12332,7 @@ def app_bookings(request, club_slug):
     past = (Booking.objects
             .filter(member=actor, club=club, scheduled_start__date__lt=today)
             .exclude(status=BookingStatus.CANCELLED)
-            .select_related('aircraft', 'flight_type')
+            .select_related('aircraft', 'aircraft__aircraft_type', 'flight_type')
             .annotate(
                 fc_hours=Subquery(_fc_hours_sq),
                 has_lesson_note=Exists(_LN.objects.filter(booking_id=OuterRef('pk'))),
@@ -12341,6 +12346,29 @@ def app_bookings(request, club_slug):
         'past': past,
         'today': today,
         'next_lesson_plan': next_lesson_plan,
+    })
+
+
+@login_required
+def app_booking_detail(request, club_slug, booking_id):
+    from .models import LessonNote as _LN
+    club, actor = _app_actor(request, club_slug)
+    if not actor:
+        return redirect('login')
+    booking = get_object_or_404(
+        Booking.objects.select_related(
+            'aircraft', 'aircraft__aircraft_type', 'flight_type',
+            'instructor', 'declaration', 'member', 'member__user',
+        ),
+        id=booking_id, club=club, member=actor,
+    )
+    lesson_note = _LN.objects.filter(booking=booking).select_related('instructor').first()
+    return render(request, 'core/app/booking_detail.html', {
+        'club': club,
+        'club_member': actor,
+        'booking': booking,
+        'lesson_note': lesson_note,
+        'today': timezone.localdate(),
     })
 
 
@@ -13174,7 +13202,7 @@ def app_book_confirm(request, club_slug):
                     created_by=request.user,
                 )
                 from django.urls import reverse
-                return redirect(reverse('core:app_bookings', args=[club.slug]) + '?saved=1')
+                return redirect(reverse('core:app_booking_detail', args=[club.slug, booking.id]) + '?created=1')
             except Exception as e:
                 errors.append(str(e))
 
