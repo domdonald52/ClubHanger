@@ -53,7 +53,7 @@
 
     <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:4px;">
       {% if b.instructor %}Dual with {{ b.instructor.get_full_name }}{% else %}Solo{% endif %} ·
-      {% if b.status == 'pending' %}awaiting approval{% elif b._sched_hours %}{{ b._sched_hours|floatformat:1 }}h{% endif %}
+      {% if b.status == 'pending' %}awaiting approval{% elif b.sched_hours %}{{ b.sched_hours|floatformat:1 }}h{% endif %}
     </div>
 
     {% if forloop.first and b.instructor and next_lesson_plan %}

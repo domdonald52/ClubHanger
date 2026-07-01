@@ -12334,9 +12334,9 @@ def app_bookings(request, club_slug):
                 .order_by('scheduled_start')[:20])
     for _b in _upcoming_qs:
         if _b.scheduled_end and _b.scheduled_start:
-            _b._sched_hours = (_b.scheduled_end - _b.scheduled_start).total_seconds() / 3600
+            _b.sched_hours = (_b.scheduled_end - _b.scheduled_start).total_seconds() / 3600
         else:
-            _b._sched_hours = None
+            _b.sched_hours = None
     upcoming = _upcoming_qs
 
     from .models import LessonNote as _LN
