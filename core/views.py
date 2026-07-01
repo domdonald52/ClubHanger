@@ -12422,7 +12422,8 @@ def app_booking_ics(request, club_slug, booking_id):
     end = booking.scheduled_end or (start + timedelta(hours=1))
 
     def _idt(dt):
-        return dt.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+        from datetime import timezone as _tz
+        return dt.astimezone(_tz.utc).strftime('%Y%m%dT%H%M%SZ')
 
     summary_parts = [booking.aircraft.registration]
     if booking.flight_type:
