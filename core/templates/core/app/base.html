@@ -331,6 +331,14 @@
     <span style="color:rgba(255,255,255,.3);font-size:18px;line-height:1;">›</span>
   </a>
 
+  <a href="{% url 'core:app_snag' club.slug %}" onclick="closeMenu()" style="display:flex;align-items:center;gap:12px;padding:14px 15px;border-bottom:1px solid rgba(255,255,255,.07);text-decoration:none;">
+    <div style="flex:1;">
+      <div style="color:#fff;font:600 14px 'Manrope',system-ui,sans-serif;">Events</div>
+      <div style="color:rgba(255,255,255,.45);font:500 11px 'Manrope',system-ui,sans-serif;margin-top:2px;">Report a safety occurrence</div>
+    </div>
+    <span style="color:rgba(255,255,255,.3);font-size:18px;line-height:1;">›</span>
+  </a>
+
   <!-- Footer -->
   <div style="margin-top:auto;padding-top:1.5rem;">
     {% if other_clubs %}

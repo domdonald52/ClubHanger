@@ -41,6 +41,21 @@
   </div>
 </div>
 
+<!-- ── How to pay ── -->
+{% if invoice.status == 'sent' %}
+<div style="background:{% if invoice.is_overdue %}var(--danger-bg){% else %}var(--warning-bg){% endif %};border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:14px;">
+  <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:{% if invoice.is_overdue %}var(--danger-text){% else %}var(--warning-text){% endif %};margin-bottom:8px;">How to pay</div>
+  <div style="font:500 13px 'Manrope',system-ui,sans-serif;color:{% if invoice.is_overdue %}var(--danger-text){% else %}var(--warning-text){% endif %};line-height:1.55;">
+    Pay in person at the club, or by online bank transfer. Use <strong>{{ invoice.display_number }}</strong> as your payment reference.
+  </div>
+  {% if invoice.is_overdue and invoice.days_overdue < 30 %}
+  <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:{% if invoice.is_overdue %}var(--danger-text){% else %}var(--warning-text){% endif %};opacity:.75;margin-top:8px;line-height:1.5;">
+    If you've recently paid, please allow up to 30 days for this to be reflected in the system.
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
 <!-- ── Flight details (if linked) ── -->
 {% if invoice.flight_completion and invoice.flight_completion.booking %}
 {% with fc=invoice.flight_completion bk=invoice.flight_completion.booking %}

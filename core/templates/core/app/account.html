@@ -71,13 +71,23 @@
         <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.75;margin-top:3px;">{{ inv.description }}</div>
         {% endif %}
       </div>
-      {% if inv.needs_attention %}
-      <span style="background:var(--danger-bg);color:var(--danger-text);border:1px solid var(--danger-text);border-radius:999px;padding:3px 9px;font:700 9px 'Manrope',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;">Overdue</span>
+      {% if inv.is_overdue %}
+      <span style="background:var(--danger-bg);color:var(--danger-text);border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);border-radius:999px;padding:3px 9px;font:700 9px 'Manrope',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;">Overdue</span>
       {% else %}
       <span style="background:var(--warning-bg);color:var(--warning-text);border:1px solid var(--warning);border-radius:999px;padding:3px 9px;font:700 9px 'Manrope',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;flex-shrink:0;">Unpaid</span>
       {% endif %}
     </div>
-    <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:var(--warning);">${{ inv.balance_due|floatformat:2|intcomma }}</div>
+    <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:{% if inv.is_overdue %}var(--danger){% else %}var(--warning){% endif %};">${{ inv.balance_due|floatformat:2|intcomma }}</div>
+    {% if inv.is_overdue %}
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--danger) 20%,transparent);">
+      <div style="font:600 11.5px 'Manrope',system-ui,sans-serif;color:var(--danger-text);line-height:1.5;">
+        Pay at the club or by bank transfer — use <strong>{{ inv.display_number }}</strong> as your reference.
+        {% if inv.days_overdue < 30 %}
+        If you've recently paid, please allow up to 30 days for this to be updated in the system.
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
   </a>
   {% endfor %}
   <div style="height:14px;"></div>
