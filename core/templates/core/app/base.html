@@ -257,7 +257,7 @@
     document.documentElement.classList.toggle('dark-mode',e.matches);
   });
   var acc=localStorage.getItem('ch-accent');
-  if(acc) document.documentElement.style.setProperty('--primary',acc);
+  if(acc){document.documentElement.style.setProperty('--primary',acc);document.documentElement.style.setProperty('--banner',acc);}
 })();
 </script>
 
