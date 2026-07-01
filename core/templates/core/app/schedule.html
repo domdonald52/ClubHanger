@@ -541,7 +541,7 @@ function setView(v) {
   var s = document.getElementById('bb-sheet');
   if (s) s.style.display = '';
   {% else %}
-  window.location.href = '{% url "core:app_book_find" club.slug %}?date={{ selected|date:"Y-m-d" }}';
+  window.location.href = '{% url "core:app_book_find" club.slug %}?date={{ selected|date:"Y-m-d" }}&src=schedule';
   {% endif %}
 }
 
