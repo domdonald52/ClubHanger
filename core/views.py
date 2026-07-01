@@ -12362,7 +12362,7 @@ def app_booking_detail(request, club_slug, booking_id):
         ),
         id=booking_id, club=club, member=actor,
     )
-    lesson_note = _LN.objects.filter(booking=booking).select_related('instructor').first()
+    lesson_note = _LN.objects.filter(booking=booking).select_related('author').first()
     return render(request, 'core/app/booking_detail.html', {
         'club': club,
         'club_member': actor,

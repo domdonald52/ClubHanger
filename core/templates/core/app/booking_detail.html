@@ -70,7 +70,7 @@
 {% if lesson_note and lesson_note.next_lesson_plan %}
 <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;margin:10px 14px 0;padding:14px;">
   <div style="font:700 11px 'Manrope',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:7px;">
-    Instructor note{% if lesson_note.instructor %} · {{ lesson_note.instructor.get_full_name }}{% endif %}
+    Instructor note{% if lesson_note.author %} · {{ lesson_note.author.get_full_name }}{% endif %}
   </div>
   <div style="font:500 14px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.55;">{{ lesson_note.next_lesson_plan }}</div>
 </div>
