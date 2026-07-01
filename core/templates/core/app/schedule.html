@@ -242,28 +242,6 @@
   .bk-completed .bk-status-icon { color: var(--text-3); }
 
   /* ── FABs ── */
-  .fab {
-    position: fixed;
-    bottom: calc(20px + var(--safe-bottom));
-    right: 1rem;
-    z-index: 30;
-    width: 52px; height: 52px;
-    background: var(--primary);
-    color: #fff;
-    border: none; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 16px rgba(0,0,0,.22);
-    cursor: pointer;
-    text-decoration: none;
-    transition: filter .15s, transform .15s;
-  }
-  .fab:active { filter: brightness(.9); transform: scale(.95); }
-  .fab-cal {
-    right: calc(1rem + 52px + .6rem);
-    background: var(--surface);
-    color: var(--primary);
-    box-shadow: 0 2px 8px rgba(0,0,0,.18);
-  }
 
   /* ── Right-edge fade on grid ── */
   .timeline-fade-right {
@@ -440,18 +418,8 @@
 <div class="no-ac">No aircraft available</div>
 {% endif %}
 
-<!-- FAB: jump to date (label activates the date input natively — works on iOS) -->
-<label for="sched-datepick" class="fab fab-cal" title="Jump to date">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-</label>
-<input type="date" id="sched-datepick" value="{{ selected|date:'Y-m-d' }}" style="position:fixed;bottom:calc(20px + var(--safe-bottom));right:calc(1rem + 52px + .6rem);opacity:0;width:52px;height:52px;z-index:29;">
-
-<!-- FAB: new booking -->
+<!-- Booking blocked sheet (triggered by list toggle when booking_blocked) -->
 {% if booking_blocked %}
-<button class="fab" title="Booking unavailable" onclick="document.getElementById('bb-sheet').style.display=''" style="background:#9ca3af;cursor:default;">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-</button>
-<!-- Booking block notice sheet -->
 <div id="bb-sheet" style="display:none;position:fixed;inset:0;z-index:200;background:var(--modal-backdrop);" onclick="this.style.display='none'">
   <div style="position:absolute;bottom:0;left:0;right:0;background:var(--surface);border-radius:18px 18px 0 0;padding:1.3rem 1.2rem calc(2rem + var(--safe-bottom));" onclick="event.stopPropagation()">
     <div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 1rem;"></div>
@@ -462,10 +430,6 @@
     <p style="font-size:.87rem;color:var(--text-2);line-height:1.55;margin:0;">{{ booking_block_msg }}</p>
   </div>
 </div>
-{% else %}
-<a href="{% url 'core:app_book_find' club.slug %}" class="fab" title="Find a slot">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-</a>
 {% endif %}
 
 <!-- Long-press / new-booking sheet -->
@@ -570,14 +534,15 @@ function updateScrollIndicator() {
   thumb.style.left = left + 'px';
 }
 
-// View toggle (list view is a stub — grid is the functional view)
+// List toggle → navigate to find-a-slot screen for the current date
 function setView(v) {
-  document.getElementById('vt-grid').classList.toggle('active', v==='grid');
-  document.getElementById('vt-list').classList.toggle('active', v==='list');
-  var listStub = document.getElementById('list-view-stub');
-  var gridArea = document.getElementById('grid-view-area');
-  if (listStub) listStub.style.display = v==='list' ? '' : 'none';
-  if (gridArea) gridArea.style.display = v==='list' ? 'none' : '';
+  if (v !== 'list') return;
+  {% if booking_blocked %}
+  var s = document.getElementById('bb-sheet');
+  if (s) s.style.display = '';
+  {% else %}
+  window.location.href = '{% url "core:app_book_find" club.slug %}?date={{ selected|date:"Y-m-d" }}';
+  {% endif %}
 }
 
 setTimeout(updateScrollIndicator, 100);

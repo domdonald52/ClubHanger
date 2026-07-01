@@ -1,14 +1,11 @@
 {% extends "core/app/base.html" %}
 {% block title %}Find a Slot · {{ club.name }}{% endblock %}
 
-{% block app_bar_brand %}{% endblock %}
-{% block app_bar %}
-<a href="{% url 'core:app_schedule' club.slug %}" class="app-bar-action" style="margin-left:-.2rem;">
+{% block app_bar_left %}
+<a href="{% url 'core:app_schedule' club.slug %}" class="app-bar-action" aria-label="Back">
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
 </a>
-<span class="app-bar-title">Find a Slot</span>
 {% endblock %}
-{% block app_bar_left %}{% endblock %}
 {% block app_bar_center %}<span class="app-bar-title">Find a slot</span>{% endblock %}
 
 {% block extra_style %}

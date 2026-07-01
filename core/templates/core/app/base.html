@@ -61,6 +61,7 @@
     --modal-backdrop:  rgba(16,24,40,.45);
   }
 
+  html.dark-mode { background: #13171c; }
   body.dark-mode {
     color-scheme: dark;
     --bg:            #13171c;
@@ -250,9 +251,10 @@
   var t=localStorage.getItem('ch-theme');
   var mq=window.matchMedia('(prefers-color-scheme:dark)');
   var dark=t==='dark'||(t!=='light'&&mq.matches);
-  if(dark) document.body.classList.add('dark-mode');
+  if(dark){document.body.classList.add('dark-mode');document.documentElement.classList.add('dark-mode');}
   if(t!=='dark'&&t!=='light') mq.addEventListener('change',function(e){
     document.body.classList.toggle('dark-mode',e.matches);
+    document.documentElement.classList.toggle('dark-mode',e.matches);
   });
   var acc=localStorage.getItem('ch-accent');
   if(acc) document.documentElement.style.setProperty('--primary',acc);
