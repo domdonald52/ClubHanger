@@ -123,7 +123,11 @@
       <div><div class="dl">Time</div><div class="dv">{{ b.scheduled_start|localtime|time:"H:i" }}–{{ b.scheduled_end|localtime|time:"H:i" }}</div></div>
       <div><div class="dl">{% if b.instructor %}Instructor{% else %}Pilot{% endif %}</div><div class="dv">{% if b.instructor %}{{ b.instructor.get_full_name }}{% else %}Solo{% endif %}</div></div>
       {% if b.fc_charge %}<div><div class="dl">Charge</div><div class="dv">${{ b.fc_charge|floatformat:2|intcomma }}</div></div>{% endif %}
-      {% if b.fc_paid_at %}<div><div class="dl">Payment</div><div class="dv" style="color:var(--success-text);">✓ {% if b.fc_payment_method == 'credit' %}Account credit{% elif b.fc_payment_method == 'eftpos' %}EFTPOS{% elif b.fc_payment_method == 'invoice' %}Bank transfer{% elif b.fc_payment_method == 'split' %}Split{% elif b.fc_payment_method %}{{ b.fc_payment_method|capfirst }}{% else %}Paid{% endif %}</div></div>{% endif %}
+      {% if b.fc_paid_at %}
+      <div><div class="dl">Payment</div><div class="dv" style="color:var(--success-text);">✓ {% if b.fc_payment_method == 'credit' %}Account credit{% elif b.fc_payment_method == 'eftpos' %}EFTPOS{% elif b.fc_payment_method == 'invoice' %}Bank transfer{% elif b.fc_payment_method == 'split' %}Split{% elif b.fc_payment_method %}{{ b.fc_payment_method|capfirst }}{% else %}Paid{% endif %}</div></div>
+      {% elif b.fc_charge %}
+      <div><div class="dl">Payment</div><div class="dv" style="color:var(--warning-text);">Outstanding</div></div>
+      {% endif %}
     </div>
     {% if b.has_lesson_note %}
     <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">

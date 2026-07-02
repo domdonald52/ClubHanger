@@ -12442,8 +12442,8 @@ def app_bookings(request, club_slug):
                          .values('payment_method')[:1])
     _note_id_sq = _LN.objects.filter(booking_id=OuterRef('pk')).values('id')
     past = (Booking.objects
-            .filter(member=actor, club=club, scheduled_start__date__lt=today)
-            .exclude(status=BookingStatus.CANCELLED)
+            .filter(member=actor, club=club, scheduled_start__date__lt=today,
+                    status__in=[BookingStatus.COMPLETED, BookingStatus.RETURNED])
             .select_related('aircraft', 'aircraft__aircraft_type', 'flight_type', 'instructor')
             .annotate(
                 fc_hours=Subquery(_fc_hours_sq),
