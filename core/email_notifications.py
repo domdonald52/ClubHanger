@@ -17,6 +17,19 @@ from django.conf import settings
 
 log = logging.getLogger(__name__)
 
+_LOCAL = {'localhost', '127.0.0.1', '0.0.0.0', '*'}
+
+
+def _site_url():
+    """Return the absolute site URL for use in emails, e.g. https://example.railway.app"""
+    url = getattr(settings, 'SITE_URL', '').rstrip('/')
+    if not url:
+        hosts = getattr(settings, 'ALLOWED_HOSTS', [])
+        host = next((h for h in hosts if h not in _LOCAL and not h.startswith('.')), '')
+        if host:
+            url = f'https://{host}'
+    return url
+
 
 def _from_addr(club):
     """Use club billing email if set, else DEFAULT_FROM_EMAIL."""
@@ -58,7 +71,7 @@ def _email_context(club):
             ctx['banner_color'] = cfg.theme_banner
             ctx['primary_color'] = cfg.theme_primary
             if cfg.logo:
-                site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+                site_url = _site_url()
                 if site_url:
                     ctx['logo_url'] = site_url + cfg.logo.url
     except Exception:
@@ -92,7 +105,7 @@ def _send(subject, body_text, to_email, from_email, body_html=None):
 def club_invite(invite):
     """Send a single-use invite link to a prospective member."""
     from django.urls import reverse
-    site = getattr(settings, 'SITE_URL', '').rstrip('/')
+    site = _site_url()
     accept_path = reverse('core:accept_invite', kwargs={'token': str(invite.token)})
     accept_url = site + accept_path
 
@@ -137,8 +150,7 @@ def booking_confirmed(booking):
         prev_note = _note_qs.first()
 
     from django.urls import reverse as _rev
-    _site = getattr(settings, 'SITE_URL', '').rstrip('/')
-    booking_url = _site + _rev('core:app_booking_detail', args=[booking.club.slug, booking.id])
+    booking_url = _site_url() + _rev('core:app_booking_detail', args=[booking.club.slug, booking.id])
 
     body = (
         f'Hi {member.user.first_name},\n\n'
@@ -284,8 +296,7 @@ def booking_reminder(booking):
     if booking.instructor:
         body += f'  Instructor: {booking.instructor.get_full_name()}\n'
     from django.urls import reverse as _rev
-    _site = getattr(settings, 'SITE_URL', '').rstrip('/')
-    booking_url = _site + _rev('core:app_booking_detail', args=[booking.club.slug, booking.id])
+    booking_url = _site_url() + _rev('core:app_booking_detail', args=[booking.club.slug, booking.id])
     body += f'\nView or cancel your booking:\n{booking_url}\n\n{booking.club.name}\n'
     ctx = {**_email_context(booking.club), 'booking': booking, 'member': member, 'booking_url': booking_url}
     body_html = render_to_string('email/booking_reminder.html', ctx)
@@ -418,8 +429,7 @@ def invoice_overdue_reminder(invoice, days_overdue, reminder_text=''):
         f'{invoice.club.name}\n'
     )
     from django.urls import reverse as _rev
-    _site = getattr(settings, 'SITE_URL', '').rstrip('/')
-    invoice_url = _site + _rev('core:app_invoice_detail', args=[invoice.club.slug, invoice.id])
+    invoice_url = _site_url() + _rev('core:app_invoice_detail', args=[invoice.club.slug, invoice.id])
     if not reminder_text:
         try:
             from .models import ClubConfig as _CC
