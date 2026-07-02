@@ -125,6 +125,8 @@
       {% if b.fc_charge %}<div><div class="dl">Charge</div><div class="dv">${{ b.fc_charge|floatformat:2|intcomma }}</div></div>{% endif %}
       {% if b.fc_paid_at %}
       <div><div class="dl">Payment</div><div class="dv" style="color:var(--success-text);">✓ {% if b.fc_payment_method == 'credit' %}Account credit{% elif b.fc_payment_method == 'eftpos' %}EFTPOS{% elif b.fc_payment_method == 'invoice' %}Bank transfer{% elif b.fc_payment_method == 'split' %}Split{% elif b.fc_payment_method %}{{ b.fc_payment_method|capfirst }}{% else %}Paid{% endif %}</div></div>
+      {% elif b.fc_invoice_issued %}
+      <div><div class="dl">Payment</div><div class="dv" style="color:var(--text-2);">Invoiced</div></div>
       {% elif b.fc_charge %}
       <div><div class="dl">Payment</div><div class="dv" style="color:var(--warning-text);">Outstanding</div></div>
       {% endif %}

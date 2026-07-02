@@ -12440,6 +12440,10 @@ def app_bookings(request, club_slug):
                          .filter(booking_id=OuterRef('pk'))
                          .order_by('sequence')
                          .values('payment_method')[:1])
+    _fc_invoice_issued_sq = (FlightCompletion.objects
+                             .filter(booking_id=OuterRef('pk'))
+                             .order_by('sequence')
+                             .values('invoice_issued')[:1])
     _note_id_sq = _LN.objects.filter(booking_id=OuterRef('pk')).values('id')
     past = (Booking.objects
             .filter(member=actor, club=club, scheduled_start__date__lt=today,
@@ -12450,6 +12454,7 @@ def app_bookings(request, club_slug):
                 fc_charge=Subquery(_fc_charge_sq),
                 fc_paid_at=Subquery(_fc_paid_at_sq),
                 fc_payment_method=Subquery(_fc_pay_method_sq),
+                fc_invoice_issued=Subquery(_fc_invoice_issued_sq),
                 has_lesson_note=Exists(_LN.objects.filter(booking_id=OuterRef('pk'))),
                 lesson_note_id=Subquery(_note_id_sq),
             )
