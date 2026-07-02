@@ -3849,7 +3849,15 @@ def booking_detail(request, club_slug, booking_id):
                 'confirm': 'Booking+confirmed',
                 'depart': 'Booking+checked+out',
                 'cancel': 'Booking+cancelled',
+                'cancel_booking': 'Booking+cancelled',
+                'undo_confirm': 'Confirmation+undone',
+                'undo_depart': 'Check-out+undone',
+                'return_aircraft': 'Aircraft+returned',
+                'undo_return': 'Return+undone',
+                'change_details': 'Booking+updated',
+                'set_client': 'Client+updated',
                 'add_charge': 'Charge+added',
+                'delete_charge': 'Charge+removed',
                 'void_checkin': 'Check-in+voided',
                 'reverse_payment': 'Payment+reversed',
                 'record_refund': 'Refund+recorded',
@@ -3859,7 +3867,9 @@ def booking_detail(request, club_slug, booking_id):
                 'record_multi_payment': 'Payment+recorded',
                 'record_payee': 'Payment+recorded',
                 'record_new_payee': 'Payment+recorded',
+                'remove_payee': 'Payee+removed',
                 'edit_checkin': 'Check-in+updated',
+                'save_special_hours': 'Special+hours+saved',
             }.get(action, 'Saved')
             if is_inline:
                 if action in ('depart', 'confirm'):
