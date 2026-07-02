@@ -1677,15 +1677,6 @@ def club_settings(request, club_slug, mode='settings'):
             from django.shortcuts import redirect as _redirect
             return _redirect(_redir_name, club_slug=club_slug)
 
-        elif action == 'upload_app_banner':
-            if request.FILES.get('app_banner'):
-                config.app_banner = request.FILES['app_banner']
-                config.save(update_fields=['app_banner'])
-            elif request.POST.get('remove_app_banner'):
-                config.app_banner.delete(save=True)
-            from django.shortcuts import redirect as _redirect
-            return _redirect(_redir_name, club_slug=club_slug)
-
         elif action == 'add_flight_type':
             ft_name = request.POST.get('ft_name', '').strip()
             ft_is_solo     = request.POST.get('ft_is_solo') == 'on'
@@ -13670,7 +13661,8 @@ def pwa_manifest(request, club_slug):
     mark_png = request.build_absolute_uri(staticfiles_storage.url('core/img/clubhangar-icon-512.png'))
 
     if cfg.logo:
-        logo_url = (site + cfg.logo.url) if site else cfg.logo.url
+        _raw = cfg.logo.url
+        logo_url = _raw if _raw.startswith('http') else (site + _raw if site else _raw)
         icons = [
             {'src': logo_url, 'sizes': 'any', 'type': 'image/png', 'purpose': 'any maskable'},
             {'src': mark_png, 'sizes': '512x512', 'type': 'image/png', 'purpose': 'any'},

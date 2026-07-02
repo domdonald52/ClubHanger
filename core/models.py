@@ -134,9 +134,6 @@ class ClubConfig(models.Model):
     # Club branding
     logo = models.ImageField(upload_to='logos/', null=True, blank=True,
                              help_text="Club logo — ideally white on transparent PNG, shown in the banner")
-    app_banner = models.ImageField(upload_to='app_banners/', null=True, blank=True,
-                                   help_text="Hero image shown on the mobile app home screen. Landscape, ~3:1 ratio (e.g. 1200×400px). JPG or PNG.")
-
     # Theme colours (hex). Aviation palette.
     theme_banner = models.CharField(max_length=7, default='#2b2b2b', help_text="Top banner background")
     theme_primary = models.CharField(max_length=7, default='#c0481c', help_text="Buttons, links, active controls")

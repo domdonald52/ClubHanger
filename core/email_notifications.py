@@ -72,9 +72,13 @@ def _email_context(club):
             ctx['banner_color'] = cfg.theme_banner
             ctx['primary_color'] = cfg.theme_primary
             if cfg.logo:
-                site_url = _site_url()
-                if site_url:
-                    ctx['logo_url'] = site_url + cfg.logo.url
+                _raw = cfg.logo.url
+                if _raw.startswith('http'):
+                    ctx['logo_url'] = _raw
+                else:
+                    site_url = _site_url()
+                    if site_url:
+                        ctx['logo_url'] = site_url + _raw
     except Exception:
         pass
     return ctx
