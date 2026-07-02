@@ -2727,7 +2727,8 @@ def booking_detail(request, club_slug, booking_id):
     error = None
     success = None
     if request.GET.get('saved') == '1':
-        success = 'Special hours saved.'
+        _raw_msg = request.GET.get('msg', '')
+        success = _raw_msg.replace('+', ' ') if _raw_msg else 'Saved.'
 
     if request.method == 'POST':
         action = request.POST.get('action', '')

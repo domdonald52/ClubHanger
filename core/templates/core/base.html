@@ -1162,7 +1162,10 @@ span.cal-chip{background:var(--surface-3);color:var(--text-3);}
             _setBackBtn(_stack.length > 0);
             // Toast fired by the page's ?saved=1 script via runScripts
           } else {
-            if (wasSaved && window.toast) window.toast('Saved', 'ok');
+            if (wasSaved && window.toast) {
+              const _msg = finalUrl.searchParams.get('msg');
+              window.toast(_msg ? _msg.replace(/\+/g, ' ') : 'Saved', 'ok');
+            }
             _doCloseOverlay();
           }
         } catch(err) {
