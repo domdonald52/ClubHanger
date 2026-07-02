@@ -4982,6 +4982,8 @@ def app_flight_log(request, club_slug):
             'seg_id':           my_seg.id if my_seg else None,
             'can_edit_special': True,
             'note_id':          _note_id,
+            'fc_paid_at':       fc.paid_at,
+            'fc_payment_method': fc.payment_method,
         })
 
     for seg in seg_qs:
@@ -5021,7 +5023,15 @@ def app_flight_log(request, club_slug):
         _pay_map[_fp.completion_id] = _fp
     for e in entries:
         _fp = _pay_map.get(e['fc_id'])
-        e['payment'] = _fp
+        if _fp:
+            e['paid_at'] = _fp.paid_at
+            e['paid_method'] = _fp.get_method_display()
+        elif e.get('fc_paid_at'):
+            e['paid_at'] = e['fc_paid_at']
+            e['paid_method'] = dict(FlightCompletion.PAYMENT_METHOD_CHOICES).get(e['fc_payment_method'], e['fc_payment_method']) if e['fc_payment_method'] else None
+        else:
+            e['paid_at'] = None
+            e['paid_method'] = None
 
     # Year filter
     year_param = request.GET.get('year', '')
