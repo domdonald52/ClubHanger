@@ -12456,7 +12456,10 @@ def app_bookings(request, club_slug):
             .order_by('-scheduled_start')[:20])
 
     past_list = list(past)
-    just_completed = past_list[0] if past_list else None
+    just_completed = next(
+        (b for b in past_list if b.status in (BookingStatus.COMPLETED, BookingStatus.RETURNED)),
+        None
+    )
 
     return render(request, 'core/app/bookings.html', {
         'club': club, 'club_member': actor,
