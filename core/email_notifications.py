@@ -136,6 +136,10 @@ def booking_confirmed(booking):
     else:
         prev_note = _note_qs.first()
 
+    from django.urls import reverse as _rev
+    _site = getattr(settings, 'SITE_URL', '').rstrip('/')
+    booking_url = _site + _rev('core:app_booking_detail', args=[booking.club.slug, booking.id])
+
     body = (
         f'Hi {member.user.first_name},\n\n'
         f'Your booking has been confirmed.\n\n'
@@ -152,9 +156,10 @@ def booking_confirmed(booking):
         f'Please note that bookings are subject to weather and operational constraints '
         f'which can change at short notice. Your instructor will endeavour to make '
         f'contact if there are any issues.\n\n'
+        f'View or cancel your booking:\n{booking_url}\n\n'
         f'{booking.club.name}\n'
     )
-    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member, 'prev_note': prev_note}
+    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member, 'prev_note': prev_note, 'booking_url': booking_url}
     body_html = render_to_string('email/booking_confirmed.html', ctx)
     _send(subject, body, email, from_email, body_html=body_html)
 
@@ -278,8 +283,11 @@ def booking_reminder(booking):
     )
     if booking.instructor:
         body += f'  Instructor: {booking.instructor.get_full_name()}\n'
-    body += f'\n{booking.club.name}\n'
-    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member}
+    from django.urls import reverse as _rev
+    _site = getattr(settings, 'SITE_URL', '').rstrip('/')
+    booking_url = _site + _rev('core:app_booking_detail', args=[booking.club.slug, booking.id])
+    body += f'\nView or cancel your booking:\n{booking_url}\n\n{booking.club.name}\n'
+    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member, 'booking_url': booking_url}
     body_html = render_to_string('email/booking_reminder.html', ctx)
     _send(subject, body, email, from_email, body_html=body_html)
 
