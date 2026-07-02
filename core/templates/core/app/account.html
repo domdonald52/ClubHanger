@@ -150,13 +150,20 @@
   {% if payments_page.object_list %}
   <div class="app-list" style="margin-bottom:24px;">
     {% for item in payments_page %}
+    {% if item.url %}
+    <a href="{{ item.url }}" class="app-list-row" style="text-decoration:none;">
+    {% else %}
     <div class="app-list-row" style="cursor:default;">
+    {% endif %}
       <div class="app-list-main">
         <div class="app-list-title">{{ item.description }}</div>
         <div class="app-list-sub">{{ item.date|localtime|date:"j M Y" }}{% if item.sub %} · {{ item.sub }}{% endif %}</div>
       </div>
-      <div class="app-list-right" style="color:{% if item.color == 'success' %}var(--success-text){% elif item.color == 'danger' %}var(--danger-text){% else %}var(--text-2){% endif %};">{{ item.prefix }}${{ item.amount|floatformat:2|intcomma }}</div>
-    </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <div class="app-list-right" style="color:{% if item.color == 'success' %}var(--success-text){% elif item.color == 'danger' %}var(--danger-text){% else %}var(--text-2){% endif %};">{{ item.prefix }}${{ item.amount|floatformat:2|intcomma }}</div>
+        {% if item.url %}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>{% endif %}
+      </div>
+    {% if item.url %}</a>{% else %}</div>{% endif %}
     {% endfor %}
   </div>
   {% if payments_page.has_other_pages %}

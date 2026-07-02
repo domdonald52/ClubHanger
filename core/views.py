@@ -5011,6 +5011,18 @@ def app_flight_log(request, club_slug):
 
     entries.sort(key=lambda e: e['date'], reverse=True)
 
+    # Annotate entries with this member's payment status for each flight
+    from .models import FlightPayment as _FP2
+    _fc_ids = [e['fc_id'] for e in entries]
+    _pay_map = {}
+    for _fp in (_FP2.objects
+                .filter(member=actor, completion_id__in=_fc_ids, paid_at__isnull=False)
+                .order_by('paid_at')):
+        _pay_map[_fp.completion_id] = _fp
+    for e in entries:
+        _fp = _pay_map.get(e['fc_id'])
+        e['payment'] = _fp
+
     # Year filter
     year_param = request.GET.get('year', '')
     years = sorted({e['date'].year for e in entries}, reverse=True)
@@ -12691,16 +12703,20 @@ def app_account(request, club_slug):
     except Exception:
         pass
 
+    from django.urls import reverse as _rev
     for _fp in (_FP.objects
                 .filter(member=actor, paid_at__isnull=False)
                 .exclude(method__in=['credit', 'invoice'])
-                .select_related('completion__booking__aircraft')
+                .select_related('completion__booking__aircraft', 'completion__booking')
                 .order_by('-paid_at')):
         try:
-            _reg = _fp.completion.booking.aircraft.registration
+            _bk = _fp.completion.booking
+            _reg = _bk.aircraft.registration
             _desc = f'Flight payment — {_reg}'
+            _url = _rev('core:app_booking_detail', kwargs={'club_slug': club_slug, 'booking_id': _bk.id})
         except Exception:
             _desc = 'Flight payment'
+            _url = None
         _is_refund = _fp.method == 'refund'
         _history.append({
             'date': _fp.paid_at,
@@ -12709,6 +12725,7 @@ def app_account(request, club_slug):
             'amount': _fp.amount,
             'prefix': '+' if _is_refund else '',
             'color': 'success' if _is_refund else 'neutral',
+            'url': _url,
         })
 
     _history.sort(key=lambda x: x['date'], reverse=True)

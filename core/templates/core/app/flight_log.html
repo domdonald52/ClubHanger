@@ -74,6 +74,9 @@
       <div style="text-align:right;flex-shrink:0;">
         <div style="font-size:.95rem;font-weight:700;color:var(--text-1);">{{ entry.hours|floatformat:1 }}</div>
         <div style="font-size:.68rem;color:var(--text-3);">hrs{% if entry.is_split %} · split{% endif %}</div>
+        {% if entry.payment %}
+        <div style="font-size:.67rem;font-weight:600;color:var(--success-text);margin-top:3px;">✓ {{ entry.payment.get_method_display }}{% if entry.payment.paid_at %} · {{ entry.payment.paid_at|date:"j M Y" }}{% endif %}</div>
+        {% endif %}
       </div>
     </div>
 
