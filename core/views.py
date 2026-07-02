@@ -12401,8 +12401,8 @@ def app_bookings(request, club_slug):
         return redirect('core:app_bookings', club_slug=club_slug)
 
     _upcoming_qs = list(Booking.objects
-                .filter(member=actor, club=club, scheduled_start__date__gte=today)
-                .exclude(status=BookingStatus.CANCELLED)
+                .filter(member=actor, club=club, scheduled_start__date__gte=today,
+                        status__in=[BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.DEPARTED, BookingStatus.RETURNED])
                 .select_related('aircraft', 'aircraft__aircraft_type', 'flight_type', 'instructor', 'declaration')
                 .order_by('scheduled_start')[:20])
     for _b in _upcoming_qs:
