@@ -114,7 +114,7 @@
   <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="past-card" style="display:block;text-decoration:none;color:inherit;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">{{ b.scheduled_start|localtime|date:"D j M Y" }}</span>
-      <span style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-3);">#{{ b.id }}{% if b.has_lesson_note %} · <span style="color:var(--primary);">Notes</span>{% endif %}</span>
+      <span style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-3);">Booking Ref #{{ b.id }}{% if b.has_lesson_note %} · <span style="color:var(--primary);">Notes</span>{% endif %}</span>
     </div>
     <div style="font:800 17px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.2;">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div>
     <div class="dg">
@@ -124,7 +124,7 @@
       <div><div class="dl">{% if b.instructor %}Instructor{% else %}Pilot{% endif %}</div><div class="dv">{% if b.instructor %}{{ b.instructor.get_full_name }}{% else %}Solo{% endif %}</div></div>
       {% if b.fc_charge %}<div><div class="dl">Charge</div><div class="dv">${{ b.fc_charge|floatformat:2|intcomma }}</div></div>{% endif %}
       {% if b.fc_paid_at %}
-      <div><div class="dl">Payment</div><div class="dv" style="color:var(--success-text);">✓ {% if b.fc_payment_method == 'credit' %}Account credit{% elif b.fc_payment_method == 'eftpos' %}EFTPOS{% elif b.fc_payment_method == 'invoice' %}Bank transfer{% elif b.fc_payment_method == 'split' %}Split{% elif b.fc_payment_method %}{{ b.fc_payment_method|capfirst }}{% else %}Paid{% endif %}{% if b.fc_inv_number %} · {{ b.fc_inv_prefix }}{{ b.fc_inv_number }}{% endif %}</div></div>
+      <div><div class="dl">Payment</div><div class="dv" style="color:var(--success-text);">✓ {% if b.fc_payment_method == 'credit' %}Account credit{% elif b.fc_payment_method == 'eftpos' %}EFTPOS{% elif b.fc_payment_method == 'invoice' %}Invoice{% elif b.fc_payment_method == 'split' %}Split{% elif b.fc_payment_method %}{{ b.fc_payment_method|capfirst }}{% else %}Paid{% endif %}{% if b.fc_inv_number %} · {{ b.fc_inv_prefix }}{{ b.fc_inv_number }}{% endif %}</div></div>
       {% elif b.fc_inv_number %}
       <div><div class="dl">Payment</div><div class="dv" style="color:{% if b.fc_inv_status == 'paid' %}var(--success-text){% else %}var(--text-2){% endif %};">{% if b.fc_inv_status == 'paid' %}✓ Paid{% else %}Invoiced — awaiting payment{% endif %} · {{ b.fc_inv_prefix }}{{ b.fc_inv_number }}</div></div>
       {% elif b.fc_charge %}

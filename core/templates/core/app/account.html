@@ -65,7 +65,7 @@
         </div>
         {% if inv.flight_completion and inv.flight_completion.booking %}
         <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.75;margin-top:3px;">
-          {{ inv.flight_completion.booking.aircraft.registration }} · {{ inv.flight_completion.booking.scheduled_start|localtime|date:"j M Y" }}
+          {{ inv.flight_completion.booking.aircraft.registration }} · {{ inv.flight_completion.booking.scheduled_start|localtime|date:"j M Y" }} · Ref #{{ inv.flight_completion.booking.id }}
         </div>
         {% elif inv.description %}
         <div style="font:500 11.5px 'Manrope',system-ui,sans-serif;color:var(--warning-text);opacity:.75;margin-top:3px;">{{ inv.description }}</div>
@@ -120,7 +120,7 @@
           <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:2px;">
             {{ inv.flight_completion.booking.aircraft.registration }}{% if inv.flight_completion.booking.flight_type %} · {{ inv.flight_completion.booking.flight_type.name }}{% endif %}
           </div>
-          <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:1px;">{{ inv.flight_completion.booking.scheduled_start|localtime|date:"j M Y" }}</div>
+          <div style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:1px;">{{ inv.flight_completion.booking.scheduled_start|localtime|date:"j M Y" }} · Ref #{{ inv.flight_completion.booking.id }}</div>
           {% elif inv.description %}
           <div style="font:500 12px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:2px;">{{ inv.description }}</div>
           {% endif %}

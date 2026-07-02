@@ -12758,14 +12758,16 @@ def app_account(request, club_slug):
             _reg = _bk.aircraft.registration
             _desc = f'Flight payment — {_reg}'
             _url = _rev('core:app_booking_detail', kwargs={'club_slug': club_slug, 'booking_id': _bk.id})
+            _sub = f'#{_bk.id} · {_fp.get_method_display()}'
         except Exception:
             _desc = 'Flight payment'
             _url = None
+            _sub = _fp.get_method_display()
         _is_refund = _fp.method == 'refund'
         _history.append({
             'date': _fp.paid_at,
             'description': _desc,
-            'sub': _fp.get_method_display(),
+            'sub': _sub,
             'amount': _fp.amount,
             'prefix': '+' if _is_refund else '',
             'color': 'success' if _is_refund else 'neutral',
