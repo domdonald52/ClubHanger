@@ -49,3 +49,4 @@ urllib3==2.7.0
 websockets==16.0
 whitenoise==6.12.0
 yarl==1.24.2
+django-anymail[resend]==12.0

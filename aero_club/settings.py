@@ -109,14 +109,19 @@ WSGI_APPLICATION = 'aero_club.wsgi.application'
 
 
 # Email
-EMAIL_BACKEND      = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
-EMAIL_HOST         = os.environ.get('EMAIL_HOST', 'localhost')
-EMAIL_PORT         = int(os.environ.get('EMAIL_PORT', '587'))
-EMAIL_HOST_USER    = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD= os.environ.get('EMAIL_HOST_PASSWORD', '')
-EMAIL_USE_TLS      = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_TIMEOUT      = 8
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@aeroclub.example.com')
+_RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+if _RESEND_API_KEY:
+    EMAIL_BACKEND  = 'anymail.backends.resend.EmailBackend'
+    ANYMAIL        = {'RESEND_API_KEY': _RESEND_API_KEY}
+else:
+    EMAIL_BACKEND  = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+    EMAIL_HOST         = os.environ.get('EMAIL_HOST', 'localhost')
+    EMAIL_PORT         = int(os.environ.get('EMAIL_PORT', '587'))
+    EMAIL_HOST_USER    = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD= os.environ.get('EMAIL_HOST_PASSWORD', '')
+    EMAIL_USE_TLS      = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+    EMAIL_TIMEOUT      = 8
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'onboarding@resend.dev')
 # Override all outgoing email to this address for safe testing (dev only)
 EMAIL_OVERRIDE_TO  = os.environ.get('EMAIL_OVERRIDE_TO', '')
 # Absolute site URL used in emails (e.g. https://clubhangar.example.com)
