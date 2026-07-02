@@ -17,7 +17,7 @@ from django.conf import settings
 
 log = logging.getLogger(__name__)
 
-_LOCAL = {'localhost', '127.0.0.1', '0.0.0.0', '*'}
+_SKIP_HOSTS = {'localhost', '127.0.0.1', '0.0.0.0', '*', 'healthcheck.railway.app'}
 
 
 def _site_url():
@@ -25,7 +25,8 @@ def _site_url():
     url = getattr(settings, 'SITE_URL', '').rstrip('/')
     if not url:
         hosts = getattr(settings, 'ALLOWED_HOSTS', [])
-        host = next((h for h in hosts if h not in _LOCAL and not h.startswith('.')), '')
+        host = next((h for h in hosts
+                     if h not in _SKIP_HOSTS and not h.startswith('.')), '')
         if host:
             url = f'https://{host}'
     return url
