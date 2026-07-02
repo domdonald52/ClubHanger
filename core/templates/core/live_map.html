@@ -78,7 +78,7 @@
 
   <!-- Empty state -->
   <div id="map-empty" style="display:none;">
-    <p>No club aircraft discoverable via ADS-B service provider</p>
+    <p id="map-empty-msg">Connecting to ADS-B sources…</p>
   </div>
 
   <!-- Source attribution pills (bottom left) -->
@@ -219,7 +219,16 @@ window.updateMap = function(aircraft) {
   if (bounds.length === 1)      map.setView(bounds[0], 11);
   else if (bounds.length > 1)   map.fitBounds(L.latLngBounds(bounds), { padding: [100, 100] });
 
-  document.getElementById('map-empty').style.display = (bounds.length === 0) ? 'block' : 'none';
+  const emptyEl = document.getElementById('map-empty');
+  if (bounds.length > 0) {
+    emptyEl.style.display = 'none';
+  } else {
+    emptyEl.style.display = 'block';
+    document.getElementById('map-empty-msg').textContent =
+      window._fetchAttempts >= 3
+        ? 'No club aircraft discoverable via ADS-B service provider'
+        : 'Connecting to ADS-B sources…';
+  }
 }
 
 window.updatePanel = function(aircraft) {
@@ -266,12 +275,14 @@ function updateSourceHealth(health) {
   });
 }
 
+window._fetchAttempts = 0;
 window.fetchPositions = function() {
   dot.style.background = '#f59e0b';
   txt.textContent = 'Querying ADS-B sources…';
   fetch(API_URL)
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(data => {
+      window._fetchAttempts++;
       const ac = data.aircraft || [];
       updateMap(ac);
       updatePanel(ac);
@@ -281,6 +292,7 @@ window.fetchPositions = function() {
       dot.style.background = found > 0 ? '#22c55e' : '#8a93a0';
     })
     .catch(() => {
+      window._fetchAttempts++;
       dot.style.background = '#ef4444';
       txt.textContent = 'Fetch failed — retrying…';
     });
