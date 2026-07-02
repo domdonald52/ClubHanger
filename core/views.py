@@ -12444,6 +12444,21 @@ def app_bookings(request, club_slug):
                              .filter(booking_id=OuterRef('pk'))
                              .order_by('sequence')
                              .values('invoice_issued')[:1])
+    _fc_inv_number_sq = (Invoice.objects
+                         .filter(flight_completion__booking_id=OuterRef('pk'))
+                         .exclude(status=Invoice.STATUS_VOID)
+                         .order_by('invoice_number')
+                         .values('invoice_number')[:1])
+    _fc_inv_prefix_sq = (Invoice.objects
+                         .filter(flight_completion__booking_id=OuterRef('pk'))
+                         .exclude(status=Invoice.STATUS_VOID)
+                         .order_by('invoice_number')
+                         .values('club__config__invoice_number_prefix')[:1])
+    _fc_inv_status_sq = (Invoice.objects
+                         .filter(flight_completion__booking_id=OuterRef('pk'))
+                         .exclude(status=Invoice.STATUS_VOID)
+                         .order_by('invoice_number')
+                         .values('status')[:1])
     _note_id_sq = _LN.objects.filter(booking_id=OuterRef('pk')).values('id')
     past = (Booking.objects
             .filter(member=actor, club=club, scheduled_start__date__lt=today,
@@ -12455,21 +12470,22 @@ def app_bookings(request, club_slug):
                 fc_paid_at=Subquery(_fc_paid_at_sq),
                 fc_payment_method=Subquery(_fc_pay_method_sq),
                 fc_invoice_issued=Subquery(_fc_invoice_issued_sq),
+                fc_inv_number=Subquery(_fc_inv_number_sq),
+                fc_inv_prefix=Subquery(_fc_inv_prefix_sq),
+                fc_inv_status=Subquery(_fc_inv_status_sq),
                 has_lesson_note=Exists(_LN.objects.filter(booking_id=OuterRef('pk'))),
                 lesson_note_id=Subquery(_note_id_sq),
             )
             .order_by('-scheduled_start')[:20])
 
     past_list = list(past)
-    just_completed = next(
-        (b for b in past_list if b.status in (BookingStatus.COMPLETED, BookingStatus.RETURNED)),
-        None
-    )
+    just_completed = past_list[0] if past_list else None
+    past_history = past_list[1:] if just_completed else past_list
 
     return render(request, 'core/app/bookings.html', {
         'club': club, 'club_member': actor,
         'upcoming': upcoming,
-        'past': past_list,
+        'past': past_history,
         'just_completed': just_completed,
         'today': today,
         'next_lesson_plan': next_lesson_plan,
