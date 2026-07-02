@@ -13539,14 +13539,33 @@ def app_book_confirm(request, club_slug):
         except (Aircraft.DoesNotExist, ValueError):
             pass
 
-    # Aircraft list for the dropdown — same type as the pill tapped, or all if unknown
-    all_ac = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE).select_related('aircraft_type').order_by('registration')
+    # Aircraft list for the dropdown — same type as the pill tapped, or all if unknown,
+    # then filtered to only those free during the requested slot.
+    all_ac = Aircraft.objects.filter(club=club, status=AircraftStatus.ONLINE, is_available_for_hire=True).select_related('aircraft_type').order_by('registration')
     if ac and ac.aircraft_type_id:
         aircraft_list = all_ac.filter(aircraft_type_id=ac.aircraft_type_id)
     elif ac_type:
         aircraft_list = all_ac.filter(aircraft_type__name=ac_type)
     else:
         aircraft_list = all_ac
+
+    # Exclude aircraft already booked during this slot
+    if start_str and end_str:
+        try:
+            from datetime import datetime as _cdt2, time as _ct2
+            _csh2, _csm2 = [int(x) for x in start_str.split(':')]
+            _ceh2, _cem2 = [int(x) for x in end_str.split(':')]
+            _slot_s = timezone.make_aware(_cdt2.combine(sel_date, _ct2(_csh2, _csm2)))
+            _slot_e = timezone.make_aware(_cdt2.combine(sel_date, _ct2(_ceh2, _cem2)))
+            _busy_ids = set(
+                Booking.objects
+                .filter(club=club, scheduled_start__lt=_slot_e, scheduled_end__gt=_slot_s)
+                .exclude(status=BookingStatus.CANCELLED)
+                .values_list('aircraft_id', flat=True)
+            )
+            aircraft_list = aircraft_list.exclude(id__in=_busy_ids)
+        except (ValueError, TypeError):
+            pass
 
     flight_types = FlightType.objects.filter(club=club).order_by('name')
 
@@ -13565,7 +13584,9 @@ def app_book_confirm(request, club_slug):
     try:
         _conf_date = _d.fromisoformat(date_str)
         _csh, _csm = [int(x) for x in start_str.split(':')]
+        _ceh, _cem = [int(x) for x in end_str.split(':')]
         _sched_s   = timezone.make_aware(_cdt.combine(_conf_date, _ct(_csh, _csm)))
+        _sched_e   = timezone.make_aware(_cdt.combine(_conf_date, _ct(_ceh, _cem)))
         _conf_day_s = timezone.make_aware(_cdt.combine(_conf_date, _ct(7,  0)))
         _conf_day_e = timezone.make_aware(_cdt.combine(_conf_date, _ct(20, 0)))
         _conf_bos = [
@@ -13596,10 +13617,10 @@ def app_book_confirm(request, club_slug):
                 if not bo.affects_instructor(cm.user):
                     continue
                 biv = bo.interval_on(_conf_date)
-                if biv and biv[0] <= _sched_s < biv[1]:
+                if biv and biv[0] < _sched_e and biv[1] > _sched_s:
                     return False
             for instr_id, bk_s, bk_e in _conf_bookings:
-                if instr_id == cm.user_id and bk_s <= _sched_s < bk_e:
+                if instr_id == cm.user_id and bk_s < _sched_e and bk_e > _sched_s:
                     return False
             return True
         instructors = [i for i in _instr_all if _instr_ok(i)]
