@@ -47,6 +47,7 @@
     <div style="display:flex;justify-content:space-between;"><span style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);">Time</span><span style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ booking.scheduled_start|localtime|time:"H:i" }} – {{ booking.scheduled_end|localtime|time:"H:i" }}</span></div>
     {% if booking.flight_type %}<div style="display:flex;justify-content:space-between;"><span style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);">Type</span><span style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ booking.flight_type.name }}</span></div>{% endif %}
     {% if booking.instructor %}<div style="display:flex;justify-content:space-between;"><span style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);">Instructor</span><span style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ booking.instructor.get_full_name }}</span></div>{% endif %}
+    <div style="display:flex;justify-content:space-between;"><span style="font:500 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);">Ref</span><span style="font:700 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);">#{{ booking.id }}</span></div>
   </div>
 </div>
 
