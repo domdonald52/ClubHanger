@@ -114,7 +114,7 @@
   <a href="{% url 'core:app_booking_detail' club.slug b.id %}" class="past-card" style="display:block;text-decoration:none;color:inherit;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">{{ b.scheduled_start|localtime|date:"D j M Y" }}</span>
-      <span style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-3);">Booking Ref #{{ b.id }}{% if b.has_lesson_note %} · <span style="color:var(--primary);">Notes</span>{% endif %}</span>
+      <span style="font:500 11px 'Manrope',system-ui,sans-serif;color:var(--text-3);">Booking #{{ b.id }}{% if b.has_lesson_note %} · <span style="color:var(--primary);">Notes</span>{% endif %}</span>
     </div>
     <div style="font:800 17px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1.2;">{{ b.aircraft.registration }}{% if b.aircraft.aircraft_type %} · {{ b.aircraft.aircraft_type.name }}{% endif %}</div>
     <div class="dg">

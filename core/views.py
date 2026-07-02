@@ -12758,7 +12758,7 @@ def app_account(request, club_slug):
             _reg = _bk.aircraft.registration
             _desc = f'Flight payment — {_reg}'
             _url = _rev('core:app_booking_detail', kwargs={'club_slug': club_slug, 'booking_id': _bk.id})
-            _sub = f'#{_bk.id} · {_fp.get_method_display()}'
+            _sub = f'Booking #{_bk.id} · {_fp.get_method_display()}'
         except Exception:
             _desc = 'Flight payment'
             _url = None
