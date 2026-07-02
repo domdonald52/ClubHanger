@@ -28,12 +28,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        from core.models import Club, Booking, MemberCredential, ClubMember, BookingStatus
+        from core.models import Club, Booking, MemberCredential, ClubMember, BookingStatus, Invoice
         from core.email_notifications import (
             booking_reminder,
             credential_expiry_warning,
             subscription_expiry_warning,
             payment_reminder,
+            invoice_overdue_reminder,
         )
 
         dry_run = options['dry_run']
@@ -109,6 +110,28 @@ class Command(BaseCommand):
                     payment_reminder(m)
                     self.stdout.write(label)
                 sent += 1
+
+            # Overdue invoice reminders — at 30, 60, and 90 days past due date
+            today = timezone.localdate()
+            for days in (30, 60, 90):
+                target_due = today - timedelta(days=days)
+                overdue_invoices = (Invoice.objects
+                                    .filter(club=club, status=Invoice.STATUS_SENT,
+                                            due_date=target_due)
+                                    .select_related('member__user',
+                                                    'member__notification_prefs'))
+                for inv in overdue_invoices:
+                    if not inv.member or not inv.member.user.email:
+                        continue
+                    label = (f'  Invoice overdue ({days}d) → '
+                             f'{inv.member.user.get_full_name()} '
+                             f'({inv.display_number}, ${inv.balance_due:,.2f})')
+                    if dry_run:
+                        self.stdout.write(label)
+                    else:
+                        invoice_overdue_reminder(inv, days)
+                        self.stdout.write(label)
+                    sent += 1
 
         prefix = 'Would send' if dry_run else 'Sent'
         self.stdout.write(self.style.SUCCESS(f'\nsend_notifications: {prefix} {sent} notifications'))

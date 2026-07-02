@@ -1,0 +1,42 @@
+{% extends "email/_base.html" %}
+{% block title %}Invoice overdue — {{ invoice.display_number }}{% endblock %}
+{% block content %}
+<p style="margin:0 0 18px;">Hi {{ club_member.user.first_name }},</p>
+<p style="margin:0 0 22px;color:#b91c1c;font-weight:600;font-size:16px;">Invoice {{ invoice.display_number }} is {{ days_overdue }} days overdue.</p>
+
+<table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;margin-bottom:24px;">
+  <tr>
+    <td style="padding:14px 18px;">
+      <table cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
+        <tr>
+          <td style="padding:5px 0;font-size:13px;color:#6b7785;width:110px;vertical-align:top;">Invoice</td>
+          <td style="padding:5px 0;font-size:14px;font-weight:600;color:#1a2332;">{{ invoice.display_number }}</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;font-size:13px;color:#6b7785;vertical-align:top;">Due</td>
+          <td style="padding:5px 0;font-size:14px;color:#b91c1c;font-weight:600;">{{ invoice.due_date|date:"j F Y" }}</td>
+        </tr>
+        <tr>
+          <td style="padding:5px 0;font-size:13px;color:#6b7785;vertical-align:top;">Amount owing</td>
+          <td style="padding:5px 0;font-size:16px;font-weight:700;color:#1a2332;">${{ invoice.balance_due|floatformat:2 }}</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0 0 16px;font-size:14px;color:#1a2332;line-height:1.6;">
+  Please pay at the club or by bank transfer, using <strong>{{ invoice.display_number }}</strong> as your payment reference.
+  If you have recently paid, please allow a few days for the payment to be recorded.
+</p>
+
+<table cellpadding="0" cellspacing="0" role="presentation" style="margin-bottom:24px;">
+  <tr>
+    <td style="border-radius:6px;background:{{ primary_color }};">
+      <a href="{{ invoice_url }}" style="display:inline-block;padding:12px 24px;color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">View invoice &rarr;</a>
+    </td>
+  </tr>
+</table>
+
+<p style="margin:0;font-size:13px;color:#6b7785;">{{ club_name }}</p>
+{% endblock %}

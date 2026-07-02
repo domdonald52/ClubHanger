@@ -397,6 +397,36 @@ def invoice_sent(invoice):
     _send(subject, body, email, from_email, body_html=body_html)
 
 
+def invoice_overdue_reminder(invoice, days_overdue):
+    """Remind member of an overdue invoice. Called by send_notifications at 30/60/90-day thresholds."""
+    if not invoice.member:
+        return
+    club_member = invoice.member
+    email = club_member.user.email
+    if not email:
+        return
+    from_email = _from_addr(invoice.club)
+    subject = f'Invoice {invoice.display_number} overdue — {invoice.club.name}'
+    body = (
+        f'Hi {club_member.user.first_name},\n\n'
+        f'This is a reminder that invoice {invoice.display_number} is now {days_overdue} days overdue.\n\n'
+        f'  Invoice:  {invoice.display_number}\n'
+        f'  Amount:   ${invoice.balance_due:,.2f}\n'
+        f'  Due:      {invoice.due_date.strftime("%-d %B %Y")}\n\n'
+        f'Please pay at the club or by bank transfer, using {invoice.display_number} as your payment reference.\n\n'
+        f'If you have already paid, please allow a few days for the payment to be recorded.\n\n'
+        f'{invoice.club.name}\n'
+    )
+    from django.urls import reverse as _rev
+    _site = getattr(settings, 'SITE_URL', '').rstrip('/')
+    invoice_url = _site + _rev('core:app_invoice_detail', args=[invoice.club.slug, invoice.id])
+    ctx = {**_email_context(invoice.club),
+           'invoice': invoice, 'club_member': club_member,
+           'days_overdue': days_overdue, 'invoice_url': invoice_url}
+    body_html = render_to_string('email/invoice_overdue.html', ctx)
+    _send(subject, body, email, from_email, body_html=body_html)
+
+
 def lesson_note_emailed(note, club):
     """Email a lesson note to the member after the instructor shares it."""
     member = note.booking.member
