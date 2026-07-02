@@ -12498,7 +12498,8 @@ def app_booking_detail(request, club_slug, booking_id):
     from .models import LessonNote as _LN
     club, actor = _app_actor(request, club_slug)
     if not actor:
-        return redirect('login')
+        from django.contrib.auth.views import redirect_to_login
+        return redirect_to_login(request.get_full_path())
     booking = get_object_or_404(
         Booking.objects.select_related(
             'aircraft', 'aircraft__aircraft_type', 'flight_type',
