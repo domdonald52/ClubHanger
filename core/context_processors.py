@@ -29,7 +29,7 @@ def theme(request):
             'weekend': config.theme_weekend,
             'atypical': config.theme_atypical,
             'logo': config.logo if config.logo else None,
-            'app_banner': config.app_banner if config.app_banner else None,
+
             'chart_colors': config.get_chart_colors(),
             'font_family': config.get_font()[0],
             'font_url': config.get_font()[1],
