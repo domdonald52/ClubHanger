@@ -82,6 +82,9 @@ def _send(subject, body_text, to_email, from_email, body_html=None):
             log.info('Email sent: %s → %s', subject, to_email)
     except Exception as e:
         log.warning('Email failed: %s → %s: %s', subject, to_email, e)
+    except BaseException as e:
+        log.warning('Email send aborted (worker signal?): %s → %s: %s', subject, to_email, e)
+        raise
 
 
 # ── Club invite ───────────────────────────────────────────────────────────────
