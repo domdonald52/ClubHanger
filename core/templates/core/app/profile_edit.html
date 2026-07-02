@@ -53,6 +53,16 @@
     </div>
   </div>
 
+  <div class="pf-section-title">Personal</div>
+  <div class="pf-field">
+    <label class="pf-label">Sex</label>
+    <select name="sex" class="pf-input">
+      <option value="" {% if not club_member.sex %}selected{% endif %}>Prefer not to say</option>
+      <option value="M" {% if club_member.sex == 'M' %}selected{% endif %}>Male</option>
+      <option value="F" {% if club_member.sex == 'F' %}selected{% endif %}>Female</option>
+    </select>
+  </div>
+
   <div class="pf-section-title">Contact details</div>
   <div class="pf-field">
     <label class="pf-label">Mobile phone</label>

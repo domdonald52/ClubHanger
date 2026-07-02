@@ -12991,6 +12991,9 @@ def app_profile_edit(request, club_slug):
         actor.postcode      = request.POST.get('postcode', '').strip()
         actor.next_of_kin_name  = request.POST.get('next_of_kin_name', '').strip()
         actor.next_of_kin_phone = request.POST.get('next_of_kin_phone', '').strip()
+        sex = request.POST.get('sex', '').strip()
+        if sex in ('M', 'F', ''):
+            actor.sex = sex
         if 'avatar' in request.FILES:
             if actor.avatar:
                 actor.avatar.delete(save=False)
