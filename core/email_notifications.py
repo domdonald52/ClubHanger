@@ -121,6 +121,21 @@ def booking_confirmed(booking):
         return
     from_email = _from_addr(booking.club)
     subject = f'Booking confirmed — {booking.aircraft.registration} · {booking.scheduled_start.strftime("%a %-d %b %H:%M")}'
+
+    # Most recent lesson note for this member with a next-lesson plan
+    from .models import LessonNote as _LN
+    _note_qs = (_LN.objects
+                .filter(booking__member=member, booking__club=booking.club,
+                        booking__scheduled_start__lt=booking.scheduled_start)
+                .exclude(next_lesson_plan='')
+                .order_by('-booking__scheduled_start'))
+    if booking.instructor:
+        prev_note = _note_qs.filter(booking__instructor=booking.instructor).first()
+        if not prev_note:
+            prev_note = _note_qs.first()
+    else:
+        prev_note = _note_qs.first()
+
     body = (
         f'Hi {member.user.first_name},\n\n'
         f'Your booking has been confirmed.\n\n'
@@ -130,8 +145,16 @@ def booking_confirmed(booking):
     )
     if booking.instructor:
         body += f'  Instructor: {booking.instructor.get_full_name()}\n'
-    body += f'\n{booking.club.name}\n'
-    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member}
+    if prev_note:
+        body += f'\nFrom your last lesson:\n{prev_note.next_lesson_plan}\n'
+    body += (
+        f'\nSee you there!\n\n'
+        f'Please note that bookings are subject to weather and operational constraints '
+        f'which can change at short notice. Your instructor will endeavour to make '
+        f'contact if there are any issues.\n\n'
+        f'{booking.club.name}\n'
+    )
+    ctx = {**_email_context(booking.club), 'booking': booking, 'member': member, 'prev_note': prev_note}
     body_html = render_to_string('email/booking_confirmed.html', ctx)
     _send(subject, body, email, from_email, body_html=body_html)
 
