@@ -16,7 +16,8 @@
   <div class="profile-header">
     <div class="avatar-wrap">
       {% if member.avatar %}
-        <img src="{{ member.avatar.url }}" class="avatar-lg">
+        <div class="shimmer" style="position:absolute;inset:0;width:72px;height:72px;border-radius:50%;"></div>
+        <img src="{{ member.avatar.url }}" class="avatar-lg" onload="this.previousElementSibling.style.display='none'">
       {% else %}
         <span class="avatar-lg avatar-default">
           <svg viewBox="0 0 32 32" fill="currentColor" aria-hidden="true"><circle cx="16" cy="11" r="6"/><path d="M4 28c0-6.6 5.4-12 12-12s12 5.4 12 12"/></svg>

@@ -255,6 +255,8 @@
         input[type=number].finput::-webkit-inner-spin-button,
         input[type=number].finput::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number].finput { -moz-appearance: textfield; appearance: textfield; }
+        @keyframes shimmer { from { background-position: -400px 0; } to { background-position: 400px 0; } }
+        .shimmer { background: linear-gradient(90deg, var(--surface-2) 25%, var(--border-subtle) 50%, var(--surface-2) 75%); background-size: 800px 100%; animation: shimmer 1.4s infinite linear; }
     </style>
     <script>const CHART_PALETTE = {{ theme.chart_colors|default:"[]"|safe }};const CHART_MAX_BAR = 52;</script>
 </head>

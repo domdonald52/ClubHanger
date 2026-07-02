@@ -25,7 +25,10 @@
   </a>
   {% if club_member.avatar %}
   <a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action" style="padding:.2rem;">
-    <img src="{{ club_member.avatar.url }}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,.5);">
+    <div style="position:relative;width:28px;height:28px;border-radius:50%;">
+      <div class="shimmer" style="position:absolute;inset:0;border-radius:50%;"></div>
+      <img src="{{ club_member.avatar.url }}" alt="" style="position:relative;width:28px;height:28px;border-radius:50%;object-fit:cover;border:1.5px solid rgba(255,255,255,.5);" onload="this.previousElementSibling.style.display='none'">
+    </div>
   </a>
   {% else %}
   <a href="{% url 'core:app_profile' club.slug %}" class="app-bar-action" style="padding:.2rem;">

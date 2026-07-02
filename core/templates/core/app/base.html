@@ -296,7 +296,10 @@
   <!-- Identity -->
   <div style="display:flex;align-items:center;gap:12px;padding:2px 15px 16px;border-bottom:1px solid rgba(255,255,255,.1);">
     {% if club_member.avatar %}
-    <img src="{{ club_member.avatar.url }}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1.8px solid rgba(255,255,255,.6);">
+    <div style="position:relative;width:44px;height:44px;border-radius:50%;flex-shrink:0;">
+      <div class="shimmer" style="position:absolute;inset:0;border-radius:50%;"></div>
+      <img src="{{ club_member.avatar.url }}" alt="" style="position:relative;width:44px;height:44px;border-radius:50%;object-fit:cover;border:1.8px solid rgba(255,255,255,.6);" onload="this.previousElementSibling.style.display='none'">
+    </div>
     {% else %}
     <div style="width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);border:1.8px solid rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font:700 16px 'Manrope',system-ui,sans-serif;color:#fff;flex-shrink:0;">{{ club_member.user.first_name|slice:":1" }}{{ club_member.user.last_name|slice:":1" }}</div>
     {% endif %}

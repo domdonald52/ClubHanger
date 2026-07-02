@@ -13,7 +13,10 @@
   <div style="display:flex;align-items:center;gap:14px;">
     <!-- Avatar -->
     {% if club_member.avatar %}
-    <img src="{{ club_member.avatar.url }}" alt="" style="width:56px;height:56px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+    <div style="position:relative;width:56px;height:56px;border-radius:50%;flex-shrink:0;">
+      <div class="shimmer" style="position:absolute;inset:0;border-radius:50%;"></div>
+      <img src="{{ club_member.avatar.url }}" alt="" style="position:relative;width:56px;height:56px;border-radius:50%;object-fit:cover;" onload="this.previousElementSibling.style.display='none'">
+    </div>
     {% else %}
     <div style="width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font:800 20px 'Manrope',system-ui,sans-serif;flex-shrink:0;">{{ club_member.user.first_name|first|upper }}{{ club_member.user.last_name|first|upper }}</div>
     {% endif %}
