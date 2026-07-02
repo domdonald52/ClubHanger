@@ -111,9 +111,18 @@ class Command(BaseCommand):
                     self.stdout.write(label)
                 sent += 1
 
-            # Overdue invoice reminders — at 30, 60, and 90 days past due date
+            # Overdue invoice reminders — thresholds configured per club in Settings → Billing
+            from core.models import ClubConfig as _CC
+            _cfg = _CC.objects.filter(club=club).first()
+            _days_raw = (_cfg.overdue_reminder_days if _cfg else '') or '30,60,90'
+            _reminder_days = []
+            for _d in _days_raw.split(','):
+                try:
+                    _reminder_days.append(int(_d.strip()))
+                except ValueError:
+                    pass
             today = timezone.localdate()
-            for days in (30, 60, 90):
+            for days in _reminder_days:
                 target_due = today - timedelta(days=days)
                 overdue_invoices = (Invoice.objects
                                     .filter(club=club, status=Invoice.STATUS_SENT,

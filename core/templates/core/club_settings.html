@@ -1272,6 +1272,17 @@
         <textarea name="payment_terms_text" class="finput" rows="3" placeholder="e.g. Please include your invoice number when paying by direct credit.">{{ config.payment_terms_text }}</textarea>
       </label>
 
+      <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Overdue invoice reminders</h3>
+      <p style="font-size:.82rem;color:var(--text-3);margin:.2rem 0 .9rem;">Reminder emails are sent automatically by the daily notification job at the thresholds below. Leave blank to disable.</p>
+      <div class="fgrid" style="margin-bottom:1rem;">
+        <label class="flabel">Send reminders at <span style="font-weight:400;color:var(--text-3);">(days overdue, comma-separated)</span>
+          <input type="text" name="overdue_reminder_days" value="{{ config.overdue_reminder_days }}" class="finput" placeholder="e.g. 30,60,90">
+        </label>
+      </div>
+      <label class="flabel" style="margin-bottom:1rem;">Additional text in overdue reminder emails <span style="font-weight:400;color:var(--text-3);">(payment consequences, etc.)</span>
+        <textarea name="overdue_reminder_text" class="finput" rows="6" placeholder="e.g. If payment is not received on time, a $25 monthly administration fee may apply...">{{ config.overdue_reminder_text }}</textarea>
+      </label>
+
       <h3 style="font-size:.85rem;font-weight:650;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:.6rem 0 .6rem;">Member IDs</h3>
       <div style="display:flex;gap:.7rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.4rem;">
         <label class="flabel" style="margin:0;">Member ID prefix <span style="font-weight:400;color:var(--text-3);">(optional)</span>

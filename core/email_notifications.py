@@ -397,7 +397,7 @@ def invoice_sent(invoice):
     _send(subject, body, email, from_email, body_html=body_html)
 
 
-def invoice_overdue_reminder(invoice, days_overdue):
+def invoice_overdue_reminder(invoice, days_overdue, reminder_text=''):
     """Remind member of an overdue invoice. Called by send_notifications at 30/60/90-day thresholds."""
     if not invoice.member:
         return
@@ -420,9 +420,17 @@ def invoice_overdue_reminder(invoice, days_overdue):
     from django.urls import reverse as _rev
     _site = getattr(settings, 'SITE_URL', '').rstrip('/')
     invoice_url = _site + _rev('core:app_invoice_detail', args=[invoice.club.slug, invoice.id])
+    if not reminder_text:
+        try:
+            from .models import ClubConfig as _CC
+            _cfg = _CC.objects.filter(club=invoice.club).first()
+            reminder_text = (_cfg.overdue_reminder_text or '') if _cfg else ''
+        except Exception:
+            pass
     ctx = {**_email_context(invoice.club),
            'invoice': invoice, 'club_member': club_member,
-           'days_overdue': days_overdue, 'invoice_url': invoice_url}
+           'days_overdue': days_overdue, 'invoice_url': invoice_url,
+           'reminder_text': reminder_text}
     body_html = render_to_string('email/invoice_overdue.html', ctx)
     _send(subject, body, email, from_email, body_html=body_html)
 

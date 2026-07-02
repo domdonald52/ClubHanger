@@ -237,6 +237,14 @@ class ClubConfig(models.Model):
                                                       help_text="Days from invoice date until payment is due")
     payment_terms_text = models.TextField(blank=True,
                                           help_text="Payment instructions printed on invoice footer")
+    overdue_reminder_days = models.CharField(
+        max_length=50, default='30,60,90',
+        help_text="Comma-separated list of days past due to send overdue invoice reminders, e.g. '30,60,90'"
+    )
+    overdue_reminder_text = models.TextField(
+        blank=True,
+        help_text="Additional text included in overdue invoice reminder emails (payment terms, consequences, etc.)"
+    )
     invoice_number_next   = models.PositiveIntegerField(default=1,
                                                          help_text="Next invoice number to allocate — set this to continue from your current sequence")
     invoice_number_prefix = models.CharField(max_length=10, blank=True,

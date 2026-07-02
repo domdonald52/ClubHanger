@@ -2216,7 +2216,8 @@ def club_settings(request, club_slug, mode='settings'):
         elif action == 'save_billing':
             for field in ['billing_name',
                           'gst_number', 'bank_name', 'bank_account', 'payment_terms_text',
-                          'invoice_number_prefix', 'member_id_prefix']:
+                          'invoice_number_prefix', 'member_id_prefix',
+                          'overdue_reminder_days', 'overdue_reminder_text']:
                 setattr(config, field, request.POST.get(field, '').strip())
             try:
                 config.gst_rate = float(request.POST.get('gst_rate', config.gst_rate))
