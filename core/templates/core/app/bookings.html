@@ -77,9 +77,12 @@
   <a href="{% url 'core:app_booking_detail' club.slug just_completed.id %}" class="bk-card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
       <span style="font:700 11px 'Manrope',system-ui,sans-serif;letter-spacing:.04em;text-transform:uppercase;color:var(--text-2);">{{ just_completed.scheduled_start|localtime|date:"D j M" }}</span>
-      <span class="st-pill st-logged">Completed</span>
+      <span class="st-pill st-{{ just_completed.status }}">{{ just_completed.get_status_display }}</span>
     </div>
-    <div style="font:700 15px 'Manrope',system-ui,sans-serif;color:var(--text-1);">{{ just_completed.aircraft.registration }}{% if just_completed.fc_hours %} · {{ just_completed.fc_hours|floatformat:1 }}h{% endif %} {% if just_completed.instructor %}dual{% else %}solo{% endif %}</div>
+    <div style="font:800 22px 'Manrope',system-ui,sans-serif;color:var(--text-1);line-height:1;letter-spacing:-.01em;">{{ just_completed.scheduled_start|localtime|time:"H:i" }}<span style="font-weight:500;color:var(--text-3);font-size:17px;"> – </span>{{ just_completed.scheduled_end|localtime|time:"H:i" }}</div>
+    <div style="font:600 13px 'Manrope',system-ui,sans-serif;color:var(--text-2);margin-top:5px;">
+      {{ just_completed.aircraft.registration }}{% if just_completed.aircraft.aircraft_type %} · {{ just_completed.aircraft.aircraft_type.name }}{% endif %} · {% if just_completed.instructor %}with {{ just_completed.instructor.get_full_name }}{% else %}Solo{% endif %}{% if just_completed.fc_hours %} · {{ just_completed.fc_hours|floatformat:1 }}h{% endif %}
+    </div>
     {% if just_completed.has_lesson_note %}
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding-top:9px;border-top:1px solid var(--border);">
       <span style="font:600 12px 'Manrope',system-ui,sans-serif;color:var(--text-1);">Instructor note added</span>
